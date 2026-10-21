@@ -237,11 +237,18 @@ class Settings(BaseSettings):
     # the kinds it measured *worse* on, so enabling everything cannot make a
     # control worse than it is today.
     judgment_tiers: list[str] = ["deterministic"]
-    # Redact before any judgment leaves, and refuse to send at all if the
-    # local redactor cannot load. "We could not check" must mean "we do not
-    # send"; see judgment/egress.py.
+    # Redact before any judgment leaves. If the local redactor cannot load the
+    # payload is not sent at all, whatever is set here: "we could not check"
+    # must mean "we do not send"; see judgment/egress.py.
     judgment_redact_before_egress: bool = True
-    judgment_fail_closed: bool = True
+    # What a judge outage does to an enforcing decision: true denies the request
+    # when an enforcing rule on that surface relies on what the silent judge
+    # finds (`pipeline.judge_outage`); false treats it like any other degraded
+    # detector, under `fail_mode` below. This is both the default posture and the
+    # ceiling: true here means no workspace may turn it off; false (the default,
+    # matching `fail_mode = "open"`) leaves it to each workspace's posture. A
+    # payload the egress gate refuses to send is never an outage.
+    judgment_fail_closed: bool = False
     # What happens when a payload bound for a hosted judgment tier contains
     # personal data. "block" refuses to make the judgment remotely at all,
     # "redact" masks what the local detector finds and sends the rest
@@ -291,7 +298,9 @@ class Settings(BaseSettings):
     # Observe-by-default. Enforcement is something a customer turns on
     # deliberately, after simulating it.
     default_policy_mode: str = "observe"  # observe | enforce
-    # What happens when a detector errors or blows its budget.
+    # What happens when a detector blows its budget (or, for an LLM judge, does
+    # not answer). Judges are also subject to the judgment posture's
+    # `fail_closed`, which can add a block here but never remove one.
     fail_mode: str = "open"  # open | closed
     #: How long a held call waits for a person before it is denied (fails closed).
     approval_ttl_minutes: int = 30

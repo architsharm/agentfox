@@ -48,7 +48,7 @@ from agentfox.capabilities.detection.base import (
 from agentfox.capabilities.judgment import panel
 from agentfox.capabilities.judgment.capability import DecisionKind
 from agentfox.capabilities.judgment.egress import JudgmentGateway
-from agentfox.capabilities.judgment.jev import JevUnavailable
+from agentfox.capabilities.judgment.jev import JevUnavailable, cause_of
 
 log = logging.getLogger(__name__)
 
@@ -124,6 +124,27 @@ ENTITY = {
     "override_attempt": ("INJECTION.INSTRUCTION_IN_DATA", "LLM01", "AML.T0051"),
     "exfiltration": ("INJECTION.EXFILTRATION", "LLM01", "AML.T0051"),
 }
+
+
+def unavailable_result(
+    detector: object, exc: BaseException, entities: tuple[str, ...] | list[str] = ()
+) -> DetectorResult:
+    """A judge check that did not run, saying why in a form the pipeline reads.
+
+    ``status`` is ``unavailable`` whatever the reason; ``raw["cause"]`` is which
+    reason. Only ``outage`` (the judge was asked and did not answer) is a judge
+    failing, and only that reaches `fail_mode` and the posture's ``fail_closed``.
+    ``refused`` (the egress gate kept the payload home: `pii_egress=block` on text
+    with personal data in it) and ``not_configured`` are coverage the operator
+    chose not to have on this payload, and are never treated as an outage: blocking
+    on them would block ordinary traffic while the judge is perfectly healthy.
+    """
+    return DetectorResult(
+        detector_key=str(getattr(detector, "key", "")),
+        version=str(getattr(detector, "version", "1")),
+        status="unavailable",
+        raw={"reason": str(exc), "cause": cause_of(exc), "entities": list(entities)},
+    )
 
 
 def _why_unavailable(kind: DecisionKind) -> str:
@@ -249,10 +270,11 @@ class InjectionJudgmentDetector(BaseDetector):
             answers = self._ask({"content": text}, QUESTIONS)
         except JevUnavailable as exc:
             # Covers egress refusal, the PII gate, a missing key and an outage
-            # alike. All of them mean "this check did not run", which the
-            # pipeline must see as degradation rather than as a clean result.
+            # alike. All of them mean "this check did not run" rather than a clean
+            # result; the cause says which, because only an outage is the judge
+            # failing (see `unavailable_result`).
             log.info("injection.judgment unavailable: %s", exc)
-            return self._unavailable(str(exc))
+            return unavailable_result(self, exc, self.judge_entities(context))
 
         detections: list[Detection] = []
         for qid, (entity, owasp, atlas) in ENTITY.items():
@@ -276,14 +298,14 @@ class InjectionJudgmentDetector(BaseDetector):
             detections=detections,
         )
 
-    def _unavailable(self, reason: str) -> DetectorResult:
-        return DetectorResult(
-            detector_key=self.key,
-            version=self.version,
-            status="unavailable",
-            raw={"reason": reason},
-        )
+    def judge_entities(self, context: DetectionContext | None = None) -> tuple[str, ...]:
+        """What this judge produces: the rules that rely on it are the ones an
+        outage leaves uncovered (`pipeline.judge_outage`)."""
+        return tuple(entity for entity, _owasp, _atlas in ENTITY.values())
 
+
+#: The one entity `pii.judgment` raises (see `PiiJudgmentDetector`).
+PII_ENTITY = "PII.PRESENT_UNLOCATED"
 
 PII_QUESTIONS: dict[str, dict] = {
     "personal_data": {
@@ -394,13 +416,13 @@ class PiiJudgmentDetector(BaseDetector):
             answers = self._ask({"content": text}, PII_QUESTIONS)
         except JevUnavailable as exc:
             log.info("pii.judgment unavailable: %s", exc)
-            return self._unavailable(str(exc))
+            return unavailable_result(self, exc, self.judge_entities(context))
 
         answer = answers.get("personal_data")
         if answer is None or answer.value < self._threshold:
             return DetectorResult(detector_key=self.key, version=self.version)
         detection = Detection(
-            entity_type="PII.PRESENT_UNLOCATED",
+            entity_type=PII_ENTITY,
             score=float(answer.value),
             sample="",  # no span is known, so there is nothing honest to sample
             owasp_id="LLM02",
@@ -414,10 +436,5 @@ class PiiJudgmentDetector(BaseDetector):
             detections=[detection],
         )
 
-    def _unavailable(self, reason: str) -> DetectorResult:
-        return DetectorResult(
-            detector_key=self.key,
-            version=self.version,
-            status="unavailable",
-            raw={"reason": reason},
-        )
+    def judge_entities(self, context: DetectionContext | None = None) -> tuple[str, ...]:
+        return (PII_ENTITY,)

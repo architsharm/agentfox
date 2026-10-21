@@ -36,7 +36,7 @@ import time
 from typing import Any
 
 from agentfox.capabilities.judgment.capability import Tier
-from agentfox.capabilities.judgment.jev import JevAnswer, JevResult, JevUnavailable
+from agentfox.capabilities.judgment.jev import NOT_CONFIGURED, JevAnswer, JevResult, JevUnavailable
 from agentfox.platform.providers.base import is_local_endpoint
 
 log = logging.getLogger(__name__)
@@ -103,7 +103,9 @@ class LlmJudge:
 
         provider = get_provider(self.provider_key())
         if not provider.available():
-            raise JevUnavailable(f"provider '{provider.key}' is not available")
+            raise JevUnavailable(
+                f"provider '{provider.key}' is not available", cause=NOT_CONFIGURED
+            )
 
         rendered = "\n".join(
             f"{qid}: {q.get('instructions', '')} "

@@ -648,7 +648,7 @@ curl -s -X POST localhost:8080/api/policies/baseline/canary/start \\
         Hosted tiers send the text being judged to a third party. Before anything leaves,
         locally detected PII is masked and credential-named fields are dropped (
         <code>judgment_redact_before_egress</code>, on), and if the redactor cannot load
-        nothing is sent (<code>judgment_fail_closed</code>, on).{" "}
+        nothing is sent.{" "}
         <code>judgment_pii_egress</code> is <code>redact</code> by default;{" "}
         <code>block</code> refuses to judge remotely when personal data is present. Masking
         only covers what the local detector finds, so for regulated data stay on{" "}

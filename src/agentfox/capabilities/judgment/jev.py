@@ -41,8 +41,34 @@ DEFAULT_MODEL = "jev-latest"
 MAX_QUESTIONS = 512
 
 
+#: Why a judgment was not made. Only an ``outage`` is a judge failing: the other two
+#: are choices, and a request that met one was never going to be judged.
+OUTAGE = "outage"  # the judge was asked and did not answer: unreachable, error, quota
+REFUSED = "refused"  # the payload was not allowed to leave (egress gate, PII policy)
+NOT_CONFIGURED = "not_configured"  # no key, no provider, egress off: nothing to ask
+
+
 class JevUnavailable(RuntimeError):
-    """The service did not answer. Never a verdict — the caller decides."""
+    """The service did not answer. Never a verdict — the caller decides.
+
+    ``cause`` says which kind of "did not answer" this is (`OUTAGE`, `REFUSED`,
+    `NOT_CONFIGURED`). The router treats all three as UNKNOWN; the enforcer's
+    judge-outage handling must not, because a refusal is a policy choice and
+    blocking on it would block ordinary traffic with a healthy judge.
+    """
+
+    cause: str = OUTAGE
+
+    def __init__(self, *args: object, cause: str | None = None) -> None:
+        super().__init__(*args)
+        if cause is not None:
+            self.cause = cause
+
+
+def cause_of(exc: BaseException) -> str:
+    """The `cause` of a judgment failure; anything that is not a `JevUnavailable`
+    (a judge that raised something else) is an outage."""
+    return getattr(exc, "cause", OUTAGE) if isinstance(exc, JevUnavailable) else OUTAGE
 
 
 @dataclass(slots=True)
@@ -102,11 +128,12 @@ class JevClient:
         if not questions:
             return JevResult()
         if not self._key:
-            raise JevUnavailable("no JEV_API_KEY configured")
+            raise JevUnavailable("no JEV_API_KEY configured", cause=NOT_CONFIGURED)
         if not self._egress_allowed():
             raise JevUnavailable(
                 "allow_egress is off; judgment would have sent state off-box. "
-                "Use JudgmentGateway, or set allow_egress to opt in explicitly."
+                "Use JudgmentGateway, or set allow_egress to opt in explicitly.",
+                cause=NOT_CONFIGURED,
             )
         if len(questions) > MAX_QUESTIONS:
             raise ValueError(f"{len(questions)} questions exceeds the {MAX_QUESTIONS} cap")

@@ -148,6 +148,19 @@ required reason. Policies → Judgment posture is the UI.
 With no row stored, settings apply exactly as they did before any of this
 existed — which is what keeps the published numbers comparable.
 
+**On a judge outage.** The posture's `fail_closed` ("On a judge outage: deny
+the request") is read by the enforcer. A judge that was asked and did not
+answer (unreachable, an error, a timeout) is a degraded detector, so the
+deployment's and the packs' `fail_mode` apply to it as to any other. With
+`fail_closed` on, an enforcing decision is also blocked as
+`pipeline.judge_outage` when an enforcing pack has a rule on that surface that
+the silent judge's findings could fire; a rule about something else, or no
+detection rule, is not affected. It is off by default, like `fail_mode`.
+`judgment_fail_closed = true` turns it on for the deployment and stops a
+workspace turning it off; posture can add a block, never remove one. A
+payload the egress gate refused to send is not an outage. Validator judges
+report the same way as the built-in judges.
+
 ## Tests
 
 `test_judgment_capability.py`, `test_judgment_egress.py` and
