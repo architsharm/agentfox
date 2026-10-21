@@ -44,7 +44,8 @@ def remove_project(session: Session, project: str, *, actor: str) -> dict[str, A
 
     for agent in agents:
         # Its own guardrails: an empty version, watching.
-        for key in (layer_key(agent.slug), basic_key(agent.slug)):
+        copies = session.scalars(select(Policy.key).where(Policy.key.like(f"agent.{agent.slug}.%")))
+        for key in dict.fromkeys((layer_key(agent.slug), basic_key(agent.slug), *copies)):
             if session.scalar(select(Policy).where(Policy.key == key)) is not None:
                 publish_in_current_mode(
                     session,

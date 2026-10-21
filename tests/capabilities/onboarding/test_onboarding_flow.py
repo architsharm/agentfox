@@ -752,3 +752,56 @@ def test_basic_and_starter_rules_are_libraries(client):
     m = client.get("/api/agents/watch-agent/map", headers=me).json()
     libs = {r["library"] for s in m["stages"] for r in s["rules"]}
     assert "Basic guardrails" in libs and "Set for this agent" in libs
+
+
+def test_a_library_applies_only_to_the_projects_agents(client):
+    me, _runner, _send = _connect_watch(client)
+    key = client.get("/api/onboarding/key", headers=me).json()["value"]
+    other = {
+        "sources": [],
+        "agents": [{"id": "o1", "name": "Other Agent", "model": "gpt-4o", "sourceIds": []}],
+        "tools": [{"id": "t9", "name": "other_tool", "agentId": "o1", "systemId": "s"}],
+        "systems": [{"id": "s", "name": "Orders", "kind": "database"}],
+    }
+    client.post(
+        "/api/onboarding/runner/connect",
+        json={"structure": other, "project": "elsewhere"},
+        headers={"Authorization": f"Bearer {key}"},
+    )
+
+    r = client.post(
+        "/api/policies/libraries/baseline/apply", json={"agents": ["watch-agent"]}, headers=me
+    )
+    assert r.status_code == 200 and r.json()["added"] == ["watch-agent"]
+
+    def baseline_on(slug):
+        """This agent's own copy of the library (a workspace-wide one may also apply)."""
+        m = client.get(f"/api/agents/{slug}/map", headers=me).json()
+        return {
+            (r["library"], r["mode"])
+            for s in m["stages"]
+            for r in s["rules"]
+            if r["policy"] == f"agent.{slug}.baseline"
+        }
+
+    # Watching first, on this project's agent only, under the library's own name.
+    assert baseline_on("watch-agent") == {("Baseline runtime guardrails", "observe")}
+    assert baseline_on("other-agent") == set()
+
+    status = client.get("/api/policies/libraries/status?agents=watch-agent", headers=me).json()
+    assert status["baseline"]["agents"] == ["watch-agent"]
+    assert status["baseline"]["blocking"] is False
+
+    switched = client.post(
+        "/api/policies/libraries/baseline/mode",
+        json={"agents": ["watch-agent"], "mode": "enforce"},
+        headers=me,
+    )
+    assert switched.json()["changed"] == ["watch-agent"]
+    assert {mode for _lib, mode in baseline_on("watch-agent")} == {"enforce"}
+    assert baseline_on("other-agent") == set()
+
+    # Disconnecting the project takes its copies with it.
+    client.delete("/api/projects/watch", headers=me)
+    status = client.get("/api/policies/libraries/status?agents=watch-agent", headers=me).json()
+    assert status["baseline"]["agents"] == []

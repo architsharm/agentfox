@@ -3,6 +3,7 @@ import Link from "next/link";
 import { appPageMetadata } from "@/lib/site";
 import { AppliedRules } from "@/components/product/policies/AppliedRules";
 import { Libraries } from "@/components/product/policies/Libraries";
+import { observeScope } from "@/lib/product/observeScope";
 import { safeApi } from "@/lib/product/api";
 import {
   ActionPill,
@@ -69,6 +70,8 @@ export default async function Policies({ searchParams }: { searchParams: Promise
   const tab = legacy?.tab || (TABS.some((t) => t.key === sp.tab) || HIDDEN.includes(sp.tab || "") ? sp.tab! : "applied");
   const sec = legacy?.sec || sp.sec;
   if (tab === "rules" || tab === "performance") await ensureRange("/app/policies", sp);
+  // Policies are about the project chosen in the sidebar: its agents, nobody else's.
+  const { project, agents: projectAgents } = await observeScope();
 
   return (
     <RangeProvider range={sp.range}>
@@ -81,8 +84,8 @@ export default async function Policies({ searchParams }: { searchParams: Promise
       <Tabs items={TABS.map((t) => ({ ...t, href: href("/app/policies", { tab: t.key === "applied" ? undefined : t.key }) }))} active={tab} />
       {sp.review_error && <div className="error">{sp.review_error}</div>}
       {sp.review_notice && <div className="note-panel">Done: {sp.review_notice}.</div>}
-      {tab === "applied" && <AppliedRules scope={sp.scope} agent={sp.agent} />}
-      {tab === "libraries" && <Libraries />}
+      {tab === "applied" && <AppliedRules scope={sp.scope} agent={sp.agent} project={project} projectAgents={projectAgents} />}
+      {tab === "libraries" && <Libraries project={project} agents={projectAgents} />}
       {tab === "rules" && <RulesTab sp={sp} />}
       {tab === "checks" && <Checks />}
       {tab === "performance" && <PerformanceTab sp={sp} />}

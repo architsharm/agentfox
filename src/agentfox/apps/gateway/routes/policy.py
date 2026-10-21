@@ -174,30 +174,102 @@ def get_applied(session: Session = Depends(db), _u: User = Depends(current_user)
     return applied_rules(session)
 
 
-@router.post("/libraries/basic/apply")
-def apply_basic_library(
-    session: Session = Depends(db), user: User = Depends(require("policy"))
-) -> dict[str, Any]:
-    """Apply the basic guardrails to every agent that doesn't have them yet."""
-    from agentfox.capabilities.onboarding.service import basic_guardrails
+class LibraryAgents(BaseModel):
+    #: The agents to apply to: the project's. Empty: every agent.
+    agents: list[str] = Field(default_factory=list, max_length=500)
+    mode: str | None = None
+
+
+def _library_agents(session: Session, agents: list[str]) -> list[str]:
     from agentfox.platform.registry.projects import REMOVED
 
+    live = select(Agent.slug).where(Agent.status.not_in(("rejected", "draft", REMOVED)))
+    known = set(session.scalars(live))
+    if not agents:
+        return sorted(known)
+    unknown = [a for a in agents if a not in known]
+    if unknown:
+        raise HTTPException(404, f"unknown agent '{unknown[0]}'")
+    return agents
+
+
+@router.post("/libraries/basic/apply")
+def apply_basic_library(
+    payload: LibraryAgents | None = None,
+    session: Session = Depends(db),
+    user: User = Depends(require("policy")),
+) -> dict[str, Any]:
+    """Apply the basic guardrails to these agents (the project's) that don't have them."""
+    from agentfox.capabilities.onboarding.service import basic_guardrails
+
     actor = user.email or user.id
-    agents = session.scalars(
-        select(Agent).where(Agent.status.not_in(("rejected", "draft", REMOVED)))
-    )
-    added = [a.slug for a in agents if basic_guardrails(session, a.slug, actor=actor)]
-    return {"added": added}
+    slugs = _library_agents(session, (payload.agents if payload else []))
+    return {"added": [s for s in slugs if basic_guardrails(session, s, actor=actor)]}
+
+
+@router.get("/libraries/status")
+def libraries_status(
+    agents: str = "",
+    session: Session = Depends(db),
+    _u: User = Depends(current_user),
+) -> dict[str, Any]:
+    """For each library: on which of these agents (comma-separated) it is applied, whether
+    it blocks there, and whether it is also applied workspace-wide."""
+    from agentfox.capabilities.protection.libraries import library_status
+    from agentfox.platform.packs.loader import load_packs
+
+    slugs = [a for a in agents.split(",") if a]
+    return {p.id: library_status(session, p.id, slugs) for p in load_packs()}
 
 
 @router.post("/libraries/starter/remove")
 def remove_starter_library(
-    session: Session = Depends(db), user: User = Depends(require("policy"))
+    payload: LibraryAgents | None = None,
+    session: Session = Depends(db),
+    user: User = Depends(require("policy")),
 ) -> dict[str, Any]:
-    """Remove the watch-only starter rules earlier versions of `agentfox init` added."""
+    """Remove the watch-only starter rules earlier versions of `agentfox init` added,
+    from these agents (the project's); every agent when none are named."""
     from agentfox.capabilities.protection.libraries import remove_starter
 
-    return {"removed": remove_starter(session, actor=user.email or user.id)}
+    slugs = _library_agents(session, payload.agents) if payload and payload.agents else None
+    return {"removed": remove_starter(session, actor=user.email or user.id, slugs=slugs)}
+
+
+@router.post("/libraries/{pack_id:path}/apply")
+def apply_library_to_agents(
+    pack_id: str,
+    payload: LibraryAgents,
+    session: Session = Depends(db),
+    user: User = Depends(require("policy")),
+) -> dict[str, Any]:
+    """Apply a library to these agents only (the project's), watching first."""
+    from agentfox.capabilities.protection.libraries import apply_library
+
+    slugs = _library_agents(session, payload.agents)
+    added = apply_library(session, pack_id, slugs, actor=user.email or user.id)
+    if added is None:
+        raise HTTPException(404, f"no library '{pack_id}'")
+    return {"added": added}
+
+
+@router.post("/libraries/{pack_id:path}/mode")
+def library_agents_mode(
+    pack_id: str,
+    payload: LibraryAgents,
+    session: Session = Depends(db),
+    user: User = Depends(require("policy")),
+) -> dict[str, Any]:
+    """Watch or block with a library on these agents (the project's)."""
+    from agentfox.capabilities.protection.libraries import library_mode
+
+    if payload.mode not in ("observe", "enforce"):
+        raise HTTPException(400, "mode must be 'observe' or 'enforce'")
+    slugs = _library_agents(session, payload.agents)
+    changed = library_mode(session, pack_id, slugs, payload.mode)
+    if changed is None:
+        raise HTTPException(404, f"no library '{pack_id}'")
+    return {"changed": changed, "mode": payload.mode}
 
 
 @router.get("/lint")

@@ -26,7 +26,7 @@ function does(r: Applied): { text: string; tone: string } {
 }
 
 function where(r: Applied): string {
-  if (r.all) return "All agents";
+  if (r.all) return "Every agent here";
   const names = r.agents.map((a) => a.name);
   return names.length <= 2 ? names.join(", ") : `${names.slice(0, 2).join(", ")} +${names.length - 2}`;
 }
@@ -35,10 +35,29 @@ function where(r: Applied): string {
  * Every rule in force right now: what it does, on which agents, from which library.
  * Filter by scope or by one agent; click a rule to change it.
  */
-export async function AppliedRules({ scope, agent }: { scope?: string; agent?: string }) {
+export async function AppliedRules({
+  scope,
+  agent,
+  project,
+  projectAgents,
+}: {
+  scope?: string;
+  agent?: string;
+  project: string | null;
+  projectAgents: string[];
+}) {
   const data = await safeApi<{ agents: number; rules: Applied[] }>("/api/policies/applied", { agents: 0, rules: [] });
-  const agents = Array.from(new Map(data.rules.flatMap((r) => r.agents).map((a) => [a.slug, a])).values()).sort((a, b) => a.name.localeCompare(b.name));
-  const rows = data.rules.filter(
+  // Only this project's agents: a rule counts here where it reaches one of them, and
+  // "all agents" means all of this project's.
+  const mine = new Set(projectAgents);
+  const scoped = data.rules
+    .map((r) => {
+      const here = r.agents.filter((a) => mine.has(a.slug));
+      return { ...r, agents: here, all: here.length === mine.size };
+    })
+    .filter((r) => r.agents.length);
+  const agents = Array.from(new Map(scoped.flatMap((r) => r.agents).map((a) => [a.slug, a])).values()).sort((a, b) => a.name.localeCompare(b.name));
+  const rows = scoped.filter(
     (r) => (scope === "all" ? r.all : scope === "some" ? !r.all : true) && (!agent || r.agents.some((a) => a.slug === agent)),
   );
   const blocking = rows.filter((r) => r.mode === "enforce" && r.effect !== "allow").length;
@@ -48,14 +67,14 @@ export async function AppliedRules({ scope, agent }: { scope?: string; agent?: s
     <section className="pol">
       <div className="pol-bar">
         <p className="pol-summary">
-          <b>{rows.length}</b> rules on {agent ? agents.find((a) => a.slug === agent)?.name ?? agent : `${data.agents} agents`} ·{" "}
+          <b>{rows.length}</b> rules on {agent ? agents.find((a) => a.slug === agent)?.name ?? agent : `${project ?? "this project"} (${mine.size === 1 ? "1 agent" : `${mine.size} agents`})`} ·{" "}
           <b className="pol-on">{blocking}</b> act now · <b className="pol-watch">{rows.length - blocking}</b> only watch
         </p>
         <div className="pol-filters">
           <div className="chipbar">
             {[
               ["", "All"],
-              ["all", "On every agent"],
+              ["all", "On every agent here"],
               ["some", "On some agents"],
             ].map(([k, label]) => (
               <Link key={k} href={link({ scope: k || undefined })} className={(scope || "") === k ? "chip active" : "chip"} scroll={false}>
@@ -66,7 +85,7 @@ export async function AppliedRules({ scope, agent }: { scope?: string; agent?: s
           <form action="/app/policies" className="pol-agent">
             {scope ? <input type="hidden" name="scope" value={scope} /> : null}
             <select name="agent" defaultValue={agent || ""} aria-label="Show rules for one agent">
-              <option value="">Every agent</option>
+              <option value="">Every agent in {project ?? "the project"}</option>
               {agents.map((a) => (
                 <option key={a.slug} value={a.slug}>
                   {a.name}
@@ -106,7 +125,7 @@ export async function AppliedRules({ scope, agent }: { scope?: string; agent?: s
           })}
         </ul>
       ) : (
-        <Empty>No rules apply here yet. Apply a library or add a rule.</Empty>
+        <Empty>{project ? "No rules apply to this project yet. Apply a library or add a rule." : "Choose a project in the sidebar to see its rules."}</Empty>
       )}
     </section>
   );
