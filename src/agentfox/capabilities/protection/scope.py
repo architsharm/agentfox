@@ -249,6 +249,15 @@ def _pack_rule(session: Session, key: str, rule_id: str) -> Rule | None:
     return next((r for r in doc.rules if r.id == rule_id), None)
 
 
+def live_rule(session: Session, key: str, rule_id: str, agent: str | None = None) -> Rule | None:
+    """A rule as the pack's live version has it, or the agent's own copy when it has one."""
+    if agent:
+        own = next((r for r in own_layer(session, agent).rules if r.id == rule_id), None)
+        if own is not None:
+            return own
+    return _pack_rule(session, key, rule_id)
+
+
 # --- planning ---------------------------------------------------------------
 
 

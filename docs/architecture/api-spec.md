@@ -108,7 +108,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-307 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+308 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -255,6 +255,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/policies/{key}/rego` | Get Rego |
 | `POST` | `/api/policies/{key}/rules/{rule_id}` | Change one rule's action or switch it off, as a new saved version. |
 | `GET` | `/api/policies/{key}/rules/{rule_id}/agents` | Every agent, nested by hand-off, and whether each has its own copy of the rule. |
+| `GET` | `/api/policies/{key}/rules/{rule_id}/checks` | The checks that can fire a rule: they report what it looks for, where it looks. |
 | `POST` | `/api/policies/{key}/rules/{rule_id}/scope` | Change a rule for every agent, or for only some (and what they hand off to). |
 | `POST` | `/api/policies/{policy_id}/approve` | Approve Policy |
 | `POST` | `/api/policies/{policy_id}/reject` | Reject Policy |

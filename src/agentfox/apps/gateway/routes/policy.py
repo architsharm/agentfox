@@ -449,6 +449,29 @@ def get_rule_agents(
     }
 
 
+@router.get("/{key}/rules/{rule_id}/checks")
+def get_rule_checks(
+    key: str,
+    rule_id: str,
+    agent: str | None = None,
+    session: Session = Depends(db),
+    _user: User = Depends(current_user),
+) -> dict[str, Any]:
+    """The checks that can fire a rule: they report what it looks for, where it looks.
+
+    With ``agent``, the agent's own copy of the rule when it has one, and whether each
+    check is on for it.
+    """
+    from agentfox.capabilities.protection.map import rule_checks
+
+    if session.scalar(select(Policy).where(Policy.key == key)) is None:
+        raise HTTPException(404, f"unknown policy '{key}'")
+    rule = agent_scope.live_rule(session, key, rule_id, agent)
+    if rule is None:
+        raise HTTPException(404, f"no rule '{rule_id}' in '{key}'")
+    return {"policy": key, **rule_checks(session, rule, agent)}
+
+
 @router.post("/{key}/rules/{rule_id}/scope")
 def change_rule_scope(
     key: str,
