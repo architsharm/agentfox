@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 307,
+ "count": 308,
  "routes": [
   {
    "method": "GET",
@@ -9505,6 +9505,47 @@
      "in": "path",
      "required": true,
      "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/policies/{key}/rules/{rule_id}/checks",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "The checks that can fire a rule: they report what it looks for, where it looks.",
+   "description": "The checks that can fire a rule: they report what it looks for, where it looks.\n\nWith ``agent``, the agent's own copy of the rule when it has one, and whether each\ncheck is on for it.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "rule_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
     },
     {
      "name": "authorization",

@@ -85,7 +85,11 @@ A running list as we go. Newest priorities first. `[ ]` open · `[~]` started ·
 
 ## Backend gaps found along the way
 
-- [x] Judge outage doesn't fail closed. (fixed 2026-10-20: `PipelineResult.judge_unavailable`; the enforcer blocks with `pipeline.judge_outage` when a judge tier is on, the posture says deny, and the call is enforcing; `tests/runtime/test_judge_outage.py`.)
+- [ ] Judge outage doesn't fail closed. (A first fix on the onboarding branch was taken out on 2026-10-21; it is being redone on its own branch off main.)
+- [x] Which checks feed a rule (fixed 2026-10-21). `custom.models` said it finds `CUSTOM` even when a model was registered as `PII`, `INJECTION`…; `/api/detectors` and `/api/features` now add `finds_all` (the registered prefixes). The rule→check join ignored surfaces, so a rule on `reasoning` or `tool_args` listed checks that never run there; it now matches kind AND surface in the backend (`catalog.can_fire` / `checks_for_rule`), custom rules map to the detector that matches their kind, and a detection rule naming no entity reads `finds: "any"`. Exposed as `checks` / `checksOff` / `surfaces` on every rule in the map and as `GET /api/policies/{key}/rules/{rule_id}/checks?agent=` for the rule page.
+  - [ ] Dashboard: use those instead of `checksFor()` in `lib/product/checks.ts`.
+- [x] Map counted decisions twice (fixed 2026-10-21): the "To the LLM" / "From the LLM" lines are a view. Each decision counts once on the stage owning its surface (reasoning on "From the LLM"), view stages carry `derived: true` and an overlapping `lineStats`, rules there are copies flagged `sharedWith`, and checks there `detectorsSharedWith`. `memory_write` is no longer "sent to the LLM". The map's models are the agent's own edges, seen in the 7-day window (or declared).
+  - [ ] Dashboard: read `lineStats` for the LLM line's numbers, and don't count `sharedWith` rules / `detectorsSharedWith` checks again.
 - [ ] Red-team runs aren't tied to an agent, so "last test run" on the map is the workspace's last run.
 - [ ] `sqlglot` (the `sql` extra) and Presidio (`pii` extra) aren't installed locally; one backend test needs Presidio.
 

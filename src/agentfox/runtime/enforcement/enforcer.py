@@ -1014,30 +1014,6 @@ class Enforcer(
                 )
             )
 
-        # A judge outage, under the workspace's judgment posture ("On a judge outage:
-        # deny the request"). Only when a judge tier is switched on: with none, every
-        # judge check reports unavailable by design and nothing is out. Enforcing only:
-        # watching never stops a request.
-        if pipeline_result.judge_unavailable and call.mode == "enforce" and call.verdict != "block":
-            from agentfox.capabilities.judgment import posture as judgment_posture
-            from agentfox.capabilities.judgment.capability import Tier
-
-            p = judgment_posture.effective()
-            judges_on = p.tiers & {Tier.JEV, Tier.LLM, Tier.LOCAL_LLM}
-            if p.fail_closed and judges_on:
-                call.verdict = "block"
-                call.effective = "block"
-                rules_fired.append(
-                    _fired_rule(
-                        "pipeline.judge_outage",
-                        "block",
-                        f"LLM judges did not answer ({pipeline_result.judge_unavailable}) and "
-                        "the judgment posture denies on a judge outage",
-                        severity="medium",
-                        controls=["NOM-RTG-06"],
-                    )
-                )
-
         # The same two sources for a bound policy version that no longer loads: the
         # deployment's `fail_mode`, and the fail_mode the stored pack declared. A
         # pack bound in observe would not have blocked anything, so its absence is
