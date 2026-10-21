@@ -296,8 +296,14 @@ Live proof  same detectors, run against known attacks, right now
         handed and which agent hands work to which, from the code and before any traffic. It
         recognises OpenAI Agents SDK handoffs and <code>as_tool</code>, LangGraph supervisors,
         swarms and <code>StateGraph</code> agent nodes, CrewAI crews and delegation, AutoGen
-        teams and group chats, and Google ADK <code>sub_agents</code>. A triage agent that
-        hands off to a billing agent and a research agent:
+        teams and group chats, Google ADK <code>sub_agents</code>, and pre-1.0 LangChain
+        agents run by an <code>AgentExecutor</code>. Typed agents
+        (<code>Agent[Context](...)</code>), hand-offs and tools added after an agent is built
+        (<code>triage.handoffs.append(billing)</code>), tool lists returned by a helper or
+        defined in another module, and tools made by a call (<code>function_tool(fn)</code>)
+        are read too. A hand-written function-calling loop counts as an agent only when the
+        repository has no framework agent. Test, mock and fixture files are left out. A
+        triage agent that hands off to a billing agent and a research agent:
       </p>
       <Code lang="python" title="agents_app.py">{`billing = Agent(name="billing", instructions="Handle refunds.", tools=[lookup_order, issue_refund])
 research = Agent(name="research", instructions="Answer from the docs.", tools=[search_docs])
@@ -312,9 +318,13 @@ triage = Agent(name="triage", instructions="Route the request.", handoffs=[billi
      search_docs   agents_app.py  private data`}</Output>
       <p>
         <code>scan --json</code> carries the same structure as <code>agents</code> (each with
-        its framework, file, line and its own <code>tools</code>) and <code>agent_edges</code>{" "}
+        its framework, file, line, its own <code>tools</code> and their{" "}
+        <code>tool_details</code>, its <code>model</code> when the code states it, and a{" "}
+        <code>ref</code> to the module and name that hold it) and <code>agent_edges</code>{" "}
         (<code>parent</code>, <code>child</code> and the <code>relation</code>, here{" "}
-        <code>handoff</code>). In the dashboard, a scanned repository with two or more agents is
+        <code>handoff</code>). <code>unassigned_tools</code> lists tools no agent is handed.
+        None of these tool names or models are sent by <code>scan --submit</code>. In the
+        dashboard, a scanned repository with two or more agents is
         proposed as one draft per agent, so <code>research</code> is never granted{" "}
         <code>issue_refund</code> because <code>billing</code> needs it. The guardrail map shows
         each sub-agent under the agent that calls it, and <strong>Add all</strong> adds the
