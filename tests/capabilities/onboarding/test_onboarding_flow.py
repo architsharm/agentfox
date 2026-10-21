@@ -9,7 +9,7 @@ from collections import defaultdict
 from agentfox.capabilities.onboarding import runner, service
 from agentfox.capabilities.onboarding.attacks import build_suite, counts
 from agentfox.capabilities.onboarding.mapper import classify, map_repository
-from tests.conftest import as_user
+from tests.conftest import as_user, promote
 
 AGENT_PY = """
 from langchain.agents import create_agent
@@ -192,9 +192,9 @@ def test_api_end_to_end(client):
     me = as_user("admin@example.com")
     key = client.get("/api/onboarding/key", headers=me).json()["value"]
     assert key.startswith("afi_")
-    assert (
-        client.get("/api/onboarding/key", headers=me).json()["value"] == key
-    )  # retrievable, not shown once
+    # Shown in full once; after that only its prefix.
+    again = client.get("/api/onboarding/key", headers=me).json()
+    assert again["value"] is None and key.startswith(again["prefix"])
 
     assert (
         client.post(
@@ -454,12 +454,13 @@ def _finish(client, runner, run_id):
 
 
 def test_connecting_tests_the_project_as_it_is_with_no_guardrails(client):
-    """A new project gets no guardrails, may run its own tools, and is tested at once."""
+    """A new project is proposed with no guardrails and no tool grants (a person adds
+    the agents and grants their tools), and is tested at once."""
     me, runner, send = _connect_watch(client)
 
     m = client.get("/api/agents/watch-agent/map", headers=me).json()
     assert not [r for s in m["stages"] for r in s["rules"] if r["id"].startswith("basic.")]
-    assert {t["key"]: t["permission"] for t in m["tools"]}["get_order"] == "allowed"
+    assert {t["key"]: t["permission"] for t in m["tools"]}["get_order"] == "not_granted"
 
     tests = client.get("/api/onboarding/projects/watch/tests", headers=me).json()
     assert tests["first"]["status"] == "running"  # queued for the runner
@@ -495,14 +496,19 @@ def test_basic_guardrails_cover_what_users_send_and_get_back_then_the_test_runs_
             if rule["id"].startswith("basic."):
                 on[stage["key"]].add(rule["id"])
                 modes.add(rule["mode"])
-    # What users send and what goes back to them; nothing on tools. And they block.
+    # What users send and what goes back to them; nothing on tools. Watching until
+    # they are simulated and promoted, like any policy.
     assert on["input"] == {"basic.input.attacks"}
     assert on["output"] == {"basic.reply.personal_data", "basic.reply.secrets"}
     assert not on["tool_call"] and not on["tool_result"]
-    assert modes == {"enforce"}
+    assert modes == {"observe"}
 
     tests = client.get("/api/onboarding/projects/watch/tests", headers=me).json()
     assert tests["basicOn"] is True and tests["first"]["status"] == "done"
+    assert tests["basicEnforcing"] is False
+    promote(client, service.basic_key("watch-agent"))
+    tests = client.get("/api/onboarding/projects/watch/tests", headers=me).json()
+    assert tests["basicEnforcing"] is True
 
     started = client.post("/api/onboarding/projects/watch/tests", headers=me)
     assert started.status_code == 200 and started.json()["phase"] == "after"
@@ -577,7 +583,8 @@ def test_the_setup_key_is_made_on_first_ask_and_the_same_after(client):
     assert first.json()["createdNow"] is True
 
     again = client.get("/api/onboarding/key", headers=me).json()
-    assert again == {"value": key, "createdNow": False}
+    assert again["value"] is None and again["createdNow"] is False
+    assert key.startswith(again["prefix"])
 
 
 def test_every_user_gets_their_own_setup_key(client):
@@ -589,9 +596,14 @@ def test_every_user_gets_their_own_setup_key(client):
 def test_starting_setup_over_keeps_the_key(client):
     """A running `agentfox init` holds the key; resetting setup must not strand it."""
     me = as_user("admin@example.com")
-    key = client.get("/api/onboarding/key", headers=me).json()["value"]
+    first = client.get("/api/onboarding/key", headers=me).json()
     assert client.delete("/api/onboarding/state", headers=me).status_code == 200
-    assert client.get("/api/onboarding/key", headers=me).json()["value"] == key
+    again = client.get("/api/onboarding/key", headers=me).json()
+    assert again["createdNow"] is False and again["prefix"] == first["prefix"]
+    r = client.post(
+        "/api/onboarding/runner/poll", headers={"Authorization": f"Bearer {first['value']}"}
+    )
+    assert r.status_code == 200
 
 
 def test_the_key_is_what_lets_init_report_in(client):
@@ -690,6 +702,7 @@ def test_removing_a_project_lets_it_connect_again_as_new(client):
     }["shop"] == 2
     m = client.get("/api/agents/shop-bot/map", headers=me).json()
     assert not [r for s in m["stages"] for r in s["rules"] if r["id"].startswith("basic.")]
-    # Tested afresh.
+    # Tested afresh, and proposed again: nothing granted until a person does.
     assert client.get("/api/onboarding/projects/shop/tests", headers=me).json()["first"]
-    assert {t["key"]: t["permission"] for t in m["tools"]}["shop_lookup"] == "allowed"
+    assert client.get("/api/agents/shop-bot", headers=me).json()["status"] == "draft"
+    assert {t["key"]: t["permission"] for t in m["tools"]}["shop_lookup"] == "not_granted"

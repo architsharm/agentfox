@@ -30,10 +30,6 @@ RUNNER_FRESH_SECONDS = 20
 FEED_LINES = 16
 
 
-def new_init_key() -> str:
-    return "afi_" + secrets.token_urlsafe(24)
-
-
 def clean_state(value: Any) -> dict[str, Any]:
     if not isinstance(value, dict) or value.get("currentStep") not in STEPS:
         return dict(INITIAL_STATE)
@@ -326,10 +322,12 @@ def impact_for(tool: dict[str, Any], kinds: dict[str, str]) -> str:
 
 
 #: The basic guardrails, added with one click after the first attack test: what users
-#: send and what goes back to them, nothing on tools. They block (or hide) from the
-#: start, so running the test again shows what they stop; the rest is set up from the
-#: map. Kept in a pack of their own per agent, so switching them on never changes the
-#: mode of anything else the agent has.
+#: send and what goes back to them, nothing on tools. The test run again applies them
+#: as if they block (the runner's own copy, ``BASIC_TEST_GUARDS``), so it shows what
+#: they would stop; in production they watch until simulated and promoted like any
+#: policy (``basic_guardrails``). The rest is set up from the map. Kept in a pack of
+#: their own per agent, so switching them on never changes the mode of anything else
+#: the agent has.
 BASIC: tuple[tuple[str, str, tuple[str, ...], str, float, str], ...] = (
     # (rule id, what it does, surfaces, entity prefix, min score, effect)
     (
@@ -359,29 +357,33 @@ def basic_key(slug: str) -> str:
     return f"agent.{slug}.basic"
 
 
-def has_basic_guardrails(session: Any, slug: str) -> bool:
+def basic_mode(session: Any, slug: str) -> str | None:
+    """How the agent's basic guardrails are live: ``"enforce"``, ``"observe"``, or None
+    when it has none (never added, or emptied when its project was disconnected)."""
     from sqlalchemy import select
 
     from agentfox.core.models import Policy
-    from agentfox.platform.policy.store import current_binding
+    from agentfox.platform.policy.store import current_binding, load_version_document
 
     policy = session.scalar(select(Policy).where(Policy.key == basic_key(slug)))
     if policy is None:
-        return False
-    binding, _live = current_binding(session, policy.id)
-    return binding is not None and binding.mode == "enforce"
+        return None
+    binding, live = current_binding(session, policy.id)
+    if binding is None or live is None or not load_version_document(live).rules:
+        return None
+    return binding.mode
 
 
-def basic_guardrails(session: Any, slug: str, *, actor: str) -> bool:
-    """Switch on the basic guardrails for one agent, enforcing. False when they are
-    already on."""
+def has_basic_guardrails(session: Any, slug: str) -> bool:
+    """Whether the agent has its basic guardrails, watching or blocking."""
+    return basic_mode(session, slug) is not None
+
+
+def basic_document(slug: str) -> Any:
+    """The basic guardrails for one agent, as a policy document."""
     from agentfox.platform.policy.model import Condition, DetectionCondition, PolicyDocument, Rule
-    from agentfox.platform.policy.publish import publish_in_current_mode
-    from agentfox.platform.policy.store import set_mode
 
-    if has_basic_guardrails(session, slug):
-        return False
-    doc = PolicyDocument(
+    return PolicyDocument(
         key=basic_key(slug),
         name=f"{slug} basic guardrails",
         description=f"What users send to '{slug}' and what goes back to them.",
@@ -399,6 +401,28 @@ def basic_guardrails(session: Any, slug: str, *, actor: str) -> bool:
             for rid, what, surfaces, prefix, score, effect in BASIC
         ],
     )
+
+
+def basic_guardrails(session: Any, slug: str, *, actor: str, may_enforce: bool) -> str | None:
+    """Add the basic guardrails to one agent. Returns the mode they went live in, or
+    None when the agent already has them.
+
+    They go live the way any policy does (``routes/policy.py`` ``change_mode``): saved
+    and bound watching, and switched to blocking only for a caller who may change
+    production policy (``may_enforce``) and only once these exact rules have been
+    simulated against recorded traffic (``simulation_for``). Otherwise they watch, and
+    the Policies page's simulate-then-promote finishes the job.
+    """
+    from sqlalchemy import select
+
+    from agentfox.core.models import Policy, PolicyVersion
+    from agentfox.platform.policy.publish import publish_in_current_mode
+    from agentfox.platform.policy.simulate import simulation_for
+    from agentfox.platform.policy.store import set_mode
+
+    if has_basic_guardrails(session, slug):
+        return None
+    doc = basic_document(slug)
     published = publish_in_current_mode(
         session,
         doc,
@@ -409,73 +433,113 @@ def basic_guardrails(session: Any, slug: str, *, actor: str) -> bool:
         compose="extend",
         agent_slug=slug,
     )
-    set_mode(session, doc.key, "enforce", version=published.version)
-    return True
-
-
-def _grant_found_tools(session: Any, slug: str, tools: list[str], *, actor: str) -> None:
-    from sqlalchemy import select
-
-    from agentfox.core.models import Agent
-    from agentfox.platform.identity import ensure_identity
-    from agentfox.platform.identity.service import grant_capability
-    from agentfox.platform.ledger import chain
-
-    agent = session.scalar(select(Agent).where(Agent.slug == slug))
-    if agent is None:
-        return
-    identity = ensure_identity(session, agent)
-    have = {c.tool_key for c in identity.capabilities}
-    for tool in tools:
-        if tool in have:
-            continue
-        cap = grant_capability(session, identity, tool, granted_by=actor)
-        chain.append(
-            session,
-            "capability.granted",
-            actor_type="system",
-            actor_id=actor,
-            subject_type="capability",
-            subject_id=cap.id,
-            payload={
-                "agent": slug,
-                "tool_key": tool,
-                "why": "found in the agent's code; first guardrails watch only",
-            },
+    if published.mode == "enforce":  # the pack was already enforcing: it stays so
+        return "enforce"
+    if not may_enforce:
+        return "observe"
+    policy = session.scalar(select(Policy).where(Policy.key == doc.key))
+    version = session.scalar(
+        select(PolicyVersion).where(
+            PolicyVersion.policy_id == policy.id, PolicyVersion.version == published.version
         )
+    )
+    if version is None or simulation_for(session, version) is None:
+        return "observe"
+    set_mode(session, doc.key, "enforce", version=published.version)
+    return "enforce"
+
+
+# --- Registering what `agentfox init` found -------------------------------------------
+
+
+def _merge(old: list[str] | None, new: list[str]) -> list[str]:
+    return list(dict.fromkeys([*(old or []), *new]))
 
 
 def register_structure(
-    session: Any, structure: dict[str, Any], project: str | None = None
+    session: Any, structure: dict[str, Any], project: str | None = None, *, actor: str
 ) -> dict[str, Any]:
-    """Register every detected agent and its tools in the registry, so they show up
-    under Projects like any other agent, and return the structure with each agent's
-    registry slug filled in. Upserts: running `agentfox init` again updates, never
-    duplicates. Impacts are recorded as inferred, so a human's declaration wins."""
+    """Put what `agentfox init` found in the registry, the way a repository scan does:
+    as proposals a person adds (``platform/registry/service.propose_draft``).
+
+    The setup key can propose; it cannot change what is live:
+
+    * an agent it has not seen is proposed as a draft of this project;
+    * a draft (or a rejected or removed agent) of the same name is proposed again;
+    * a live agent of this same project gets the newly found models and tools added
+      to its declaration, and nothing else (risk tier, environment, purpose, status,
+      owner and project stay as a person set them);
+    * a live agent of another project, or of none, is never touched: the agent is
+      proposed under ``<project>-<name>`` instead, or skipped when that is taken too.
+
+    No tool is granted: a draft does nothing until it is added, and access is granted
+    by a person (``POST /api/agents/{slug}/access``). New tools are recorded with an
+    inferred impact; a declared impact is never replaced. Returns the structure with
+    each agent's registry slug (None when skipped) and what happened to it.
+    """
+    from sqlalchemy import select
+
+    from agentfox.core.models import Agent, Tool
+    from agentfox.platform.ledger import chain
     from agentfox.platform.registry.projects import TALKS_TO, TOUCHES
-    from agentfox.platform.registry.service import record_edge, register_agent, slugify, upsert_tool
+    from agentfox.platform.registry.service import (
+        PROPOSABLE,
+        impact_source_of,
+        propose_draft,
+        record_edge,
+        slugify,
+        upsert_tool,
+    )
+
+    def owned(agent: Any) -> bool:
+        return agent.status in PROPOSABLE or bool(project and agent.project == project)
+
+    def place(name: str) -> tuple[str, Any] | None:
+        for candidate in [slugify(name), *([slugify(f"{project}-{name}")] if project else [])]:
+            existing = session.scalar(select(Agent).where(Agent.slug == candidate))
+            if existing is None or owned(existing):
+                return candidate, existing
+        return None
 
     kinds = {x["id"]: x.get("kind", "") for x in structure.get("systems", [])}
     systems = {x["id"]: x for x in structure.get("systems", [])}
     sources = {x["id"]: x for x in structure.get("sources", [])}
-    agents = []
+    agents: list[dict[str, Any]] = []
+    report: dict[str, list[str]] = {"proposed": [], "updated": [], "skipped": [], "tools": []}
     for agent in structure.get("agents", []):
         tools = [t for t in structure.get("tools", []) if t.get("agentId") == agent["id"]]
-        slug = slugify(agent["name"])
-        register_agent(
-            session,
-            slug,
-            name=agent["name"],
-            purpose="Found by agentfox init.",
-            declared_models=[
-                m
-                for m in (agent.get("models") or [agent.get("model")])
-                if m and m != "unknown model"
-            ],
-            declared_tools=[t["name"] for t in tools],
-            framework=agent.get("framework") or "langchain",
-            project=project,
-        )
+        tool_names = [t["name"] for t in tools]
+        models = [
+            m for m in (agent.get("models") or [agent.get("model")]) if m and m != "unknown model"
+        ]
+        placed = place(agent["name"])
+        if placed is None:
+            report["skipped"].append(agent["name"])
+            agents.append({**agent, "slug": None, "registry": "skipped"})
+            continue
+        slug, existing = placed
+        if existing is not None and existing.status not in PROPOSABLE:
+            existing.declared_tools = _merge(existing.declared_tools, tool_names)
+            existing.declared_models = _merge(existing.declared_models, models)
+            existing.framework = existing.framework or agent.get("framework")
+            report["updated"].append(slug)
+            outcome = "updated"
+        else:
+            propose_draft(
+                session,
+                slug=slug,
+                name=agent["name"],
+                purpose="" if existing is not None else "Found by agentfox init.",
+                declared_models=models,
+                declared_tools=tool_names,
+                framework=agent.get("framework") or "langchain",
+                project=project,
+                # A draft keeps what a reviewer may already have set on it.
+                risk_tier=existing.risk_tier if existing is not None else "limited",
+                environment=existing.environment if existing is not None else "production",
+            )
+            report["proposed"].append(slug)
+            outcome = "proposed"
         # Who sends this agent its messages: the box the map starts from.
         for sid in agent.get("sourceIds", []):
             src = sources.get(sid)
@@ -491,14 +555,18 @@ def register_structure(
                     kind=(src.get("detail") or "")[:32] or None,
                 )
         for t in tools:
-            upsert_tool(
-                session,
-                t["name"],
-                name=t["name"],
-                impact=impact_for(t, kinds),
-                description=t.get("whatItDoes", ""),
-                impact_source="inferred",
-            )
+            known = session.scalar(select(Tool).where(Tool.key == t["name"]))
+            if known is None or impact_source_of(known) == "inferred":
+                upsert_tool(
+                    session,
+                    t["name"],
+                    name=t["name"],
+                    impact=impact_for(t, kinds),
+                    description=t.get("whatItDoes", ""),
+                    impact_source="inferred",
+                    actor=actor,
+                )
+                report["tools"].append(t["name"])
             # What the tool reads or changes: a resource on the map.
             system = systems.get(t.get("systemId", ""))
             if system:
@@ -512,14 +580,12 @@ def register_structure(
                     declared=True,
                     kind=(system.get("kind") or None),
                 )
-        # No guardrails yet: the first attack test shows the agent as it is, then the
-        # basic guardrails are one click. Its own tools may run (default deny would
-        # otherwise refuse every one of them).
-        _grant_found_tools(session, slug, [t["name"] for t in tools], actor="agentfox init")
-        agents.append({**agent, "slug": slug})
+        agents.append({**agent, "slug": slug, "registry": outcome})
     # Who hands work to whom, from the code: the map draws these between agents.
-    slug_of = {a["id"]: a["slug"] for a in agents}
+    slug_of = {a["id"]: a["slug"] for a in agents if a["slug"]}
     for a in agents:
+        if not a["slug"]:
+            continue
         for child in a.get("handsOffTo") or []:
             if child in slug_of and slug_of[child] != a["slug"]:
                 record_edge(
@@ -532,4 +598,13 @@ def register_structure(
                     declared=True,
                     kind="handoff",
                 )
+    chain.append(
+        session,
+        "onboarding.structure.reported",
+        actor_type="user",
+        actor_id=actor,
+        subject_type="project",
+        subject_id=project or "",
+        payload=report,
+    )
     return {**structure, "agents": agents, "project": project}
