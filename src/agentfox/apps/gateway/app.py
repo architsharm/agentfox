@@ -560,10 +560,12 @@ def create_app() -> FastAPI:
 
         workspace_enabled = enabled_for(session)
         from agentfox.apps.gateway.routes.checks import latest_pull_jobs
-        from agentfox.capabilities.detection.catalog import GROUPS, describe
+        from agentfox.capabilities.detection.catalog import GROUPS, describe, feeds_for
         from agentfox.capabilities.detection.models import models_for, pull_blocker
 
         pull_jobs = latest_pull_jobs(session)
+        # What the workspace's own models and rules make the custom checks report.
+        feeds = feeds_for(all_detectors(), session)
         # Why the OSS-wrapped and licence-restricted detectors aren't live here —
         # shown in the UI so "not installed" doesn't read as a bug. The native
         # detectors (injection.heuristic, pii.native, safety.lexicon, schema.json,
@@ -622,7 +624,7 @@ def create_app() -> FastAPI:
                     "stats": stats.get(key, {}),
                     # For the Checks screen: what it catches, where it runs, where it
                     # comes from (built-in, open-source model, LLM judge, your own).
-                    **describe(detector),
+                    **describe(detector, feeds),
                     # Why the Download button cannot work on this server, if it cannot.
                     "pull_blocked": (
                         pull_blocker(detector)
