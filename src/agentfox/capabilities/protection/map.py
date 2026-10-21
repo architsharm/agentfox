@@ -670,8 +670,9 @@ def _edge_json(edge: LineageEdge, other: str, names: dict[str, str]) -> dict[str
 def _hierarchy(session: Session, slug: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """``(subagents, parents)``: who this agent hands work to, and who hands it work.
 
-    A proposal someone dismissed is left off both: it is not part of the system they
-    chose to govern, even though the code still names it.
+    A proposal someone dismissed, or an agent whose project was disconnected, is left
+    off both: it is not part of the system they chose to govern, even though the code
+    still names it.
     """
     edges = list(
         session.scalars(
@@ -684,7 +685,7 @@ def _hierarchy(session: Session, slug: str) -> tuple[list[dict[str, Any]], list[
     )
     others = {e.dst_id if e.src_id == slug else e.src_id for e in edges}
     rows = list(session.scalars(select(Agent).where(Agent.slug.in_(others)))) if others else []
-    dismissed = {a.slug for a in rows if a.status == "rejected"}
+    dismissed = {a.slug for a in rows if a.status in ("rejected", "removed")}
     names = {a.slug: a.name for a in rows}
     subagents = [
         _edge_json(e, e.dst_id, names)

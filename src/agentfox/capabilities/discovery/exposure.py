@@ -39,6 +39,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from agentfox.platform.registry.impact import NOUN_VERBS, actions, handoff
+from agentfox.platform.registry.impact import tokens as _impact_tokens
+
 PRIVATE = "private_data"
 UNTRUSTED = "untrusted_input"
 EXFIL = "exfiltration"
@@ -116,13 +119,29 @@ _MASS_NOUNS = {
     "calendar": "the calendar", "inbox": "the inbox", "mail": "mail",
 }  # fmt: skip
 
-_TOKEN_SPLIT = re.compile(r"[^a-z0-9]+")
-_CAMEL = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
+#: Words that move money when they act (``issue_refund``, ``list_and_refund``), and the
+#: things a tool that acts on them pays out (``issue_compensation``).
+_MONEY_VERBS = {
+    "pay", "refund", "transfer", "wire", "charge", "payout", "withdraw", "compensate",
+    "reimburse", "purchase", "buy",
+}  # fmt: skip
+_MONEY_NOUNS = {
+    "money", "cash", "funds", "compensation", "voucher", "vouchers", "refund", "refunds",
+    "reimbursement", "payout", "payment", "payments", "credit", "credits",
+}  # fmt: skip
+#: A tool that changes something and says it pays out: `start_return`, "Create a
+#: return request and refund for an order."
+_MONEY_DESCRIPTION = re.compile(
+    r"\b(refunds?|refunded|reimburs\w*|compensat\w*|payouts?|vouchers?|send money|"
+    r"charges? (?:the|a|their) (?:card|customer|account))\b"
+)
+#: Commitments a person cannot simply take back: a cancelled flight, a booked one.
+_COMMIT_VERBS = {"cancel", "book", "rebook", "purchase", "buy"}
 
 
 def tokens(name: str) -> list[str]:
     """`readCustomerRecord` / `read-customer.record` -> [read, customer, record]."""
-    return [t for t in _TOKEN_SPLIT.split(_CAMEL.sub("_", name).lower()) if t]
+    return _impact_tokens(name)
 
 
 def _plural(noun: str) -> str:
@@ -160,22 +179,50 @@ def classify_tool(name: str, description: str = "") -> Capabilities:
 
     # -- can it send something out, or do something it cannot undo? ----------
     reads = bool(tset & _READ_VERBS)
-    # "email" is a verb in `email_customer` and a noun in `read_email`.
-    exfil_hits = [t for t in toks if t in _EXFIL_VERBS and not (reads and t in ("email", "mail"))]
+    # The words that act, read as verb phrases: "email" acts in `email_customer` and
+    # `fetch_and_email_report` and is what is read in `read_email`; "issue" acts in
+    # `issue_compensation` and is read in `get_issue`.
+    acting = set(actions(toks))
+    # `transfer_to_human` hands a conversation to a person: it moves no money.
+    passing = handoff(toks)
+    if passing:
+        acting.discard("transfer")
+    exfil_hits = [
+        t
+        for t in toks
+        if t in _EXFIL_VERBS
+        and (t in acting or t not in NOUN_VERBS)
+        and not (passing and t == "transfer")
+    ]
+    money = bool(acting & _MONEY_VERBS) or (
+        bool(acting) and not passing and bool(tset & _MONEY_NOUNS)
+    )
+    # A change whose description says it pays out (`start_return`: "... and refund").
+    if not money and acting and not reads and _MONEY_DESCRIPTION.search(desc):
+        money = True
+    committed = bool(acting & _COMMIT_VERBS)
     if (
         exfil_hits
+        or money
+        or committed
         # Name only, and only for a name that is not a read: a description saying
         # "the sender's address" is not a send, and neither is `get_sender`.
         or (not reads and infer_impact(name) == "irreversible")
     ):
         caps.flags.add(EXFIL)
-        caps.phrases[EXFIL], caps.action = _exfil_phrase(tset)
+        caps.phrases[EXFIL], caps.action = (
+            ("can move money", "move money") if money else _exfil_phrase(tset)
+        )
 
     # -- does it bring in content an outsider can write? ---------------------
     # `create_ticket` and `post_webpage` write to those things; they read nothing in.
-    reading = reads or not (exfil_hits or tset & _WRITE_VERBS)
-    web = reading and bool(tset & _WEB_NOUNS or ("fetch" in tset and not (tset & _PRIVATE_NOUNS)))
-    inbound = tset & _INBOUND_NOUNS if reading else set()
+    reading = reads or not (
+        exfil_hits or money or committed or tset & _WRITE_VERBS or acting & {"issue", "start"}
+    )
+    # What the name is about: its words, less the ones that act.
+    about = tset - acting
+    web = reading and bool(about & _WEB_NOUNS or ("fetch" in tset and not (about & _PRIVATE_NOUNS)))
+    inbound = about & _INBOUND_NOUNS if reading else set()
     if (
         reading
         and not web
@@ -198,7 +245,7 @@ def classify_tool(name: str, description: str = "") -> Capabilities:
             caps.source = f"a {noun.rstrip('s')}"
 
     # -- does it read something private? -------------------------------------
-    nouns = [t for t in toks if t in _PRIVATE_NOUNS]
+    nouns = [t for t in toks if t in _PRIVATE_NOUNS and t in about]
     if nouns and reading and not web:
         caps.flags.add(PRIVATE)
         # "read_customer_record" -> "customer records": every non-verb token, in order.

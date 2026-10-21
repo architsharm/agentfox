@@ -65,8 +65,15 @@ def test_maps_agent_model_tools_and_systems(tmp_path):
     }
     assert {x["name"] for x in s["systems"]} == {"Orders", "Payments", "Helpdesk"}
     assert s["sources"][0]["label"] == "Customers"
+    # Discovery's framework names; `agent = build_agent()` is the live object to run.
     assert mapped["agents"] == [
-        {"agentId": "ag-1", "module": "agent", "attr": "agent", "framework": "langchain"}
+        {
+            "agentId": "ag-1",
+            "module": "agent",
+            "attr": "agent",
+            "kind": "object",
+            "framework": "LangGraph",
+        }
     ]
 
 
@@ -388,11 +395,14 @@ def test_connect_groups_agents_into_a_project_with_its_map(client):
         headers={"Authorization": f"Bearer {key}"},
     )
 
+    # A project is a system: two agents that hand nothing to each other are two, both
+    # mapped from the `bazaar` repository, which still names them both.
     projects = {
-        p["project"]: p["agents"]
+        p["project"]: (p["agents"], p["repos"])
         for p in client.get("/api/projects", headers=me).json()["projects"]
     }
-    assert projects["bazaar"] == 2
+    assert projects["shop-agent"] == (1, ["bazaar"])
+    assert projects["refund-agent"] == (1, ["bazaar"])
 
     m = client.get("/api/projects/bazaar/map", headers=me).json()
     assert sorted(a["slug"] for a in m["agents"]) == ["refund-agent", "shop-agent"]
@@ -684,7 +694,7 @@ def test_removing_a_project_lets_it_connect_again_as_new(client):
     assert sorted(removed.json()["removed"]) == ["refund-bot", "shop-bot"]
 
     # Gone from the dashboard, and the setup card no longer remembers it.
-    assert "shop" not in {
+    assert not {"shop", "shop-bot", "refund-bot"} & {
         p["project"] for p in client.get("/api/projects", headers=me).json()["projects"]
     }
     assert client.get("/api/onboarding/structure", headers=me).json()["connected"] is False
@@ -696,10 +706,11 @@ def test_removing_a_project_lets_it_connect_again_as_new(client):
 
     # Connect again: treated like a new project.
     connect()
+    # One system: Shop Bot hands work to Refund Bot.
     assert {
-        p["project"]: p["agents"]
+        p["project"]: (p["agents"], p["repos"])
         for p in client.get("/api/projects", headers=me).json()["projects"]
-    }["shop"] == 2
+    }["shop-bot"] == (2, ["shop"])
     m = client.get("/api/agents/shop-bot/map", headers=me).json()
     assert not [r for s in m["stages"] for r in s["rules"] if r["id"].startswith("basic.")]
     # Tested afresh, and proposed again: nothing granted until a person does.

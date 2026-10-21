@@ -97,7 +97,7 @@ def agent_tree(session: Session) -> list[dict[str, Any]]:
     agents: dict[str, Agent] = {}
     proposals: set[str] = set()
     for a in session.scalars(select(Agent).order_by(Agent.slug)):
-        if a.status in ("draft", "rejected"):
+        if a.status in ("draft", "rejected", "removed"):
             proposals.add(a.slug)
         else:
             agents[a.slug] = a

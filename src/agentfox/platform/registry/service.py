@@ -763,13 +763,16 @@ def record_edge(
     relation: str,
     declared: bool = False,
     kind: str | None = None,
+    attrs: dict[str, Any] | None = None,
 ) -> LineageEdge:
     """Record an observed (or declared) lineage edge, idempotent under races.
 
     ``declared=True`` is an edge read from code (``propose_from_scan``) rather than
     seen in a span: it is recorded with no observation counted, so "from code, never
     called" and "called N times" stay distinguishable. ``kind`` says how a declared
-    delegation hands work over (``discovery.agents.RELATIONS``).
+    delegation hands work over (``discovery.agents.RELATIONS``), and only that;
+    anything else the code says about a declared edge goes in ``attrs`` (merged into
+    what the edge already has).
 
     The existence check below and the insert it guards are two separate
     round-trips, so two callers recording the same edge for the first time at
@@ -822,6 +825,8 @@ def record_edge(
     if declared:
         edge.declared = True
         edge.kind = kind or edge.kind
+        if attrs:
+            edge.attrs = {**(edge.attrs or {}), **attrs}
     session.flush()
     return edge
 
@@ -861,6 +866,12 @@ def derive_lineage(session: Session, agent_slug: str | None = None) -> int:
     return edges
 
 
+#: Edges that say nothing about what an agent can reach: who sends it messages
+#: (`agentfox init`'s ``talks_to``, input -> agent). An input box shared by every agent
+#: of a repository is not part of any one agent's blast radius.
+_NOT_REACH = ("talks_to",)
+
+
 def lineage(session: Session, agent_slug: str, depth: int = 2) -> dict[str, Any]:
     """Blast-radius query: what does this agent reach, and what reaches it?"""
     nodes: dict[str, dict[str, Any]] = {}
@@ -874,7 +885,11 @@ def lineage(session: Session, agent_slug: str, depth: int = 2) -> dict[str, Any]
             continue
         seen.add(current)
 
-        for edge in session.scalars(select(LineageEdge).where(LineageEdge.src_id == current)):
+        for edge in session.scalars(
+            select(LineageEdge).where(
+                LineageEdge.src_id == current, LineageEdge.relation.not_in(_NOT_REACH)
+            )
+        ):
             nodes.setdefault(edge.src_id, {"id": edge.src_id, "type": edge.src_type})
             nodes.setdefault(edge.dst_id, {"id": edge.dst_id, "type": edge.dst_type})
             links.append(
@@ -888,7 +903,11 @@ def lineage(session: Session, agent_slug: str, depth: int = 2) -> dict[str, Any]
             )
             queue.append((edge.dst_id, level + 1))
 
-        for edge in session.scalars(select(LineageEdge).where(LineageEdge.dst_id == current)):
+        for edge in session.scalars(
+            select(LineageEdge).where(
+                LineageEdge.dst_id == current, LineageEdge.relation.not_in(_NOT_REACH)
+            )
+        ):
             nodes.setdefault(edge.src_id, {"id": edge.src_id, "type": edge.src_type})
             nodes.setdefault(edge.dst_id, {"id": edge.dst_id, "type": edge.dst_type})
             links.append(
