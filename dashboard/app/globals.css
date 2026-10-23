@@ -3075,6 +3075,8 @@ textarea.k-input { height: auto; padding: 8px 11px; line-height: 1.5; resize: ve
 .k-btn:disabled, .k-btn-primary:disabled, .k-btn-danger:disabled { opacity: .5; cursor: default; }
 .k-act { display: inline-flex; align-items: center; gap: 8px; }
 .k-act-error { color: var(--bad); font-size: var(--t-micro); max-width: 320px; }
+.k-act-confirm { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: var(--t-micro); max-width: 420px; }
+.k-act-note { color: var(--muted); font-size: var(--t-micro); max-width: 320px; }
 
 /* Layout. */
 .k-grid { display: grid; gap: 14px; margin-bottom: 14px; }

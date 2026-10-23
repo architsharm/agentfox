@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { safeApi } from "@/lib/product/api";
 import { Empty, href } from "@/components/kit";
-import { ruleTitle } from "@/lib/product/vocab";
+import { ruleTitle, wouldDo } from "@/lib/product/vocab";
 
 type Applied = {
   id: string;
@@ -16,11 +16,11 @@ type Applied = {
 
 const DOES: Record<string, string> = { block: "Blocks", escalate: "Asks a person", redact: "Hides", mask: "Hides", tokenize: "Hides", allow: "Watches" };
 
-/** "Blocks", or "Blocks · watching only" while its library only records. */
+/** "Blocks", or "Would block · watching" while its library only records. */
 function does(r: Applied): { text: string; tone: string } {
   const text = DOES[r.effect] ?? r.effect;
   if (r.effect === "allow") return { text, tone: "watch" };
-  if (r.mode === "observe") return { text: `${text} · watching only`, tone: "watch" };
+  if (r.mode === "observe") return { text: `${wouldDo(text)} · watching`, tone: "watch" };
   if (r.mode === "mixed") return { text: `${text} · on some, watching on others`, tone: "watch" };
   return { text, tone: "on" };
 }
