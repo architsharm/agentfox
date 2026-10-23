@@ -21,7 +21,7 @@ import Link from "next/link";
 import { Logo } from "@/components/product/Logo";
 import { useRouter } from "next/navigation";
 import { Bot, Cpu, FileText, Plus, Search, User, Wrench, X, type LucideIcon } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ModePill, Pill } from "@/components/kit";
 import {
   GROUP_BY,
@@ -1215,6 +1215,23 @@ function Legend() {
  * between them. Clicking a rail, a tool or an agent makes that agent the one the
  * panel is about; with nothing selected the panel is that agent's set-up guide.
  */
+/**
+ * A phone-width screen. There one finger must scroll the page, not drag the map
+ * (otherwise a visitor's finger is trapped on the canvas): the map pans and zooms
+ * with two fingers or its +/- buttons instead.
+ */
+function useNarrow(): boolean {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const q = window.matchMedia("(max-width: 760px)");
+    const on = () => setNarrow(q.matches);
+    on();
+    q.addEventListener("change", on);
+    return () => q.removeEventListener("change", on);
+  }, []);
+  return narrow;
+}
+
 export function GuardrailMap({
   maps,
   focus,
@@ -1229,6 +1246,11 @@ export function GuardrailMap({
   const [active, setActive] = useState(focus);
   const [selected, setSelected] = useState<Selected>(null);
   const [hovered, setHovered] = useState<string | null>(null);
+  const narrow = useNarrow();
+  // On a phone the panel sits below the map: bring it into view when a line or tool is tapped.
+  useEffect(() => {
+    if (narrow && selected) document.querySelector(".gm-side")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [narrow, selected]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
   const [by, setBy] = useState<GroupBy>("impact");
@@ -1322,10 +1344,13 @@ export function GuardrailMap({
             fitViewOptions={
               maps.length > 1
                 ? { padding: 0.25, maxZoom: 1, nodes: laid.nodes.filter((n) => (n.id.startsWith(`${active}|`) || (n.id === "user" && laid.edges.some((e) => e.source === "user" && e.target === `${active}|agent`))) && !n.parentId).map((n) => ({ id: n.id })) }
-                : { padding: 0.12, maxZoom: 1 }
+                : { padding: narrow ? 0.04 : 0.12, maxZoom: 1 }
             }
             minZoom={0.15}
             maxZoom={1.5}
+            panOnDrag={!narrow}
+            zoomOnScroll={!narrow}
+            preventScrolling={!narrow}
             nodesDraggable={false}
             nodesConnectable={false}
             proOptions={{ hideAttribution: true }}
