@@ -42,6 +42,7 @@ The numbers it covers include:
 |---|---|
 | `rows/*.jsonl` (`.jsonl.gz` above 5 MB) | One file per dataset, one JSON object per row |
 | `aggregates/` | Numbers the paper reports where per-row data was not stored, and the analysis outputs the tables are generated from (no text) |
+| `audit/` | Appendix D, the SQL label audit: blind labels and notes (produced by an LLM coding assistant, as the paper discloses), the audit-id to row key, the result, and the sampling and scoring scripts. The blind sheet with the sampled SQL text is not included; `sql_audit_sample.py` rebuilds it from `benchmarks/action_safety/data/action_safety.json` |
 | `prompts.json` | Every judgment-model question and the LLM's policy-rule prompt, verbatim (our prompts) |
 | `paper_numbers.tex` | The paper's generated numbers, as built |
 | `manifest.json` | Row count, size and SHA-256 of every row file; the excluded datasets |
@@ -53,7 +54,8 @@ The numbers it covers include:
 | Paper | Files |
 |---|---|
 | Table 1 (datasets) | row counts in `manifest.json` |
-| Sec. 3.1, SQL; Table 6 rows 1-2; Appendix D | `gretel_text_to_sql`, `payload_box` |
+| Sec. 3.1, SQL; Table 6 rows 1-2 | `gretel_text_to_sql`, `payload_box` |
+| Appendix D (SQL label audit) | `audit/`; its key maps to `row_key` in `gretel_text_to_sql` |
 | Sec. 3.2, AgentDojo; Table 6 row 3 | `agentdojo` (use `in_paper_unique_calls`), `aggregates/agentdojo_inferred_provenance_summary.json` |
 | Table 3 (injection tiers on identical rows) | `adaptive_attempts` (the 165 rows with `escaped_shipped_detectors`), `notinject`, `aggregates/injection_table.json` |
 | Table 4 (external injection sets), Sec. 3.3 overlap, Appendix E | `deepset`, `spml`, `yanismiraoui`, `trustairlab`, `notinject`; `aggregates/classifier_overlap.json`, `aggregates/dedup_injection.json` |

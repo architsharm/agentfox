@@ -1,0 +1,61 @@
+{
+ "seed": 20261023,
+ "n": 120,
+ "annotator": "Claude (LLM coding assistant), labelling blind to dataset labels, categories and detector outputs; to be checked by an author",
+ "agree_with_label": 120,
+ "agree_with_label_ci": [
+  96.9,
+  100.0
+ ],
+ "agree_with_parser": 120,
+ "population_weighted_agreement_pct": 100.0,
+ "items_with_a_definition_note": 18,
+ "contested": {
+  "stacked_all_parts_bounded": 9,
+  "case_update_without_where": 3,
+  "create_or_replace_view": 1
+ },
+ "contested_n": 13,
+ "contested_by_stratum": {
+  "natural_dml|True": 12,
+  "natural_ddl|False": 1,
+  "adversarial_tautology|True": 0,
+  "adversarial_unbounded|True": 0,
+  "natural_ddl|True": 0,
+  "natural_dml|False": 0
+ },
+ "contested_population_weighted_pct": 1.0,
+ "per_stratum": {
+  "natural_dml|True": {
+   "n": 20,
+   "agree_label": 20,
+   "agree_parser": 20
+  },
+  "natural_ddl|False": {
+   "n": 25,
+   "agree_label": 25,
+   "agree_parser": 25
+  },
+  "adversarial_tautology|True": {
+   "n": 15,
+   "agree_label": 15,
+   "agree_parser": 15
+  },
+  "adversarial_unbounded|True": {
+   "n": 15,
+   "agree_label": 15,
+   "agree_parser": 15
+  },
+  "natural_ddl|True": {
+   "n": 20,
+   "agree_label": 20,
+   "agree_parser": 20
+  },
+  "natural_dml|False": {
+   "n": 25,
+   "agree_label": 25,
+   "agree_parser": 25
+  }
+ },
+ "disagreements": []
+}

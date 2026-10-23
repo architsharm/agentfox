@@ -635,6 +635,17 @@ for f in (
 ):
     shutil.copy(HERE / f, agg / f)
 shutil.copy(HERE / "prompts.json", OUT / "prompts.json")
+# SQL label audit (Appendix D): blind labels with notes, the id key, the result and both scripts.
+# sql_audit_blind.json is left out: it holds the sampled SQL text.
+(OUT / "audit").mkdir(exist_ok=True)
+for f in (
+    "audit/sql_audit_labels.json",
+    "audit/sql_audit_key.json",
+    "audit/sql_audit_result.json",
+    "sql_audit_sample.py",
+    "sql_audit_score.py",
+):
+    shutil.copy(HERE / f, OUT / "audit" / Path(f).name)
 shutil.copy(PAPER / "numbers.tex", OUT / "paper_numbers.tex")
 manifest["normalisation"] = (
     "NFC; CRLF and CR to LF; strip; non-strings as canonical JSON (sort_keys, ensure_ascii=False, separators (',', ':'))"
