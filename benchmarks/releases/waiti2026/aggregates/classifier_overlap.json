@@ -1,0 +1,138 @@
+{
+ "piguard_train_sha256": "806ded8bd85782a53d34faffe4fd92b3f2e0b3b431c43578ce77faea6b9ed911",
+ "piguard_train_rows": 76735,
+ "jackhhao_rows": 1044,
+ "sets": {
+  "deepset": {
+   "rows": 662,
+   "in_piguard_train": 548,
+   "in_piguard_train_pos": 205,
+   "in_jackhhao": 0,
+   "piguard_on_unseen": {
+    "rows": 114,
+    "pos": 58,
+    "neg": 56,
+    "recall": 69.0,
+    "fpr": 0.0
+   },
+   "protectai_on_unseen": {
+    "rows": 662,
+    "pos": 263,
+    "neg": 399,
+    "recall": 41.4,
+    "fpr": 1.0
+   },
+   "protectai_on_piguard_unseen_rows": {
+    "rows": 114,
+    "recall": 37.9
+   }
+  },
+  "SPML": {
+   "rows": 500,
+   "in_piguard_train": 0,
+   "in_piguard_train_pos": 0,
+   "in_jackhhao": 0,
+   "piguard_on_unseen": {
+    "rows": 500,
+    "pos": 250,
+    "neg": 250,
+    "recall": 27.2,
+    "fpr": 0.0
+   },
+   "protectai_on_unseen": {
+    "rows": 500,
+    "pos": 250,
+    "neg": 250,
+    "recall": 97.2,
+    "fpr": 8.4
+   },
+   "protectai_on_piguard_unseen_rows": {
+    "rows": 500,
+    "recall": 97.2
+   }
+  },
+  "yanismiraoui": {
+   "rows": 1034,
+   "in_piguard_train": 0,
+   "in_piguard_train_pos": 0,
+   "in_jackhhao": 0,
+   "piguard_on_unseen": {
+    "rows": 1034,
+    "pos": 1034,
+    "neg": 0,
+    "recall": 74.1,
+    "fpr": null
+   },
+   "protectai_on_unseen": {
+    "rows": 1034,
+    "pos": 1034,
+    "neg": 0,
+    "recall": 98.3,
+    "fpr": null
+   },
+   "protectai_on_piguard_unseen_rows": {
+    "rows": 1034,
+    "recall": 98.3
+   }
+  },
+  "TrustAIRLab": {
+   "rows": 2810,
+   "in_piguard_train": 588,
+   "in_piguard_train_pos": 564,
+   "in_jackhhao": 557,
+   "piguard_on_unseen": {
+    "rows": 2222,
+    "pos": 841,
+    "neg": 1381,
+    "recall": 87.8,
+    "fpr": 19.9
+   },
+   "protectai_on_unseen": {
+    "rows": 2253,
+    "pos": 853,
+    "neg": 1400,
+    "recall": 66.2,
+    "fpr": 10.7
+   },
+   "protectai_on_piguard_unseen_rows": {
+    "rows": 2222,
+    "recall": 65.8
+   }
+  },
+  "NotInject": {
+   "rows": 339,
+   "in_piguard_train": 0,
+   "in_piguard_train_pos": 0,
+   "in_jackhhao": 0,
+   "piguard_on_unseen": {
+    "rows": 339,
+    "pos": 0,
+    "neg": 339,
+    "recall": null,
+    "fpr": 11.5
+   },
+   "protectai_on_unseen": {
+    "rows": 339,
+    "pos": 0,
+    "neg": 339,
+    "recall": null,
+    "fpr": 43.7
+   },
+   "protectai_on_piguard_unseen_rows": {
+    "rows": 339,
+    "recall": null
+   }
+  }
+ },
+ "heldout_benign_in_piguard_train": {
+  "deepset_train": 343,
+  "deepset_test": 0,
+  "repo_corpus": 0,
+  "total": 343,
+  "of": 467
+ },
+ "escapes_in_piguard_train": {
+  "rows": 0,
+  "of": 165
+ }
+}

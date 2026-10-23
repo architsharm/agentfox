@@ -1,0 +1,82 @@
+{
+ "threshold_jaccard": 0.8,
+ "shingle_chars": 5,
+ "minhash": {
+  "hashes": 64,
+  "bands": 32
+ },
+ "sizes": {
+  "deepset": 662,
+  "SPML": 500,
+  "yanismiraoui": 1034,
+  "TrustAIRLab": 2810,
+  "NotInject": 339,
+  "repo benign corpus": 68,
+  "adaptive escapes": 165
+ },
+ "within": {
+  "deepset": {
+   "rows": 662,
+   "distinct_normalised": 662,
+   "rows_in_exact_duplicate_group": 0,
+   "rows_in_near_duplicate_pair": 41,
+   "near_pairs_with_conflicting_labels": 1
+  },
+  "SPML": {
+   "rows": 500,
+   "distinct_normalised": 500,
+   "rows_in_exact_duplicate_group": 0,
+   "rows_in_near_duplicate_pair": 2,
+   "near_pairs_with_conflicting_labels": 0
+  },
+  "yanismiraoui": {
+   "rows": 1034,
+   "distinct_normalised": 974,
+   "rows_in_exact_duplicate_group": 107,
+   "rows_in_near_duplicate_pair": 142,
+   "near_pairs_with_conflicting_labels": 0
+  },
+  "TrustAIRLab": {
+   "rows": 2810,
+   "distinct_normalised": 2716,
+   "rows_in_exact_duplicate_group": 158,
+   "rows_in_near_duplicate_pair": 450,
+   "near_pairs_with_conflicting_labels": 121
+  },
+  "NotInject": {
+   "rows": 339,
+   "distinct_normalised": 339,
+   "rows_in_exact_duplicate_group": 0,
+   "rows_in_near_duplicate_pair": 0,
+   "near_pairs_with_conflicting_labels": 0
+  },
+  "repo benign corpus": {
+   "rows": 68,
+   "distinct_normalised": 68,
+   "rows_in_exact_duplicate_group": 0,
+   "rows_in_near_duplicate_pair": 0,
+   "near_pairs_with_conflicting_labels": 0
+  },
+  "adaptive escapes": {
+   "rows": 165,
+   "distinct_normalised": 163,
+   "rows_in_exact_duplicate_group": 4,
+   "rows_in_near_duplicate_pair": 4,
+   "near_pairs_with_conflicting_labels": 0
+  }
+ },
+ "across": {
+  "deepset ~ TrustAIRLab": {
+   "rows_first": 7,
+   "rows_second": 26,
+   "exact_pairs": 1
+  },
+  "deepset ~ adaptive escapes": {
+   "rows_first": 1,
+   "rows_second": 1,
+   "exact_pairs": 0
+  }
+ },
+ "all_rows": 5578,
+ "rows_with_any_near_duplicate": 649
+}

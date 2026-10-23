@@ -1,0 +1,1800 @@
+{
+ "per_dataset": {
+  "gretel text-to-SQL": {
+   "kind": "Parsed structure",
+   "Code (parser)": {
+    "n": 5528,
+    "pos": 3278,
+    "neg": 2250,
+    "tp": 3278,
+    "fp": 1,
+    "recall": 100.0,
+    "recall_ci": [
+     99.9,
+     100.0
+    ],
+    "fpr": 0.0,
+    "fpr_ci": [
+     0.0,
+     0.3
+    ],
+    "precision": 100.0
+   },
+   "Judgment model": {
+    "n": 5528,
+    "pos": 3278,
+    "neg": 2250,
+    "tp": 3235,
+    "fp": 819,
+    "recall": 98.7,
+    "recall_ci": [
+     98.2,
+     99.0
+    ],
+    "fpr": 36.4,
+    "fpr_ci": [
+     34.4,
+     38.4
+    ],
+    "precision": 79.8,
+    "auroc": 0.993,
+    "auroc_ci": [
+     0.991,
+     0.995
+    ]
+   }
+  },
+  "payload-box": {
+   "kind": "Parsed structure",
+   "Code (parser)": {
+    "n": 156,
+    "pos": 122,
+    "neg": 34,
+    "tp": 109,
+    "fp": 0,
+    "recall": 89.3,
+    "recall_ci": [
+     82.6,
+     93.7
+    ],
+    "fpr": 0.0,
+    "fpr_ci": [
+     0.0,
+     10.2
+    ],
+    "precision": 100.0
+   },
+   "Judgment model": {
+    "n": 156,
+    "pos": 122,
+    "neg": 34,
+    "tp": 98,
+    "fp": 0,
+    "recall": 80.3,
+    "recall_ci": [
+     72.4,
+     86.4
+    ],
+    "fpr": 0.0,
+    "fpr_ci": [
+     0.0,
+     10.2
+    ],
+    "precision": 100.0,
+    "auroc": 0.997,
+    "auroc_ci": [
+     0.988,
+     1.0
+    ]
+   }
+  },
+  "AgentDojo (unique calls)": {
+   "kind": "Agent actions",
+   "Code (parser)": {
+    "n": 384,
+    "pos": 45,
+    "neg": 339,
+    "tp": 0,
+    "fp": 0,
+    "recall": 0.0,
+    "recall_ci": [
+     0.0,
+     7.9
+    ],
+    "fpr": 0.0,
+    "fpr_ci": [
+     0.0,
+     1.1
+    ],
+    "precision": null
+   },
+   "Judgment model": {
+    "n": 384,
+    "pos": 45,
+    "neg": 339,
+    "tp": 12,
+    "fp": 3,
+    "recall": 26.7,
+    "recall_ci": [
+     16.0,
+     41.0
+    ],
+    "fpr": 0.9,
+    "fpr_ci": [
+     0.3,
+     2.6
+    ],
+    "precision": 80.0,
+    "auroc": 0.776,
+    "auroc_ci": [
+     0.686,
+     0.84
+    ]
+   }
+  },
+  "deepset": {
+   "kind": "Prompt injection",
+   "Code (patterns)": {
+    "n": 662,
+    "pos": 263,
+    "neg": 399,
+    "tp": 84,
+    "fp": 2,
+    "recall": 31.9,
+    "recall_ci": [
+     26.6,
+     37.8
+    ],
+    "fpr": 0.5,
+    "fpr_ci": [
+     0.1,
+     1.8
+    ],
+    "precision": 97.7
+   },
+   "PIGuard": {
+    "n": 662,
+    "pos": 263,
+    "neg": 399,
+    "tp": 225,
+    "fp": 0,
+    "recall": 85.6,
+    "recall_ci": [
+     80.8,
+     89.3
+    ],
+    "fpr": 0.0,
+    "fpr_ci": [
+     0.0,
+     1.0
+    ],
+    "precision": 100.0
+   },
+   "ProtectAI": {
+    "n": 662,
+    "pos": 263,
+    "neg": 399,
+    "tp": 109,
+    "fp": 4,
+    "recall": 41.4,
+    "recall_ci": [
+     35.7,
+     47.5
+    ],
+    "fpr": 1.0,
+    "fpr_ci": [
+     0.4,
+     2.5
+    ],
+    "precision": 96.5
+   }
+  },
+  "SPML": {
+   "kind": "Prompt injection",
+   "Code (patterns)": {
+    "n": 500,
+    "pos": 250,
+    "neg": 250,
+    "tp": 24,
+    "fp": 0,
+    "recall": 9.6,
+    "recall_ci": [
+     6.5,
+     13.9
+    ],
+    "fpr": 0.0,
+    "fpr_ci": [
+     0.0,
+     1.5
+    ],
+    "precision": 100.0
+   },
+   "PIGuard": {
+    "n": 500,
+    "pos": 250,
+    "neg": 250,
+    "tp": 68,
+    "fp": 0,
+    "recall": 27.2,
+    "recall_ci": [
+     22.1,
+     33.0
+    ],
+    "fpr": 0.0,
+    "fpr_ci": [
+     0.0,
+     1.5
+    ],
+    "precision": 100.0
+   },
+   "ProtectAI": {
+    "n": 500,
+    "pos": 250,
+    "neg": 250,
+    "tp": 243,
+    "fp": 21,
+    "recall": 97.2,
+    "recall_ci": [
+     94.3,
+     98.6
+    ],
+    "fpr": 8.4,
+    "fpr_ci": [
+     5.6,
+     12.5
+    ],
+    "precision": 92.0
+   }
+  },
+  "yanismiraoui": {
+   "kind": "Prompt injection",
+   "Code (patterns)": {
+    "n": 1034,
+    "pos": 1034,
+    "neg": 0,
+    "tp": 6,
+    "fp": 0,
+    "recall": 0.6,
+    "recall_ci": [
+     0.3,
+     1.3
+    ],
+    "fpr": null,
+    "fpr_ci": null,
+    "precision": 100.0
+   },
+   "PIGuard": {
+    "n": 1034,
+    "pos": 1034,
+    "neg": 0,
+    "tp": 766,
+    "fp": 0,
+    "recall": 74.1,
+    "recall_ci": [
+     71.3,
+     76.7
+    ],
+    "fpr": null,
+    "fpr_ci": null,
+    "precision": 100.0
+   },
+   "ProtectAI": {
+    "n": 1034,
+    "pos": 1034,
+    "neg": 0,
+    "tp": 1016,
+    "fp": 0,
+    "recall": 98.3,
+    "recall_ci": [
+     97.3,
+     98.9
+    ],
+    "fpr": null,
+    "fpr_ci": null,
+    "precision": 100.0
+   }
+  },
+  "TrustAIRLab": {
+   "kind": "Prompt injection",
+   "Code (patterns)": {
+    "n": 2810,
+    "pos": 1405,
+    "neg": 1405,
+    "tp": 255,
+    "fp": 111,
+    "recall": 18.1,
+    "recall_ci": [
+     16.2,
+     20.3
+    ],
+    "fpr": 7.9,
+    "fpr_ci": [
+     6.6,
+     9.4
+    ],
+    "precision": 69.7
+   },
+   "PIGuard": {
+    "n": 2810,
+    "pos": 1405,
+    "neg": 1405,
+    "tp": 1290,
+    "fp": 280,
+    "recall": 91.8,
+    "recall_ci": [
+     90.3,
+     93.1
+    ],
+    "fpr": 19.9,
+    "fpr_ci": [
+     17.9,
+     22.1
+    ],
+    "precision": 82.2
+   },
+   "ProtectAI": {
+    "n": 2810,
+    "pos": 1405,
+    "neg": 1405,
+    "tp": 1026,
+    "fp": 154,
+    "recall": 73.0,
+    "recall_ci": [
+     70.6,
+     75.3
+    ],
+    "fpr": 11.0,
+    "fpr_ci": [
+     9.4,
+     12.7
+    ],
+    "precision": 86.9
+   }
+  },
+  "NotInject": {
+   "kind": "Prompt injection",
+   "Code (patterns)": {
+    "n": 339,
+    "pos": 0,
+    "neg": 339,
+    "tp": 0,
+    "fp": 0,
+    "recall": null,
+    "recall_ci": null,
+    "fpr": 0.0,
+    "fpr_ci": [
+     0.0,
+     1.1
+    ],
+    "precision": null
+   },
+   "PIGuard": {
+    "n": 339,
+    "pos": 0,
+    "neg": 339,
+    "tp": 0,
+    "fp": 39,
+    "recall": null,
+    "recall_ci": null,
+    "fpr": 11.5,
+    "fpr_ci": [
+     8.5,
+     15.3
+    ],
+    "precision": 0.0
+   },
+   "ProtectAI": {
+    "n": 339,
+    "pos": 0,
+    "neg": 339,
+    "tp": 0,
+    "fp": 148,
+    "recall": null,
+    "recall_ci": null,
+    "fpr": 43.7,
+    "fpr_ci": [
+     38.5,
+     49.0
+    ],
+    "precision": 0.0
+   }
+  },
+  "KUQ": {
+   "kind": "Answerability",
+   "Code (rules)": {
+    "n": 4782,
+    "pos": 1335,
+    "neg": 3447,
+    "tp": 508,
+    "fp": 26,
+    "recall": 38.1,
+    "recall_ci": [
+     35.5,
+     40.7
+    ],
+    "fpr": 0.8,
+    "fpr_ci": [
+     0.5,
+     1.1
+    ],
+    "precision": 95.1
+   },
+   "Judgment model": {
+    "n": 4782,
+    "pos": 1335,
+    "neg": 3447,
+    "tp": 1254,
+    "fp": 441,
+    "recall": 93.9,
+    "recall_ci": [
+     92.5,
+     95.1
+    ],
+    "fpr": 12.8,
+    "fpr_ci": [
+     11.7,
+     14.0
+    ],
+    "precision": 74.0,
+    "auroc": 0.973,
+    "auroc_ci": [
+     0.968,
+     0.977
+    ]
+   }
+  },
+  "CoCoNot": {
+   "kind": "Answerability",
+   "Code (rules)": {
+    "n": 379,
+    "pos": 0,
+    "neg": 379,
+    "tp": 0,
+    "fp": 0,
+    "recall": null,
+    "recall_ci": null,
+    "fpr": 0.0,
+    "fpr_ci": [
+     0.0,
+     1.0
+    ],
+    "precision": null
+   },
+   "Judgment model": {
+    "n": 379,
+    "pos": 0,
+    "neg": 379,
+    "tp": 0,
+    "fp": 44,
+    "recall": null,
+    "recall_ci": null,
+    "fpr": 11.6,
+    "fpr_ci": [
+     8.8,
+     15.2
+    ],
+    "precision": 0.0,
+    "auroc": null,
+    "auroc_ci": null
+   }
+  },
+  "presidio": {
+   "kind": "PII presence",
+   "Code (native)": {
+    "n": 1182,
+    "pos": 1069,
+    "neg": 113,
+    "tp": 244,
+    "fp": 0,
+    "recall": 22.8,
+    "recall_ci": [
+     20.4,
+     25.4
+    ],
+    "fpr": 0.0,
+    "fpr_ci": [
+     0.0,
+     3.3
+    ],
+    "precision": 100.0
+   },
+   "Judgment model": {
+    "n": 1182,
+    "pos": 1069,
+    "neg": 113,
+    "tp": 1068,
+    "fp": 0,
+    "recall": 99.9,
+    "recall_ci": [
+     99.5,
+     100.0
+    ],
+    "fpr": 0.0,
+    "fpr_ci": [
+     0.0,
+     3.3
+    ],
+    "precision": 100.0,
+    "auroc": 1.0,
+    "auroc_ci": [
+     1.0,
+     1.0
+    ]
+   }
+  },
+  "gretel PII": {
+   "kind": "PII presence",
+   "Code (native)": {
+    "n": 4589,
+    "pos": 4235,
+    "neg": 354,
+    "tp": 2080,
+    "fp": 119,
+    "recall": 49.1,
+    "recall_ci": [
+     47.6,
+     50.6
+    ],
+    "fpr": 33.6,
+    "fpr_ci": [
+     28.9,
+     38.7
+    ],
+    "precision": 94.6
+   },
+   "Judgment model": {
+    "n": 4589,
+    "pos": 4235,
+    "neg": 354,
+    "tp": 3914,
+    "fp": 104,
+    "recall": 92.4,
+    "recall_ci": [
+     91.6,
+     93.2
+    ],
+    "fpr": 29.4,
+    "fpr_ci": [
+     24.9,
+     34.3
+    ],
+    "precision": 97.4,
+    "auroc": 0.926,
+    "auroc_ci": [
+     0.913,
+     0.938
+    ]
+   }
+  },
+  "TAB": {
+   "kind": "PII presence",
+   "Code (native)": {
+    "n": 127,
+    "pos": 127,
+    "neg": 0,
+    "tp": 0,
+    "fp": 0,
+    "recall": 0.0,
+    "recall_ci": [
+     0.0,
+     2.9
+    ],
+    "fpr": null,
+    "fpr_ci": null,
+    "precision": null
+   },
+   "Judgment model": {
+    "n": 127,
+    "pos": 127,
+    "neg": 0,
+    "tp": 127,
+    "fp": 0,
+    "recall": 100.0,
+    "recall_ci": [
+     97.1,
+     100.0
+    ],
+    "fpr": null,
+    "fpr_ci": null,
+    "precision": 100.0,
+    "auroc": null,
+    "auroc_ci": null
+   }
+  },
+  "PrivacyLens": {
+   "kind": "Entitlement",
+   "Judgment model": {
+    "n": 493,
+    "pos": 493,
+    "neg": 0,
+    "tp": 91,
+    "fp": 0,
+    "recall": 18.5,
+    "recall_ci": [
+     15.3,
+     22.1
+    ],
+    "fpr": null,
+    "fpr_ci": null,
+    "precision": 100.0
+   }
+  },
+  "SafePyramid (3,000 conv.)": {
+   "kind": "Policy rules",
+   "Judgment model": {
+    "n": 77755,
+    "pos": 18602,
+    "neg": 59153,
+    "tp": 14535,
+    "fp": 15577,
+    "recall": 78.1,
+    "recall_ci": [
+     77.5,
+     78.7
+    ],
+    "fpr": 26.3,
+    "fpr_ci": [
+     26.0,
+     26.7
+    ],
+    "precision": 48.3,
+    "auroc": 0.832,
+    "auroc_ci": null
+   }
+  },
+  "SafePyramid (600 conv.)": {
+   "kind": "Policy rules",
+   "Judgment model": {
+    "n": 15576,
+    "pos": 3737,
+    "neg": 11839,
+    "tp": 2924,
+    "fp": 3106,
+    "recall": 78.2,
+    "recall_ci": [
+     76.9,
+     79.5
+    ],
+    "fpr": 26.2,
+    "fpr_ci": [
+     25.5,
+     27.0
+    ],
+    "precision": 48.5
+   },
+   "LLM": {
+    "n": 15576,
+    "pos": 3737,
+    "neg": 11839,
+    "tp": 1947,
+    "fp": 2001,
+    "recall": 52.1,
+    "recall_ci": [
+     50.5,
+     53.7
+    ],
+    "fpr": 16.9,
+    "fpr_ci": [
+     16.2,
+     17.6
+    ],
+    "precision": 49.3
+   }
+  },
+  "R-Judge": {
+   "kind": "Trajectories",
+   "Judgment model": {
+    "n": 571,
+    "pos": 301,
+    "neg": 270,
+    "tp": 234,
+    "fp": 19,
+    "recall": 77.7,
+    "recall_ci": [
+     72.7,
+     82.1
+    ],
+    "fpr": 7.0,
+    "fpr_ci": [
+     4.6,
+     10.7
+    ],
+    "precision": 92.5,
+    "auroc": 0.919,
+    "auroc_ci": [
+     0.897,
+     0.943
+    ]
+   },
+   "auroc_by_question": {
+    "unsafe": {
+     "auroc": 0.919,
+     "ci": [
+      0.897,
+      0.943
+     ]
+    },
+    "irreversible": {
+     "auroc": 0.975,
+     "ci": [
+      0.963,
+      0.984
+     ]
+    },
+    "unconfirmed": {
+     "auroc": 0.99,
+     "ci": [
+      0.985,
+      0.995
+     ]
+    },
+    "unvalidated": {
+     "auroc": 0.803,
+     "ci": [
+      0.765,
+      0.839
+     ]
+    },
+    "unverified_claim": {
+     "auroc": 0.681,
+     "ci": [
+      0.637,
+      0.724
+     ]
+    },
+    "wrong_action": {
+     "auroc": 0.904,
+     "ci": [
+      0.876,
+      0.928
+     ]
+    }
+   }
+  },
+  "ATBench": {
+   "kind": "Trajectories",
+   "Judgment model": {
+    "n": 1000,
+    "pos": 497,
+    "neg": 503,
+    "tp": 174,
+    "fp": 72,
+    "recall": 35.0,
+    "recall_ci": [
+     30.9,
+     39.3
+    ],
+    "fpr": 14.3,
+    "fpr_ci": [
+     11.5,
+     17.6
+    ],
+    "precision": 70.7,
+    "auroc": 0.664,
+    "auroc_ci": [
+     0.632,
+     0.697
+    ]
+   },
+   "auroc_by_question": {
+    "unsafe": {
+     "auroc": 0.664,
+     "ci": [
+      0.632,
+      0.697
+     ]
+    },
+    "irreversible": {
+     "auroc": 0.651,
+     "ci": [
+      0.618,
+      0.684
+     ]
+    },
+    "unconfirmed": {
+     "auroc": 0.734,
+     "ci": [
+      0.703,
+      0.766
+     ]
+    },
+    "unvalidated": {
+     "auroc": 0.721,
+     "ci": [
+      0.69,
+      0.752
+     ]
+    },
+    "unverified_claim": {
+     "auroc": 0.765,
+     "ci": [
+      0.736,
+      0.795
+     ]
+    },
+    "wrong_action": {
+     "auroc": 0.461,
+     "ci": [
+      0.425,
+      0.496
+     ]
+    }
+   }
+  },
+  "ATBench500": {
+   "kind": "Trajectories",
+   "Judgment model": {
+    "n": 500,
+    "pos": 250,
+    "neg": 250,
+    "tp": 230,
+    "fp": 21,
+    "recall": 92.0,
+    "recall_ci": [
+     88.0,
+     94.8
+    ],
+    "fpr": 8.4,
+    "fpr_ci": [
+     5.6,
+     12.5
+    ],
+    "precision": 91.6,
+    "auroc": 0.975,
+    "auroc_ci": [
+     0.963,
+     0.985
+    ]
+   },
+   "auroc_by_question": {
+    "unsafe": {
+     "auroc": 0.975,
+     "ci": [
+      0.963,
+      0.985
+     ]
+    },
+    "irreversible": {
+     "auroc": 0.909,
+     "ci": [
+      0.883,
+      0.933
+     ]
+    },
+    "unconfirmed": {
+     "auroc": 0.985,
+     "ci": [
+      0.973,
+      0.994
+     ]
+    },
+    "unvalidated": {
+     "auroc": 0.997,
+     "ci": [
+      0.994,
+      0.999
+     ]
+    },
+    "unverified_claim": {
+     "auroc": 0.995,
+     "ci": [
+      0.99,
+      0.998
+     ]
+    },
+    "wrong_action": {
+     "auroc": 0.85,
+     "ci": [
+      0.816,
+      0.884
+     ]
+    }
+   }
+  },
+  "ATBench-Claw": {
+   "kind": "Trajectories",
+   "Judgment model": {
+    "n": 500,
+    "pos": 296,
+    "neg": 204,
+    "tp": 271,
+    "fp": 63,
+    "recall": 91.6,
+    "recall_ci": [
+     87.8,
+     94.2
+    ],
+    "fpr": 30.9,
+    "fpr_ci": [
+     24.9,
+     37.5
+    ],
+    "precision": 81.1,
+    "auroc": 0.885,
+    "auroc_ci": [
+     0.854,
+     0.915
+    ]
+   },
+   "auroc_by_question": {
+    "unsafe": {
+     "auroc": 0.885,
+     "ci": [
+      0.854,
+      0.915
+     ]
+    },
+    "irreversible": {
+     "auroc": 0.786,
+     "ci": [
+      0.738,
+      0.829
+     ]
+    },
+    "unconfirmed": {
+     "auroc": 0.886,
+     "ci": [
+      0.853,
+      0.915
+     ]
+    },
+    "unvalidated": {
+     "auroc": 0.903,
+     "ci": [
+      0.875,
+      0.929
+     ]
+    },
+    "unverified_claim": {
+     "auroc": 0.791,
+     "ci": [
+      0.75,
+      0.831
+     ]
+    },
+    "wrong_action": {
+     "auroc": 0.327,
+     "ci": [
+      0.277,
+      0.373
+     ]
+    }
+   }
+  },
+  "refund replies (in-house)": {
+   "kind": "Commitments",
+   "Judgment model": {
+    "n": 2160,
+    "pos": 1476,
+    "neg": 684,
+    "tp": 1071,
+    "fp": 157,
+    "recall": 72.6,
+    "recall_ci": [
+     70.2,
+     74.8
+    ],
+    "fpr": 23.0,
+    "fpr_ci": [
+     20.0,
+     26.3
+    ],
+    "precision": 87.2
+   }
+  }
+ },
+ "aggregate": {
+  "Parsed structure | Code (parser)": {
+   "datasets": 2,
+   "micro_recall": 99.6,
+   "macro_recall": 94.7,
+   "micro_fpr": 0.0,
+   "macro_fpr": 0.0
+  },
+  "Parsed structure | Judgment model": {
+   "datasets": 2,
+   "micro_recall": 98.0,
+   "macro_recall": 89.5,
+   "micro_fpr": 35.9,
+   "macro_fpr": 18.2
+  },
+  "Prompt injection | Code (patterns)": {
+   "datasets": 5,
+   "micro_recall": 12.5,
+   "macro_recall": 15.1,
+   "micro_fpr": 4.7,
+   "macro_fpr": 2.1
+  },
+  "Prompt injection | PIGuard": {
+   "datasets": 5,
+   "micro_recall": 79.6,
+   "macro_recall": 69.7,
+   "micro_fpr": 13.3,
+   "macro_fpr": 7.9
+  },
+  "Prompt injection | ProtectAI": {
+   "datasets": 5,
+   "micro_recall": 81.1,
+   "macro_recall": 77.5,
+   "micro_fpr": 13.7,
+   "macro_fpr": 16.0
+  },
+  "Answerability | Code (rules)": {
+   "datasets": 2,
+   "micro_recall": 38.1,
+   "macro_recall": 38.1,
+   "micro_fpr": 0.7,
+   "macro_fpr": 0.4
+  },
+  "Answerability | Judgment model": {
+   "datasets": 2,
+   "micro_recall": 93.9,
+   "macro_recall": 93.9,
+   "micro_fpr": 12.7,
+   "macro_fpr": 12.2
+  },
+  "PII presence | Code (native)": {
+   "datasets": 3,
+   "micro_recall": 42.8,
+   "macro_recall": 24.0,
+   "micro_fpr": 25.5,
+   "macro_fpr": 16.8
+  },
+  "PII presence | Judgment model": {
+   "datasets": 3,
+   "micro_recall": 94.1,
+   "macro_recall": 97.4,
+   "micro_fpr": 22.3,
+   "macro_fpr": 14.7
+  },
+  "Policy rules | Judgment model": {
+   "datasets": 2,
+   "micro_recall": 78.2,
+   "macro_recall": 78.2,
+   "micro_fpr": 26.3,
+   "macro_fpr": 26.3
+  },
+  "Trajectories | Judgment model": {
+   "datasets": 4,
+   "micro_recall": 67.6,
+   "macro_recall": 74.1,
+   "micro_fpr": 14.3,
+   "macro_fpr": 15.2
+  },
+  "Trajectories | best question AUROC": {
+   "micro": 0.898,
+   "macro": 0.899
+  },
+  "Trajectories | AUROC unsafe": {
+   "micro": 0.844,
+   "macro": 0.861
+  },
+  "Trajectories | AUROC irreversible": {
+   "micro": 0.832,
+   "macro": 0.83
+  },
+  "Trajectories | AUROC unconfirmed": {
+   "micro": 0.898,
+   "macro": 0.899
+  },
+  "Trajectories | AUROC unvalidated": {
+   "micro": 0.824,
+   "macro": 0.856
+  },
+  "Trajectories | AUROC unverified_claim": {
+   "micro": 0.775,
+   "macro": 0.808
+  },
+  "Trajectories | AUROC wrong_action": {
+   "micro": 0.643,
+   "macro": 0.635
+  }
+ },
+ "paired": {
+  "SQL: parser vs judgment@0.5": {
+   "only_first_right": 862,
+   "only_second_right": 1,
+   "p": 2.8096840115053614e-257
+  },
+  "AgentDojo attacker calls: parser vs judgment@0.5": {
+   "only_first_right": 0,
+   "only_second_right": 12,
+   "p": 0.00048828125
+  },
+  "deepset: PIGuard vs ProtectAI": {
+   "only_first_right": 121,
+   "only_second_right": 1,
+   "p": 4.6267457648365236e-35
+  },
+  "deepset: PIGuard vs patterns": {
+   "only_first_right": 143,
+   "only_second_right": 0,
+   "p": 1.793662034335766e-43
+  },
+  "SPML: PIGuard vs ProtectAI": {
+   "only_first_right": 23,
+   "only_second_right": 177,
+   "p": 1.243452255086879e-30
+  },
+  "SPML: PIGuard vs patterns": {
+   "only_first_right": 50,
+   "only_second_right": 6,
+   "p": 1.0182093779231849e-09
+  },
+  "yanismiraoui: PIGuard vs ProtectAI": {
+   "only_first_right": 4,
+   "only_second_right": 254,
+   "p": 7.911368954769475e-70
+  },
+  "yanismiraoui: PIGuard vs patterns": {
+   "only_first_right": 760,
+   "only_second_right": 0,
+   "p": 3.2978681700337323e-229
+  },
+  "TrustAIRLab: PIGuard vs ProtectAI": {
+   "only_first_right": 316,
+   "only_second_right": 178,
+   "p": 5.522139644840436e-10
+  },
+  "TrustAIRLab: PIGuard vs patterns": {
+   "only_first_right": 1124,
+   "only_second_right": 258,
+   "p": 5.6656460218407276e-129
+  },
+  "NotInject: PIGuard vs ProtectAI": {
+   "only_first_right": 115,
+   "only_second_right": 6,
+   "p": 3.047563595444677e-27
+  },
+  "NotInject: PIGuard vs patterns": {
+   "only_first_right": 0,
+   "only_second_right": 39,
+   "p": 3.637978807091713e-12
+  },
+  "five injection sets pooled: PIGuard vs ProtectAI": {
+   "only_first_right": 579,
+   "only_second_right": 616,
+   "p": 0.29768604612676763
+  },
+  "five injection sets pooled: PIGuard vs patterns": {
+   "only_first_right": 2077,
+   "only_second_right": 303,
+   "p": 0.0
+  },
+  "injection held-out FP: PIGuard vs judgment (pairing unknown)": {
+   "counts": [
+    10,
+    7
+   ],
+   "n": 467,
+   "p_min": 0.25,
+   "p_max": 0.629058837890625
+  },
+  "injection escapes recall: PIGuard vs judgment (pairing unknown)": {
+   "counts": [
+    7,
+    5
+   ],
+   "n": 165,
+   "p_min": 0.5,
+   "p_max": 0.7744140625
+  },
+  "NotInject FP: PIGuard vs judgment (pairing unknown)": {
+   "counts": [
+    39,
+    9
+   ],
+   "n": 339,
+   "p_min": 1.862645149230957e-09,
+   "p_max": 1.5221826110689562e-05
+  },
+  "KUQ: rules vs judgment@0.5": {
+   "only_first_right": 441,
+   "only_second_right": 772,
+   "p": 1.5063515567039805e-21
+  },
+  "CoCoNot: rules vs judgment@0.5": {
+   "only_first_right": 44,
+   "only_second_right": 0,
+   "p": 1.1368683772161603e-13
+  },
+  "presidio: native vs judgment@0.5": {
+   "only_first_right": 0,
+   "only_second_right": 824,
+   "p": 1.7877779172606837e-248
+  },
+  "gretel PII: native vs judgment@0.5": {
+   "only_first_right": 89,
+   "only_second_right": 1938,
+   "p": 0.0
+  },
+  "TAB: native vs judgment@0.5": {
+   "only_first_right": 0,
+   "only_second_right": 127,
+   "p": 1.1754943508222875e-38
+  },
+  "SafePyramid L0: judgment@0.5 - LLM accuracy (conversation bootstrap)": {
+   "conversations": 200,
+   "rules": 3219,
+   "jev_acc": 93.3,
+   "llm_acc": 81.4,
+   "diff": 11.9,
+   "ci": [
+    10.5,
+    13.4
+   ]
+  },
+  "SafePyramid L0: judgment@0.5 vs LLM (rule-level McNemar, ignores clustering)": {
+   "only_first_right": 470,
+   "only_second_right": 87,
+   "p": 1.5866765581249907e-64
+  },
+  "SafePyramid L1: judgment@0.5 - LLM accuracy (conversation bootstrap)": {
+   "conversations": 200,
+   "rules": 5764,
+   "jev_acc": 77.0,
+   "llm_acc": 75.3,
+   "diff": 1.6,
+   "ci": [
+    0.7,
+    2.7
+   ]
+  },
+  "SafePyramid L1: judgment@0.5 vs LLM (rule-level McNemar, ignores clustering)": {
+   "only_first_right": 835,
+   "only_second_right": 740,
+   "p": 0.017828741473147863
+  },
+  "SafePyramid L2: judgment@0.5 - LLM accuracy (conversation bootstrap)": {
+   "conversations": 200,
+   "rules": 6593,
+   "jev_acc": 63.9,
+   "llm_acc": 73.1,
+   "diff": -9.2,
+   "ci": [
+    -10.9,
+    -7.5
+   ]
+  },
+  "SafePyramid L2: judgment@0.5 vs LLM (rule-level McNemar, ignores clustering)": {
+   "only_first_right": 780,
+   "only_second_right": 1386,
+   "p": 3.961576403248288e-39
+  },
+  "SafePyramid ALL: judgment@0.5 - LLM accuracy (conversation bootstrap)": {
+   "conversations": 600,
+   "rules": 15576,
+   "jev_acc": 74.8,
+   "llm_acc": 75.7,
+   "diff": -0.8,
+   "ci": [
+    -1.9,
+    0.3
+   ]
+  },
+  "SafePyramid ALL: judgment@0.5 vs LLM (rule-level McNemar, ignores clustering)": {
+   "only_first_right": 2085,
+   "only_second_right": 2213,
+   "p": 0.052710415006816023
+  }
+ },
+ "thresholds": {
+  "SQL": {
+   "n_dev": 2764,
+   "n_test": 2764,
+   "t_youden": 0.81,
+   "t_fpr1": 0.78,
+   "test_ece": 0.137,
+   "dev_ece": 0.126,
+   "all_ece": 0.131,
+   "at_0.5": {
+    "recall": 98.7,
+    "fpr": 36.1,
+    "precision": 79.2,
+    "tp": 1589,
+    "pos": 1610,
+    "fp": 417,
+    "neg": 1154
+   },
+   "at_youden": {
+    "recall": 97.6,
+    "fpr": 0.0,
+    "precision": 100.0,
+    "tp": 1571,
+    "pos": 1610,
+    "fp": 0,
+    "neg": 1154
+   },
+   "at_fpr1": {
+    "recall": 98.0,
+    "fpr": 0.8,
+    "precision": 99.4,
+    "tp": 1578,
+    "pos": 1610,
+    "fp": 9,
+    "neg": 1154
+   },
+   "youden_over_20_splits": {
+    "min": 0.8,
+    "median": 0.81,
+    "max": 0.82
+   }
+  },
+  "Agent actions": {
+   "n_dev": 192,
+   "n_test": 192,
+   "t_youden": 0.34,
+   "t_fpr1": 0.51,
+   "test_ece": 0.066,
+   "dev_ece": 0.052,
+   "all_ece": 0.027,
+   "at_0.5": {
+    "recall": 17.9,
+    "fpr": 0.6,
+    "precision": 83.3,
+    "tp": 5,
+    "pos": 28,
+    "fp": 1,
+    "neg": 164
+   },
+   "at_youden": {
+    "recall": 28.6,
+    "fpr": 2.4,
+    "precision": 66.7,
+    "tp": 8,
+    "pos": 28,
+    "fp": 4,
+    "neg": 164
+   },
+   "at_fpr1": {
+    "recall": 17.9,
+    "fpr": 0.6,
+    "precision": 83.3,
+    "tp": 5,
+    "pos": 28,
+    "fp": 1,
+    "neg": 164
+   },
+   "youden_over_20_splits": {
+    "min": 0.07,
+    "median": 0.07,
+    "max": 0.44
+   }
+  },
+  "Answerability": {
+   "n_dev": 2580,
+   "n_test": 2581,
+   "t_youden": 0.67,
+   "t_fpr1": 0.89,
+   "test_ece": 0.146,
+   "dev_ece": 0.154,
+   "all_ece": 0.15,
+   "at_0.5": {
+    "recall": 93.2,
+    "fpr": 11.9,
+    "precision": 74.2,
+    "tp": 647,
+    "pos": 694,
+    "fp": 225,
+    "neg": 1887
+   },
+   "at_youden": {
+    "recall": 89.2,
+    "fpr": 6.1,
+    "precision": 84.2,
+    "tp": 619,
+    "pos": 694,
+    "fp": 116,
+    "neg": 1887
+   },
+   "at_fpr1": {
+    "recall": 70.6,
+    "fpr": 0.5,
+    "precision": 98.0,
+    "tp": 490,
+    "pos": 694,
+    "fp": 10,
+    "neg": 1887
+   },
+   "youden_over_20_splits": {
+    "min": 0.58,
+    "median": 0.675,
+    "max": 0.71
+   }
+  },
+  "PII presence": {
+   "n_dev": 2949,
+   "n_test": 2949,
+   "t_youden": 0.95,
+   "t_fpr1": 1.0,
+   "test_ece": 0.051,
+   "dev_ece": 0.053,
+   "all_ece": 0.052,
+   "at_0.5": {
+    "recall": 94.1,
+    "fpr": 22.4,
+    "precision": 98.0,
+    "tp": 2560,
+    "pos": 2721,
+    "fp": 51,
+    "neg": 228
+   },
+   "at_youden": {
+    "recall": 91.5,
+    "fpr": 10.1,
+    "precision": 99.1,
+    "tp": 2491,
+    "pos": 2721,
+    "fp": 23,
+    "neg": 228
+   },
+   "at_fpr1": {
+    "recall": 12.2,
+    "fpr": 0.0,
+    "precision": 100.0,
+    "tp": 331,
+    "pos": 2721,
+    "fp": 0,
+    "neg": 228
+   },
+   "youden_over_20_splits": {
+    "min": 0.91,
+    "median": 0.95,
+    "max": 0.95
+   }
+  },
+  "Trajectories": {
+   "n_dev": 1285,
+   "n_test": 1286,
+   "t_youden": 0.38,
+   "t_fpr1": 0.9,
+   "test_ece": 0.047,
+   "dev_ece": 0.053,
+   "all_ece": 0.05,
+   "at_0.5": {
+    "recall": 68.1,
+    "fpr": 15.4,
+    "precision": 83.1,
+    "tp": 461,
+    "pos": 677,
+    "fp": 94,
+    "neg": 609
+   },
+   "at_youden": {
+    "recall": 79.2,
+    "fpr": 28.1,
+    "precision": 75.8,
+    "tp": 536,
+    "pos": 677,
+    "fp": 171,
+    "neg": 609
+   },
+   "at_fpr1": {
+    "recall": 24.4,
+    "fpr": 1.1,
+    "precision": 95.9,
+    "tp": 165,
+    "pos": 677,
+    "fp": 7,
+    "neg": 609
+   },
+   "youden_over_20_splits": {
+    "min": 0.38,
+    "median": 0.44,
+    "max": 0.56
+   }
+  },
+  "Policy rules": {
+   "n_dev": 38581,
+   "n_test": 39174,
+   "t_youden": 0.45,
+   "t_fpr1": 0.93,
+   "test_ece": 0.163,
+   "dev_ece": 0.159,
+   "all_ece": 0.161,
+   "at_0.5": {
+    "recall": 78.0,
+    "fpr": 26.6,
+    "precision": 48.0,
+    "tp": 7326,
+    "pos": 9389,
+    "fp": 7934,
+    "neg": 29785
+   },
+   "at_youden": {
+    "recall": 81.7,
+    "fpr": 29.4,
+    "precision": 46.7,
+    "tp": 7672,
+    "pos": 9389,
+    "fp": 8769,
+    "neg": 29785
+   },
+   "at_fpr1": {
+    "recall": 9.6,
+    "fpr": 1.0,
+    "precision": 75.4,
+    "tp": 904,
+    "pos": 9389,
+    "fp": 295,
+    "neg": 29785
+   },
+   "youden_over_20_splits": {
+    "min": 0.43,
+    "median": 0.45,
+    "max": 0.46
+   }
+  }
+ },
+ "tpr_at_1fpr": {
+  "SQL": {
+   "tpr": 97.6,
+   "tp": 3200,
+   "pos": 3278,
+   "fp": 19,
+   "neg": 2250,
+   "threshold": 0.78
+  },
+  "Agent actions": {
+   "tpr": 26.7,
+   "tp": 12,
+   "pos": 45,
+   "fp": 3,
+   "neg": 339,
+   "threshold": 0.5
+  },
+  "Answerability": {
+   "tpr": 71.7,
+   "tp": 957,
+   "pos": 1335,
+   "fp": 32,
+   "neg": 3826,
+   "threshold": 0.88
+  },
+  "PII presence": {
+   "tpr": 11.4,
+   "tp": 618,
+   "pos": 5431,
+   "fp": 0,
+   "neg": 467,
+   "threshold": 1.0
+  },
+  "Trajectories": {
+   "tpr": 20.5,
+   "tp": 275,
+   "pos": 1344,
+   "fp": 12,
+   "neg": 1227,
+   "threshold": 0.91
+  },
+  "Policy rules": {
+   "tpr": 9.6,
+   "tp": 1790,
+   "pos": 18602,
+   "fp": 554,
+   "neg": 59153,
+   "threshold": 0.93
+  },
+  "Trajectories R-Judge": {
+   "tpr": 68.1,
+   "tp": 205,
+   "pos": 301,
+   "fp": 2,
+   "neg": 270,
+   "threshold": 0.67
+  },
+  "Trajectories ATBench": {
+   "tpr": 9.3,
+   "tp": 46,
+   "pos": 497,
+   "fp": 5,
+   "neg": 503,
+   "threshold": 0.73
+  },
+  "Trajectories ATBench500": {
+   "tpr": 64.8,
+   "tp": 162,
+   "pos": 250,
+   "fp": 2,
+   "neg": 250,
+   "threshold": 0.73
+  },
+  "Trajectories ATBench-Claw": {
+   "tpr": 8.1,
+   "tp": 24,
+   "pos": 296,
+   "fp": 0,
+   "neg": 204,
+   "threshold": 0.97
+  }
+ },
+ "policy_roles": {
+  "conditional": {
+   "rules": 3403,
+   "violated": 0,
+   "jev_acc": 47.9,
+   "llm_acc": 67.1,
+   "jev_flag_rate": 52.1,
+   "llm_flag_rate": 32.9,
+   "boot": {
+    "conversations": 390,
+    "rules": 3403,
+    "jev_acc": 47.9,
+    "llm_acc": 67.1,
+    "diff": -19.2,
+    "ci": [
+     -21.9,
+     -16.4
+    ]
+   }
+  },
+  "contradicted": {
+   "rules": 774,
+   "violated": 774,
+   "jev_acc": 40.4,
+   "llm_acc": 56.3,
+   "jev_flag_rate": 40.4,
+   "llm_flag_rate": 56.3,
+   "boot": {
+    "conversations": 390,
+    "rules": 774,
+    "jev_acc": 40.4,
+    "llm_acc": 56.3,
+    "diff": -15.9,
+    "ci": [
+     -20.8,
+     -11.1
+    ]
+   }
+  },
+  "decisive": {
+   "rules": 1629,
+   "violated": 1332,
+   "jev_acc": 84.8,
+   "llm_acc": 52.1,
+   "jev_flag_rate": 79.2,
+   "llm_flag_rate": 42.9,
+   "boot": {
+    "conversations": 400,
+    "rules": 1629,
+    "jev_acc": 84.8,
+    "llm_acc": 52.1,
+    "diff": 32.7,
+    "ci": [
+     29.3,
+     36.3
+    ]
+   }
+  },
+  "distractor": {
+   "rules": 3344,
+   "violated": 65,
+   "jev_acc": 95.0,
+   "llm_acc": 93.8,
+   "jev_flag_rate": 4.4,
+   "llm_flag_rate": 5.1,
+   "boot": {
+    "conversations": 397,
+    "rules": 3344,
+    "jev_acc": 95.0,
+    "llm_acc": 93.8,
+    "diff": 1.2,
+    "ci": [
+     0.1,
+     2.2
+    ]
+   }
+  },
+  "exception": {
+   "rules": 2485,
+   "violated": 449,
+   "jev_acc": 82.5,
+   "llm_acc": 82.1,
+   "jev_flag_rate": 29.7,
+   "llm_flag_rate": 7.2,
+   "boot": {
+    "conversations": 400,
+    "rules": 2485,
+    "jev_acc": 82.5,
+    "llm_acc": 82.1,
+    "diff": 0.4,
+    "ci": [
+     -2.2,
+     3.0
+    ]
+   }
+  },
+  "waived": {
+   "rules": 722,
+   "violated": 1,
+   "jev_acc": 14.1,
+   "llm_acc": 58.2,
+   "jev_flag_rate": 85.7,
+   "llm_flag_rate": 42.0,
+   "boot": {
+    "conversations": 333,
+    "rules": 722,
+    "jev_acc": 14.1,
+    "llm_acc": 58.2,
+    "diff": -44.0,
+    "ci": [
+     -48.4,
+     -39.3
+    ]
+   }
+  }
+ },
+ "trajectories_all_auroc": {
+  "unsafe": {
+   "auroc": 0.844,
+   "ci": [
+    0.828,
+    0.859
+   ]
+  },
+  "irreversible": {
+   "auroc": 0.832,
+   "ci": [
+    0.816,
+    0.848
+   ]
+  },
+  "unconfirmed": {
+   "auroc": 0.898,
+   "ci": [
+    0.886,
+    0.909
+   ]
+  },
+  "unvalidated": {
+   "auroc": 0.824,
+   "ci": [
+    0.808,
+    0.839
+   ]
+  },
+  "unverified_claim": {
+   "auroc": 0.775,
+   "ci": [
+    0.757,
+    0.791
+   ]
+  },
+  "wrong_action": {
+   "auroc": 0.643,
+   "ci": [
+    0.624,
+    0.664
+   ]
+  }
+ },
+ "latency": {
+  "judgment model, trajectories (6 questions per request)": {
+   "n": 2571,
+   "median_ms": 351.9,
+   "p95_ms": 438.1
+  },
+  "judgment model, policy rules (all rules of a case per request)": {
+   "n": 3000,
+   "median_ms": 1427.3,
+   "p95_ms": 3467.5
+  },
+  "LLM, policy rules (one call per case)": {
+   "n": 600,
+   "median_ms": 1087.7,
+   "p95_ms": 2005.7
+  },
+  "judgment model, injection (median, p95 from judgment_results.json)": {
+   "median_ms": 341.3,
+   "p95_ms": 1209.8
+  },
+  "PIGuard, mean ms per text": 67.8,
+  "ProtectAI, mean ms per text": 62.2,
+  "SQL parser, microseconds": {
+   "median": 146.6,
+   "p95": 355.5,
+   "p99": 605.7,
+   "max": 4973.1
+  }
+ }
+}

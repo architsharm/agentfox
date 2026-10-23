@@ -1,0 +1,17 @@
+{
+ "SQL: parser, judgment model": 11056,
+ "payload-box: parser, judgment model": 312,
+ "AgentDojo unique calls: parser, judgment model": 768,
+ "AgentDojo replay: 12 enforcement conditions x 4,275 calls": 51300,
+ "external injection sets: patterns, PIGuard, ProtectAI": 16035,
+ "adaptive attempts: shipped detectors, judgment model": 4916,
+ "escapes + NotInject: 5 tiers": 2520,
+ "held-out benign: 4 tiers": 1868,
+ "answerability: rules, judgment model": 10322,
+ "PII: native, judgment model": 14442,
+ "entitlement: judgment model": 493,
+ "SafePyramid: judgment model (3,000 conversations)": 77755,
+ "SafePyramid: LLM (600 conversations)": 15576,
+ "trajectories: 6 judgment questions": 15426,
+ "refund replies: 4 configurations": 8640
+}

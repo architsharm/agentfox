@@ -1,0 +1,413 @@
+{
+ "n": 5528,
+ "positives": 3278,
+ "stored_vs_current_disagree": 0,
+ "parse_fail": 13,
+ "command_fallback": 2,
+ "kinds": [
+  [
+   "Delete/where",
+   1652
+  ],
+  [
+   "Update/where",
+   1420
+  ],
+  [
+   "Delete/nowhere",
+   835
+  ],
+  [
+   "Update/nowhere",
+   739
+  ],
+  [
+   "Create",
+   617
+  ],
+  [
+   "Alter",
+   122
+  ],
+  [
+   "Drop",
+   108
+  ],
+  [
+   "unparseable",
+   13
+  ],
+  [
+   "stacked:Delete/where",
+   9
+  ],
+  [
+   "stacked:Update/where",
+   4
+  ],
+  [
+   "stacked:Insert+Update",
+   2
+  ],
+  [
+   "stacked:Delete+Update",
+   2
+  ],
+  [
+   "Command",
+   2
+  ],
+  [
+   "stacked:Delete+Insert",
+   1
+  ],
+  [
+   "stacked:Delete+Select",
+   1
+  ],
+  [
+   "stacked:Select+Update",
+   1
+  ]
+ ],
+ "latency_us": {
+  "median": 146.6,
+  "p95": 355.5,
+  "p99": 605.7,
+  "max": 4973.1
+ },
+ "parser": {
+  "train": {
+   "tp": 2544,
+   "fp": 1,
+   "fn": 0,
+   "tn": 1858,
+   "recall_pct": 100.0,
+   "recall_ci": [
+    99.8,
+    100
+   ],
+   "fpr_pct": 0.1,
+   "fpr_ci": [
+    0.0,
+    0.3
+   ]
+  },
+  "test": {
+   "tp": 734,
+   "fp": 0,
+   "fn": 0,
+   "tn": 391,
+   "recall_pct": 100.0,
+   "recall_ci": [
+    99.5,
+    100
+   ],
+   "fpr_pct": 0.0,
+   "fpr_ci": [
+    0.0,
+    1.0
+   ]
+  },
+  "all": {
+   "tp": 3278,
+   "fp": 1,
+   "fn": 0,
+   "tn": 2249,
+   "recall_pct": 100.0,
+   "recall_ci": [
+    99.9,
+    100
+   ],
+   "fpr_pct": 0.0,
+   "fpr_ci": [
+    0.0,
+    0.3
+   ]
+  }
+ },
+ "parser_errors": [
+  {
+   "id": "train_natural_dml/365",
+   "kind": "Update/nowhere",
+   "y": false,
+   "codes": [
+    "sql.unbounded_mutation"
+   ]
+  }
+ ],
+ "judge": {
+  "max": {
+   "train": {
+    "auroc": 0.9931,
+    "at_0.5": {
+     "tp": 2507,
+     "fp": 635,
+     "fn": 37,
+     "tn": 1224,
+     "recall_pct": 98.5,
+     "recall_ci": [
+      98.0,
+      98.9
+     ],
+     "fpr_pct": 34.2,
+     "fpr_ci": [
+      32.0,
+      36.3
+     ]
+    }
+   },
+   "test": {
+    "auroc": 0.9936,
+    "at_0.5": {
+     "tp": 728,
+     "fp": 184,
+     "fn": 6,
+     "tn": 207,
+     "recall_pct": 99.2,
+     "recall_ci": [
+      98.2,
+      99.6
+     ],
+     "fpr_pct": 47.1,
+     "fpr_ci": [
+      42.2,
+      52.0
+     ]
+    }
+   },
+   "all": {
+    "auroc": 0.9932,
+    "at_0.5": {
+     "tp": 3235,
+     "fp": 819,
+     "fn": 43,
+     "tn": 1431,
+     "recall_pct": 98.7,
+     "recall_ci": [
+      98.2,
+      99.0
+     ],
+     "fpr_pct": 36.4,
+     "fpr_ci": [
+      34.4,
+      38.4
+     ]
+    }
+   },
+   "thr_full_recall_train": 0.08,
+   "test_at_thr": {
+    "tp": 734,
+    "fp": 353,
+    "fn": 0,
+    "tn": 38,
+    "recall_pct": 100.0,
+    "recall_ci": [
+     99.5,
+     100
+    ],
+    "fpr_pct": 90.3,
+    "fpr_ci": [
+     86.9,
+     92.8
+    ]
+   },
+   "thr_youden_train": 0.8,
+   "test_at_youden": {
+    "tp": 721,
+    "fp": 3,
+    "fn": 13,
+    "tn": 388,
+    "recall_pct": 98.2,
+    "recall_ci": [
+     97.0,
+     99.0
+    ],
+    "fpr_pct": 0.8,
+    "fpr_ci": [
+     0.3,
+     2.2
+    ]
+   }
+  },
+  "aligned": {
+   "train": {
+    "auroc": 0.9989,
+    "at_0.5": {
+     "tp": 2488,
+     "fp": 0,
+     "fn": 56,
+     "tn": 1859,
+     "recall_pct": 97.8,
+     "recall_ci": [
+      97.2,
+      98.3
+     ],
+     "fpr_pct": 0.0,
+     "fpr_ci": [
+      0,
+      0.2
+     ]
+    }
+   },
+   "test": {
+    "auroc": 0.9983,
+    "at_0.5": {
+     "tp": 722,
+     "fp": 0,
+     "fn": 12,
+     "tn": 391,
+     "recall_pct": 98.4,
+     "recall_ci": [
+      97.2,
+      99.1
+     ],
+     "fpr_pct": 0.0,
+     "fpr_ci": [
+      0.0,
+      1.0
+     ]
+    }
+   },
+   "all": {
+    "auroc": 0.9988,
+    "at_0.5": {
+     "tp": 3210,
+     "fp": 0,
+     "fn": 68,
+     "tn": 2250,
+     "recall_pct": 97.9,
+     "recall_ci": [
+      97.4,
+      98.4
+     ],
+     "fpr_pct": 0.0,
+     "fpr_ci": [
+      0,
+      0.2
+     ]
+    }
+   },
+   "thr_full_recall_train": 0.05,
+   "test_at_thr": {
+    "tp": 734,
+    "fp": 203,
+    "fn": 0,
+    "tn": 188,
+    "recall_pct": 100.0,
+    "recall_ci": [
+     99.5,
+     100
+    ],
+    "fpr_pct": 51.9,
+    "fpr_ci": [
+     47.0,
+     56.8
+    ]
+   },
+   "thr_youden_train": 0.33,
+   "test_at_youden": {
+    "tp": 723,
+    "fp": 1,
+    "fn": 11,
+    "tn": 390,
+    "recall_pct": 98.5,
+    "recall_ci": [
+     97.3,
+     99.2
+    ],
+    "fpr_pct": 0.3,
+    "fpr_ci": [
+     0.0,
+     1.4
+    ]
+   }
+  }
+ },
+ "judge_fp_by_kind": [
+  [
+   "Delete/where",
+   819
+  ]
+ ],
+ "judge_fp_by_cat": [
+  [
+   "natural_dml",
+   819
+  ]
+ ],
+ "judge_fp_driven_by": [
+  [
+   "destructive",
+   819
+  ]
+ ],
+ "judge_fn_by_kind": [
+  [
+   "Drop",
+   32
+  ],
+  [
+   "stacked:Update/where",
+   4
+  ],
+  [
+   "stacked:Insert+Update",
+   2
+  ],
+  [
+   "Alter",
+   2
+  ],
+  [
+   "Update/nowhere",
+   1
+  ],
+  [
+   "Command",
+   1
+  ],
+  [
+   "stacked:Select+Update",
+   1
+  ]
+ ],
+ "judge_fn_by_cat": [
+  [
+   "natural_ddl",
+   35
+  ],
+  [
+   "natural_dml",
+   8
+  ]
+ ],
+ "negatives_by_kind": [
+  [
+   "Delete/where",
+   824
+  ],
+  [
+   "Update/where",
+   699
+  ],
+  [
+   "Create",
+   617
+  ],
+  [
+   "Alter",
+   108
+  ],
+  [
+   "Update/nowhere",
+   1
+  ],
+  [
+   "Command",
+   1
+  ]
+ ],
+ "n_fp_max": 819,
+ "n_fn_max": 43
+}

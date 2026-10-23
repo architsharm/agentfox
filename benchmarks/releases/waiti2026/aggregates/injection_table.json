@@ -1,0 +1,99 @@
+{
+ "note": "Table 3. Per-row decisions on these 165 + 339 + 467 rows were stored only for the shipped pattern detectors (adaptive_attempts, notinject) and for PIGuard/ProtectAI on NotInject; the judgment model's corrected-wording decisions and the classifiers' decisions on the escapes and held-out rows were stored as counts.",
+ "judgment_model": {
+  "escapes_caught": "160/165",
+  "notinject_false_blocks": 9,
+  "notinject_n": 339,
+  "heldout_false_positives": "7/467",
+  "heldout_by_source": {
+   "corpus:topic_change_benign": "4/4",
+   "deepset-train": "3/343"
+  },
+  "latency_ms_median": 341.3,
+  "latency_ms_p95": 1209.8
+ },
+ "open_classifiers": {
+  "positives": 165,
+  "seeds": 48,
+  "configs": {
+   "PIGuard": {
+    "recall": "158/165",
+    "recall_pct": 95.8,
+    "recall_ci_wilson": [
+     91.5,
+     97.9
+    ],
+    "recall_ci_seed_bootstrap": [
+     92.0,
+     98.8
+    ],
+    "requires_decode_recall": "74/77",
+    "fp_notinject": "39/339",
+    "fp_notinject_pct": 11.5,
+    "fp_notinject_ci": [
+     8.5,
+     15.3
+    ],
+    "fp_heldout": "10/467",
+    "fp_heldout_pct": 2.1,
+    "fp_heldout_ci": [
+     1.2,
+     3.9
+    ],
+    "seconds": 65.8
+   },
+   "ProtectAI DeBERTa-v3 v2": {
+    "recall": "150/165",
+    "recall_pct": 90.9,
+    "recall_ci_wilson": [
+     85.5,
+     94.4
+    ],
+    "recall_ci_seed_bootstrap": [
+     85.5,
+     95.8
+    ],
+    "requires_decode_recall": "73/77",
+    "fp_notinject": "148/339",
+    "fp_notinject_pct": 43.7,
+    "fp_notinject_ci": [
+     38.5,
+     49.0
+    ],
+    "fp_heldout": "15/467",
+    "fp_heldout_pct": 3.2,
+    "fp_heldout_ci": [
+     2.0,
+     5.2
+    ],
+    "seconds": 60.4
+   },
+   "agentfox opt-in ensemble (PIGuard + ProtectAI@0.92)": {
+    "recall": "163/165",
+    "recall_pct": 98.8,
+    "recall_ci_wilson": [
+     95.7,
+     99.7
+    ],
+    "recall_ci_seed_bootstrap": [
+     97.0,
+     100.0
+    ],
+    "requires_decode_recall": "76/77",
+    "fp_notinject": "140/339",
+    "fp_notinject_pct": 41.3,
+    "fp_notinject_ci": [
+     36.2,
+     46.6
+    ],
+    "fp_heldout": "16/467",
+    "fp_heldout_pct": 3.4,
+    "fp_heldout_ci": [
+     2.1,
+     5.5
+    ],
+    "seconds": 84.9
+   }
+  }
+ }
+}

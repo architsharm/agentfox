@@ -1,0 +1,186 @@
+{
+  "benchmark": "AgentDojo, executed ground truth replayed with provenance inferred from tool outputs",
+  "agentdojo": {
+    "package": "0.1.35",
+    "version": "v1.2.2"
+  },
+  "counts": {
+    "user_tasks": 97,
+    "benign_calls": 339,
+    "attack_pairs": 949,
+    "evaluable_attack_pairs": 588,
+    "attacker_acting_calls": 702
+  },
+  "verdict": "applied (enforced), content detectors off",
+  "conditions": {
+    "oracle_labels": {
+      "benign_tasks_allowed": {
+        "k": 97,
+        "n": 97,
+        "missed": 0,
+        "fraction": "97/97",
+        "rate": 1.0,
+        "ci95": "[96.2, 100.0]"
+      },
+      "attacks_contained": {
+        "k": 588,
+        "n": 588,
+        "missed": 0,
+        "fraction": "588/588",
+        "rate": 1.0,
+        "ci95": "[99.4, 100.0]"
+      },
+      "acting_calls_contained": {
+        "k": 702,
+        "n": 702,
+        "missed": 0,
+        "fraction": "702/702",
+        "rate": 1.0,
+        "ci95": "[99.5, 100.0]"
+      }
+    },
+    "capability_only": {
+      "benign_tasks_allowed": {
+        "k": 97,
+        "n": 97,
+        "missed": 0,
+        "fraction": "97/97",
+        "rate": 1.0,
+        "ci95": "[96.2, 100.0]"
+      },
+      "attacks_contained": {
+        "k": 0,
+        "n": 588,
+        "missed": 588,
+        "fraction": "0/588",
+        "rate": 0.0,
+        "ci95": "[0.0, 0.6]"
+      },
+      "acting_calls_contained": {
+        "k": 61,
+        "n": 702,
+        "missed": 641,
+        "fraction": "61/702",
+        "rate": 0.0869,
+        "ci95": "[6.8, 11.0]"
+      }
+    },
+    "inferred_session_taint": {
+      "benign_tasks_allowed": {
+        "k": 24,
+        "n": 97,
+        "missed": 73,
+        "fraction": "24/97",
+        "rate": 0.2474,
+        "ci95": "[17.2, 34.2]"
+      },
+      "attacks_contained": {
+        "k": 588,
+        "n": 588,
+        "missed": 0,
+        "fraction": "588/588",
+        "rate": 1.0,
+        "ci95": "[99.4, 100.0]"
+      },
+      "acting_calls_contained": {
+        "k": 702,
+        "n": 702,
+        "missed": 0,
+        "fraction": "702/702",
+        "rate": 1.0,
+        "ci95": "[99.5, 100.0]"
+      }
+    },
+    "inferred_argument_taint": {
+      "benign_tasks_allowed": {
+        "k": 37,
+        "n": 97,
+        "missed": 60,
+        "fraction": "37/97",
+        "rate": 0.3814,
+        "ci95": "[29.1, 48.1]"
+      },
+      "attacks_contained": {
+        "k": 527,
+        "n": 588,
+        "missed": 61,
+        "fraction": "527/588",
+        "rate": 0.8963,
+        "ci95": "[86.9, 91.8]"
+      },
+      "acting_calls_contained": {
+        "k": 641,
+        "n": 702,
+        "missed": 61,
+        "fraction": "641/702",
+        "rate": 0.9131,
+        "ci95": "[89.0, 93.2]"
+      }
+    },
+    "inferred_session_taint_tiered": {
+      "benign_tasks_allowed": {
+        "k": 43,
+        "n": 97,
+        "missed": 54,
+        "fraction": "43/97",
+        "rate": 0.4433,
+        "ci95": "[34.8, 54.2]"
+      },
+      "attacks_contained": {
+        "k": 588,
+        "n": 588,
+        "missed": 0,
+        "fraction": "588/588",
+        "rate": 1.0,
+        "ci95": "[99.4, 100.0]"
+      },
+      "acting_calls_contained": {
+        "k": 702,
+        "n": 702,
+        "missed": 0,
+        "fraction": "702/702",
+        "rate": 1.0,
+        "ci95": "[99.5, 100.0]"
+      }
+    },
+    "inferred_argument_taint_tiered": {
+      "benign_tasks_allowed": {
+        "k": 62,
+        "n": 97,
+        "missed": 35,
+        "fraction": "62/97",
+        "rate": 0.6392,
+        "ci95": "[54.0, 72.8]"
+      },
+      "attacks_contained": {
+        "k": 527,
+        "n": 588,
+        "missed": 61,
+        "fraction": "527/588",
+        "rate": 0.8963,
+        "ci95": "[86.9, 91.8]"
+      },
+      "acting_calls_contained": {
+        "k": 641,
+        "n": 702,
+        "missed": 61,
+        "fraction": "641/702",
+        "rate": 0.9131,
+        "ci95": "[89.0, 93.2]"
+      }
+    }
+  },
+  "benign_acting_calls_escalated_argument_tiered": {
+    "k": 43,
+    "n": 73,
+    "missed": 30,
+    "fraction": "43/73",
+    "rate": 0.589,
+    "ci95": "[47.4, 69.5]",
+    "meaning": "legitimate write/irreversible calls escalated under argument-level taint with read-only tools exempt; every one has an argument inferred from a tool output"
+  },
+  "notes": [
+    "oracle_labels assigns provenance from the benchmark label (benign = user, attacker = tool_result); it is an upper bound, not a measurement of the tracker.",
+    "tiered grants read-only tools at max_taint=memory; it was designed after seeing the untiered results."
+  ]
+}

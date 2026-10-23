@@ -1,0 +1,78 @@
+{
+ "max": {
+  "fp": 819,
+  "fn": 43,
+  "fp_buckets": {
+   "bounded_delete": 819
+  },
+  "fn_buckets": {
+   "stacked_policy": 7,
+   "other": 4,
+   "drop_view": 32
+  },
+  "other_examples": [
+   {
+    "id": "train_natural_dml/671",
+    "kind": "Update/nowhere",
+    "y": true
+   },
+   {
+    "id": "train_natural_ddl/278",
+    "kind": "Alter",
+    "y": true
+   },
+   {
+    "id": "train_natural_ddl/369",
+    "kind": "Command",
+    "y": true
+   },
+   {
+    "id": "test_natural_ddl/37",
+    "kind": "Alter",
+    "y": true
+   }
+  ]
+ },
+ "aligned": {
+  "fp": 0,
+  "fn": 68,
+  "fp_buckets": {},
+  "fn_buckets": {
+   "stacked_policy": 18,
+   "other": 5,
+   "drop_view": 32,
+   "malformed_variant": 13
+  },
+  "other_examples": [
+   {
+    "id": "train_natural_dml/671",
+    "kind": "Update/nowhere",
+    "y": true
+   },
+   {
+    "id": "train_natural_ddl/278",
+    "kind": "Alter",
+    "y": true
+   },
+   {
+    "id": "train_natural_ddl/369",
+    "kind": "Command",
+    "y": true
+   },
+   {
+    "id": "test_natural_dml/9",
+    "kind": "Delete/nowhere",
+    "y": true
+   },
+   {
+    "id": "test_natural_ddl/37",
+    "kind": "Alter",
+    "y": true
+   }
+  ]
+ },
+ "parser_tp_via_parse_error": 13,
+ "stacked_positive": 20,
+ "drop_view_rows": 32,
+ "bounded_delete_negatives": 824
+}

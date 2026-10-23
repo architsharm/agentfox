@@ -34,6 +34,9 @@ One entry per capability area. Each links to a self-contained directory with its
 - [`_common/`](_common/__init__.py) holds the helpers more than one script used to copy: the
   throwaway-database reset, the dataset download, and the PII span arithmetic. Each script still owns
   its ground truth, scoring rules and result format.
+- [`releases/`](releases/waiti2026/README.md) holds data releases for papers: per-row detector decisions
+  keyed by dataset row ID and a hash of the row's text, with no dataset text. `releases/waiti2026/`
+  backs the WAITI 2026 paper; `python3 benchmarks/releases/waiti2026/verify.py` checks it.
 - Every script runs as a module from the repository root, so `benchmarks._common` imports without
   any `sys.path` edits: `uv run python -m benchmarks.containment.run_containment_benchmark`.
 
