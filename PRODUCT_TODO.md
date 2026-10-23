@@ -139,7 +139,8 @@ The new design stays. These are the UI fixes the review found. They come after t
   - It shows raw provider errors.
   - The same error handling applies to the RetestStep headline and the −X%.
 - [ ] Shield mark: show it only when a rule acts on the line. Checks alone only record, and the panel already says so.
-- [ ] "Blocks · watching only" → "Would block (watching)".
+- [x] "Blocks · watching only" → "Would block · watching" (and Would ask / Would hide), in Applied rules and the map's line panel (`wouldDo` in `vocab.ts`). Rule titles from ids keep PII, API, URL, SQL, ID, LLM, MCP, AI, EU upper case.
+- [ ] Observe left the nav (Garima's 46ef0ea1): Tools (`/app/tools`), Models (`/app/models`), Evaluations (`/app/evals`) and the Observe overview (`/app/observe`) are now linked from nowhere, and Traces opens the old Observe page. Decide what stays reachable (Traces tabs, the agent page, or a link from Settings) and what is deleted; until then they work only by URL.
 - [ ] Naming:
   - One name for Output / "Agent reply" / `agent_reply`.
   - The tool panel's empty state says "No policies on this line yet"; change it to "No rules for this tool".

@@ -13,6 +13,26 @@ the file it came from.
 
 ### Fixed
 
+- **Libraries on the Policies page go live like any policy.** Applying the basic
+  guardrails from the Libraries tab failed outright; it now takes the onboarding card's
+  path: watching, and blocking only for a role that may change production policy once
+  those exact rules were simulated. "Start blocking" on a library switched its copies to
+  blocking with no simulation and for any policy author; it now needs a
+  `policy_production` role (either way, as `POST /api/policies/{key}/mode` does) and a
+  recorded simulation of each copy's rules, else 409 "simulate first". The new
+  `POST /api/policies/libraries/{id}/simulate` replays each agent's recent traffic against
+  its copies with the existing simulator, records it, and says per agent what would have
+  been blocked, held or hidden; the card has a Simulate button, shows the server's refusals,
+  and asks for confirmation in the page instead of a browser dialog that some browsers
+  suppress. Copies record which version of the library they came from: the status reports
+  `outdated`, and applying again updates them in their current mode. Disconnecting a
+  project snapshots its library copies and "Restore guardrails" brings them back, under
+  the same gate. Draft agents from `agentfox init --key` can take libraries and are listed
+  (marked `draft`) in `GET /api/policies/applied`; library routes accept `project` and
+  refuse agents outside it, other workspaces' agents, and anything but a shipped library.
+- Watching rules read "Would block · watching" (and Would ask / Would hide), and rule
+  titles made from ids keep acronyms (PII, API, URL, …).
+
 - **A workspace's judgment settings now reach its checks.** Checks run on worker
   threads, and those threads did not inherit the request's context, so every check
   saw the deployment's settings instead of the workspace's. A workspace that set

@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 318,
+ "count": 319,
  "routes": [
   {
    "method": "GET",
@@ -9141,8 +9141,8 @@
    "path": "/api/policies/libraries/basic/apply",
    "section": "policies",
    "audience": "operator",
-   "summary": "Apply the basic guardrails to these agents (the project's) that don't have them.",
-   "description": "Apply the basic guardrails to these agents (the project's) that don't have them.",
+   "summary": "Apply the basic guardrails to these agents (the project's) that don't have them, and bring those that do up to date. The onboarding card's path (``add_basic_guardrails``): watching, and blocking only when the caller may change production policy and these exact rules have a recorded simulation. ``mode`` says which; ``observe`` means simulate them, then start blocking.",
+   "description": "Apply the basic guardrails to these agents (the project's) that don't have them,\nand bring those that do up to date. The onboarding card's path\n(``add_basic_guardrails``): watching, and blocking only when the caller may change\nproduction policy and these exact rules have a recorded simulation. ``mode`` says\nwhich; ``observe`` means simulate them, then start blocking.",
    "params": [
     {
      "name": "authorization",
@@ -9187,14 +9187,20 @@
    "path": "/api/policies/libraries/status",
    "section": "policies",
    "audience": "operator",
-   "summary": "For each library: on which of these agents (comma-separated) it is applied, whether it blocks there, and whether it is also applied workspace-wide.",
-   "description": "For each library: on which of these agents (comma-separated) it is applied, whether\nit blocks there, and whether it is also applied workspace-wide.",
+   "summary": "For each library (``basic`` is the basic guardrails): on which of these agents (comma-separated) it is applied, whether it blocks there, whether it is also applied workspace-wide, and on which the copy is older than the library (``outdated``).",
+   "description": "For each library (``basic`` is the basic guardrails): on which of these agents\n(comma-separated) it is applied, whether it blocks there, whether it is also applied\nworkspace-wide, and on which the copy is older than the library (``outdated``).",
    "params": [
     {
      "name": "agents",
      "in": "query",
      "required": false,
      "type": "string"
+    },
+    {
+     "name": "project",
+     "in": "query",
+     "required": false,
+     "type": null
     },
     {
      "name": "authorization",
@@ -9216,8 +9222,8 @@
    "path": "/api/policies/libraries/{pack_id}/apply",
    "section": "policies",
    "audience": "operator",
-   "summary": "Apply a library to these agents only (the project's), watching first.",
-   "description": "Apply a library to these agents only (the project's), watching first.",
+   "summary": "Apply a library to these agents only (the project's), watching first. Agents that have it already get what it ships now when it has changed (``updated``), each in the mode it is in.",
+   "description": "Apply a library to these agents only (the project's), watching first. Agents that\nhave it already get what it ships now when it has changed (``updated``), each in the\nmode it is in.",
    "params": [
     {
      "name": "pack_id",
@@ -9248,8 +9254,26 @@
       "description": ""
      },
      {
+      "name": "project",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
       "name": "mode",
       "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "since_days",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "limit",
+      "type": "integer",
       "required": false,
       "description": ""
      }
@@ -9262,7 +9286,7 @@
    "section": "policies",
    "audience": "operator",
    "summary": "Watch or block with a library on these agents (the project's).",
-   "description": "Watch or block with a library on these agents (the project's).",
+   "description": "Watch or block with a library on these agents (the project's).\n\nThe gate of ``POST /api/policies/{key}/mode``, per copy: a role that may change\nproduction policy, either way (403 otherwise), and to block, a recorded simulation\nof each copy's live rules (409 ``simulate first: …`` otherwise; ``…/simulate``\nrecords one). Nothing is switched unless every copy passes.",
    "params": [
     {
      "name": "pack_id",
@@ -9293,8 +9317,89 @@
       "description": ""
      },
      {
+      "name": "project",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
       "name": "mode",
       "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "since_days",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "limit",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/policies/libraries/{pack_id}/simulate",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Replay each agent's recent traffic against its copies of a library as if they blocked, and record the simulations (``POST /api/policies/simulate``, per copy), so starting to block with it passes the simulate-before-enforce gate.",
+   "description": "Replay each agent's recent traffic against its copies of a library as if they\nblocked, and record the simulations (``POST /api/policies/simulate``, per copy), so\nstarting to block with it passes the simulate-before-enforce gate.\n\nPer agent: ``blocked``, ``held`` (asked a person) and ``hidden`` (data hidden)\nchecks out of ``replayed``, a few ``examples``, and each copy's ``simulation_id``.",
+   "params": [
+    {
+     "name": "pack_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "LibraryAgents",
+    "fields": [
+     {
+      "name": "agents",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "project",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "mode",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "since_days",
+      "type": "integer",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "limit",
+      "type": "integer",
       "required": false,
       "description": ""
      }

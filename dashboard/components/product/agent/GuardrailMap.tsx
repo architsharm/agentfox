@@ -49,7 +49,7 @@ import {
   type ToolFilter,
   type ToolGroup,
 } from "@/lib/product/guardrailMap";
-import { IMPACT, detectorName, ruleTitle } from "@/lib/product/vocab";
+import { IMPACT, detectorName, ruleTitle, wouldDo } from "@/lib/product/vocab";
 import { AttackTests } from "./AttackTests";
 
 export type { AgentMap, MapRule } from "@/lib/product/guardrailMap";
@@ -823,7 +823,7 @@ function ruleState(r: MapRule): { text: string; tone: string } {
   if (r.enabled === false) return { text: "Off", tone: "off" };
   const does: Record<string, string> = { block: "Blocks", escalate: "Asks", redact: "Hides", mask: "Hides", tokenize: "Hides", allow: "Watches" };
   const text = does[r.effect] ?? r.effect;
-  if (r.mode === "observe" && r.effect !== "allow") return { text: `${text} · watching only`, tone: "watch" };
+  if (r.mode === "observe" && r.effect !== "allow") return { text: `${wouldDo(text)} · watching`, tone: "watch" };
   return { text, tone: r.effect === "allow" ? "watch" : "on" };
 }
 
