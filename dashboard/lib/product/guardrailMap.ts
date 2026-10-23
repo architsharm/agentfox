@@ -19,6 +19,8 @@ export type MapRule = {
   minScore?: number | null;
   /** What a rule that isn't about content looks at, in plain words. */
   about?: string;
+  /** The library it comes from ("Baseline runtime guardrails", "Basic guardrails"…). */
+  library?: string;
   enabled?: boolean;
   /** This agent has its own copy of the rule. */
   own?: boolean;

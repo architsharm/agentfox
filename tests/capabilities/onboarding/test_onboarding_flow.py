@@ -667,3 +667,115 @@ def test_removing_a_project_lets_it_connect_again_as_new(client):
     assert client.get("/api/onboarding/projects/shop/tests", headers=me).json()["first"]
     assert client.get("/api/agents/shop-bot", headers=me).json()["status"] == "draft"
     assert {t["key"]: t["permission"] for t in m["tools"]}["shop_lookup"] == "not_granted"
+
+
+def test_policies_page_shows_which_rules_apply_to_which_agents(client):
+    """The basic guardrails apply to the agent they were added for, blocking; the
+    page says so, and not that they apply to every agent."""
+    me, runner, _send = _connect_watch(client)
+    client.post("/api/onboarding/projects/watch/basic-guardrails", headers=me)
+    applied = client.get("/api/policies/applied", headers=me).json()
+    rows = {r["id"]: r for r in applied["rules"]}
+    row = rows["basic.input.attacks"]
+    assert [a["slug"] for a in row["agents"]] == ["watch-agent"]
+    assert row["mode"] == "enforce" and row["effect"] == "block"
+    assert row["libraries"] == ["Basic guardrails"]
+    assert row["all"] is (applied["agents"] == 1)
+
+
+def test_basic_and_starter_rules_are_libraries(client):
+    """Basic guardrails apply to every agent in one click; the starter rules earlier
+    inits left behind can be removed, keeping anything else in the agent's layer."""
+    from agentfox.capabilities.protection import layer_key, own_layer
+    from agentfox.core.db import session_scope
+    from agentfox.platform.policy.model import Condition, PolicyDocument, Rule
+    from agentfox.platform.policy.publish import publish_in_current_mode
+
+    me, _runner, _send = _connect_watch(client)
+    with session_scope() as session:
+        rules = [
+            Rule(id=i, effect="block", when=Condition(surface=["input"]), reason="x")
+            for i in ("watch.user.harmful", "mine.custom")
+        ]
+        publish_in_current_mode(
+            session,
+            PolicyDocument(key=layer_key("watch-agent"), name="w", rules=rules),
+            actor="t",
+            notes="t",
+            level="agent",
+            scope_id="watch-agent",
+            agent_slug="watch-agent",
+        )
+
+    applied = client.get("/api/policies/applied", headers=me).json()
+    starter = applied["perAgent"]["Starter rules (watch only)"]
+    assert starter["agents"] >= 1
+    assert "Starter rules (watch only)" in {lib for r in applied["rules"] for lib in r["libraries"]}
+
+    removed = client.post("/api/policies/libraries/starter/remove", headers=me)
+    assert removed.status_code == 200 and "watch-agent" in removed.json()["removed"]
+    with session_scope() as session:
+        assert [r.id for r in own_layer(session, "watch-agent").rules] == ["mine.custom"]
+
+    added = client.post("/api/policies/libraries/basic/apply", headers=me)
+    assert "watch-agent" in added.json()["added"]
+    basic = client.get("/api/policies/applied", headers=me).json()["perAgent"]["Basic guardrails"]
+    assert basic["agents"] >= 1 and basic["blocking"] is True
+
+    # The map names each rule's library too.
+    m = client.get("/api/agents/watch-agent/map", headers=me).json()
+    libs = {r["library"] for s in m["stages"] for r in s["rules"]}
+    assert "Basic guardrails" in libs and "Set for this agent" in libs
+
+
+def test_a_library_applies_only_to_the_projects_agents(client):
+    me, _runner, _send = _connect_watch(client)
+    key = client.get("/api/onboarding/key", headers=me).json()["value"]
+    other = {
+        "sources": [],
+        "agents": [{"id": "o1", "name": "Other Agent", "model": "gpt-4o", "sourceIds": []}],
+        "tools": [{"id": "t9", "name": "other_tool", "agentId": "o1", "systemId": "s"}],
+        "systems": [{"id": "s", "name": "Orders", "kind": "database"}],
+    }
+    client.post(
+        "/api/onboarding/runner/connect",
+        json={"structure": other, "project": "elsewhere"},
+        headers={"Authorization": f"Bearer {key}"},
+    )
+
+    r = client.post(
+        "/api/policies/libraries/baseline/apply", json={"agents": ["watch-agent"]}, headers=me
+    )
+    assert r.status_code == 200 and r.json()["added"] == ["watch-agent"]
+
+    def baseline_on(slug):
+        """This agent's own copy of the library (a workspace-wide one may also apply)."""
+        m = client.get(f"/api/agents/{slug}/map", headers=me).json()
+        return {
+            (r["library"], r["mode"])
+            for s in m["stages"]
+            for r in s["rules"]
+            if r["policy"] == f"agent.{slug}.baseline"
+        }
+
+    # Watching first, on this project's agent only, under the library's own name.
+    assert baseline_on("watch-agent") == {("Baseline runtime guardrails", "observe")}
+    assert baseline_on("other-agent") == set()
+
+    status = client.get("/api/policies/libraries/status?agents=watch-agent", headers=me).json()
+    assert status["baseline"]["agents"] == ["watch-agent"]
+    assert status["baseline"]["blocking"] is False
+
+    switched = client.post(
+        "/api/policies/libraries/baseline/mode",
+        json={"agents": ["watch-agent"], "mode": "enforce"},
+        headers=me,
+    )
+    assert switched.json()["changed"] == ["watch-agent"]
+    assert {mode for _lib, mode in baseline_on("watch-agent")} == {"enforce"}
+    assert baseline_on("other-agent") == set()
+
+    # Disconnecting the project takes its copies with it.
+    client.delete("/api/projects/watch", headers=me)
+    status = client.get("/api/policies/libraries/status?agents=watch-agent", headers=me).json()
+    assert status["baseline"]["agents"] == []

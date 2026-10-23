@@ -610,3 +610,36 @@ a.gm-add { align-self: flex-start; text-decoration: none; }
 .gm-rule-on { color: var(--af-ok); }
 .gm-rule-watch { color: var(--af-warn); }
 .gm-rule-off { color: var(--af-muted); }
+
+/* Policies: applied rules and libraries */
+.pol { display: flex; flex-direction: column; gap: 14px; }
+.pol-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.pol-summary { margin: 0; font-size: 14px; color: var(--af-fg-2); }
+.pol-summary b { color: var(--af-fg); font-weight: 600; }
+.pol-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.pol-agent { display: flex; gap: 6px; align-items: center; }
+.pol-agent select { height: 32px; padding: 0 8px; border: 1px solid var(--af-line); border-radius: 8px; background: var(--af-surface); color: var(--af-fg); font-family: var(--af-sans); font-size: 13px; }
+.pol-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--af-line); border-radius: var(--af-r-card); background: var(--af-surface); }
+.pol-list > li + li { border-top: 1px solid var(--af-line); }
+.pol-head, .pol-row { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.6fr) minmax(0, 1.3fr) minmax(0, 1.3fr); gap: 14px; align-items: center; padding: 11px 16px; }
+.pol-head { font-size: 11.5px; font-weight: 500; color: var(--af-muted); }
+.pol-row { text-decoration: none; color: var(--af-fg); }
+.pol-row:hover { background: var(--af-subtle); }
+.pol-name { font-size: 14px; font-weight: 500; }
+.pol-does, .pol-where, .pol-from { font-size: 13px; color: var(--af-fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pol-does em { font-style: normal; color: var(--af-muted); }
+.pol-on { color: var(--af-ok) !important; }
+.pol-watch { color: var(--af-warn) !important; }
+.pol-does.pol-on, .pol-does.pol-watch { font-weight: 500; }
+@media (max-width: 760px) { .pol-head { display: none; } .pol-row { grid-template-columns: 1fr; gap: 3px; } }
+.lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.lib-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 1px solid var(--af-line); border-radius: var(--af-r-card); background: var(--af-surface); }
+.lib-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.lib-head strong { font-size: 15px; }
+.lib-n { flex: none; font-size: 12px; color: var(--af-muted); }
+.lib-card p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--af-fg-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.lib-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.lib-state { font-size: 12.5px; font-weight: 500; color: var(--af-muted); }
+.lib-actions { display: inline-flex; gap: 6px; }
+.lib-foot { margin-top: auto; }
+.lib-default { border-color: color-mix(in srgb, var(--af-brand) 35%, var(--af-line)); }

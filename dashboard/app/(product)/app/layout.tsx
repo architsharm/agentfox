@@ -49,7 +49,7 @@ const NAV_SEARCH_ONLY: { label: string; href: string; group: string; feature?: s
   { label: "Security", href: "/app/observe?tab=security", group: "Observe" },
   { label: "Cost & speed", href: "/app/observe?tab=cost", group: "Observe" },
   { label: "Policy performance", href: "/app/policies?tab=performance", group: "Policies" },
-  { label: "Policy library", href: "/app/policies?tab=library", group: "Policies" },
+  { label: "Policy library", href: "/app/policies?tab=libraries", group: "Policies" },
   { label: "Suggested changes", href: "/app/policies?tab=changes", group: "Policies" },
   { label: "Detectors", href: "/app/policies?tab=advanced", group: "Policies" },
   { label: "Attack tests", href: "/app/test?tab=attacks", group: "Test" },

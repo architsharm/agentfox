@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 312,
+ "count": 318,
  "routes": [
   {
    "method": "GET",
@@ -9068,6 +9068,29 @@
   },
   {
    "method": "GET",
+   "path": "/api/policies/applied",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Every rule in force on at least one agent: what it does, which library it comes from, and whether it applies to every agent or only some (and which).",
+   "description": "Every rule in force on at least one agent: what it does, which library it comes\nfrom, and whether it applies to every agent or only some (and which).",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
    "path": "/api/policies/effective",
    "section": "policies",
    "audience": "operator",
@@ -9112,6 +9135,171 @@
     }
    ],
    "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/policies/libraries/basic/apply",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Apply the basic guardrails to these agents (the project's) that don't have them.",
+   "description": "Apply the basic guardrails to these agents (the project's) that don't have them.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/policies/libraries/starter/remove",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Remove the watch-only starter rules earlier versions of `agentfox init` added, from these agents (the project's); every agent when none are named.",
+   "description": "Remove the watch-only starter rules earlier versions of `agentfox init` added,\nfrom these agents (the project's); every agent when none are named.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/policies/libraries/status",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "For each library: on which of these agents (comma-separated) it is applied, whether it blocks there, and whether it is also applied workspace-wide.",
+   "description": "For each library: on which of these agents (comma-separated) it is applied, whether\nit blocks there, and whether it is also applied workspace-wide.",
+   "params": [
+    {
+     "name": "agents",
+     "in": "query",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/policies/libraries/{pack_id}/apply",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Apply a library to these agents only (the project's), watching first.",
+   "description": "Apply a library to these agents only (the project's), watching first.",
+   "params": [
+    {
+     "name": "pack_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "LibraryAgents",
+    "fields": [
+     {
+      "name": "agents",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "mode",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
+   "path": "/api/policies/libraries/{pack_id}/mode",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Watch or block with a library on these agents (the project's).",
+   "description": "Watch or block with a library on these agents (the project's).",
+   "params": [
+    {
+     "name": "pack_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "LibraryAgents",
+    "fields": [
+     {
+      "name": "agents",
+      "type": "array",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "mode",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
   },
   {
    "method": "GET",
