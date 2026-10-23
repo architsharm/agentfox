@@ -291,8 +291,8 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
       {
         "key": "judgment_fail_closed",
         "env": "AGENTFOX_JUDGMENT_FAIL_CLOSED",
-        "def": "true",
-        "what": "Refuse to send a judgment if the local redactor cannot load."
+        "def": "false",
+        "what": "Deny an enforcing request when an LLM judge does not answer and a rule on that surface relies on it (pipeline.judge_outage). True also stops a workspace turning it off. A payload the egress gate refused is never an outage."
       },
       {
         "key": "judgment_pii_egress",

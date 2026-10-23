@@ -16,6 +16,20 @@
 /** The cookie holding the selected project's slug. Absent or empty: all projects. */
 export const PROJECT_COOKIE = "agentfox_project";
 
+/**
+ * The project the Map shows: a repository `agentfox init` mapped, with every agent in
+ * it (GET /api/projects). One at a time, never several together. Chosen in the
+ * sidebar's switcher; absent, the most recently mapped one.
+ */
+export const MAP_PROJECT_COOKIE = "agentfox_map_project";
+
+/**
+ * The project being added: chosen from "+ Add a project", not connected yet. Every
+ * page then shows its own empty state and the connection card, never another
+ * project's data, until `agentfox init` reports in or another project is chosen.
+ */
+export const NEW_PROJECT = "__new__";
+
 /** The views of one project, in the order the page offers them. */
 export const PROJECT_VIEWS = [
   { key: "canvas", label: "Canvas" },

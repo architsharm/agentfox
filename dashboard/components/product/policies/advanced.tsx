@@ -132,7 +132,7 @@ export async function AdvancedPacks({ agent }: { agent?: string }) {
         flush
       >
         {all.length === 0 ? (
-          <Empty action={agent ? <Link href={sectionHref("packs")} className="k-btn">Show all</Link> : <Link href="/app/policies?tab=library" className="k-btn">Open the library</Link>}>
+          <Empty action={agent ? <Link href={sectionHref("packs")} className="k-btn">Show all</Link> : <Link href="/app/policies?tab=libraries" className="k-btn">Open the library</Link>}>
             {agent ? "No pack's scope matches this agent." : "No packs installed yet."}
           </Empty>
         ) : (

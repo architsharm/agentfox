@@ -97,7 +97,7 @@ def agent_tree(session: Session) -> list[dict[str, Any]]:
     agents: dict[str, Agent] = {}
     proposals: set[str] = set()
     for a in session.scalars(select(Agent).order_by(Agent.slug)):
-        if a.status in ("draft", "rejected"):
+        if a.status in ("draft", "rejected", "removed"):
             proposals.add(a.slug)
         else:
             agents[a.slug] = a
@@ -247,6 +247,15 @@ def _pack_rule(session: Session, key: str, rule_id: str) -> Rule | None:
         return None
     doc = load_version_document(live)
     return next((r for r in doc.rules if r.id == rule_id), None)
+
+
+def live_rule(session: Session, key: str, rule_id: str, agent: str | None = None) -> Rule | None:
+    """A rule as the pack's live version has it, or the agent's own copy when it has one."""
+    if agent:
+        own = next((r for r in own_layer(session, agent).rules if r.id == rule_id), None)
+        if own is not None:
+            return own
+    return _pack_rule(session, key, rule_id)
 
 
 # --- planning ---------------------------------------------------------------

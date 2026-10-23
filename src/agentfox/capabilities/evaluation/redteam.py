@@ -636,10 +636,83 @@ class NativeRedTeamRunner:
                     detail={
                         "rules_fired": decision.get("rules_fired", []),
                         "mode": decision.get("mode"),
+                        # What actually happened (the mode decides) beside the
+                        # verdict the policy asks for, its reason, and the rewrite
+                        # when it asks for one: what `dry_run_check` hands back.
+                        "applied_verdict": decision.get("verdict"),
+                        "reason": decision.get("reason") or "",
+                        "content": decision.get("content") or decision.get("would_be_content"),
                     },
                 )
             )
         return outcomes
+
+
+#: The surfaces `dry_run_check` evaluates: what reaches the agent, each tool call it
+#: makes, what each tool returns, and its reply. The same names `/v1/guard/*` uses.
+DRY_RUN_SURFACES = ("input", "tool_call", "tool_result", "output")
+
+
+def dry_run_check(
+    session: Session,
+    agent_slug: str,
+    *,
+    surface: str,
+    content: str = "",
+    tool_key: str | None = None,
+    arguments: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """One check of one surface through the real enforcement path, for an agent's
+    bound policies, with nothing persisted and nothing provisioned.
+
+    It is `NativeRedTeamRunner.run_probes` on a single deployment-derived probe
+    (``provision=False``: the check must not edit the configuration it measures), so a
+    caller outside the server (the onboarding attack test, run on the user's machine
+    against their real agent) gets exactly the verdict the red-team runner would.
+
+    Returns ``verdict`` (what the bound policy asks for, the counterfactual in observe
+    mode), ``applied`` (what would happen to live traffic now), ``mode``, ``rules``
+    (the rules that fired: id, effect, reason), ``reason`` and ``content`` (the
+    rewritten text when the verdict is a rewrite).
+    """
+    if surface not in DRY_RUN_SURFACES:
+        raise ValueError(f"unknown surface {surface!r}")
+    if surface == "tool_call":
+        probe = Probe(
+            f"dry_run.{surface}",
+            "dry_run",
+            kind="tool_call",
+            tool_key=tool_key or "unknown",
+            arguments=arguments or {},
+            provision=False,
+            grant=False,
+        )
+    else:
+        probe = Probe(
+            f"dry_run.{surface}",
+            "dry_run",
+            content,
+            surface=surface,
+            taint_source="tool_result" if surface == "tool_result" else "user",
+            provision=False,
+        )
+    outcome = NativeRedTeamRunner().run_probes(session, agent_slug, [probe])[0]
+    detail = outcome.detail
+    return {
+        "verdict": outcome.verdict,
+        "applied": detail.get("applied_verdict") or "allow",
+        "mode": detail.get("mode"),
+        "rules": [
+            {
+                "id": r.get("rule_id") or r.get("id") or "",
+                "effect": r.get("effect") or "",
+                "reason": r.get("reason") or "",
+            }
+            for r in detail.get("rules_fired") or []
+        ],
+        "reason": detail.get("reason") or "",
+        "content": detail.get("content"),
+    }
 
 
 class GarakRunner:

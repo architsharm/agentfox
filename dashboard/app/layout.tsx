@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
-import { Archivo } from "next/font/google";
+import { Archivo, IBM_Plex_Sans } from "next/font/google";
 
 import { SITE_NAME, SITE_URL, SITE_DESCRIPTION, HOME_TITLE, REPO_URL } from "@/lib/site";
 
@@ -27,9 +27,18 @@ const archivo = Archivo({
   display: "swap",
   variable: "--font-archivo",
 });
+/** The app's reading face (app/af-theme.css); Geist Mono stays for values and code. */
+const plex = IBM_Plex_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
+  variable: "--font-plex",
+});
 import "./globals.css";
 import "./theme.css";
 import "./marketing.css";
+import "./tw.css";
+import "./af-theme.css";
 
 /**
  * Runs before paint so a stored theme choice never flashes the wrong colours.
@@ -172,7 +181,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       lang="en-GB"
       data-theme="light"
       suppressHydrationWarning
-      className={`${GeistMono.variable} ${GeistSans.variable} ${archivo.variable}`}
+      className={`${GeistMono.variable} ${GeistSans.variable} ${archivo.variable} ${plex.variable}`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />

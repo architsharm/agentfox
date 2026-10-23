@@ -87,6 +87,7 @@ def register_agent(
     framework: str | None = None,
     draft: bool = False,
     source_scan_run_id: str | None = None,
+    project: str | None = None,
 ) -> Agent:
     """Register (or upsert) an agent.
 
@@ -105,6 +106,7 @@ def register_agent(
     agent.environment = environment
     agent.risk_tier = risk_tier
     agent.framework = framework or agent.framework
+    agent.project = project or agent.project
     agent.declared_models = declared_models or agent.declared_models or []
     agent.declared_tools = declared_tools or agent.declared_tools or []
     agent.data_classes = data_classes or agent.data_classes or []
@@ -122,8 +124,14 @@ def register_agent(
     return agent
 
 
-def _propose_draft(session: Session, *, slug: str, **fields: Any) -> Agent | None:
-    """Register a scan's proposal as a draft, unless a human already approved it.
+#: Statuses a new proposal may overwrite: nothing live, nothing a person approved.
+#: "removed" is an agent whose project was disconnected (`registry/projects.py`).
+PROPOSABLE = ("draft", "rejected", "removed")
+
+
+def propose_draft(session: Session, *, slug: str, **fields: Any) -> Agent | None:
+    """Register a proposal (a repo scan's, or `agentfox init`'s) as a draft, unless a
+    human already approved it.
 
     Re-scanning a repository proposes the same slugs again, which updates a draft in
     place instead of duplicating it. An agent someone already added is left alone: a
@@ -131,9 +139,36 @@ def _propose_draft(session: Session, *, slug: str, **fields: Any) -> Agent | Non
     Returns None for such an agent, since this scan did not propose it.
     """
     existing = session.scalar(select(Agent).where(Agent.slug == slugify(slug)))
-    if existing is not None and existing.status not in ("draft", "rejected"):
+    if existing is not None and existing.status not in PROPOSABLE:
         return None
     return register_agent(session, slug=slug, draft=True, **fields)
+
+
+_propose_draft = propose_draft
+
+
+def approve_drafts(session: Session, agents: list[Agent], *, actor: str) -> list[Agent]:
+    """Add proposed agents: the same state change and ledger entry as approving one
+    draft (``POST /api/agents/{id}/approve``). Agents that are not drafts are skipped."""
+    from agentfox.platform.ledger import chain
+
+    approved = []
+    for agent in agents:
+        if agent.status != "draft":
+            continue
+        agent.status = "active"
+        agent.registered = True
+        session.flush()
+        chain.append(
+            session,
+            "agent.draft.approved",
+            actor_type="user",
+            actor_id=actor,
+            subject_type="agent",
+            subject_id=agent.id,
+        )
+        approved.append(agent)
+    return approved
 
 
 def _propose_agent_specs(
@@ -728,13 +763,16 @@ def record_edge(
     relation: str,
     declared: bool = False,
     kind: str | None = None,
+    attrs: dict[str, Any] | None = None,
 ) -> LineageEdge:
     """Record an observed (or declared) lineage edge, idempotent under races.
 
     ``declared=True`` is an edge read from code (``propose_from_scan``) rather than
     seen in a span: it is recorded with no observation counted, so "from code, never
     called" and "called N times" stay distinguishable. ``kind`` says how a declared
-    delegation hands work over (``discovery.agents.RELATIONS``).
+    delegation hands work over (``discovery.agents.RELATIONS``), and only that;
+    anything else the code says about a declared edge goes in ``attrs`` (merged into
+    what the edge already has).
 
     The existence check below and the insert it guards are two separate
     round-trips, so two callers recording the same edge for the first time at
@@ -787,6 +825,8 @@ def record_edge(
     if declared:
         edge.declared = True
         edge.kind = kind or edge.kind
+        if attrs:
+            edge.attrs = {**(edge.attrs or {}), **attrs}
     session.flush()
     return edge
 
@@ -826,6 +866,12 @@ def derive_lineage(session: Session, agent_slug: str | None = None) -> int:
     return edges
 
 
+#: Edges that say nothing about what an agent can reach: who sends it messages
+#: (`agentfox init`'s ``talks_to``, input -> agent). An input box shared by every agent
+#: of a repository is not part of any one agent's blast radius.
+_NOT_REACH = ("talks_to",)
+
+
 def lineage(session: Session, agent_slug: str, depth: int = 2) -> dict[str, Any]:
     """Blast-radius query: what does this agent reach, and what reaches it?"""
     nodes: dict[str, dict[str, Any]] = {}
@@ -839,7 +885,11 @@ def lineage(session: Session, agent_slug: str, depth: int = 2) -> dict[str, Any]
             continue
         seen.add(current)
 
-        for edge in session.scalars(select(LineageEdge).where(LineageEdge.src_id == current)):
+        for edge in session.scalars(
+            select(LineageEdge).where(
+                LineageEdge.src_id == current, LineageEdge.relation.not_in(_NOT_REACH)
+            )
+        ):
             nodes.setdefault(edge.src_id, {"id": edge.src_id, "type": edge.src_type})
             nodes.setdefault(edge.dst_id, {"id": edge.dst_id, "type": edge.dst_type})
             links.append(
@@ -853,7 +903,11 @@ def lineage(session: Session, agent_slug: str, depth: int = 2) -> dict[str, Any]
             )
             queue.append((edge.dst_id, level + 1))
 
-        for edge in session.scalars(select(LineageEdge).where(LineageEdge.dst_id == current)):
+        for edge in session.scalars(
+            select(LineageEdge).where(
+                LineageEdge.dst_id == current, LineageEdge.relation.not_in(_NOT_REACH)
+            )
+        ):
             nodes.setdefault(edge.src_id, {"id": edge.src_id, "type": edge.src_type})
             nodes.setdefault(edge.dst_id, {"id": edge.dst_id, "type": edge.dst_type})
             links.append(

@@ -72,7 +72,13 @@ class Posture:
 
     tiers: frozenset[Tier] = frozenset({Tier.DETERMINISTIC})
     pii_egress: PiiEgress = PiiEgress.REDACT
-    fail_closed: bool = True
+    #: "On a judge outage: deny the request." Read by the enforcer
+    #: (`pipeline.judge_outage`): when an LLM judge was asked and did not answer, an
+    #: enforcing decision is blocked if a rule on that surface relies on what the
+    #: judge finds. Off, the outage is a degraded detector like any other, under the
+    #: deployment's and the packs' `fail_mode` — which this can add to, never loosen.
+    #: A payload the egress gate refused to send is not an outage either way.
+    fail_closed: bool = False
     backend: Backend = Backend.LOCAL
     #: Bumped on every write; the version an auditor quotes.
     version: int = 0
@@ -112,8 +118,9 @@ class Ceiling:
     allow_egress: bool = False
     #: The loosest PII handling the deployment will accept.
     pii_egress: PiiEgress = PiiEgress.REDACT
-    #: When true, posture may not turn failing-closed off.
-    fail_closed: bool = True
+    #: When true, posture may not turn failing-closed off
+    #: (`AGENTFOX_JUDGMENT_FAIL_CLOSED`; off by default, like `fail_mode`).
+    fail_closed: bool = False
 
     @classmethod
     def from_settings(cls, settings: object | None = None) -> Ceiling:
@@ -124,7 +131,7 @@ class Ceiling:
         return cls(
             allow_egress=bool(getattr(settings, "allow_egress", False)),
             pii_egress=_as_pii(getattr(settings, "judgment_pii_egress", "redact")),
-            fail_closed=bool(getattr(settings, "judgment_fail_closed", True)),
+            fail_closed=bool(getattr(settings, "judgment_fail_closed", False)),
         )
 
     def permits_pii(self, value: PiiEgress) -> bool:
@@ -214,7 +221,7 @@ def from_settings(settings: object | None = None) -> Posture:
     return Posture(
         tiers=frozenset(tiers),
         pii_egress=_as_pii(getattr(settings, "judgment_pii_egress", "redact")),
-        fail_closed=bool(getattr(settings, "judgment_fail_closed", True)),
+        fail_closed=bool(getattr(settings, "judgment_fail_closed", False)),
         backend=_as_backend(getattr(settings, "judgment_backend", "local")),
     )
 

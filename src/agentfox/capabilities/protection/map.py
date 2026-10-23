@@ -15,6 +15,20 @@ Placement of a rule:
   the tool-call step, or a specific tool when it names it or its impact;
 * it is a detection with no surface → every step that carries content;
 * budgets, loops, degraded detectors → "every step".
+
+Lines and views. The agent's line to its LLM (``prompt``: "To the LLM", ``response``:
+"From the LLM") is a second view of steps the map already has: what goes to the LLM
+is the user's message, documents and tool results; what comes back is the reply.
+Drawn as lines of their own, they must not count anything twice:
+
+* every decision counts once, on the stage that *owns* its surface (``Stage.owns``);
+  ``stats`` on all stages add up to the decisions in the window (``decisions``). A
+  view stage owns only what no other stage shows (``reasoning`` on "From the LLM"),
+  and also carries ``lineStats``: everything that crossed that line, overlapping
+  other stages, never to be added to them (``derived: true`` says so);
+* a rule appears on a view stage only as a copy flagged ``sharedWith`` (the stages
+  it belongs to), not as another rule; ``detectorsSharedWith`` does the same for
+  checks.
 """
 
 from __future__ import annotations
@@ -29,8 +43,18 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox.capabilities.detection import all_detectors
+from agentfox.capabilities.detection.catalog import (
+    Feed,
+    can_fire,
+    checks_for_rule,
+    feeds_for,
+    rule_finds,
+    rule_surfaces,
+    source_of,
+)
 from agentfox.capabilities.detection.detector_settings import enabled_for
 from agentfox.capabilities.protection import layer_key
+from agentfox.capabilities.protection.libraries import library_of
 from agentfox.capabilities.protection.scope import agent_changes
 from agentfox.core.models import (
     Agent,
@@ -54,6 +78,16 @@ class Stage:
     surfaces: tuple[str, ...]
     #: Shown even when nothing is configured there: the steps every agent has.
     core: bool = True
+    #: A second view of other stages' surfaces (the LLM line). It owns only the
+    #: surfaces in ``only``; everything else on it is counted where it belongs.
+    derived: bool = False
+    #: For a derived stage, the surfaces no other stage shows.
+    only: tuple[str, ...] = ()
+
+    @property
+    def owns(self) -> tuple[str, ...]:
+        """The surfaces whose decisions count here, and nowhere else."""
+        return self.only if self.derived else self.surfaces
 
 
 STAGES: tuple[Stage, ...] = (
@@ -64,9 +98,30 @@ STAGES: tuple[Stage, ...] = (
     Stage("tool_call", "Tool calls", ("tool_args",)),
     Stage("tool_result", "Tool results", ("tool_result",)),
     Stage("output", "Agent reply", ("output",)),
-    Stage("completion", "Finishing", ("completion",), core=False),
+    # The agent's line to its LLM, both ways: a view of the steps above (see the
+    # module docstring). Everything sent to the LLM is checked before the call, each
+    # part on the surface it came in on (the user's message as input, documents as
+    # retrieved, tool results as tool_result). What the agent writes to memory is not
+    # sent to the LLM. What the LLM answers is checked after the call as output, and
+    # its reasoning, where a framework reports it: reasoning is shown nowhere else, so
+    # it belongs to this line.
+    Stage(
+        "prompt",
+        "To the LLM",
+        ("input", "retrieved", "agent_message", "tool_result"),
+        derived=True,
+    ),
+    Stage("response", "From the LLM", ("output", "reasoning"), derived=True, only=("reasoning",)),
+    # The agent saying it is done ("your refund is processed"), checked against what
+    # the caller observed (`completion_requires`). Not a line to the LLM.
+    Stage("completion", "Done check", ("completion",), core=False),
 )
-CONTENT_STAGES = ("input", "context", "tool_result", "output")
+CONTENT_STAGES = ("input", "context", "tool_result", "output", "prompt", "response")
+STAGE_BY_KEY = {s.key: s for s in STAGES}
+#: The one stage a decision on each surface counts on.
+OWNER_OF_SURFACE = {surface: s.key for s in STAGES for surface in s.owns}
+#: Where a decision on a surface no stage shows (``tool_call``, ``mcp``) counts.
+DEFAULT_STAGE = "input"
 _TOOL_FIELDS = (
     "tool",
     "tool_impact",
@@ -96,6 +151,23 @@ def _stages_for(rule: Rule) -> list[str]:
     if when.detection is not None:
         return list(CONTENT_STAGES)
     return ["everywhere"]
+
+
+def _home_stages(rule: Rule, stages: list[str]) -> list[str]:
+    """The stages a rule belongs to; on the rest of ``stages`` it is a shared copy.
+
+    A rule naming surfaces belongs to the stages that own one of them; one naming
+    none, to every stage it is on that is not a view of others. A rule only a view
+    stage can show (on ``reasoning``) belongs there.
+    """
+    surfaces = rule.when.surface
+    if surfaces:
+        home = [
+            k for k in stages if k in STAGE_BY_KEY and set(STAGE_BY_KEY[k].owns) & set(surfaces)
+        ]
+    else:
+        home = [k for k in stages if k not in STAGE_BY_KEY or not STAGE_BY_KEY[k].derived]
+    return home or stages
 
 
 def _matches_tool(rule: Rule, tool_key: str, impact: str | None) -> bool:
@@ -200,7 +272,91 @@ def agent_tools(session: Session, slug: str) -> dict[str, Any]:
     return {"agent": slug, "window_days": WINDOW_DAYS, "tools": out}
 
 
-def _rule_json(rule: Rule, mode: str, level: str, hits: Counter) -> dict[str, Any]:
+_IMPACT_WORDS = {
+    "read": "read-only",
+    "write": "writing",
+    "high_impact": "high-impact",
+    "irreversible": "irreversible",
+}
+_CAPABILITY_WORDS = {
+    "denied": "tools this agent may not use",
+    "requires_approval": "tools that need approval",
+    "granted": "tools this agent may use",
+    "constraint_violated": "calls outside a tool's allowed limits",
+}
+
+
+def rule_kind(rule: Rule) -> str:
+    """``content``: a check found something (fed by regex, ML and LLM checks);
+    ``action``: about a tool call itself; ``run``: about the run as a whole."""
+    when = rule.when
+    if when.detection is not None:
+        return "content"
+    if any(getattr(when, f) not in (None, []) for f in _TOOL_FIELDS):
+        return "action"
+    return "run"
+
+
+def rule_about(rule: Rule) -> str:
+    """What a rule that isn't about content looks at, in a few plain words."""
+    w = rule.when
+    parts: list[str] = []
+    if w.tool:
+        parts.append(f"tool {w.tool}")
+    if w.tool_impact:
+        parts.append(" or ".join(_IMPACT_WORDS.get(i, i) for i in w.tool_impact) + " tools")
+    if w.tool_known is False:
+        parts.append("tools the code never declared")
+    if w.capability:
+        parts.append(_CAPABILITY_WORDS.get(w.capability, f"capability {w.capability}"))
+    if w.argument:
+        parts.append(f"argument {w.argument.path}")
+    if w.taint_exceeds:
+        parts.append(f"arguments that came from {w.taint_exceeds.replace('_', ' ')} or worse")
+    if w.action_operation:
+        parts.append(" or ".join(w.action_operation) + " actions")
+    if w.action_risk:
+        parts.append(
+            "risky actions: " + w.action_risk.replace(".*", "").replace("-", " ").replace("_", " ")
+        )
+    if w.blast_radius_at_least:
+        parts.append(f"blast radius {w.blast_radius_at_least} or more")
+    if w.action_reversible is False:
+        parts.append("actions that can't be undone")
+    if w.intent_declared is False:
+        parts.append("no declared intent")
+    if w.budget_exceeded:
+        parts.append("budget used up")
+    if w.loop_detected:
+        parts.append("the agent going round in a loop")
+    if w.detector_degraded:
+        parts.append("a check is down")
+    if w.completion_requires:
+        parts.append("saying it's done without " + ", ".join(w.completion_requires))
+    if w.risk_tier:
+        parts.append(" or ".join(w.risk_tier) + "-risk agents")
+    if w.expr:
+        parts.append("a custom condition")
+    return " · ".join(parts)
+
+
+def _rule_json(
+    rule: Rule,
+    mode: str,
+    level: str,
+    hits: Counter,
+    feeds: list[Feed] | None = None,
+    running: set[str] | None = None,
+) -> dict[str, Any]:
+    """One rule as the map shows it.
+
+    ``checks``: the detectors on for this agent that can fire it (they report what it
+    looks for, on a surface it covers). ``checksOff``: those that could, but are off
+    or not installed here. Both empty for a rule that isn't about content.
+    """
+    detection = rule.when.detection
+    can = checks_for_rule(rule, feeds) if feeds is not None and detection else []
+    on = [k for k in can if running is None or k in running]
     return {
         "id": rule.id,
         "description": rule.description,
@@ -209,6 +365,17 @@ def _rule_json(rule: Rule, mode: str, level: str, hits: Counter) -> dict[str, An
         "level": level,
         "message": rule.message,
         "hits": hits.get(rule.id, 0),
+        "kind": rule_kind(rule),
+        # What a content rule looks for (`PII`, `INJECTION.JAILBREAK`) and how sure a
+        # check must be; the checks that report that kind of finding feed it.
+        # `any` for a detection rule that names neither: any finding fires it.
+        "finds": rule_finds(rule),
+        "minScore": detection.min_score if detection else None,
+        "about": "" if detection else rule_about(rule),
+        # The surfaces it is limited to; None: every surface.
+        "surfaces": rule_surfaces(rule),
+        "checks": on,
+        "checksOff": [k for k in can if k not in on],
     }
 
 
@@ -226,17 +393,24 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
         if agent
         else []
     )
-    stage_of_surface = {s: st.key for st in STAGES for s in st.surfaces}
+    # Each decision counts once, on the stage that owns its surface; a view stage
+    # (the LLM line) adds up what crossed it separately, as `lineStats`.
     stage_stats: dict[str, Counter] = defaultdict(Counter)
+    line_stats: dict[str, Counter] = defaultdict(Counter)
+    views = [s for s in STAGES if s.derived]
     tool_stats: dict[str, Counter] = defaultdict(Counter)
     hits: Counter = Counter()
     for d in decisions:
         outcome = {"block": "blocked", "escalate": "held"}.get(d.verdict) or (
             "masked" if d.verdict in ("redact", "mask", "tokenize") else "allowed"
         )
-        stage = stage_of_surface.get(d.surface, "input")
+        stage = OWNER_OF_SURFACE.get(d.surface or "", DEFAULT_STAGE)
         stage_stats[stage]["total"] += 1
         stage_stats[stage][outcome] += 1
+        for view in views:
+            if d.surface in view.surfaces:
+                line_stats[view.key]["total"] += 1
+                line_stats[view.key][outcome] += 1
         if d.tool_key:
             tool_stats[d.tool_key]["total"] += 1
             tool_stats[d.tool_key][outcome] += 1
@@ -262,6 +436,9 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
         if r.agents_json and not any(fnmatch.fnmatch(slug, a) for a in r.agents_json)
     }
     tier = (agent.risk_tier if agent else None) or "limited"
+    detectors = all_detectors()
+    running = {k for k in enabled_for(session, slug) if k in detectors and detectors[k].available()}
+    feeds = feeds_for(detectors, session)
     for resolved in effective.rules:
         rule, layer = resolved.rule, resolved.layer
         if layer is None or rule.id in scoped_away:
@@ -275,7 +452,7 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
         if not rule.enabled and not own:
             continue
         mode = layer.document.mode
-        entry = _rule_json(rule, mode, layer.level, hits)
+        entry = _rule_json(rule, mode, layer.level, hits, feeds, running)
         base = defaults.get(rule.id) if own else None
         broader = [(src, r) for src, r in resolved.superseded if r.enabled]
         entry.update(
@@ -289,24 +466,40 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
         )
         if own and base:
             entry["workspace"] = {"effect": base["effect"], "enabled": base["enabled"]}
+        # The library it comes from: an agent's change to a workspace rule still
+        # belongs to the workspace rule's library.
+        from_key = (base or {}).get("policy") or layer.document.key
+        entry["library"] = library_of(
+            rule.id, from_key, "org" if base else layer.level, layer.document.name or ""
+        )
         stages = _stages_for(rule)
         if stages == ["tool_call"] and (rule.when.tool or rule.when.tool_impact):
             tool_rules.append((rule, entry))
             continue
+        home = _home_stages(rule, stages)
         for stage in stages:
-            by_stage[stage].append(entry)
+            # On a view of other stages it is the same rule, not another one.
+            by_stage[stage].append(entry if stage in home else {**entry, "sharedWith": home})
 
     # --- detectors -----------------------------------------------------------
-    detectors = all_detectors()
-    running = enabled_for(session, slug)
     detectors_by_stage: dict[str, list[str]] = defaultdict(list)
+    # On a view stage: the checks that run there only because they run on the
+    # stages it shows, and which those are.
+    shared_detectors: dict[str, dict[str, list[str]]] = defaultdict(dict)
     for key in sorted(running):
-        detector = detectors.get(key)
-        if detector is None or not detector.available():
-            continue
+        surfaces = set(detectors[key].surfaces)
         for stage in STAGES:
-            if set(stage.surfaces) & set(detector.surfaces):
-                detectors_by_stage[stage.key].append(key)
+            if not set(stage.surfaces) & surfaces:
+                continue
+            detectors_by_stage[stage.key].append(key)
+            if stage.derived and not set(stage.owns) & surfaces:
+                shared_detectors[stage.key][key] = list(
+                    dict.fromkeys(
+                        OWNER_OF_SURFACE[x]
+                        for x in stage.surfaces
+                        if x in surfaces and x in OWNER_OF_SURFACE
+                    )
+                )
 
     # --- tools ---------------------------------------------------------------
     grants, in_code, seen_keys = _tool_sources(session, agent, set(tool_stats))
@@ -369,7 +562,20 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
             "surfaces": list(s.surfaces),
             "detectors": detectors_by_stage.get(s.key, []),
             "rules": by_stage.get(s.key, []),
+            # Decisions on the surfaces this stage owns: summed over stages, every
+            # decision in the window once.
             "stats": dict(stage_stats.get(s.key, Counter())),
+            "derived": s.derived,
+            **(
+                {
+                    # Everything that crossed this line, overlapping other stages'
+                    # `stats`: a view, never to be added to them.
+                    "lineStats": dict(line_stats.get(s.key, Counter())),
+                    "detectorsSharedWith": shared_detectors.get(s.key, {}),
+                }
+                if s.derived
+                else {}
+            ),
         }
         for s in STAGES
         if s.core or by_stage.get(s.key) or stage_stats.get(s.key)
@@ -380,13 +586,76 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
             "name": (agent.name if agent else "") or slug,
             "known": agent is not None,
             "framework": agent.framework if agent else None,
+            # The LLMs it runs on: declared in code, or seen in its traffic.
+            "models": _models_of(session, slug, agent, since),
         },
         "window_days": WINDOW_DAYS,
+        # Decisions in the window: what every stage's `stats.total` adds up to.
+        "decisions": len(decisions),
         "stages": stages,
         "everywhere": by_stage.get("everywhere", []),
         "tools": tools,
         "subagents": subagents,
         "parents": parents,
+    }
+
+
+def _models_of(session: Session, slug: str, agent: Agent | None, since: dt.datetime) -> list[str]:
+    """The LLMs an agent runs on: declared in its code, or seen in the map's window.
+
+    Only edges from the agent (anything else that shares its id is not it); a model
+    last seen before the window is history, not what it runs on now, unless declared.
+    """
+    seen = session.scalars(
+        select(LineageEdge.dst_id).where(
+            LineageEdge.src_type == "agent",
+            LineageEdge.src_id == slug,
+            LineageEdge.relation == "uses_model",
+            (LineageEdge.last_observed_at >= since) | LineageEdge.declared.is_(True),
+        )
+    )
+    return list(dict.fromkeys([*((agent.declared_models or []) if agent else []), *seen]))
+
+
+def rule_checks(session: Session, rule: Rule, agent: str | None = None) -> dict[str, Any]:
+    """The checks that can fire a rule, for the rule's page ("Checked by").
+
+    A check can fire it when it reports what the rule looks for, on a surface the rule
+    covers (`catalog.can_fire`); the workspace's own models and rules count by what
+    they were registered to report. With an agent, each says whether it is on for it.
+    """
+    detectors = all_detectors()
+    feeds = [f for f in feeds_for(detectors, session) if can_fire(rule, f)]
+    on = enabled_for(session, agent) if agent else None
+    wanted = set(rule.when.surface or [])
+    checks = []
+    for key in sorted({f.detector for f in feeds}):
+        d = detectors[key]
+        mine = [f for f in feeds if f.detector == key]
+        runs_on = {s for f in mine for s in f.surfaces}
+        checks.append(
+            {
+                "key": key,
+                "label": getattr(d, "label", None),
+                "source": source_of(d),
+                # What it reports that this rule matches: a kind, or an exact entity
+                # for the workspace's own models and rules.
+                "finds": sorted({f.finds for f in mine}),
+                # Where it can fire this rule: where it runs and the rule looks.
+                "surfaces": sorted(runs_on & wanted if wanted else runs_on),
+                # The workspace's own models or rules behind it (`model:<key>`).
+                "via": sorted({f.via for f in mine if f.via}),
+                "available": d.available(),
+                "on": (key in on) if on is not None else None,
+            }
+        )
+    return {
+        "rule_id": rule.id,
+        "kind": rule_kind(rule),
+        "finds": rule_finds(rule),
+        "surfaces": rule_surfaces(rule),
+        "agent": agent,
+        "checks": checks,
     }
 
 
@@ -408,8 +677,9 @@ def _edge_json(edge: LineageEdge, other: str, names: dict[str, str]) -> dict[str
 def _hierarchy(session: Session, slug: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """``(subagents, parents)``: who this agent hands work to, and who hands it work.
 
-    A proposal someone dismissed is left off both: it is not part of the system they
-    chose to govern, even though the code still names it.
+    A proposal someone dismissed, or an agent whose project was disconnected, is left
+    off both: it is not part of the system they chose to govern, even though the code
+    still names it.
     """
     edges = list(
         session.scalars(
@@ -422,7 +692,7 @@ def _hierarchy(session: Session, slug: str) -> tuple[list[dict[str, Any]], list[
     )
     others = {e.dst_id if e.src_id == slug else e.src_id for e in edges}
     rows = list(session.scalars(select(Agent).where(Agent.slug.in_(others)))) if others else []
-    dismissed = {a.slug for a in rows if a.status == "rejected"}
+    dismissed = {a.slug for a in rows if a.status in ("rejected", "removed")}
     names = {a.slug: a.name for a in rows}
     subagents = [
         _edge_json(e, e.dst_id, names)

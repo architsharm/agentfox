@@ -86,7 +86,7 @@ export function RuleTuner({
   const [error, setError] = useState("");
   const [message, setMessage] = useState(base?.message || "");
 
-  if (!base) return <div className="k-empty">This rule is not in any installed pack.</div>;
+  if (!base) return <div className="k-empty">This rule is not in any applied library.</div>;
 
   // With one agent chosen, show what that agent has now.
   const own = some && chosen.length === 1 ? tree?.agents.find((a) => a.slug === chosen[0])?.own : null;
@@ -210,7 +210,7 @@ export function RuleTuner({
 
       {packChoices.length > 1 && (
         <div className="k-field">
-          <label>Pack</label>
+          <label>Library</label>
           <select
             className="k-select"
             value={pack}
@@ -351,7 +351,7 @@ export function RuleTuner({
                 ))}
             </div>
           )}
-          {preview.scope === "every" && base.mode !== "enforce" && <div className="k-muted">This pack is watching, so nothing will be blocked yet.</div>}
+          {preview.scope === "every" && base.mode !== "enforce" && <div className="k-muted">This library is watching, so nothing will be blocked yet.</div>}
           {watching > 0 && <div className="k-muted">Rules of their own are watching for {watching === 1 ? "this agent" : `${watching} of these agents`}, so nothing new will be blocked yet.</div>}
           <div className="k-pills" style={{ gap: 8 }}>
             <button className="k-btn-primary" disabled={busy} onClick={apply}>

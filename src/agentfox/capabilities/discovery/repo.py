@@ -41,7 +41,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from agentfox.capabilities.discovery.agents import AgentCollector, AgentEdge, AgentSpec
+from agentfox.capabilities.discovery.agents import (
+    AgentCollector,
+    AgentEdge,
+    AgentSpec,
+    is_test_path,
+    wrapped_tool,
+)
 
 log = logging.getLogger(__name__)
 
@@ -242,6 +248,10 @@ class ScanReport:
     #: framework is not one that module reads, which is not a claim there are none.
     agents: list[AgentSpec] = field(default_factory=list)
     agent_edges: list[AgentEdge] = field(default_factory=list)
+    #: Tools the scan found that no agent above is handed: defined but unused, or used
+    #: in a way the static read could not follow. Test, mock and fixture files are left
+    #: out. Local only: like every tool name, never part of a submission.
+    unassigned_tools: list[str] = field(default_factory=list)
 
     @property
     def multi_agent(self) -> bool:
@@ -389,6 +399,7 @@ class ScanReport:
             # one per "parent hands work to child" relation between them.
             "agents": [a.to_json() for a in self.agents],
             "agent_edges": [e.to_json() for e in self.agent_edges],
+            "unassigned_tools": self.unassigned_tools,
         }
 
     def to_submission_payload(self, *, source: str, tool_names: bool = False) -> dict[str, Any]:
@@ -544,6 +555,19 @@ class _Visitor(ast.NodeVisitor):
         # may appear anywhere relative to the call in an unusual layout.
         self._pending_agent_defs: list[tuple[Site, str]] = []
         self._tool_names: set[str] = set()
+        #: Names this file imports, and each function's docstring: read up front, for
+        #: tools made by a call (`function_tool(fn)`) wherever the call sits.
+        self._imported: set[str] = set()
+        self._docs: dict[str, str] = {}
+
+    def visit_Module(self, node: ast.Module) -> None:
+        for sub in ast.walk(node):
+            if isinstance(sub, ast.Import | ast.ImportFrom):
+                for alias in sub.names:
+                    self._imported.add(alias.asname or alias.name.split(".")[0])
+            elif isinstance(sub, ast.FunctionDef | ast.AsyncFunctionDef):
+                self._docs.setdefault(sub.name, ast.get_docstring(sub) or "")
+        self.generic_visit(node)
 
     def visit_Import(self, node: ast.Import) -> None:
         for alias in node.names:
@@ -601,6 +625,7 @@ class _Visitor(ast.NodeVisitor):
                     node.lineno,
                     f"{path}(name={name!r})",
                 )
+        self._check_wrapped_tool(node)
         for suffix, fw in _AGENT_DEFINITIONS.items():
             if path == suffix or path.endswith(f".{suffix}"):
                 self._pending_agent_defs.append(
@@ -633,16 +658,44 @@ class _Visitor(ast.NodeVisitor):
             if any(name.endswith(marker) for marker in _TOOL_DECORATORS):
                 # `@tool("lookup")` names the tool explicitly; otherwise it is the
                 # function's own name.
-                explicit = None
-                if isinstance(decorator, ast.Call) and decorator.args:
-                    explicit = _str_value(decorator.args[0])
+                explicit = description = None
+                if isinstance(decorator, ast.Call):
+                    if decorator.args:
+                        explicit = _str_value(decorator.args[0])
+                    # `@function_tool(name_override="x", description_override="...")`
+                    for kw in decorator.keywords:
+                        if kw.arg in ("name_override", "name") and not explicit:
+                            explicit = _str_value(kw.value)
+                        elif kw.arg in ("description_override", "description"):
+                            description = _str_value(kw.value)
                 self._add_tool(
                     explicit or node.name,
-                    ast.get_docstring(node) or "",
+                    description or ast.get_docstring(node) or "",
                     node.lineno,
                     f"@{name} {node.name}()",
                 )
                 break
+
+    def _check_wrapped_tool(self, node: ast.Call) -> None:
+        """`lookup = function_tool(fetch)`, `function_tool(name_override="x")(fetch)`,
+        `tool(fetch)`, `StructuredTool.from_function(fetch)`: a tool made by a call,
+        named as the code names it (else by its function) and described by that
+        function's docstring when this file defines it."""
+        made = wrapped_tool(node, self._imported)
+        if made is None:
+            return
+        name, fn = made
+        description = None
+        opts = node.func if isinstance(node.func, ast.Call) else node
+        for kw in opts.keywords:
+            if kw.arg in ("description_override", "description"):
+                description = _str_value(kw.value)
+        self._add_tool(
+            name,
+            description or self._docs.get(fn or "", ""),
+            node.lineno,
+            f"{_attribute_path(opts.func)}({fn or name})",
+        )
 
     def visit_Dict(self, node: ast.Dict) -> None:
         """A tool handed to a model as a schema rather than a decorated function.
@@ -1151,6 +1204,14 @@ def scan(root: str | Path = ".", *, include_config: bool = True) -> ScanReport:
                 report.sites.append(site)
 
     report.agents, report.agent_edges = agents.finish()
+    given = {name for a in report.agents for name in a.tools}
+    report.unassigned_tools = sorted(
+        {
+            s.name
+            for s in report.tools
+            if s.name and s.name not in given and not is_test_path(s.file)
+        }
+    )
     # The OpenAI Agents SDK imports as `agents`, a name too common among a repository's
     # own packages to detect from the import alone; an agent built with it is proof.
     frameworks |= {a.framework for a in report.agents}

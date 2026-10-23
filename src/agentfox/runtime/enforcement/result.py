@@ -68,6 +68,16 @@ class EnforcementResult:
             # tokenize); null otherwise. Without it a guard endpoint could say
             # "redact" and leave every caller to mask the content themselves.
             "content": self.content if self.verdict in REWRITE_VERDICTS else None,
+            # The rewrite the bound policy asks for when it is only watching (the
+            # counterfactual `effective_verdict` is a rewrite, the applied one is
+            # not): what the content *would* be once the policy enforces. Null
+            # otherwise.
+            "would_be_content": (
+                self.content
+                if self.effective_verdict in REWRITE_VERDICTS
+                and self.verdict not in REWRITE_VERDICTS
+                else None
+            ),
             "effective_verdict": self.effective_verdict,
             "mode": self.mode,
             "decision_id": self.decision_id,

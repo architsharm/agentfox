@@ -216,7 +216,7 @@ class PostureRequest(BaseModel):
         description="Tier names to enable. 'deterministic' is implicit and always on.",
     )
     pii_egress: str = Field("redact", description="block | redact | allow")
-    fail_closed: bool = True
+    fail_closed: bool = False
     backend: str = Field("local", description="local | remote | auto")
     reason: str = Field(
         "",

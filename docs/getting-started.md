@@ -371,8 +371,11 @@ goes through the tool-call check before the response is handed back, with argume
 from the conversation. A tool it has not seen before is registered with an inferred impact —
 `agentfox declare list tools` marks it `(inferred)` until you confirm it with `agentfox declare tool`. In
 the default mode a refused tool call raises `agentfox.Blocked`, except that capability default-deny
-only applies once the agent holds a grant; `auto(mode="observe")` records and never raises. The
-OpenAI Responses API is not patched.
+only applies once the agent holds a grant; `auto(mode="observe")` records and never raises. An
+enforced output redaction (for example baseline's `pii.outbound_redact`, once baseline enforces)
+rewrites the text in the response object you get back; a streamed response cannot be rewritten
+after its chunks were sent, so it raises `agentfox.Blocked` at the end instead. The OpenAI
+Responses API is not patched.
 
 **What this proves:** enforcement is a property of the deployment, not of your codebase, and an
 undeclared agent is refused before anybody writes a rule about it.

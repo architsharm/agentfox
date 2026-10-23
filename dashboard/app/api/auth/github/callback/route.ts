@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiBase, env } from "@/lib/env";
 import { SESSION_COOKIE } from "@/lib/product/api";
+import { flagOn } from "@/lib/product/flags";
 
 export const dynamic = "force-dynamic";
 
@@ -105,7 +106,19 @@ export async function GET(req: NextRequest) {
 
   // The welcome page scans a repository and sets it up in one flow; a workspace
   // that is already past that is sent on to Home from there.
-  const res = NextResponse.redirect(new URL("/app/welcome", origin));
+  // With `onboarding_on_signup` on (it is off), the new onboarding takes over
+  // until it is finished or skipped.
+  let toOnboarding = false;
+  if (flagOn("onboarding_on_signup")) {
+    const onboarding = await fetch(`${API_BASE}/api/onboarding/state`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null);
+    toOnboarding = Boolean(onboarding && !onboarding.completedAt && !onboarding.skipped);
+  }
+  const res = NextResponse.redirect(new URL(toOnboarding ? "/app/onboarding" : "/app/welcome", origin));
   res.cookies.delete(STATE_COOKIE);
   res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,

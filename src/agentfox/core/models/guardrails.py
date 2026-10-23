@@ -718,8 +718,9 @@ class JudgmentPosture(Base, TimestampMixin):
     tiers: Mapped[list[str]] = mapped_column(JSON, default=list)
     #: ``block`` | ``redact`` | ``allow`` — see :class:`agentfox.capabilities.judgment.PiiEgress`.
     pii_egress: Mapped[str] = mapped_column(String(16), default="redact")
-    #: Whether a remote tier's outage denies the request or is treated as no-signal.
-    fail_closed: Mapped[bool] = mapped_column(Boolean, default=True)
+    #: Whether a judge outage denies an enforcing request that relies on that judge
+    #: (`pipeline.judge_outage`), or is a degraded detector under `fail_mode`.
+    fail_closed: Mapped[bool] = mapped_column(Boolean, default=False)
     #: ``local`` | ``remote`` | ``auto``.
     backend: Mapped[str] = mapped_column(String(16), default="local")
     version: Mapped[int] = mapped_column(Integer, default=1)

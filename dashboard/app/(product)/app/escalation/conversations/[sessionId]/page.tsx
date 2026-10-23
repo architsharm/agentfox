@@ -89,7 +89,7 @@ export default async function EscalationConversation({
       </div>
 
       {assessment.missed && (
-        <div className="note-panel" style={{ borderLeftColor: "var(--bad)" }}>
+        <div className="note-panel">
           <strong>This conversation met an escalation condition and no hand-off was raised.</strong>{" "}
           That is the failure this control exists to catch: the telemetry looks
           ordinary, so nothing else would have surfaced it.

@@ -11,6 +11,91 @@ the file it came from.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Libraries on the Policies page go live like any policy.** Applying the basic
+  guardrails from the Libraries tab failed outright; it now takes the onboarding card's
+  path: watching, and blocking only for a role that may change production policy once
+  those exact rules were simulated. "Start blocking" on a library switched its copies to
+  blocking with no simulation and for any policy author; it now needs a
+  `policy_production` role (either way, as `POST /api/policies/{key}/mode` does) and a
+  recorded simulation of each copy's rules, else 409 "simulate first". The new
+  `POST /api/policies/libraries/{id}/simulate` replays each agent's recent traffic against
+  its copies with the existing simulator, records it, and says per agent what would have
+  been blocked, held or hidden; the card has a Simulate button, shows the server's refusals,
+  and asks for confirmation in the page instead of a browser dialog that some browsers
+  suppress. Copies record which version of the library they came from: the status reports
+  `outdated`, and applying again updates them in their current mode. Disconnecting a
+  project snapshots its library copies and "Restore guardrails" brings them back, under
+  the same gate. Draft agents from `agentfox init --key` can take libraries and are listed
+  (marked `draft`) in `GET /api/policies/applied`; library routes accept `project` and
+  refuse agents outside it, other workspaces' agents, and anything but a shipped library.
+- Watching rules read "Would block · watching" (and Would ask / Would hide), and rule
+  titles made from ids keep acronyms (PII, API, URL, …).
+
+- **A workspace's judgment settings now reach its checks.** Checks run on worker
+  threads, and those threads did not inherit the request's context, so every check
+  saw the deployment's settings instead of the workspace's. A workspace that set
+  "personal data to a judge: block" had it redacted and sent anyway, and judge tiers
+  switched on only for a workspace looked "not configured". Each check, and each call
+  to a workspace's own models, now runs in a copy of the request's context (judgment
+  posture and tenant).
+
+- **"On a judge outage: deny the request" is now applied.** The judgment posture's
+  `fail_closed` was stored and shown but nothing read it. A judge that was asked and did
+  not answer (unreachable, an error, a timeout) is now a degraded detector, so
+  `fail_mode` treats "unreachable" and "timed out" the same way. With the posture's
+  `fail_closed` on, an enforcing decision is also blocked as `pipeline.judge_outage` when
+  an enforcing pack has a rule on that surface that the judge's findings could fire. It
+  adds a block and never removes one. A payload the egress gate refused to send
+  (`pii_egress=block` on text with personal data) is reported as `cause="refused"` and is
+  never an outage. Validator judges, standalone or in a workspace rule, report outages the
+  same way, and one rule's judge being down no longer drops the other rules' findings.
+- **`auto()` applies output redaction instead of only recording it.** A `redact` / `mask` /
+  `tokenize` rule on the output surface was evaluated and logged under `auto()`, but the
+  caller still got the original text, so a policy to hide personal data in replies hid
+  nothing for apps on patched OpenAI, Anthropic, LiteLLM or LangChain calls. The redacted
+  text now replaces the reply in the client's own response object (sync and async), as the
+  gateway and the LangGraph guard already did. It follows the same mode rule as a block:
+  the enforced verdict by default, the effective one under `mode="enforce"`, never under
+  `mode="observe"`. A streamed reply, whose chunks are already with the caller, raises
+  `Blocked` at the end of the stream instead; a response that cannot be rewritten is
+  refused rather than returned unredacted.
+
+### Changed
+
+- **The multi-agent scan reads more of the shapes real repositories use.** Typed
+  constructors (`Agent[Context](...)`); hand-offs and tools added after an agent is
+  built (`a.handoffs = [...]`, `.append`, `.extend`, `+=`, `handoff(agent=x, ...)`),
+  including from a separate wiring module; tool lists built by a helper
+  (`tools=build_tools()`), `tools or ALL_TOOLS`, `A if c else B`, and a list another
+  module defines; tools made by a call (`function_tool(fn)`,
+  `function_tool(name_override="x")(fn)`, `StructuredTool.from_function(fn)`), named as
+  the code names them, here and in the repo scan's tool sites; an agent `name=` held in
+  a module constant; pre-1.0 LangChain (`create_tool_calling_agent` and friends,
+  `initialize_agent`, `AgentExecutor`, reported as one agent); and, only when nothing
+  else is an agent, a hand-written OpenAI/Anthropic/LiteLLM function-calling loop. On
+  OpenAI's customer-service agents demo the scan now finds all 8 agents, their tools and
+  15 hand-offs, where it found 2 agents, no tools and no hand-offs. A list the scan
+  cannot read adds nothing instead of a tool named after the helper.
+- **Test, mock and fixture files are no longer read for agents or tools** (`tests/`,
+  `testing/`, `mocks/`, `fixtures/`, `test_*.py`, `*_test.py`, `conftest.py`). The repo
+  scan's own findings still cover them.
+- **`judgment_fail_closed` defaults to off**, like `fail_mode`, and a workspace may turn
+  it on or off. Before, it defaulted on and the deployment ceiling refused to let anyone
+  turn it off, though nothing acted on it. Set `AGENTFOX_JUDGMENT_FAIL_CLOSED=true` to
+  require it for every workspace.
+
+### Added
+
+- **`scan --json` says more about each agent**: its `model` (read from a literal, a
+  module constant, an f-string of constants, an `os.getenv` default or a chat-model
+  object, and `null` when only running the code would tell), a `ref` (module, name and
+  whether it is the agent, a factory or a loop function) for a local runner, and
+  `tool_details` (each tool's description and argument names). The report gains
+  `unassigned_tools`, the tools found that no agent is handed. None of this is added to
+  what `scan --submit` sends.
+
 ## [0.5.0] - 2026-10-17
 
 ### Added

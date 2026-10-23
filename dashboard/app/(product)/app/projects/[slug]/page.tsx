@@ -24,14 +24,13 @@ import {
 import { Act } from "@/components/kit/Act";
 import { FilterBar } from "@/components/kit/FilterBar";
 import { RunsTable } from "@/components/kit/RunsTable";
-import { AgentMap } from "@/components/product/AgentMap";
-import { Modal } from "@/components/product/Modal";
 import { AccessEditor } from "@/components/product/agent/AccessEditor";
 import { FeaturesEditor } from "@/components/product/features/FeaturesEditor";
 import { RANGE_DAYS, metricsQs, runsHref, verdictsFor, type Filters } from "@/lib/product/observe";
 import { CATEGORIES, categoryLabel, rangeOf, ruleCategory, ruleTitle, sentence } from "@/lib/product/vocab";
 import { ensureRange } from "@/lib/product/range";
 import { GuardrailMapLazy as GuardrailMap } from "@/components/product/agent/GuardrailMapLazy";
+import type { Catalog } from "@/components/product/agent/GuardrailMap";
 import { RangeProvider } from "@/components/kit/RangeContext";
 import { PROJECT_VIEWS, projectHref, projectView } from "@/lib/product/project";
 
@@ -119,13 +118,14 @@ export default async function ProjectDetail({ params, searchParams }: { params: 
         }
         actions={
           <>
-          <Link className="k-btn-primary" href={`/app/projects/${encodeURIComponent(a.slug)}/protect`}>
-            Protect
-          </Link>
           <form action={`/api/agents/${encodeURIComponent(a.slug)}/control`} method="POST">
             <input type="hidden" name="action" value={state === "active" ? "quarantine" : "resume"} />
-            <button type="submit" className={state === "active" ? "k-btn-danger" : "k-btn"}>
-              {state === "active" ? "Pause" : "Resume"}
+            <button
+              type="submit"
+              className="k-btn"
+              title={state === "active" ? "Emergency stop: refuse every call from this agent until resumed" : "Let calls through again"}
+            >
+              {state === "active" ? "Pause agent" : "Resume agent"}
             </button>
           </form>
           </>
@@ -179,93 +179,26 @@ async function ProjectFeatures({ slug }: { slug: string }) {
  * the project at a glance: its traffic, its open issues, the guardrails that fired
  * most, who owns it. The rest is a click away in the sidebar.
  */
-async function Canvas({ f, posture }: { f: Filters; posture: any }) {
+async function Canvas({ f }: { f: Filters; posture?: any }) {
   const slug = f.agent!;
-  const [map, s, rules, lineage] = await Promise.all([
+  const [map, detectors, posture, agent] = await Promise.all([
     safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/map`, null),
-    safeApi<any>(`/api/metrics/summary?${metricsQs(f)}`, null),
-    safeApi<any>(`/api/metrics/rules?${metricsQs(f)}`, { rules: [] }),
-    safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/lineage?depth=2`, { nodes: [], links: [], blast_radius: 0 }),
+    safeApi<any>("/api/detectors", { detectors: [] }),
+    safeApi<any>("/api/judgment/posture", null),
+    safeApi<any>(`/api/agents/${encodeURIComponent(slug)}`, null),
   ]);
-  const reach: number = lineage.blast_radius ?? 0;
-  const a = posture.agent;
-  const t = s?.totals || {};
-  const findings: any[] = posture.open_findings || [];
-  const fired: any[] = (rules.rules || []).slice(0, 4);
-  const stat = (label: string, value: number, to: string, bad = false) => (
-    <Link className={`gm-stat${bad && value ? " bad" : ""}`} href={to}>
-      <b>{num(value || 0)}</b>
-      <span>{label}</span>
-    </Link>
-  );
-  const summary = (
-    <div className="gm-summary">
-      <div className="gm-summary-head">
-        <strong>{a.name || a.slug}</strong>
-        <span className="gm-sub">Last {RANGE_DAYS[f.range]} days · nothing selected</span>
-      </div>
-      <div className="gm-stats">
-        {stat("Requests", t.requests, runsHref(f))}
-        {stat("Blocked", t.blocked, runsHref(f, { outcome: "blocked" }))}
-        {stat("Held for a person", t.held, runsHref(f, { outcome: "held" }))}
-        {stat("Errors", t.errors, runsHref(f, { errors: true }), true)}
-      </div>
-      <h4>Open issues</h4>
-      {findings.length ? (
-        <ul className="gm-issues">
-          {findings.slice(0, 3).map((x) => (
-            <li key={x.id}>
-              <Link href={`/app/findings/${x.id}`}>{sentence(x.title)}</Link>
-              <SeverityPill value={x.severity} />
-            </li>
-          ))}
-          {findings.length > 3 && (
-            <li>
-              <Link href={`/app/findings?agent=${encodeURIComponent(slug)}`}>All {findings.length} issues →</Link>
-            </li>
-          )}
-        </ul>
-      ) : (
-        <p className="k-muted">None open.</p>
-      )}
-      {fired.length > 0 && (
-        <>
-          <h4>Fired most</h4>
-          <ul className="gm-issues">
-            {fired.map((r) => (
-              <li key={r.rule_id}>
-                <Link href={`/app/policies/rules/${encodeURIComponent(r.rule_id)}`}>{ruleTitle(r.rule_id)}</Link>
-                <span className="k-muted">{num(r.fires)}</span>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-      {lineage.links?.length > 0 && (
-        <>
-          <h4>Lineage</h4>
-          <p className="gm-sub">
-            Blast radius {reach}: reachable within two hops, how far a bad decision here could travel.
-          </p>
-          <Modal trigger="Open lineage map" triggerClassName="k-btn-ghost" title={`What ${a.name || a.slug} reaches`}>
-            <AgentMap root={lineage.root || slug} nodes={lineage.nodes || []} links={lineage.links} blastRadius={reach} />
-          </Modal>
-        </>
-      )}
-      <h4>About</h4>
-      <dl className="gm-facts">
-        <dt>Owner</dt>
-        <dd>{a.owner_email || <Link href={projectHref(slug, "settings")}>Assign</Link>}</dd>
-        <dt>Environment</dt>
-        <dd>{a.environment || "—"}</dd>
-        <dt>Framework</dt>
-        <dd>{a.framework || "—"}</dd>
-        <dt>Last active</dt>
-        <dd>{ago(a.last_seen_at)}</dd>
-      </dl>
-    </div>
-  );
-  return map ? <GuardrailMap map={map} summary={summary} /> : <Card><Empty>The canvas could not be loaded.</Empty></Card>;
+  // Every agent in this agent's project goes on the same canvas, this one first.
+  const project: string = agent?.project || slug;
+  const projectMap = await safeApi<any>(`/api/projects/${encodeURIComponent(project)}/map`, { agents: [] });
+  const others: string[] = (projectMap.agents || []).map((a: any) => a.slug).filter((s: string) => s !== slug);
+  const otherMaps = (await Promise.all(others.map((s) => safeApi<any>(`/api/agents/${encodeURIComponent(s)}/map`, null)))).filter(Boolean);
+  // What can guard a line when it is selected: every check the workspace has, and the judge chain.
+  const catalog: Catalog = {
+    detectors: (detectors.detectors || []).map((d: any) => ({ key: d.key, label: d.label || "", source: d.source, surfaces: d.surfaces || [], available: Boolean(d.available), finds: d.finds || "" })),
+    tiers: (posture?.tiers || []).map((t: any) => ({ tier: t.tier, enabled: Boolean(t.enabled), sends_data: Boolean(t.sends_data), blocked_reason: t.blocked_reason || "" })),
+    bands: Object.fromEntries(Object.entries(posture?.kinds || {}).map(([k, v]: [string, any]) => [k, v?.band ?? null])),
+  };
+  return map ? <GuardrailMap maps={[map, ...otherMaps]} focus={slug} project={project} catalog={catalog} /> : <Card><Empty>The canvas could not be loaded.</Empty></Card>;
 }
 
 async function Access({ slug, prefill }: { slug: string; prefill?: string }) {

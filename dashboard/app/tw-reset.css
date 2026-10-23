@@ -1,0 +1,25 @@
+/*
+ * What Tailwind's preflight would do, only inside `.tw` (screens built with
+ * Tailwind + shadcn/ui). Imported by tw.css *before* the utilities: same
+ * specificity as a utility class, earlier in the file, so `text-3xl` on an h1
+ * beats this file's `font-size: inherit` — while this file still beats
+ * globals.css's bare `h1 { … }` and `input { … }` rules.
+ */
+/* The scoped reset: what preflight would do, only inside `.tw`. */
+.tw, .tw *, .tw ::before, .tw ::after {
+  box-sizing: border-box;
+  border: 0 solid var(--sc-border);
+}
+.tw { font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif; color: var(--sc-foreground); -webkit-font-smoothing: antialiased; }
+.tw :where(h1, h2, h3, h4, p, ol, ul, dl, dd, figure, pre) { margin: 0; }
+.tw :where(ol, ul) { list-style: none; padding: 0; }
+.tw :where(h1, h2, h3, h4) { font-size: inherit; font-weight: inherit; letter-spacing: normal; color: inherit; }
+.tw :where(button, input, select, textarea) { font: inherit; color: inherit; background: transparent; }
+.tw :where(button, [role="button"]) { cursor: pointer; }
+.tw :where(input, select, textarea) { padding: 0; border-radius: 0; }
+.tw :where(a) { color: inherit; text-decoration: none; }
+.tw :where(table) { border-collapse: collapse; }
+.tw :where(th, td) { padding: 0; border: 0; text-align: left; font-weight: inherit; }
+.tw :where(pre) { background: transparent; padding: 0; border: 0; border-radius: 0; }
+.tw :where(svg) { display: block; }
+

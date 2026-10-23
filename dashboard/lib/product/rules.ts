@@ -32,6 +32,8 @@ export type RuleInfo = {
   effect: string;
   severity: string;
   enabled: boolean;
+  /** What a content rule looks for (`PII`, `INJECTION.JAILBREAK`); empty for rules about tool calls or the run. */
+  finds: string;
   packs: RulePack[];
 };
 
@@ -63,6 +65,7 @@ export async function loadRules(): Promise<{ packs: PackInfo[]; rules: RuleInfo[
         effect: r.effect,
         severity: r.severity,
         enabled,
+        finds: String(r.when?.detection?.entity || r.when?.detection?.entity_prefix || ""),
         packs: [],
       };
       const minScore = r.when?.detection?.min_score;

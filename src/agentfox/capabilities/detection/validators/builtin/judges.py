@@ -13,7 +13,11 @@ Every question is worded so that *yes is the problem*: the answer's probability 
 the finding's score, and a score at or above the ``threshold`` setting is a
 finding. A judge that cannot get an answer raises rather than returning nothing,
 because "did not run" must never read as "found nothing" (see
-`detectors/judgment.py`).
+`detectors/judgment.py`). The exception's ``cause`` says whether the judge was
+down (``outage``) or the payload was never sent (``refused``); the detector that
+runs the validator reports it the way `injection.judgment` does, so a judge
+validator's outage reaches `fail_mode` and the judgment posture's ``fail_closed``
+exactly as the built-in judges' do.
 
 Upstream prompts are not copied. Each question keeps the upstream check's intent
 in our wording.
@@ -54,7 +58,7 @@ from agentfox.capabilities.detection.validators.base import (
 )
 from agentfox.capabilities.judgment import panel
 from agentfox.capabilities.judgment.capability import DecisionKind
-from agentfox.capabilities.judgment.jev import JevUnavailable
+from agentfox.capabilities.judgment.jev import NOT_CONFIGURED, JevUnavailable
 
 log = logging.getLogger(__name__)
 
@@ -273,9 +277,12 @@ class JudgeValidator(Validator):
         missing = [q for q in questions if q not in result.answers]
         if missing:
             failures = "; ".join(f"{t.value}: {w}" for t, w in result.failures.items())
+            # A judge that answered some questions and not others is an outage;
+            # tiers that all declined to send the payload are a refusal.
             raise NoAnswer(
                 f"{self.name}: no judge answered {', '.join(missing)}"
-                + (f" ({failures})" if failures else "")
+                + (f" ({failures})" if failures else ""),
+                cause=result.cause,
             )
         return {q: float(result.answers[q].value) for q in questions}
 
@@ -1141,7 +1148,10 @@ class WikiProvenance(JudgeValidator):
 
     def state(self, text, params: WikiProvenanceParams, ctx) -> dict:
         if not _egress_allowed():
-            raise JevUnavailable("wiki_provenance: allow_egress is off; Wikipedia not fetched")
+            raise JevUnavailable(
+                "wiki_provenance: allow_egress is off; Wikipedia not fetched",
+                cause=NOT_CONFIGURED,
+            )
         try:
             page = wikipedia_page(params.topic_name)
         except (RuntimeError, JevUnavailable):

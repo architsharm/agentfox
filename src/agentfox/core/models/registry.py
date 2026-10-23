@@ -45,7 +45,17 @@ class Agent(Base, TimestampMixin):
     # EU AI Act aligned tiering.
     risk_tier: Mapped[str] = mapped_column(String(24), default="limited")
     framework: Mapped[str | None] = mapped_column(String(64))  # auto-detected
+    # Provenance: the repository `agentfox init` mapped the agent from. A project on
+    # the dashboard is a system (`platform/registry/projects.py`: a root agent and
+    # everything it hands work to), not this column; it only groups and resolves the
+    # names init used. NULL for an agent registered any other way.
+    project: Mapped[str | None] = mapped_column(String(120), index=True)
     status: Mapped[str] = mapped_column(String(24), default="active")
+    #: The agent's own guardrail layers as they were live when its project was
+    #: disconnected: ``{policy key: {"version": n, "mode": "observe"|"enforce",
+    #: "rules": n}}``. Connecting again offers to put them back
+    #: (``POST /api/agents/{slug}/restore-guardrails``); None when there is nothing to.
+    guardrails_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     registered: Mapped[bool] = mapped_column(Boolean, default=True)
     # Set when a repo scan proposed this agent (status="draft") rather than it being
     # registered directly — lets the review UI show why it showed up.
@@ -198,6 +208,11 @@ class LineageEdge(Base, TimestampMixin):
     #: (``discovery.agents.RELATIONS``: handoff | as_tool | delegates | member). None
     #: for an edge only ever seen in traffic, where a span does not say.
     kind: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    #: What else the code says about an edge, by relation: for ``talks_to`` (input ->
+    #: agent) ``{"detail": "chat, chat.py"}`` (how the input reaches the agent); for
+    #: ``touches`` (tool -> resource) ``{"resource_kind": "payments"}``. ``kind`` stays
+    #: the delegation relation only.
+    attrs: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     first_observed_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     last_observed_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 

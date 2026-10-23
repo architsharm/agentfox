@@ -585,6 +585,15 @@ LINT FAIL — critical/high findings block the build`}</Output>
         <code>eu-ai-act-high-risk</code> ship with <code>closed</code>. Details and an
         example are in <Link href="/docs/reference/detectors#budget">Detectors: budget and failure</Link>.
       </p>
+      <p>
+        An LLM judge that does not answer (unreachable, an error, a timeout) is a degraded
+        check like any other. The judgment posture&apos;s &quot;On a judge outage: deny the
+        request&quot; (off by default) adds one more block, as{" "}
+        <code>pipeline.judge_outage</code>: only when the decision is enforcing and an
+        enforcing pack has a rule on that surface the judge&apos;s findings could fire. It
+        never loosens a <code>closed</code> fail mode. A payload the egress gate refused to
+        send (<code>pii_egress</code> set to <code>block</code>) is not an outage.
+      </p>
 
       <h2 id="rollout">Roll out a change</h2>
       <h3 id="simulate">Simulate against recorded traffic</h3>

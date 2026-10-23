@@ -16,9 +16,11 @@ from agentfox.apps.gateway.deps import (
     current_user,
     db,
     get_agent_or_404,
+    may_enforce,
     operator_or_agent,
     require,
 )
+from agentfox.capabilities.onboarding.projects import remove_project
 from agentfox.core.models import (
     Agent,
     ApiToken,
@@ -49,6 +51,7 @@ from agentfox.platform.identity.operators import issue_token
 from agentfox.platform.ledger import chain
 from agentfox.platform.ledger.findings import STATUSES as FINDING_STATUSES
 from agentfox.platform.registry.control import UnknownAgent, all_controls, set_state
+from agentfox.platform.registry.projects import list_projects, project_map, project_of
 from agentfox.platform.registry.service import (
     assess_delegation,
     attest_registry,
@@ -65,6 +68,101 @@ from agentfox.platform.registry.service import (
 )
 
 router = APIRouter(prefix="/api", tags=["registry", "identity"])
+
+
+@router.get("/projects")
+def get_projects(
+    session: Session = Depends(db), _user: User = Depends(current_user)
+) -> dict[str, Any]:
+    """Every project: a multi-agent system (a root agent and every agent it hands work
+    to, from code or traffic, across repositories), or one agent on its own.
+
+    ``project`` (= ``root``) is the key the other ``/api/projects/{project}`` routes
+    take; ``members`` lists each agent with its ``depth`` under the root and the
+    ``relation`` it is reached by; ``repos`` the repositories `agentfox init` mapped
+    them from, which those routes also accept."""
+    return {"projects": list_projects(session)}
+
+
+@router.delete("/projects/{project}")
+def delete_project(
+    project: str, session: Session = Depends(db), user: User = Depends(require("registry"))
+) -> dict[str, Any]:
+    """Disconnect a project: connecting it again with `agentfox init` starts fresh.
+
+    Acts on the members that came from the same repository (``project`` may be a
+    system's root or a repository init mapped); an agent of another project it hands
+    work to, and the hand-off itself, stay. Each agent's guardrails are recorded
+    before they are emptied (``restorable`` lists who has them), to be put back with
+    ``POST /api/agents/{slug}/restore-guardrails``. Its history (traffic, issues,
+    audit) is kept."""
+    out = remove_project(session, project, actor=user.email or user.id)
+    if not out["removed"]:
+        raise HTTPException(404, f"No project '{project}'")
+    return out
+
+
+@router.post("/projects/{project}/approve")
+def approve_project(
+    project: str, session: Session = Depends(db), user: User = Depends(require("registry"))
+) -> dict[str, Any]:
+    """Add every agent `agentfox init` proposed for this project ("Add all").
+
+    Each gets the same state change and ledger entry as approving it on its own
+    (``POST /api/agents/{id}/approve``). Tool access is still granted per tool
+    (``POST /api/agents/{slug}/access``): adding an agent does not grant it anything."""
+    from agentfox.platform.registry.projects import project_agents
+    from agentfox.platform.registry.service import approve_drafts
+
+    agents = project_agents(session, project)
+    if not agents:
+        raise HTTPException(404, f"No project '{project}'")
+    approved = approve_drafts(
+        session, sorted(agents, key=lambda a: a.slug), actor=user.email or user.id
+    )
+    session.commit()
+    return {"project": project, "approved": [a.slug for a in approved]}
+
+
+@router.get("/projects/{project}/map")
+def get_project_map(
+    project: str, session: Session = Depends(db), _user: User = Depends(current_user)
+) -> dict[str, Any]:
+    """One project's map: who talks to its agents, their models, tools, and what the
+    tools touch. Every member of the system is drawn, sub-agents and parents in other
+    repositories included. 404 for a name that is no project, root, repository or agent."""
+    found = project_map(session, project)
+    if found is None:
+        raise HTTPException(404, f"No project '{project}'")
+    return found
+
+
+@router.post("/agents/{slug}/restore-guardrails")
+def restore_agent_guardrails(
+    slug: str, session: Session = Depends(db), user: User = Depends(require("policy"))
+) -> dict[str, Any]:
+    """Put back the guardrails an agent had when its project was disconnected.
+
+    Each layer's recorded version goes live again, watching; blocking again only when
+    it was, the caller may change production policy, and that version was simulated.
+    404 when the agent has nothing to restore; 409 while it is still disconnected
+    (connect it again first)."""
+    from agentfox.capabilities.onboarding.projects import restore_guardrails
+    from agentfox.platform.registry.projects import REMOVED
+
+    agent = get_agent_or_404(session, slug)
+    if agent.status == REMOVED:
+        raise HTTPException(409, f"'{slug}' is disconnected; connect it again first")
+    out = restore_guardrails(
+        session,
+        agent,
+        actor=user.email or user.id,
+        may_enforce=may_enforce(user),
+    )
+    if out is None:
+        raise HTTPException(404, f"Nothing to restore for '{slug}'")
+    session.commit()
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -186,6 +284,7 @@ def _agent_json(agent: Agent, session: Session | None = None) -> dict[str, Any]:
         "environment": agent.environment,
         "risk_tier": agent.risk_tier,
         "framework": agent.framework,
+        "project": project_of(agent),
         "status": agent.status,
         "registered": agent.registered,
         "owned": agent.is_owned,
@@ -203,9 +302,14 @@ def list_agents(
     session: Session = Depends(db),
     registered: bool | None = None,
     environment: str | None = None,
+    include_removed: bool = False,
     _user: User = Depends(current_user),
 ) -> dict[str, Any]:
+    """Every agent. An agent whose project was disconnected (status ``removed``) is
+    left out unless ``include_removed``: it is history, not part of the workspace."""
     query = select(Agent).order_by(Agent.slug)
+    if not include_removed:
+        query = query.where(Agent.status != "removed")
     if registered is not None:
         query = query.where(Agent.registered.is_(registered))
     if environment:
