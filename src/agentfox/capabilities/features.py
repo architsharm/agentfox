@@ -29,7 +29,7 @@ from sqlalchemy.orm import Session
 from agentfox.capabilities import protection
 from agentfox.capabilities.detection import all_detectors
 from agentfox.capabilities.detection import detector_settings as checks
-from agentfox.capabilities.detection.catalog import GROUPS, describe
+from agentfox.capabilities.detection.catalog import GROUPS, describe, feeds_for
 from agentfox.capabilities.protection import scope
 from agentfox.core.models import Policy
 from agentfox.platform.ledger import operator_log
@@ -278,12 +278,13 @@ def checks_for(session: Session, slug: str | None = None) -> list[dict[str, Any]
     workspace_on = checks.enabled_for(session)
     project = checks.agent_overrides(session, slug) if slug else {}
     group_names = dict(GROUPS)
+    feeds = feeds_for(detectors, session)
     out = []
     for key in sorted(detectors):
         if key == checks.WORKSPACE_RULES or key == checks.WORKSPACE_VALIDATORS:
             continue  # on wherever a workspace rule exists; switched with the rule
         d = detectors[key]
-        facts = describe(d)
+        facts = describe(d, feeds)
         mine = project.get(key)
         ws = key in workspace_on
         effective = ws if mine is None else (mine or key in checks.ALWAYS_ON)
@@ -295,6 +296,8 @@ def checks_for(session: Session, slug: str | None = None) -> list[dict[str, Any]
                 "group_title": group_names.get(facts["group"], facts["group"]),
                 "source": facts["source"],
                 "where": facts["where"],
+                "finds": facts["finds"],
+                "finds_all": facts["finds_all"],
                 "installed": d.available(),
                 "always_on": key in checks.ALWAYS_ON,
                 "workspace": ws,

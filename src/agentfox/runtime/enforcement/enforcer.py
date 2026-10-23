@@ -103,6 +103,31 @@ def _relies_on_detections(doc: Any, surface: str) -> bool:
     )
 
 
+def _relies_on_entities(doc: Any, surface: str, entities: list[str]) -> list[str]:
+    """The rules in this pack on ``surface`` that a finding of ``entities`` could fire.
+
+    `_relies_on_detections`, narrowed to one judge's findings: an enabled detection
+    rule that applies on this surface, does something other than allow, and whose
+    condition one of ``entities`` would satisfy (the same exact-or-prefix match the
+    native engine makes; a condition that names no entity matches any). A rule about
+    secrets did not lose coverage when the injection judge went down.
+    """
+    out: list[str] = []
+    for rule in doc.rules:
+        d = rule.when.detection
+        if not rule.enabled or d is None or rule.effect == "allow":
+            continue
+        if rule.when.surface and surface not in rule.when.surface:
+            continue
+        for entity in entities:
+            if (not d.entity or entity == d.entity) and (
+                not d.entity_prefix or entity.startswith(d.entity_prefix)
+            ):
+                out.append(rule.id)
+                break
+    return out
+
+
 @dataclass
 class _Evaluation:
     """One `Enforcer.evaluate` call: its inputs, and what each step has worked out.
@@ -1014,29 +1039,17 @@ class Enforcer(
                 )
             )
 
-        # A judge outage, under the workspace's judgment posture ("On a judge outage:
-        # deny the request"). Only when a judge tier is switched on: with none, every
-        # judge check reports unavailable by design and nothing is out. Enforcing only:
-        # watching never stops a request.
-        if pipeline_result.judge_unavailable and call.mode == "enforce" and call.verdict != "block":
-            from agentfox.capabilities.judgment import posture as judgment_posture
-            from agentfox.capabilities.judgment.capability import Tier
-
-            p = judgment_posture.effective()
-            judges_on = p.tiers & {Tier.JEV, Tier.LLM, Tier.LOCAL_LLM}
-            if p.fail_closed and judges_on:
-                call.verdict = "block"
-                call.effective = "block"
-                rules_fired.append(
-                    _fired_rule(
-                        "pipeline.judge_outage",
-                        "block",
-                        f"LLM judges did not answer ({pipeline_result.judge_unavailable}) and "
-                        "the judgment posture denies on a judge outage",
-                        severity="medium",
-                        controls=["NOM-RTG-06"],
-                    )
-                )
+        # A judge outage is one more degraded detector, and the two sources above
+        # already apply to it (the pipeline degrades a judge that answered
+        # "unreachable" exactly as one that timed out). The judgment posture's
+        # `fail_closed` ("On a judge outage: deny the request") is a third source,
+        # for judges only: it can add a block, never remove one, so it cannot loosen
+        # a deployment or pack that fails closed. Scoped like a pack's own fail_mode:
+        # only an enforcing pack with a rule on this surface that the silent judge's
+        # findings could have fired. A payload the egress gate refused is not here
+        # at all (see `PipelineResult.judge_outage`).
+        if pipeline_result.judge_outage and call.mode == "enforce" and call.verdict != "block":
+            self._apply_judge_outage(call)
 
         # The same two sources for a bound policy version that no longer loads: the
         # deployment's `fail_mode`, and the fail_mode the stored pack declared. A
@@ -1067,6 +1080,36 @@ class Enforcer(
                     controls=["NOM-RTG-06"],
                 )
             )
+
+    def _apply_judge_outage(self, call: _Evaluation) -> None:
+        from agentfox.capabilities.judgment import posture as judgment_posture
+
+        if not judgment_posture.effective().fail_closed:
+            return
+        outage = call.pipeline_result.judge_outage
+        entities = sorted({e for found in outage.values() for e in found})
+        relying = {
+            doc.key: rules
+            for doc, _version, _decision in call.evaluated
+            if doc.mode == "enforce" and (rules := _relies_on_entities(doc, call.surface, entities))
+        }
+        if not relying:
+            return
+        call.verdict = "block"
+        call.effective = "block"
+        packs = "; ".join(f"{key} ({', '.join(rules)})" for key, rules in relying.items())
+        call.rules_fired.append(
+            _fired_rule(
+                "pipeline.judge_outage",
+                "block",
+                f"LLM judges did not answer ({', '.join(sorted(outage))}), enforcing rules "
+                f"rely on what they find ({packs}), and the judgment posture denies on "
+                "a judge outage",
+                severity="medium",
+                controls=["NOM-RTG-06"],
+                evidence={"judges": {k: list(v) for k, v in sorted(outage.items())}},
+            )
+        )
 
     def _apply_ladders(self, call: _Evaluation) -> None:
         """Each business ladder's band joins the verdicts; security still dominates."""

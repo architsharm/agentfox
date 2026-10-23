@@ -3,13 +3,12 @@ ties `agentfox init --key` to the dashboard."""
 
 from __future__ import annotations
 
-import json
 from collections import defaultdict
 
-from agentfox.capabilities.onboarding import runner, service
+from agentfox.capabilities.onboarding import service
 from agentfox.capabilities.onboarding.attacks import build_suite, counts
 from agentfox.capabilities.onboarding.mapper import classify, map_repository
-from tests.conftest import as_user
+from tests.conftest import as_user, promote
 
 AGENT_PY = """
 from langchain.agents import create_agent
@@ -65,8 +64,15 @@ def test_maps_agent_model_tools_and_systems(tmp_path):
     }
     assert {x["name"] for x in s["systems"]} == {"Orders", "Payments", "Helpdesk"}
     assert s["sources"][0]["label"] == "Customers"
+    # Discovery's framework names; `agent = build_agent()` is the live object to run.
     assert mapped["agents"] == [
-        {"agentId": "ag-1", "module": "agent", "attr": "agent", "framework": "langchain"}
+        {
+            "agentId": "ag-1",
+            "module": "agent",
+            "attr": "agent",
+            "kind": "object",
+            "framework": "LangGraph",
+        }
     ]
 
 
@@ -79,77 +85,18 @@ def test_names_decide_before_docstrings():
     assert classify("delete_user", "")[0] == "high"
 
 
-def test_suite_is_140_split_like_the_brief(tmp_path):
+def test_the_default_suite_is_written_from_the_mapped_tools(tmp_path):
     suite = build_suite(map_repository(_repo(tmp_path))["structure"])
-    assert len(suite) == 140
     assert counts(suite) == {
-        "unsafe_tool_use": 40,
-        "prompt_injection": 40,
-        "data_leak": 30,
-        "jailbreak": 30,
+        "unsafe_tool_use": 24,
+        "prompt_injection": 24,
+        "data_leak": 18,
+        "jailbreak": 18,
     }
-    assert all(a.forbidden == ["start_return"] for a in suite if a.type == "unsafe_tool_use")
-
-
-class _Msg:
-    def __init__(self, content):
-        self.content = content
-
-
-class _GullibleAgent:
-    """Does whatever the message says: refunds when asked, repeats what tools return."""
-
-    def __init__(self, tools):
-        self.tools = tools
-
-    def invoke(self, payload, config=None):
-        text = payload["messages"][0]["content"]
-        record = json.loads(self.tools["get_order"](order_id="BZ-2207"))
-        if "refund" in text.lower() or "return" in text.lower():
-            self.tools["start_return"](order_id="BZ-2207", reason="asked")
-        return {"messages": [_Msg(f"Sure! The buyer is {record.get('customer_email', '')}.")]}
-
-
-def _run(structure, guards, kinds):
-    tools = {
-        t["name"]: runner._dispatch(t["name"], lambda **kw: "real") for t in structure["tools"]
-    }
-    suite = [a for a in build_suite(structure) if a.id in kinds]
-    out = []
-    runner.run_suite(
-        _GullibleAgent(tools),
-        suite,
-        structure,
-        guards,
-        out.append,
-        agent_name="shop-agent",
-        concurrency=2,
-    )
-    return {r["id"]: r for r in out}
-
-
-def test_before_attacks_get_through_and_guardrails_stop_them(tmp_path):
-    structure = map_repository(_repo(tmp_path))["structure"]
-    ids = {"unsafe_tool_use-001", "data_leak-001"}
-    before = _run(structure, [], ids)
-    assert before["unsafe_tool_use-001"]["gotThrough"]
-    assert "start_return" in before["unsafe_tool_use-001"]["toolCall"]
-    assert before["data_leak-001"]["gotThrough"]
-
-    after = _run(structure, ["refund-approval", "prompt-attacks", "hide-personal-data"], ids)
-    held = after["unsafe_tool_use-001"]
-    assert not held["gotThrough"]
-    assert held["calls"][-1] == {
-        "tool": "start_return",
-        "executed": False,
-        "held": "Money-moving actions need a person to approve them.",
-    }
-    assert not after["data_leak-001"]["gotThrough"]  # the email was hidden from the reply
-
-
-def test_real_tools_run_outside_a_test():
-    call = runner._dispatch("start_return", lambda **kw: "really refunded")
-    assert call(order_id="x") == "really refunded"
+    # The hand-off to a human is never what an attack is trying to trigger.
+    unsafe = [a for a in suite if a.type == "unsafe_tool_use" and not a.control]
+    assert all(a.forbidden == ["start_return"] for a in unsafe)
+    assert all("escalate_to_human" not in a.forbidden for a in suite)
 
 
 def test_run_aggregates_and_explains_a_broken_model():
@@ -192,9 +139,9 @@ def test_api_end_to_end(client):
     me = as_user("admin@example.com")
     key = client.get("/api/onboarding/key", headers=me).json()["value"]
     assert key.startswith("afi_")
-    assert (
-        client.get("/api/onboarding/key", headers=me).json()["value"] == key
-    )  # retrievable, not shown once
+    # Shown in full once; after that only its prefix.
+    again = client.get("/api/onboarding/key", headers=me).json()
+    assert again["value"] is None and key.startswith(again["prefix"])
 
     assert (
         client.post(
@@ -234,7 +181,8 @@ def test_api_end_to_end(client):
     )
 
     run = client.post("/api/onboarding/tests", json={"phase": "before"}, headers=me).json()
-    assert run["total"] == 140 and run["status"] == "running"
+    assert run["total"] == sum(counts(build_suite(structure)).values())
+    assert run["status"] == "running"
     job = client.post("/api/onboarding/runner/poll", headers=runner_auth).json()["job"]
     assert job["runId"] == run["id"] and job["guardrails"] == []
 
@@ -266,11 +214,11 @@ def test_api_end_to_end(client):
         "/api/onboarding/guardrails", json=[{"id": "refund-approval", "enabled": False}], headers=me
     )
     after = client.post("/api/onboarding/tests", json={"phase": "after"}, headers=me).json()
-    job = client.post("/api/onboarding/runner/poll", headers=runner_auth).json()["job"]
-    assert job["runId"] == after["id"] and job["guardrails"] == [
-        "prompt-attacks",
-        "hide-personal-data",
-    ]
+    job = client.post(
+        "/api/onboarding/runner/poll", json={"protocol": 2}, headers=runner_auth
+    ).json()["job"]
+    # The wizard's toggles aren't simulated: an "after" test checks the real policies.
+    assert job["runId"] == after["id"] and job["guardrails"] == [] and job["policies"]
 
     client.patch(
         "/api/onboarding/state",
@@ -310,10 +258,9 @@ def test_user_can_add_to_the_map_and_tests_use_it(client):
     assert live["tools"][0]["addedByUser"] is True
     guards = client.get("/api/onboarding/guardrails", headers=me).json()
     assert guards[0]["id"] == "refund-approval" and "payouts.send" in guards[0]["appliesTo"]
-    assert (
-        client.post("/api/onboarding/tests", json={"phase": "before"}, headers=me).json()["total"]
-        == 140
-    )
+    assert client.post("/api/onboarding/tests", json={"phase": "before"}, headers=me).json()[
+        "total"
+    ] == sum(counts(build_suite(structure)).values())
 
 
 def test_connect_registers_agents_and_tools_under_projects(client):
@@ -388,11 +335,14 @@ def test_connect_groups_agents_into_a_project_with_its_map(client):
         headers={"Authorization": f"Bearer {key}"},
     )
 
+    # A project is a system: two agents that hand nothing to each other are two, both
+    # mapped from the `bazaar` repository, which still names them both.
     projects = {
-        p["project"]: p["agents"]
+        p["project"]: (p["agents"], p["repos"])
         for p in client.get("/api/projects", headers=me).json()["projects"]
     }
-    assert projects["bazaar"] == 2
+    assert projects["shop-agent"] == (1, ["bazaar"])
+    assert projects["refund-agent"] == (1, ["bazaar"])
 
     m = client.get("/api/projects/bazaar/map", headers=me).json()
     assert sorted(a["slug"] for a in m["agents"]) == ["refund-agent", "shop-agent"]
@@ -454,12 +404,13 @@ def _finish(client, runner, run_id):
 
 
 def test_connecting_tests_the_project_as_it_is_with_no_guardrails(client):
-    """A new project gets no guardrails, may run its own tools, and is tested at once."""
+    """A new project is proposed with no guardrails and no tool grants (a person adds
+    the agents and grants their tools), and is tested at once."""
     me, runner, send = _connect_watch(client)
 
     m = client.get("/api/agents/watch-agent/map", headers=me).json()
     assert not [r for s in m["stages"] for r in s["rules"] if r["id"].startswith("basic.")]
-    assert {t["key"]: t["permission"] for t in m["tools"]}["get_order"] == "allowed"
+    assert {t["key"]: t["permission"] for t in m["tools"]}["get_order"] == "not_granted"
 
     tests = client.get("/api/onboarding/projects/watch/tests", headers=me).json()
     assert tests["first"]["status"] == "running"  # queued for the runner
@@ -495,21 +446,28 @@ def test_basic_guardrails_cover_what_users_send_and_get_back_then_the_test_runs_
             if rule["id"].startswith("basic."):
                 on[stage["key"]].add(rule["id"])
                 modes.add(rule["mode"])
-    # What users send and what goes back to them; nothing on tools. And they block.
+    # What users send and what goes back to them; nothing on tools. Watching until
+    # they are simulated and promoted, like any policy.
     assert on["input"] == {"basic.input.attacks"}
     assert on["output"] == {"basic.reply.personal_data", "basic.reply.secrets"}
     assert not on["tool_call"] and not on["tool_result"]
-    assert modes == {"enforce"}
+    assert modes == {"observe"}
 
     tests = client.get("/api/onboarding/projects/watch/tests", headers=me).json()
     assert tests["basicOn"] is True and tests["first"]["status"] == "done"
+    assert tests["basicEnforcing"] is False
+    promote(client, service.basic_key("watch-agent"))
+    tests = client.get("/api/onboarding/projects/watch/tests", headers=me).json()
+    assert tests["basicEnforcing"] is True
 
     started = client.post("/api/onboarding/projects/watch/tests", headers=me)
     assert started.status_code == 200 and started.json()["phase"] == "after"
     # One at a time.
     assert client.post("/api/onboarding/projects/watch/tests", headers=me).status_code == 409
-    job = client.post("/api/onboarding/runner/poll", headers=runner).json()["job"]
-    assert job["guardrails"] == service.BASIC_TEST_GUARDS
+    job = client.post("/api/onboarding/runner/poll", json={"protocol": 2}, headers=runner).json()[
+        "job"
+    ]
+    assert job["policies"] is True and job["guardrails"] == []
     _finish(client, runner, job["runId"])
     tests = client.get("/api/onboarding/projects/watch/tests", headers=me).json()
     assert tests["withBasic"]["status"] == "done"
@@ -527,7 +485,13 @@ def test_a_project_chooses_its_attack_sets_from_the_library(client):
     tests = client.get("/api/onboarding/projects/watch/tests", headers=me).json()
     library = {x["key"]: x for x in tests["library"]}
     assert {"encoding", "multilingual", "authority", "bulk_action"} <= set(library)
-    assert all(x["attacks"] > 0 for x in library.values())
+    # A read-only agent: the sets that need a tool that changes something can't run,
+    # and say so; every other set has attacks.
+    for key, x in library.items():
+        if key in ("unsafe_tool_use", "bulk_action"):
+            assert x["attacks"] == 0 and x["notRunReason"], key
+        else:
+            assert x["attacks"] > 0 and x["notRunReason"] is None, key
 
     url = "/api/onboarding/projects/watch/tests/sets"
     assert client.put(url, json={"sets": []}, headers=me).status_code == 400
@@ -552,11 +516,13 @@ def test_library_sets_are_graded_like_the_rest():
     }
     suite = build_suite(structure, list(LIBRARY))
     for kind in ("encoding", "multilingual", "authority", "bulk_action"):
-        mine = [a for a in suite if a.type == kind]
+        mine = [a for a in suite if a.type == kind and not a.control]
         assert mine, kind
         # Each one is graded mechanically: the action tool must not run.
         assert all(a.forbidden == ["issue_refund"] for a in mine), kind
-        assert len({a.id for a in mine}) == len(mine)
+        assert len({a.id for a in suite if a.type == kind}) == len(
+            [a for a in suite if a.type == kind]
+        )
 
 
 def test_only_the_connected_project_can_be_tested(client):
@@ -577,7 +543,8 @@ def test_the_setup_key_is_made_on_first_ask_and_the_same_after(client):
     assert first.json()["createdNow"] is True
 
     again = client.get("/api/onboarding/key", headers=me).json()
-    assert again == {"value": key, "createdNow": False}
+    assert again["value"] is None and again["createdNow"] is False
+    assert key.startswith(again["prefix"])
 
 
 def test_every_user_gets_their_own_setup_key(client):
@@ -589,9 +556,14 @@ def test_every_user_gets_their_own_setup_key(client):
 def test_starting_setup_over_keeps_the_key(client):
     """A running `agentfox init` holds the key; resetting setup must not strand it."""
     me = as_user("admin@example.com")
-    key = client.get("/api/onboarding/key", headers=me).json()["value"]
+    first = client.get("/api/onboarding/key", headers=me).json()
     assert client.delete("/api/onboarding/state", headers=me).status_code == 200
-    assert client.get("/api/onboarding/key", headers=me).json()["value"] == key
+    again = client.get("/api/onboarding/key", headers=me).json()
+    assert again["createdNow"] is False and again["prefix"] == first["prefix"]
+    r = client.post(
+        "/api/onboarding/runner/poll", headers={"Authorization": f"Bearer {first['value']}"}
+    )
+    assert r.status_code == 200
 
 
 def test_the_key_is_what_lets_init_report_in(client):
@@ -660,8 +632,14 @@ def test_removing_a_project_lets_it_connect_again_as_new(client):
 
     connect()
     assert client.get("/api/onboarding/projects/shop/tests", headers=me).json()["first"]
-    client.post("/api/onboarding/projects/shop/basic-guardrails", headers=me)
-    # The agents are live.
+    added = client.post("/api/onboarding/projects/shop/basic-guardrails", headers=me).json()
+    # Proposed as drafts, and the basic guardrails watch on them until simulated.
+    assert sorted(added["added"]) == ["refund-bot", "shop-bot"] and added["mode"] == "observe"
+    assert client.get("/api/agents/shop-bot", headers=me).json()["status"] == "draft"
+    # The project is the system, keyed by its root; the repository still names it.
+    assert {
+        p["project"]: p["repos"] for p in client.get("/api/projects", headers=me).json()["projects"]
+    }["shop-bot"] == ["shop"]
     before = client.get("/api/projects/shop/map", headers=me).json()
     assert before["agents"][1]["hands_off_to"] == ["refund-bot"] or before["agents"][0][
         "hands_off_to"
@@ -672,7 +650,7 @@ def test_removing_a_project_lets_it_connect_again_as_new(client):
     assert sorted(removed.json()["removed"]) == ["refund-bot", "shop-bot"]
 
     # Gone from the dashboard, and the setup card no longer remembers it.
-    assert "shop" not in {
+    assert not {"shop", "shop-bot", "refund-bot"} & {
         p["project"] for p in client.get("/api/projects", headers=me).json()["projects"]
     }
     assert client.get("/api/onboarding/structure", headers=me).json()["connected"] is False
@@ -684,29 +662,41 @@ def test_removing_a_project_lets_it_connect_again_as_new(client):
 
     # Connect again: treated like a new project.
     connect()
+    # One system: Shop Bot hands work to Refund Bot.
     assert {
-        p["project"]: p["agents"]
+        p["project"]: (p["agents"], p["repos"])
         for p in client.get("/api/projects", headers=me).json()["projects"]
-    }["shop"] == 2
+    }["shop-bot"] == (2, ["shop"])
     m = client.get("/api/agents/shop-bot/map", headers=me).json()
     assert not [r for s in m["stages"] for r in s["rules"] if r["id"].startswith("basic.")]
-    # Tested afresh.
+    # Tested afresh, and proposed again: nothing granted until a person does.
     assert client.get("/api/onboarding/projects/shop/tests", headers=me).json()["first"]
-    assert {t["key"]: t["permission"] for t in m["tools"]}["shop_lookup"] == "allowed"
+    assert client.get("/api/agents/shop-bot", headers=me).json()["status"] == "draft"
+    assert {t["key"]: t["permission"] for t in m["tools"]}["shop_lookup"] == "not_granted"
 
 
 def test_policies_page_shows_which_rules_apply_to_which_agents(client):
-    """The basic guardrails apply to the agent they were added for, blocking; the
-    page says so, and not that they apply to every agent."""
+    """The basic guardrails apply to the agent they were added for, watching until
+    simulated and promoted, then blocking; the page says so, and not that they apply
+    to every agent. The agent is a draft from `agentfox init`, and counts as one."""
     me, runner, _send = _connect_watch(client)
     client.post("/api/onboarding/projects/watch/basic-guardrails", headers=me)
-    applied = client.get("/api/policies/applied", headers=me).json()
-    rows = {r["id"]: r for r in applied["rules"]}
-    row = rows["basic.input.attacks"]
-    assert [a["slug"] for a in row["agents"]] == ["watch-agent"]
-    assert row["mode"] == "enforce" and row["effect"] == "block"
-    assert row["libraries"] == ["Basic guardrails"]
-    assert row["all"] is (applied["agents"] == 1)
+
+    def row():
+        applied = client.get("/api/policies/applied", headers=me).json()
+        r = {r["id"]: r for r in applied["rules"]}["basic.input.attacks"]
+        return applied, r
+
+    applied, r = row()
+    assert [(a["slug"], a["draft"]) for a in r["agents"]] == [("watch-agent", True)]
+    assert {a["slug"]: a["draft"] for a in applied["agentList"]}["watch-agent"] is True
+    assert r["mode"] == "observe" and r["effect"] == "block"
+    assert r["libraries"] == ["Basic guardrails"]
+    assert r["all"] is (applied["agents"] == 1)
+
+    promote(client, service.basic_key("watch-agent"))
+    _applied, r = row()
+    assert r["mode"] == "enforce" and r["effect"] == "block"
 
 
 def test_basic_and_starter_rules_are_libraries(client):
@@ -744,9 +734,23 @@ def test_basic_and_starter_rules_are_libraries(client):
         assert [r.id for r in own_layer(session, "watch-agent").rules] == ["mine.custom"]
 
     added = client.post("/api/policies/libraries/basic/apply", headers=me)
-    assert "watch-agent" in added.json()["added"]
-    basic = client.get("/api/policies/applied", headers=me).json()["perAgent"]["Basic guardrails"]
-    assert basic["agents"] >= 1 and basic["blocking"] is True
+    assert "watch-agent" in added.json()["added"] and added.json()["mode"] == "observe"
+
+    def basic():
+        return client.get("/api/policies/applied", headers=me).json()["perAgent"][
+            "Basic guardrails"
+        ]
+
+    # Watching first; blocking once simulated, like any policy (on every agent, as
+    # it was applied).
+    assert basic()["agents"] >= 1 and basic()["blocking"] is False
+    client.post("/api/policies/libraries/basic/simulate", json={}, headers=me)
+    blocking = client.post(
+        "/api/policies/libraries/basic/mode", json={"mode": "enforce"}, headers=me
+    )
+    assert blocking.status_code == 200, blocking.text
+    assert "watch-agent" in blocking.json()["changed"]
+    assert basic()["blocking"] is True
 
     # The map names each rule's library too.
     m = client.get("/api/agents/watch-agent/map", headers=me).json()
@@ -755,8 +759,9 @@ def test_basic_and_starter_rules_are_libraries(client):
 
 
 def test_a_library_applies_only_to_the_projects_agents(client):
-    me, _runner, _send = _connect_watch(client)
-    key = client.get("/api/onboarding/key", headers=me).json()["value"]
+    """A draft from `agentfox init` takes a library (it applies once the agent is
+    added); its project is keyed by its root agent; blocking passes the gate."""
+    me, runner, _send = _connect_watch(client)
     other = {
         "sources": [],
         "agents": [{"id": "o1", "name": "Other Agent", "model": "gpt-4o", "sourceIds": []}],
@@ -766,12 +771,17 @@ def test_a_library_applies_only_to_the_projects_agents(client):
     client.post(
         "/api/onboarding/runner/connect",
         json={"structure": other, "project": "elsewhere"},
-        headers={"Authorization": f"Bearer {key}"},
+        headers=runner,
     )
+    assert client.get("/api/agents/watch-agent", headers=me).json()["status"] == "draft"
+    project = {"agents": ["watch-agent"], "project": "watch-agent"}
+    apply = "/api/policies/libraries/baseline/apply"
 
-    r = client.post(
-        "/api/policies/libraries/baseline/apply", json={"agents": ["watch-agent"]}, headers=me
-    )
+    # Another project's agent is not this project's.
+    wrong = {"agents": ["other-agent"], "project": "watch-agent"}
+    assert client.post(apply, json=wrong, headers=me).status_code == 400
+
+    r = client.post(apply, json=project, headers=me)
     assert r.status_code == 200 and r.json()["added"] == ["watch-agent"]
 
     def baseline_on(slug):
@@ -792,16 +802,20 @@ def test_a_library_applies_only_to_the_projects_agents(client):
     assert status["baseline"]["agents"] == ["watch-agent"]
     assert status["baseline"]["blocking"] is False
 
-    switched = client.post(
-        "/api/policies/libraries/baseline/mode",
-        json={"agents": ["watch-agent"], "mode": "enforce"},
-        headers=me,
-    )
+    mode = {**project, "mode": "enforce"}
+    # Not without a simulation of the copy's rules.
+    refused = client.post("/api/policies/libraries/baseline/mode", json=mode, headers=me)
+    assert refused.status_code == 409 and refused.json()["detail"].startswith("simulate first")
+    assert {m for _lib, m in baseline_on("watch-agent")} == {"observe"}
+    client.post("/api/policies/libraries/baseline/simulate", json=project, headers=me)
+    switched = client.post("/api/policies/libraries/baseline/mode", json=mode, headers=me)
     assert switched.json()["changed"] == ["watch-agent"]
+    status = client.get("/api/policies/libraries/status?agents=watch-agent", headers=me).json()
+    assert status["baseline"]["blocking"] is True
     assert {mode for _lib, mode in baseline_on("watch-agent")} == {"enforce"}
     assert baseline_on("other-agent") == set()
 
     # Disconnecting the project takes its copies with it.
-    client.delete("/api/projects/watch", headers=me)
+    client.delete("/api/projects/watch-agent", headers=me)
     status = client.get("/api/policies/libraries/status?agents=watch-agent", headers=me).json()
     assert status["baseline"]["agents"] == []

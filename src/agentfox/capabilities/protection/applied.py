@@ -16,18 +16,19 @@ from sqlalchemy.orm import Session
 from agentfox.capabilities.protection.libraries import BASIC, STARTER, library_of
 from agentfox.core.models import Agent, Policy
 from agentfox.platform.policy import effective_for
-from agentfox.platform.registry.projects import REMOVED
+from agentfox.platform.registry.projects import GONE
 
 
 def applied_rules(session: Session) -> dict[str, Any]:
     """Every rule in force on at least one agent: what it does, where it comes from,
-    and whether it applies to every agent or only some."""
+    and whether it applies to every agent or only some.
+
+    Drafts count, marked ``draft``: an agent `agentfox init --key` proposed is a draft
+    until a person adds it, and the rules set for it (a library applied to its project,
+    say) take effect then. ``agentList`` is every agent counted, so a project whose
+    agents are all drafts still shows them."""
     agents = list(
-        session.scalars(
-            select(Agent)
-            .where(Agent.status.not_in(("rejected", "draft", REMOVED)))
-            .order_by(Agent.name)
-        )
+        session.scalars(select(Agent).where(Agent.status.not_in(GONE)).order_by(Agent.name))
     )
     names = {p.key: p.name or p.key for p in session.scalars(select(Policy))}
     rows: dict[str, dict[str, Any]] = {}
@@ -46,7 +47,13 @@ def applied_rules(session: Session) -> dict[str, Any]:
             )
             row["effects"][r["effect"]] += 1
             row["enforcing"] += int(r.get("enforcement") == "enforce")
-            row["agents"].append({"slug": agent.slug, "name": agent.name or agent.slug})
+            row["agents"].append(
+                {
+                    "slug": agent.slug,
+                    "name": agent.name or agent.slug,
+                    "draft": agent.status == "draft",
+                }
+            )
             key = r.get("policy") or ""
             lib = library_of(r["rule_id"], key, r.get("level") or "", names.get(key, ""))
             row["libraries"][lib] = lib
@@ -81,4 +88,17 @@ def applied_rules(session: Session) -> dict[str, Any]:
             "agents": len(on),
             "blocking": bool(mine) and all(r["mode"] == "enforce" for r in mine),
         }
-    return {"agents": len(agents), "rules": out, "perAgent": per_agent}
+    return {
+        "agents": len(agents),
+        "agentList": [
+            {
+                "slug": a.slug,
+                "name": a.name or a.slug,
+                "status": a.status,
+                "draft": a.status == "draft",
+            }
+            for a in agents
+        ],
+        "rules": out,
+        "perAgent": per_agent,
+    }

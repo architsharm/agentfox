@@ -108,7 +108,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-313 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+319 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -144,15 +144,17 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/metrics/rules` | How each rule behaved: fired, stopped something, or only watched. |
 | `GET` | `/api/metrics/summary` | Summary |
 | `GET` | `/api/onboarding` | Install state as a checklist, computed live. |
-| `GET` | `/api/onboarding/guardrails` | Get Guardrails |
-| `POST` | `/api/onboarding/guardrails` | Save Guardrails |
-| `GET` | `/api/onboarding/key` | This user's setup key, made the first time it is asked for and the same ever |
-| `POST` | `/api/onboarding/projects/{project}/basic-guardrails` | Switch on the basic guardrails for every agent in the project: prompt attacks |
+| `GET` | `/api/onboarding/guardrails` | The setup wizard's suggested guardrails, as a list to show. No test reads them: |
+| `POST` | `/api/onboarding/guardrails` | Saves the wizard's toggles. They change what the wizard shows, nothing else. |
+| `GET` | `/api/onboarding/key` | This user's setup key. Made the first time it is asked for (or after the last |
+| `POST` | `/api/onboarding/key/rotate` | Revoke this user's setup key and make a new one, shown in full this once. A |
+| `POST` | `/api/onboarding/projects/{project}/basic-guardrails` | Add the basic guardrails to every agent in the project: prompt attacks in what |
 | `GET` | `/api/onboarding/projects/{project}/tests` | The project's first test (as it was) and its latest one with the basic |
-| `POST` | `/api/onboarding/projects/{project}/tests` | Test the project again, with the guardrails it has now. |
+| `POST` | `/api/onboarding/projects/{project}/tests` | Test the project again, with the guardrails it has now, on its own map. |
 | `PUT` | `/api/onboarding/projects/{project}/tests/sets` | The attack sets this project tests with, from the library. At least one. |
 | `POST` | `/api/onboarding/runner/connect` | Runner Connect |
 | `POST` | `/api/onboarding/runner/poll` | Heartbeat, and the next test to run if one is waiting. |
+| `POST` | `/api/onboarding/runner/runs/{run_id}/guard` | Check one surface of one attack against an agent's real policies, persisting nothing. |
 | `POST` | `/api/onboarding/runner/runs/{run_id}/results` | Runner Results |
 | `DELETE` | `/api/onboarding/state` | Start over at step 1. The key survives, so a running `agentfox init` stays valid |
 | `GET` | `/api/onboarding/state` | Get State |
@@ -173,7 +175,7 @@ from the code. Regenerate after changing any route:
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/api/agent-controls` | Kill-switch/quarantine state per agent. |
-| `GET` | `/api/agents` | List Agents |
+| `GET` | `/api/agents` | Every agent. An agent whose project was disconnected (status ``removed``) is |
 | `POST` | `/api/agents` | Create Agent |
 | `POST` | `/api/agents/{agent_id}/approve-system` | Approve a proposed agent and every proposed agent it hands work to, in one step. |
 | `GET` | `/api/agents/{slug}` | Get Agent |
@@ -197,6 +199,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/agents/{slug}/protection` | Save Protection |
 | `POST` | `/api/agents/{slug}/protection/preview` | Replay this agent's last week against the protections, as if enforcing. |
 | `POST` | `/api/agents/{slug}/quarantine` | Stop an agent while you investigate. Reversible and audited. |
+| `POST` | `/api/agents/{slug}/restore-guardrails` | Put back the guardrails an agent had when its project was disconnected. |
 | `POST` | `/api/agents/{slug}/resume` | Restart a stopped agent. Deliberately the same role as `kill` — restarting |
 | `GET` | `/api/agents/{slug}/setup` | What this project still needs, for the banner a project's pages show. |
 | `GET` | `/api/agents/{slug}/tool-paths` | The tool-call paths an agent took, which are new, and which no test expects. |
@@ -244,11 +247,12 @@ from the code. Regenerate after changing any route:
 | `DELETE` | `/api/policies/agents/{slug}/rules/{rule_id}` | Drop an agent's own copy of a rule: the workspace rule applies to it again. |
 | `GET` | `/api/policies/applied` | Every rule in force on at least one agent: what it does, which library it comes |
 | `GET` | `/api/policies/effective` | The policy actually in force for a subject, with per-rule provenance. |
-| `POST` | `/api/policies/libraries/basic/apply` | Apply the basic guardrails to these agents (the project's) that don't have them. |
+| `POST` | `/api/policies/libraries/basic/apply` | Apply the basic guardrails to these agents (the project's) that don't have them, |
 | `POST` | `/api/policies/libraries/starter/remove` | Remove the watch-only starter rules earlier versions of `agentfox init` added, |
-| `GET` | `/api/policies/libraries/status` | For each library: on which of these agents (comma-separated) it is applied, whether |
-| `POST` | `/api/policies/libraries/{pack_id}/apply` | Apply a library to these agents only (the project's), watching first. |
+| `GET` | `/api/policies/libraries/status` | For each library (``basic`` is the basic guardrails): on which of these agents |
+| `POST` | `/api/policies/libraries/{pack_id}/apply` | Apply a library to these agents only (the project's), watching first. Agents that |
 | `POST` | `/api/policies/libraries/{pack_id}/mode` | Watch or block with a library on these agents (the project's). |
+| `POST` | `/api/policies/libraries/{pack_id}/simulate` | Replay each agent's recent traffic against its copies of a library as if they |
 | `GET` | `/api/policies/lint` | Policy lint. `passed` is false when critical/high findings exist. |
 | `POST` | `/api/policies/simulate` | Replay recorded traffic against a candidate policy. |
 | `POST` | `/api/policies/validate` | Validate Policy |
@@ -261,6 +265,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/policies/{key}/rego` | Get Rego |
 | `POST` | `/api/policies/{key}/rules/{rule_id}` | Change one rule's action or switch it off, as a new saved version. |
 | `GET` | `/api/policies/{key}/rules/{rule_id}/agents` | Every agent, nested by hand-off, and whether each has its own copy of the rule. |
+| `GET` | `/api/policies/{key}/rules/{rule_id}/checks` | The checks that can fire a rule: they report what it looks for, where it looks. |
 | `POST` | `/api/policies/{key}/rules/{rule_id}/scope` | Change a rule for every agent, or for only some (and what they hand off to). |
 | `POST` | `/api/policies/{policy_id}/approve` | Approve Policy |
 | `POST` | `/api/policies/{policy_id}/reject` | Reject Policy |
@@ -478,9 +483,10 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/library/packs` | List Packs |
 | `POST` | `/api/library/packs/{pack_id}/install` | Install Pack |
 | `GET` | `/api/overview` | Agents, their risk tiers and open issues: the Reports summary. |
-| `GET` | `/api/projects` | Every project (a repository `agentfox init` mapped) and its agent count. |
+| `GET` | `/api/projects` | Every project: a multi-agent system (a root agent and every agent it hands work |
 | `DELETE` | `/api/projects/{project}` | Disconnect a project: connecting it again with `agentfox init` starts fresh. |
-| `GET` | `/api/projects/{project}/map` | One project's map: who talks to its agents, their models, tools, and what the tools touch. |
+| `POST` | `/api/projects/{project}/approve` | Add every agent `agentfox init` proposed for this project ("Add all"). |
+| `GET` | `/api/projects/{project}/map` | One project's map: who talks to its agents, their models, tools, and what the |
 | `GET` | `/api/proposals` | List change proposals, filtered by status, kind and scope. |
 | `GET` | `/api/proposals/{proposal_id}` | One proposal with its diff, evidence, proof and decisions. |
 | `POST` | `/api/proposals/{proposal_id}/apply` | Apply an approved proposal, or settle one whose canary has finished. |

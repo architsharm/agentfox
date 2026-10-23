@@ -23,6 +23,17 @@ for a human to confirm. A refused tool call raises `Blocked` instead of returnin
 the response, so the caller's code never runs it. The OpenAI Responses API
 (``client.responses.create``) is not patched, so its calls are not governed here.
 
+An output redaction (a ``redact`` / ``mask`` / ``tokenize`` rule on the output
+surface) is applied, not only recorded: the enforcer's rewritten text replaces the
+assistant text in the client's own response object (``choices[0].message.content``,
+Anthropic's text blocks, ``AIMessage.content``), as the gateway proxy and the
+LangGraph guard substitute it. It follows the same mode rule as a block — the
+enforced verdict in ``"policy"`` mode, the effective one in ``"enforce"``, never in
+``"observe"`` — and a response that cannot be rewritten (a frozen object) is refused
+rather than returned unredacted. A *streamed* response cannot be rewritten after its
+chunks were yielded, so an applied redaction refuses the stream at its end instead;
+see below.
+
 Modes — who decides whether a call is refused in-process:
 
 * ``"policy"`` (the default) — the policies decide. Each policy's own mode applies,
@@ -58,6 +69,10 @@ What is deliberately *not* done here:
   iteration, but chunks already yielded to the caller cannot be taken back. Windowed
   enforcement that can cut a stream mid-flight is the gateway's job
   (``AGENTFOX_STREAMING_MODE=windowed``), not something a patched SDK can offer.
+  The same holds for redaction: an applied output redaction on a stream raises
+  `Blocked` at its end, because the text was already handed over unredacted. To
+  receive redacted text, call without ``stream=True`` or stream through the
+  gateway's buffered mode, which holds the response until the rewrite is done.
 
 Frameworks (LangGraph, CrewAI, LlamaIndex, AutoGen, ...) are detected, not patched:
 they reach the model through one of the client libraries above, and the summary says
@@ -105,6 +120,7 @@ from agentfox.frameworks.autoguard.shapes import (
     _chunk_usage,
     _lc_messages_from,
     _messages_from,
+    _rewrite_text,
     _text_of,
     _usage_of,
 )
@@ -126,6 +142,7 @@ from agentfox.platform.ledger.trace import (
 )
 from agentfox.platform.registry.service import register_agent
 from agentfox.runtime.enforcement import _CAPABILITY_REFUSAL_RULE_IDS, EnforcementResult, Enforcer
+from agentfox.runtime.enforcement.result import REWRITE_VERDICTS
 
 log = logging.getLogger("agentfox.runtime.autoguard")
 
@@ -575,10 +592,16 @@ def _postflight(
     *,
     tool_calls: list[_ToolCall] | None = None,
     may_raise: bool = True,
+    response: Any = None,
 ) -> None:
     """Span, output evaluation, tool-call authorisation, budget charge, turn record.
     Shared by buffered, streamed, sync and async calls. Raises `Blocked` when the
-    output or a tool call must be refused under the state's mode and ``may_raise``."""
+    output or a tool call must be refused under the state's mode and ``may_raise``.
+
+    ``response`` is the buffered response object, rewritten in place when an output
+    redaction applies; None for a stream, whose chunks are already with the caller
+    and so cannot be — an applied redaction refuses the stream instead (see
+    `_apply_redaction`)."""
     state = call.state
     tool_calls = tool_calls or []
     provider_ms = (time.perf_counter() - call.started) * 1000
@@ -592,11 +615,15 @@ def _postflight(
                     enforcer = Enforcer(session)
                     agent, identity, _shadow = enforcer.resolve(state.agent)
                     if text:
-                        outbound = _evaluate_output(
+                        outbound, refused, rewrite = _evaluate_output(
                             call, session, enforcer, agent, identity, text, usage, provider_ms
                         )
-                        if outbound is not None:
+                        if refused:
                             refusal = Blocked(outbound)
+                        elif rewrite is not None:
+                            refusal = _apply_redaction(outbound, rewrite, response)
+                            if refusal is None:
+                                text = rewrite
                     if tool_calls and not (state.lc_tools and _FROM_LANGCHAIN.get()):
                         tool_refusal = _govern_tool_calls(
                             call, session, enforcer, identity, tool_calls
@@ -878,9 +905,12 @@ def _evaluate_output(
     text: str,
     usage: dict[str, int],
     provider_ms: float,
-) -> EnforcementResult | None:
-    """Write the llm span and evaluate the output surface. Returns the result when it
-    must be refused under the state's mode."""
+) -> tuple[EnforcementResult, bool, str | None]:
+    """Write the llm span and evaluate the output surface.
+
+    Returns ``(result, refused, rewrite)``: ``refused`` when the output must be refused
+    under the state's mode, else ``rewrite`` is the redacted text the caller must get
+    instead of the original (None when nothing is rewritten)."""
     from agentfox.core.models import Trace
 
     state = call.state
@@ -925,10 +955,60 @@ def _evaluate_output(
     enforced = outbound.blocked
     effective = enforced or outbound.effective_verdict == "block"
     if _raises(state.mode, enforced=enforced, effective=effective):
-        return outbound
+        return outbound, True, None
     if enforced or effective:
         call.flagged = call.flagged or outbound.reason or "output flagged by policy"
+    rewrite = _applied_rewrite(state.mode, outbound)
+    if rewrite is None and outbound.content is not None:
+        log.info("agentfox: output would have been redacted (%s mode)", state.mode)
+    return outbound, False, rewrite
+
+
+def _applied_rewrite(mode: str, outbound: EnforcementResult) -> str | None:
+    """The redacted text to hand the caller, under `mode`, or None.
+
+    The enforcer computes the rewrite (``outbound.content``) whenever the *effective*
+    verdict is a redaction — including for a policy still in observe — so which one
+    applies is decided here, by the same rule `_raises` applies to a block: the
+    enforced verdict in ``"policy"`` mode (what the gateway's guard endpoint returns
+    as ``content``), the effective one in strict ``"enforce"`` mode, never in
+    ``"observe"``.
+    """
+    if mode == "observe" or outbound.content is None:
+        return None
+    if outbound.verdict in REWRITE_VERDICTS:
+        return outbound.content
+    if mode == "enforce" and outbound.effective_verdict in REWRITE_VERDICTS:
+        return outbound.content
     return None
+
+
+def _apply_redaction(outbound: EnforcementResult, rewrite: str, response: Any) -> Blocked | None:
+    """Write an applied redaction into the caller's response; a refusal if it can't be.
+
+    Either way the caller never receives the text the policy said to hide. A stream
+    (``response`` None) has already handed its chunks over, and no SDK stream lets
+    them be rewritten after the fact, so the redaction becomes a refusal at the end of
+    the stream, as a block would. The gateway's buffered streaming is the way to get
+    redacted streamed text.
+    """
+    reason = outbound.reason or "output redaction required by policy"
+    if response is None:
+        return Blocked(
+            outbound,
+            f"{reason}: this output must be redacted, but it was streamed and the chunks "
+            "already yielded cannot be rewritten, so the stream is refused. Call without "
+            "stream=True to receive the redacted text, or stream through the gateway "
+            "(AGENTFOX_STREAMING_MODE=buffered).",
+        )
+    if _rewrite_text(response, rewrite):
+        return None
+    return Blocked(
+        outbound,
+        f"{reason}: the redaction could not be applied to this "
+        f"{type(response).__name__} response, so it is refused rather than returned "
+        "unredacted.",
+    )
 
 
 def _resolve_principal(session: Any, principal_ref: Any) -> Any:
@@ -980,7 +1060,11 @@ def _govern(state: AutoState, kwargs: dict[str, Any], call: Callable[[], Any]) -
     if _is_stream(kwargs, response) and hasattr(response, "__iter__"):
         return _GovernedStream(response, governed)
     _postflight(
-        governed, _text_of(response), _usage_of(response), tool_calls=_tool_calls_of(response)
+        governed,
+        _text_of(response),
+        _usage_of(response),
+        tool_calls=_tool_calls_of(response),
+        response=response,
     )
     return response
 
@@ -1009,7 +1093,11 @@ async def _agovern(state: AutoState, kwargs: dict[str, Any], call: Callable[[], 
         if hasattr(response, "__iter__"):
             return _GovernedStream(response, governed)
     _postflight(
-        governed, _text_of(response), _usage_of(response), tool_calls=_tool_calls_of(response)
+        governed,
+        _text_of(response),
+        _usage_of(response),
+        tool_calls=_tool_calls_of(response),
+        response=response,
     )
     return response
 

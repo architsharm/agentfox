@@ -14,10 +14,12 @@ from agentfox.capabilities.detection.base import (
     BaseDetector,
     Detection,
     DetectionContext,
+    DetectorResult,
     redact_sample,
 )
 from agentfox.capabilities.detection.validators import all_validators
 from agentfox.capabilities.detection.validators.base import CheckContext, Validator
+from agentfox.capabilities.judgment.jev import JevUnavailable
 
 KEY_PREFIX = "validator."
 
@@ -102,6 +104,24 @@ class ValidatorDetector(BaseDetector):
     def warm(self) -> None:
         if self.available():
             self.validator.warm()
+
+    def judge_entities(self, context: DetectionContext | None = None) -> tuple[str, ...]:
+        """What a judge validator produces; empty for one decided by code."""
+        if getattr(self.validator, "kind", "") != "judge":
+            return ()
+        return (self.validator.entity_type,)
+
+    def detect(self, content: str, context: DetectionContext) -> DetectorResult:
+        try:
+            return super().detect(content, context)
+        except JevUnavailable as exc:
+            # A judge that got no answer, or whose payload was not sent: the same
+            # report the built-in judges make, so the pipeline tells them apart.
+            from agentfox.capabilities.detection.detectors.judgment import (
+                unavailable_result,
+            )
+
+            return unavailable_result(self, exc, self.judge_entities(context))
 
     def _detect(self, content: str, context: DetectionContext) -> list[Detection]:
         if self._params is None:

@@ -43,30 +43,41 @@ export function Act({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [ok, setOk] = useState(false);
+  // Asked in the page, not with window.confirm: some browsers (the in-app one among
+  // them) suppress native dialogs, and the button then silently did nothing.
+  const [asking, setAsking] = useState(false);
+  const run = async () => {
+    setAsking(false);
+    setBusy(true);
+    setError("");
+    try {
+      await callJson(url, method, body);
+      setOk(true);
+      setTimeout(() => setOk(false), 1500);
+      router.refresh();
+    } catch (e: any) {
+      setError(e.message || "Failed");
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <span className="k-act">
-      <button
-        type="button"
-        className={className}
-        disabled={busy}
-        onClick={async () => {
-          if (confirm && !window.confirm(confirm)) return;
-          setBusy(true);
-          setError("");
-          try {
-            await callJson(url, method, body);
-            setOk(true);
-            setTimeout(() => setOk(false), 1500);
-            router.refresh();
-          } catch (e: any) {
-            setError(e.message || "Failed");
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        {busy ? "…" : ok && done ? done : children}
-      </button>
+      {asking ? (
+        <span className="k-act-confirm" role="alertdialog" aria-label={confirm}>
+          <span>{confirm}</span>
+          <button type="button" className={className} onClick={run}>
+            {children}
+          </button>
+          <button type="button" className="k-btn-ghost" onClick={() => setAsking(false)}>
+            Cancel
+          </button>
+        </span>
+      ) : (
+        <button type="button" className={className} disabled={busy} onClick={() => (confirm ? (setError(""), setAsking(true)) : run())}>
+          {busy ? "…" : ok && done ? done : children}
+        </button>
+      )}
       {error && (
         <span className="k-act-error" role="alert">
           {error}

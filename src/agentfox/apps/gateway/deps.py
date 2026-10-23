@@ -126,6 +126,18 @@ def activate_posture(session: Session) -> None:
         log.warning("judgment posture unreadable, falling back to settings: %s", exc)
 
 
+def may_enforce(user: User) -> bool:
+    """Whether ``user`` may make a policy block (``WRITE_ROLES["policy_production"]``).
+
+    For the paths that put guardrails live on someone's behalf (basic guardrails,
+    libraries, restoring a disconnected agent's guardrails): they go live watching for
+    anyone who may change policy, and blocking only for a caller this allows, and only
+    once the rules have a recorded simulation (``simulation_for``), the gate
+    ``POST /api/policies/{key}/mode`` keeps.
+    """
+    return user.role in WRITE_ROLES["policy_production"]
+
+
 def require(family: str):
     """Dependency factory enforcing write permission for a route family."""
 
