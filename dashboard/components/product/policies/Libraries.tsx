@@ -1,6 +1,6 @@
 import { safeApi } from "@/lib/product/api";
 import { Act } from "@/components/kit/Act";
-import { SimulateLibrary } from "@/components/product/policies/SimulateLibrary";
+import { SimulateThenBlock } from "@/components/product/policies/SimulateLibrary";
 
 type Status = { agents: string[]; blocking: boolean; workspace: boolean; outdated?: boolean; outdatedAgents?: string[] };
 const NONE: Status = { agents: [], blocking: false, workspace: false };
@@ -20,18 +20,11 @@ function ModeActions({ id, title, project, st, body }: { id: string; title: stri
       </Act>
     );
   return (
-    <>
-      <SimulateLibrary library={id} body={body} />
-      <Act
-        url={`/api/policies/libraries/${id}/mode`}
-        body={{ ...body, mode: "enforce" }}
-        className="k-btn"
-        done="Blocking"
-        confirm={`Start blocking with ${title} on ${project}? Its rules will stop traffic, not just record it. It needs a simulation of these rules first, by anyone, and someone allowed to change production policy to start it.`}
-      >
-        Start blocking
-      </Act>
-    </>
+    <SimulateThenBlock
+      library={id}
+      body={body}
+      confirm={`Start blocking with ${title} on ${project}? Its rules will stop traffic, not just record it. It needs a simulation of these rules first, by anyone, and someone allowed to change production policy to start it.`}
+    />
   );
 }
 

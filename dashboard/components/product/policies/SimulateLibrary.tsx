@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { callJson } from "@/components/kit/Act";
+import { Act, callJson } from "@/components/kit/Act";
 
 type Result = { replayed: number; blocked: number; held: number; hidden: number; since_days: number };
 
@@ -18,7 +18,7 @@ export function simulationSummary(r: Result): string {
  * blocked, and say what they would have done. The simulation is recorded: it is what
  * lets "Start blocking" through.
  */
-export function SimulateLibrary({ library, body }: { library: string; body: unknown }) {
+export function SimulateLibrary({ library, body, onSimulated }: { library: string; body: unknown; onSimulated?: () => void }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
@@ -33,6 +33,7 @@ export function SimulateLibrary({ library, body }: { library: string; body: unkn
           setError("");
           try {
             setNote(simulationSummary(await callJson(`/api/policies/libraries/${library}/simulate`, "POST", body)));
+            onSimulated?.();
           } catch (e: any) {
             setError(e.message || "Failed");
           } finally {
@@ -53,5 +54,21 @@ export function SimulateLibrary({ library, body }: { library: string; body: unkn
         </span>
       )}
     </span>
+  );
+}
+
+/**
+ * Simulate, then Start blocking. A successful simulation resets the Start blocking
+ * button, so a "simulate first" refusal from before it doesn't stay on screen.
+ */
+export function SimulateThenBlock({ library, body, confirm }: { library: string; body: object; confirm: string }) {
+  const [round, setRound] = useState(0);
+  return (
+    <>
+      <SimulateLibrary library={library} body={body} onSimulated={() => setRound((r) => r + 1)} />
+      <Act key={round} url={`/api/policies/libraries/${library}/mode`} body={{ ...body, mode: "enforce" }} className="k-btn" done="Blocking" confirm={confirm}>
+        Start blocking
+      </Act>
+    </>
   );
 }

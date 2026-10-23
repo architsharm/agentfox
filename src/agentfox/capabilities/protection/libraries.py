@@ -301,9 +301,8 @@ class NotSimulated(Exception):
         agents = sorted({p["agent"] for p in pending})
         super().__init__(
             f"simulate first: {library_title(pack_id)} has not been simulated on "
-            f"{', '.join(agents)} with the rules it has now. Replay their recent traffic "
-            f"(POST /api/policies/libraries/{pack_id}/simulate, or Simulate on the "
-            "library), then start blocking"
+            f"{', '.join(agents)} with the rules it has now. Click Simulate to see what "
+            "it would have stopped in recent traffic, then start blocking."
         )
 
 
