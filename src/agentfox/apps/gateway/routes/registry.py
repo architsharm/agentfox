@@ -16,6 +16,7 @@ from agentfox.apps.gateway.deps import (
     current_user,
     db,
     get_agent_or_404,
+    may_enforce,
     operator_or_agent,
     require,
 )
@@ -156,7 +157,7 @@ def restore_agent_guardrails(
         session,
         agent,
         actor=user.email or user.id,
-        may_enforce=user.role in WRITE_ROLES["policy_production"],
+        may_enforce=may_enforce(user),
     )
     if out is None:
         raise HTTPException(404, f"Nothing to restore for '{slug}'")

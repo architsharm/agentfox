@@ -44,15 +44,31 @@ def disconnect_set(session: Session, project: str) -> list[Agent]:
     return [a for a in agents if a.project in repos]
 
 
-def _snapshot(session: Session, slug: str) -> dict[str, Any]:
-    """The agent's own guardrail layers that have rules live: key -> version and mode."""
+def own_keys(session: Session, slug: str) -> list[str]:
+    """Every guardrail layer that is the agent's own: its layer (``agent.<slug>``), its
+    basic guardrails, and its copies of libraries (``agent.<slug>.<policy>``)."""
     from agentfox.capabilities.onboarding.service import basic_key
     from agentfox.capabilities.protection import layer_key
+    from agentfox.core.models import Policy
+
+    prefix = f"agent.{slug}."
+    copies = [
+        key
+        for key in session.scalars(select(Policy.key).where(Policy.key.startswith(prefix)))
+        # `startswith` is a LIKE: an `_` in a slug matches any character.
+        if key.startswith(prefix)
+    ]
+    return list(dict.fromkeys((layer_key(slug), basic_key(slug), *sorted(copies))))
+
+
+def _snapshot(session: Session, slug: str) -> dict[str, Any]:
+    """The agent's own guardrail layers that have rules live, library copies included:
+    key -> version and mode."""
     from agentfox.core.models import Policy
     from agentfox.platform.policy.store import current_binding, load_version_document
 
     out: dict[str, Any] = {}
-    for key in (layer_key(slug), basic_key(slug)):
+    for key in own_keys(session, slug):
         policy = session.scalar(select(Policy).where(Policy.key == key))
         if policy is None:
             continue
@@ -82,8 +98,6 @@ def remove_project(session: Session, project: str, *, actor: str) -> dict[str, A
     Re-running init then proposes the agents again with no guardrails and no grants;
     each offers its snapshot back (:func:`restore_guardrails`).
     """
-    from agentfox.capabilities.onboarding.service import basic_key
-    from agentfox.capabilities.protection import layer_key
     from agentfox.core.models import Identity, OnboardingSession, Policy
     from agentfox.platform.identity.service import revoke_capability
     from agentfox.platform.ledger import chain
@@ -103,9 +117,8 @@ def remove_project(session: Session, project: str, *, actor: str) -> dict[str, A
         if snap:
             agent.guardrails_snapshot = snap
             snapshots[agent.slug] = snap
-        # Its own guardrails: an empty version, watching.
-        copies = session.scalars(select(Policy.key).where(Policy.key.like(f"agent.{agent.slug}.%")))
-        for key in dict.fromkeys((layer_key(agent.slug), basic_key(agent.slug), *copies)):
+        # Its own guardrails, library copies included: an empty version, watching.
+        for key in own_keys(session, agent.slug):
             if session.scalar(select(Policy).where(Policy.key == key)) is not None:
                 publish_in_current_mode(
                     session,

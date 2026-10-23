@@ -23,7 +23,7 @@ from fastapi import APIRouter, Body, Depends, Header, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from agentfox.apps.gateway.deps import WRITE_ROLES, current_user, db, require
+from agentfox.apps.gateway.deps import WRITE_ROLES, current_user, db, may_enforce, require
 from agentfox.capabilities.onboarding import keys, runs, service, sessions
 from agentfox.capabilities.onboarding.attacks import library
 from agentfox.capabilities.onboarding.schema import (
@@ -360,16 +360,12 @@ def add_basic_guardrails(
     agents = project_agents(session, project)
     if not agents:
         raise HTTPException(404, f"No project '{project}'")
-    actor = user.email or user.id
-    may_enforce = user.role in WRITE_ROLES["policy_production"]
-    added: list[str] = []
-    modes: set[str] = set()
-    for a in agents:
-        mode = service.basic_guardrails(session, a.slug, actor=actor, may_enforce=may_enforce)
-        if mode is not None:
-            added.append(a.slug)
-            modes.add(mode)
-    mode = "enforce" if modes == {"enforce"} else ("observe" if modes else None)
+    added, mode = service.add_basic_guardrails(
+        session,
+        [a.slug for a in agents],
+        actor=user.email or user.id,
+        may_enforce=may_enforce(user),
+    )
     return {
         "project": project,
         "added": added,

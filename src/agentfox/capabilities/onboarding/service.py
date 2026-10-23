@@ -556,6 +556,23 @@ def basic_guardrails(session: Any, slug: str, *, actor: str, may_enforce: bool) 
     return "enforce"
 
 
+def add_basic_guardrails(
+    session: Any, slugs: list[str], *, actor: str, may_enforce: bool
+) -> tuple[list[str], str | None]:
+    """:func:`basic_guardrails` for several agents (a project's): the agents they were
+    added to, and the mode they went live in (``enforce`` only when every one did;
+    None when none was added). The one path both the onboarding card and the Policies
+    page's Basic guardrails library take."""
+    added: list[str] = []
+    modes: set[str] = set()
+    for slug in slugs:
+        mode = basic_guardrails(session, slug, actor=actor, may_enforce=may_enforce)
+        if mode is not None:
+            added.append(slug)
+            modes.add(mode)
+    return added, ("enforce" if modes == {"enforce"} else ("observe" if modes else None))
+
+
 # --- Registering what `agentfox init` found -------------------------------------------
 
 

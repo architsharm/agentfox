@@ -632,8 +632,14 @@ def test_removing_a_project_lets_it_connect_again_as_new(client):
 
     connect()
     assert client.get("/api/onboarding/projects/shop/tests", headers=me).json()["first"]
-    client.post("/api/onboarding/projects/shop/basic-guardrails", headers=me)
-    # The agents are live.
+    added = client.post("/api/onboarding/projects/shop/basic-guardrails", headers=me).json()
+    # Proposed as drafts, and the basic guardrails watch on them until simulated.
+    assert sorted(added["added"]) == ["refund-bot", "shop-bot"] and added["mode"] == "observe"
+    assert client.get("/api/agents/shop-bot", headers=me).json()["status"] == "draft"
+    # The project is the system, keyed by its root; the repository still names it.
+    assert {
+        p["project"]: p["repos"] for p in client.get("/api/projects", headers=me).json()["projects"]
+    }["shop-bot"] == ["shop"]
     before = client.get("/api/projects/shop/map", headers=me).json()
     assert before["agents"][1]["hands_off_to"] == ["refund-bot"] or before["agents"][0][
         "hands_off_to"
@@ -670,17 +676,27 @@ def test_removing_a_project_lets_it_connect_again_as_new(client):
 
 
 def test_policies_page_shows_which_rules_apply_to_which_agents(client):
-    """The basic guardrails apply to the agent they were added for, blocking; the
-    page says so, and not that they apply to every agent."""
+    """The basic guardrails apply to the agent they were added for, watching until
+    simulated and promoted, then blocking; the page says so, and not that they apply
+    to every agent. The agent is a draft from `agentfox init`, and counts as one."""
     me, runner, _send = _connect_watch(client)
     client.post("/api/onboarding/projects/watch/basic-guardrails", headers=me)
-    applied = client.get("/api/policies/applied", headers=me).json()
-    rows = {r["id"]: r for r in applied["rules"]}
-    row = rows["basic.input.attacks"]
-    assert [a["slug"] for a in row["agents"]] == ["watch-agent"]
-    assert row["mode"] == "enforce" and row["effect"] == "block"
-    assert row["libraries"] == ["Basic guardrails"]
-    assert row["all"] is (applied["agents"] == 1)
+
+    def row():
+        applied = client.get("/api/policies/applied", headers=me).json()
+        r = {r["id"]: r for r in applied["rules"]}["basic.input.attacks"]
+        return applied, r
+
+    applied, r = row()
+    assert [(a["slug"], a["draft"]) for a in r["agents"]] == [("watch-agent", True)]
+    assert {a["slug"]: a["draft"] for a in applied["agentList"]}["watch-agent"] is True
+    assert r["mode"] == "observe" and r["effect"] == "block"
+    assert r["libraries"] == ["Basic guardrails"]
+    assert r["all"] is (applied["agents"] == 1)
+
+    promote(client, service.basic_key("watch-agent"))
+    _applied, r = row()
+    assert r["mode"] == "enforce" and r["effect"] == "block"
 
 
 def test_basic_and_starter_rules_are_libraries(client):
@@ -718,9 +734,23 @@ def test_basic_and_starter_rules_are_libraries(client):
         assert [r.id for r in own_layer(session, "watch-agent").rules] == ["mine.custom"]
 
     added = client.post("/api/policies/libraries/basic/apply", headers=me)
-    assert "watch-agent" in added.json()["added"]
-    basic = client.get("/api/policies/applied", headers=me).json()["perAgent"]["Basic guardrails"]
-    assert basic["agents"] >= 1 and basic["blocking"] is True
+    assert "watch-agent" in added.json()["added"] and added.json()["mode"] == "observe"
+
+    def basic():
+        return client.get("/api/policies/applied", headers=me).json()["perAgent"][
+            "Basic guardrails"
+        ]
+
+    # Watching first; blocking once simulated, like any policy (on every agent, as
+    # it was applied).
+    assert basic()["agents"] >= 1 and basic()["blocking"] is False
+    client.post("/api/policies/libraries/basic/simulate", json={}, headers=me)
+    blocking = client.post(
+        "/api/policies/libraries/basic/mode", json={"mode": "enforce"}, headers=me
+    )
+    assert blocking.status_code == 200, blocking.text
+    assert "watch-agent" in blocking.json()["changed"]
+    assert basic()["blocking"] is True
 
     # The map names each rule's library too.
     m = client.get("/api/agents/watch-agent/map", headers=me).json()
@@ -729,8 +759,9 @@ def test_basic_and_starter_rules_are_libraries(client):
 
 
 def test_a_library_applies_only_to_the_projects_agents(client):
-    me, _runner, _send = _connect_watch(client)
-    key = client.get("/api/onboarding/key", headers=me).json()["value"]
+    """A draft from `agentfox init` takes a library (it applies once the agent is
+    added); its project is keyed by its root agent; blocking passes the gate."""
+    me, runner, _send = _connect_watch(client)
     other = {
         "sources": [],
         "agents": [{"id": "o1", "name": "Other Agent", "model": "gpt-4o", "sourceIds": []}],
@@ -740,12 +771,17 @@ def test_a_library_applies_only_to_the_projects_agents(client):
     client.post(
         "/api/onboarding/runner/connect",
         json={"structure": other, "project": "elsewhere"},
-        headers={"Authorization": f"Bearer {key}"},
+        headers=runner,
     )
+    assert client.get("/api/agents/watch-agent", headers=me).json()["status"] == "draft"
+    project = {"agents": ["watch-agent"], "project": "watch-agent"}
+    apply = "/api/policies/libraries/baseline/apply"
 
-    r = client.post(
-        "/api/policies/libraries/baseline/apply", json={"agents": ["watch-agent"]}, headers=me
-    )
+    # Another project's agent is not this project's.
+    wrong = {"agents": ["other-agent"], "project": "watch-agent"}
+    assert client.post(apply, json=wrong, headers=me).status_code == 400
+
+    r = client.post(apply, json=project, headers=me)
     assert r.status_code == 200 and r.json()["added"] == ["watch-agent"]
 
     def baseline_on(slug):
@@ -766,16 +802,20 @@ def test_a_library_applies_only_to_the_projects_agents(client):
     assert status["baseline"]["agents"] == ["watch-agent"]
     assert status["baseline"]["blocking"] is False
 
-    switched = client.post(
-        "/api/policies/libraries/baseline/mode",
-        json={"agents": ["watch-agent"], "mode": "enforce"},
-        headers=me,
-    )
+    mode = {**project, "mode": "enforce"}
+    # Not without a simulation of the copy's rules.
+    refused = client.post("/api/policies/libraries/baseline/mode", json=mode, headers=me)
+    assert refused.status_code == 409 and refused.json()["detail"].startswith("simulate first")
+    assert {m for _lib, m in baseline_on("watch-agent")} == {"observe"}
+    client.post("/api/policies/libraries/baseline/simulate", json=project, headers=me)
+    switched = client.post("/api/policies/libraries/baseline/mode", json=mode, headers=me)
     assert switched.json()["changed"] == ["watch-agent"]
+    status = client.get("/api/policies/libraries/status?agents=watch-agent", headers=me).json()
+    assert status["baseline"]["blocking"] is True
     assert {mode for _lib, mode in baseline_on("watch-agent")} == {"enforce"}
     assert baseline_on("other-agent") == set()
 
     # Disconnecting the project takes its copies with it.
-    client.delete("/api/projects/watch", headers=me)
+    client.delete("/api/projects/watch-agent", headers=me)
     status = client.get("/api/policies/libraries/status?agents=watch-agent", headers=me).json()
     assert status["baseline"]["agents"] == []
