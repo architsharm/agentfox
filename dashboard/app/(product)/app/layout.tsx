@@ -9,6 +9,7 @@ import { NotificationsBell } from "@/components/product/NotificationsBell";
 import { CommandSearch } from "@/components/product/CommandSearch";
 import { SideNav } from "@/components/product/SideNav";
 import { MobileMenu } from "@/components/product/MobileMenu";
+import { TableLabels } from "@/components/product/TableLabels";
 import { AppChrome } from "@/components/product/AppChrome";
 import { Crumbs } from "@/components/product/Crumbs";
 import { WORKSPACE_NAV } from "@/lib/product/nav";
@@ -133,6 +134,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </span>
           </Link>
           <MobileMenu />
+          <TableLabels />
           <Suspense fallback={<SideNav projects={[]} initial={project} />}>
             {signedIn ? <SideNavData initial={project} /> : <SideNav projects={[]} initial={null} />}
           </Suspense>

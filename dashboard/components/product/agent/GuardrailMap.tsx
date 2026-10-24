@@ -1209,12 +1209,36 @@ function Legend() {
   );
 }
 
+/** The lines drawn on the map, in reading order: the ones a phone lists as buttons. */
+const LINE_ORDER = ["input", "output", "prompt", "response", "tool_call", "tool_result", "context"];
+
 /**
- * One project's guardrails, drawn where they act. The user outside; inside the
- * project's box, each agent with its LLM, tools and documents; rails on the lines
- * between them. Clicking a rail, a tool or an agent makes that agent the one the
- * panel is about; with nothing selected the panel is that agent's set-up guide.
+ * On a phone the map's pills are too small to tap, so its lines are also listed here
+ * as full-size buttons: each opens the same panel as tapping the line on the map.
  */
+function LineList({ map, onSelect }: { map: AgentMap; onSelect: (next: Selected) => void }) {
+  const lines = LINE_ORDER.map((key) => map.stages.find((s) => s.key === key)).filter((s): s is Stage => Boolean(s));
+  return (
+    <div className="gm-lines" aria-label="Lines on this map">
+      <p className="gm-lines-head">Tap a line to see and change its guardrails</p>
+      <div className="gm-lines-grid">
+        {lines.map((s) => (
+          <button key={s.key} type="button" className="gm-line-btn" onClick={() => onSelect({ kind: "stage", key: s.key })}>
+            <span>{RAIL[s.key]?.name ?? s.title}</span>
+            <small>{s.rules.length ? `${s.rules.length} rule${s.rules.length === 1 ? "" : "s"}` : "none yet"}</small>
+          </button>
+        ))}
+        {map.tools.length > 0 && (
+          <button type="button" className="gm-line-btn" onClick={() => onSelect({ kind: "tools", key: "" })}>
+            <span>Tools</span>
+            <small>{map.tools.length}</small>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /**
  * A phone-width screen. There one finger must scroll the page, not drag the map
  * (otherwise a visitor's finger is trapped on the canvas): the map pans and zooms
@@ -1232,6 +1256,12 @@ function useNarrow(): boolean {
   return narrow;
 }
 
+/**
+ * One project's guardrails, drawn where they act. The user outside; inside the
+ * project's box, each agent with its LLM, tools and documents; rails on the lines
+ * between them. Clicking a rail, a tool or an agent makes that agent the one the
+ * panel is about; with nothing selected the panel is that agent's set-up guide.
+ */
 export function GuardrailMap({
   maps,
   focus,
@@ -1371,6 +1401,7 @@ export function GuardrailMap({
       </div>
       <div className="gm-side">
         {agentSwitch}
+        {narrow && !selected && <LineList map={map} onSelect={setSelected} />}
         <Panel map={map} selected={selected} groups={groups} onSelect={setSelected} project={project} catalog={catalog} toolList={toolList} />
       </div>
     </div>
