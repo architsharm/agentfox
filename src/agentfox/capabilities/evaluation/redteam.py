@@ -761,8 +761,8 @@ def _live_capability_scope(
     other reason stands either way. Empty when every fired rule applies.
     """
     from agentfox.core.models import Identity
+    from agentfox.core.vocab import CAPABILITY_REFUSAL_RULE_IDS as _CAPABILITY_REFUSAL_RULE_IDS
     from agentfox.platform.identity.service import holds_any_grant
-    from agentfox.runtime.enforcement.rules import _CAPABILITY_REFUSAL_RULE_IDS
 
     refusing = any(
         (r.get("rule_id") or r.get("id")) in _CAPABILITY_REFUSAL_RULE_IDS
@@ -779,7 +779,7 @@ def _live_capability_scope(
 
 
 def _strongest(rules: list[dict[str, Any]]) -> str:
-    from agentfox.runtime.enforcement.rules import _VERDICT_RANK
+    from agentfox.core.vocab import VERDICT_RANK as _VERDICT_RANK
 
     effects = [str(r.get("effect") or "allow") for r in rules]
     effects = [e for e in effects if e in _VERDICT_RANK]
@@ -788,7 +788,7 @@ def _strongest(rules: list[dict[str, Any]]) -> str:
 
 def _weaker(a: str, b: str) -> str:
     """The weaker of two verdicts: removing a rule can only lower a verdict."""
-    from agentfox.runtime.enforcement.rules import _VERDICT_RANK
+    from agentfox.core.vocab import VERDICT_RANK as _VERDICT_RANK
 
     return a if _VERDICT_RANK.get(a, 0) <= _VERDICT_RANK.get(b, 0) else b
 

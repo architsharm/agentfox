@@ -6,7 +6,7 @@ import functools
 import logging
 from typing import Any
 
-from agentfox.core.vocab import EFFECT_RANK
+from agentfox.core.vocab import CAPABILITY_REFUSAL_RULE_IDS, EFFECT_RANK, VERDICT_RANK
 
 log = logging.getLogger("agentfox.runtime.enforcement")
 
@@ -100,8 +100,9 @@ def _fallback_policies(risk_tier: str | None = None) -> tuple:
 
 #: Which of two verdicts is the stronger claim, for picking between the
 #: layers of one file. Ordinary verdict comparison is scattered across the
-#: engine; this is the one place that needs only "which is worse".
-_VERDICT_RANK = {"allow": 0, "alter": 1, "redact": 1, "mask": 1, "escalate": 2, "block": 3}
+#: engine; this is the one place that needs only "which is worse". Defined in
+#: core.vocab so a layer below the runtime can read it too.
+_VERDICT_RANK = VERDICT_RANK
 
 
 #: Risk codes whose condition a shipped policy pack already has a rule for, mapped to
@@ -123,10 +124,8 @@ RISK_CODE_RULE_IDS = {
 
 #: Every rule id that means "this call was refused at the capability layer". The
 #: synthetic fallback below checks the whole set, so a pack that already said it in
-#: its own words is not echoed under a second id.
-_CAPABILITY_REFUSAL_RULE_IDS = frozenset(
-    {"capability.denied", "capability.default_deny", "capability.constraint_violated"}
-)
+#: its own words is not echoed under a second id. Defined in core.vocab.
+_CAPABILITY_REFUSAL_RULE_IDS = CAPABILITY_REFUSAL_RULE_IDS
 
 
 def _fired_rule(
