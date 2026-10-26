@@ -287,6 +287,9 @@ function GuardEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, tar
   const y = t === undefined ? my : sourceY + (targetY - sourceY) * t;
   const on = guarded(data?.stage);
   const n = railCount(data?.stage);
+  // Enforcing or only watching: a rail whose rules all just record stops nothing yet.
+  const c = data?.stage ? counts(data.stage.rules) : { enforcing: 0, watching: 0 };
+  const watchOnly = on && n > 0 && c.enforcing === 0;
   const sel = Boolean(data?.selected);
   const lit = sel || Boolean(data?.hovered);
   return (
@@ -302,18 +305,20 @@ function GuardEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, tar
         <EdgeLabelRenderer>
           <button
             type="button"
-            className={`gm-rail nodrag nopan${on ? " gm-rail-on" : " gm-rail-off"}${sel ? " gm-selected" : ""}${lit ? " gm-rail-lit" : ""}`}
+            className={`gm-rail nodrag nopan${on ? " gm-rail-on" : " gm-rail-off"}${watchOnly ? " gm-rail-watch" : ""}${sel ? " gm-selected" : ""}${lit ? " gm-rail-lit" : ""}`}
             style={{ transform: `translate(${x}px, ${y}px) ${PILL_SIDE[data.side ?? "on"]}` }}
             onClick={data.onPick}
             onMouseEnter={() => data.onHover?.(true)}
             onMouseLeave={() => data.onHover?.(false)}
             onFocus={() => data.onHover?.(true)}
             onBlur={() => data.onHover?.(false)}
-            aria-label={`${data.title} rail: ${on ? `${n} guardrails` : "no guardrails yet"}. Open.`}
+            aria-label={`${data.title} rail: ${on ? `${n} guardrails, ${c.enforcing} enforcing, ${c.watching} watching only` : "no guardrails yet"}. Open.`}
+            title={on && n ? `${c.enforcing} enforcing · ${c.watching} watching only` : undefined}
           >
             {on ? <Mark size={15} /> : <span className="gm-mark-plus" aria-hidden>+</span>}
             <span className="gm-rail-name">{data.title}</span>
             {on && n ? <span className="gm-rail-count">{n}</span> : null}
+            {watchOnly && <span className="gm-rail-watching">watching</span>}
           </button>
         </EdgeLabelRenderer>
       )}
@@ -1200,6 +1205,9 @@ function Legend() {
       <span className="gm-legend-sep" aria-hidden />
       <span className="gm-legend-kind">
         <Mark size={16} /> Rail with guardrails
+      </span>
+      <span className="gm-legend-kind">
+        <span className="gm-legend-watch" aria-hidden>watching</span> Rules only record, nothing stopped yet
       </span>
       <span className="gm-legend-kind">
         <span className="gm-legend-plus" aria-hidden>+</span> Rail, none yet

@@ -42,7 +42,8 @@ describe("sidebar scopes", () => {
     expect(rows[0][1]).toBe("/app/map");
     expect(rows[0][2]).toContain("/app/projects");
     expect(rows.map((r) => r[0])).toEqual([
-      "Agents", "Policies", "Approvals", "Issues", "Testing", "Traces",
+      "Agents", "Policies", "Features", "Approvals", "Issues", "Testing", "Traces",
+      "Monitoring", "Reports",
       "Settings",
     ]);
   });

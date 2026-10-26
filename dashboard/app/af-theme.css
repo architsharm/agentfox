@@ -42,6 +42,8 @@
 
   --af-ok: #18794e;
   --af-warn: #a35f00;
+  /* Held for a person, and high severity: orange, apart from medium/warn amber. */
+  --af-held: #a04407;
   --af-err: #c8321e;
   --af-info: #1f7fb8;
   --af-tool: #7c5ce0;
@@ -68,7 +70,7 @@
     --af-bg: #0e0f13; --af-surface: #15161c; --af-subtle: #1b1d24; --af-line: #262833; --af-line-2: #363946;
     --af-fg: #ecedf1; --af-fg-2: #b4b8c5; --af-muted: #8b90a0;
     --af-brand: #f0668d; --af-brand-press: #f388a6; --af-link: #8b8ff7; --af-on-brand: #0e0f13;
-    --af-ok: #4cc38a; --af-warn: #f0b44c; --af-err: #f2715c; --af-info: #5db8f2; --af-tool: #b48cf5;
+    --af-ok: #4cc38a; --af-warn: #f0b44c; --af-held: #ffa06b; --af-err: #f2715c; --af-info: #5db8f2; --af-tool: #b48cf5;
     --af-s1: #8b8ff7; --af-s2: #8b8ff7; --af-s3: #f0b44c; --af-s4: #f0668d;
     --af-s5: #5db8f2; --af-s6: #b48cf5; --af-s7: #9bcb4e; --af-s8: #a3a8b6;
     --af-shadow-1: 0 0 0 1px #ffffff0a;
@@ -80,7 +82,7 @@
   --af-bg: #0e0f13; --af-surface: #15161c; --af-subtle: #1b1d24; --af-line: #262833; --af-line-2: #363946;
   --af-fg: #ecedf1; --af-fg-2: #b4b8c5; --af-muted: #8b90a0;
   --af-brand: #f0668d; --af-brand-press: #f388a6; --af-link: #8b8ff7; --af-on-brand: #0e0f13;
-  --af-ok: #4cc38a; --af-warn: #f0b44c; --af-err: #f2715c; --af-info: #5db8f2; --af-tool: #b48cf5;
+  --af-ok: #4cc38a; --af-warn: #f0b44c; --af-held: #ffa06b; --af-err: #f2715c; --af-info: #5db8f2; --af-tool: #b48cf5;
   --af-s1: #8b8ff7; --af-s2: #8b8ff7; --af-s3: #f0b44c; --af-s4: #f0668d;
   --af-s5: #5db8f2; --af-s6: #b48cf5; --af-s7: #9bcb4e; --af-s8: #a3a8b6;
   --af-shadow-1: 0 0 0 1px #ffffff0a;
@@ -121,8 +123,8 @@
   --ok-bg: color-mix(in srgb, var(--af-ok) 12%, transparent);
   --warn: var(--af-warn);
   --warn-bg: color-mix(in srgb, var(--af-warn) 12%, transparent);
-  --escalate: var(--af-warn);
-  --escalate-bg: color-mix(in srgb, var(--af-warn) 12%, transparent);
+  --escalate: var(--af-held);
+  --escalate-bg: color-mix(in srgb, var(--af-held) 12%, transparent);
   --bad: var(--af-err);
   --bad-bg: color-mix(in srgb, var(--af-err) 12%, transparent);
   --dim-bg: var(--af-subtle);
@@ -277,7 +279,8 @@ nav.side .side-foot .theme-toggle { margin: 0; padding: 0; border: 0; }
 }
 .shell .tag::before, .shell .k-pill::before { content: ""; flex: none; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .shell .tag.ok, .shell .k-pill-ok { --c: var(--af-ok); }
-.shell .tag.warn, .shell .tag.escalate, .shell .k-pill-warn, .shell .k-pill-held { --c: var(--af-warn); }
+.shell .tag.warn, .shell .k-pill-warn { --c: var(--af-warn); }
+.shell .tag.escalate, .shell .k-pill-held { --c: var(--af-held); }
 .shell .tag.bad, .shell .k-pill-bad { --c: var(--af-err); }
 .shell .tag.info, .shell .k-pill-info { --c: var(--af-info); }
 .shell .k-pill-outline { --c: var(--af-muted); background: transparent; box-shadow: inset 0 0 0 1px var(--af-line); }
@@ -473,6 +476,11 @@ nav.side .project-switch-menu .project-switch-danger { color: var(--af-err); }
 .gm-rail-off.gm-rail-lit { border-style: solid; }
 .gm-rail-count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--af-brand); background: color-mix(in srgb, var(--af-brand) 10%, transparent); }
 .gm-rail.gm-selected { outline: 2px solid var(--af-link); outline-offset: 2px; }
+/* Every rule on the rail only watches: it records, it stops nothing yet. */
+.gm-rail-watch { border-color: color-mix(in srgb, var(--af-warn) 45%, var(--af-line-2)); }
+.gm-rail-watch .gm-rail-count { color: var(--af-warn); background: color-mix(in srgb, var(--af-warn) 12%, transparent); }
+.gm-rail-watching, .gm-legend-watch { font-size: 10.5px; font-weight: 600; letter-spacing: .02em; color: var(--af-warn); }
+.gm-legend-watch { padding: 1px 6px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--af-warn) 45%, var(--af-line-2)); }
 .gm-agents { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; border: 1px solid var(--af-line); border-radius: var(--af-r-card); background: var(--af-surface); }
 .gm-agents button { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border: 1px solid var(--af-line); border-radius: 999px; background: var(--af-bg); font-family: var(--af-sans); font-size: 12px; color: var(--af-fg-2); cursor: pointer; }
 .gm-agents button.on { border-color: color-mix(in srgb, var(--af-brand) 50%, var(--af-line)); background: color-mix(in srgb, var(--af-brand) 8%, var(--af-surface)); color: var(--af-fg); font-weight: 500; }

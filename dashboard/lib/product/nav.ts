@@ -29,19 +29,29 @@ const SETTINGS: NavItem = [
 
 /**
  * Guardrails is everything: Agents (each project's map) is home and the place to set
- * things up; Policies, Approvals, Issues and Testing are the ways back in to what
- * needs a decision; Traces is the record behind all of it, for troubleshooting.
+ * things up; Policies, Features, Approvals, Issues and Testing are the ways back in to
+ * what needs a decision; Traces is the record behind all of it, for troubleshooting.
+ * Insights is how it is going across the workspace: Monitoring (security, what
+ * breaks, cost and speed) and Reports (compliance, coverage, evidence, audit).
  */
 export const WORKSPACE_NAV: NavGroup[] = [
   {
     group: "Guardrails",
     items: [
       ["Agents", "/app/map", ["/app/projects"], "/app/projects"],
-      ["Policies", "/app/policies", ["/app/features"]],
+      ["Policies", "/app/policies"],
+      ["Features", "/app/features"],
       ["Approvals", "/app/approvals"],
       ["Issues", "/app/findings"],
-      ["Testing", "/app/test"],
+      ["Testing", "/app/test", ["/app/evals"]],
       ["Traces", "/app/traces", ["/app/events", "/app/sessions", "/app/escalation/conversations"]],
+    ],
+  },
+  {
+    group: "Insights",
+    items: [
+      ["Monitoring", "/app/observe"],
+      ["Reports", "/app/reports", ["/app/compliance", "/app/coverage"]],
     ],
   },
   { group: "", items: [SETTINGS] },

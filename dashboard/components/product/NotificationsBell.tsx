@@ -40,8 +40,8 @@ export function NotificationsBell({
               </Link>
             ))}
             {total > count && (
-              <Link href="/app" className="notif-more small muted">
-                {total - count} more on Overview →
+              <Link href="/app/findings" className="notif-more small muted">
+                {total - count} more in Issues →
               </Link>
             )}
           </>

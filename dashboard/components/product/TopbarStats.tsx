@@ -10,7 +10,7 @@ export function TopbarStats({ counts }: { counts: { critical?: number; high?: nu
   const critical = counts.critical || 0;
   const high = counts.high || 0;
   return (
-    <Link href="/app" className="topbar-stats" title="Critical / high-priority problems, from Overview">
+    <Link href="/app/findings" className="topbar-stats" title="Critical / high-priority problems: open Issues">
       <span className={`topbar-stat${critical ? " bad" : ""}`}>
         <strong>{critical}</strong> critical
       </span>

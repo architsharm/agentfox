@@ -43,9 +43,16 @@ type SP = Record<string, string | undefined>;
 const TABS = [
   { key: "applied", label: "Applied rules" },
   { key: "libraries", label: "Libraries" },
+  // How the rules hold up, what to change, and the controls behind them.
+  { key: "rules", label: "All rules" },
+  { key: "performance", label: "Performance" },
+  { key: "changes", label: "Suggested changes" },
+  { key: "checks", label: "Checks" },
+  { key: "code", label: "Code" },
+  { key: "advanced", label: "Advanced" },
 ];
-/** Still reachable by link (installing a check, a library's rules), not in the tab bar. */
-const HIDDEN = ["rules", "checks", "performance", "library", "changes", "code", "advanced"];
+/** Still reachable by link (a library's import and rules), not in the tab bar. */
+const HIDDEN = ["library"];
 
 /** Tab names from before the redesign, so old links still land. */
 const LEGACY: Record<string, { tab: string; sec?: string }> = {
