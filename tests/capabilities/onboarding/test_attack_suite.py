@@ -209,6 +209,46 @@ def test_a_call_agentfox_held_is_stopped_and_names_the_rule():
     assert r["stoppedBy"]["watching"] is True
 
 
+def test_a_rule_that_only_watches_lets_the_attack_go_on_as_live_traffic_would():
+    """The server says the input rule asks for a block that live traffic doesn't apply
+    (``applied: allow``): the message reaches the agent, the forbidden tool runs, and
+    the result names the rule as one that would stop it once it blocks."""
+    attack = _attack()
+
+    def guard(surface, payload):
+        if surface == "input":
+            return runner.Verdict.from_json(
+                {
+                    "verdict": "block",
+                    "applied": "allow",
+                    "mode": "observe",
+                    "rules": [{"id": "basic.input.attacks", "effect": "block"}],
+                    "reason": "prompt attack",
+                }  # fmt: skip
+            )
+        return runner.Verdict()
+
+    def call(message):
+        runner._record("act", {"id": 1})
+        return "done"
+
+    driver = runner.Driver(name="Bot", call=call)
+    run = runner._Run(attack=attack, tools={"act": {"risk": "high"}}, guard=guard)
+    r = runner.run_attack(driver, attack, run)
+    assert r["outcome"] == "got_through" and r["gotThrough"]
+    assert r["stoppedBy"]["rule"] == "basic.input.attacks"
+    assert r["stoppedBy"]["waitingFor"] == "blocking" and r["stoppedBy"]["liveEnforced"] is False
+    assert "once basic.input.attacks blocks" in r["sentence"]
+    assert service.tally([r])["wouldStop"] == 1
+
+
+def test_a_verdict_live_traffic_applies_stops_even_in_a_watching_policy():
+    v = runner.Verdict.from_json({"verdict": "block", "applied": "block", "mode": "observe"})
+    assert v.stops and not v.watching
+    # A server that doesn't say what it applies: the verdict is applied, as before.
+    assert runner.Verdict.from_json({"verdict": "block", "mode": "observe"}).stops
+
+
 def test_run_counts_every_outcome_and_a_run_with_errors_is_not_clean():
     now = dt.datetime.now(dt.UTC)
     run = service.new_run("after", RETAIL, now)

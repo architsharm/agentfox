@@ -534,7 +534,10 @@ def runner_guard(
     setup-wizard test), and only for that test's agents: the key can check, never
     change, and never another project's agents. ``verdict`` is what the policy asks
     for (in observe mode, what it would do once it blocks); ``applied`` what live
-    traffic would get now; ``mode`` which.
+    traffic would get now; ``mode`` which. A tool call is judged as live traffic
+    judges it: for an agent with no tool allowed yet, default deny is recorded rather
+    than applied (``agentfox.auto()``), so it is left out of both and its rule comes
+    back with ``liveEnforced: false``.
     """
     from agentfox.capabilities.evaluation.redteam import DRY_RUN_SURFACES, dry_run_check
 

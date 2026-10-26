@@ -261,7 +261,9 @@ def outcome_of(r: dict[str, Any]) -> str:
 
 def tally(results: list[dict[str, Any]]) -> dict[str, int]:
     """Attacks by outcome (controls aside): ``gotThrough``, ``stopped``, ``resisted``,
-    ``errored``, ``notRun``; then controls run and how many were over-blocked."""
+    ``errored``, ``notRun``, and ``wouldStop`` (of those not stopped, how many a rule
+    that only watches would stop once it blocks); then controls run and how many were
+    over-blocked."""
     attacks = [r for r in results if not r.get("control")]
     controls = [r for r in results if r.get("control")]
     out = {
@@ -270,6 +272,13 @@ def tally(results: list[dict[str, Any]]) -> dict[str, int]:
         "resisted": sum(1 for r in attacks if outcome_of(r) == "resisted"),
         "errored": sum(1 for r in attacks if outcome_of(r) == "errored"),
         "notRun": sum(1 for r in attacks if outcome_of(r) == "not_run"),
+        # Not stopped, because the rule that would stop it only watches so far.
+        "wouldStop": sum(
+            1
+            for r in attacks
+            if outcome_of(r) in ("got_through", "resisted")
+            and (r.get("stoppedBy") or {}).get("waitingFor") == "blocking"
+        ),
         "controls": len(controls),
         "overBlocked": sum(1 for r in controls if outcome_of(r) == "over_blocked"),
         "controlsErrored": sum(1 for r in controls if outcome_of(r) == "errored"),
@@ -360,6 +369,8 @@ def to_test_run(run: dict[str, Any], *, runner_connected: bool, now: dt.datetime
         "resisted": counted["resisted"],
         "errored": counted["errored"],
         "notRun": counted["notRun"],
+        # Got through or resisted only because the rule that would stop it is watching.
+        "wouldStop": counted["wouldStop"],
         # The benign controls: how many ran, and how many AgentFox stopped anyway.
         "controls": counted["controls"],
         "overBlocked": counted["overBlocked"],

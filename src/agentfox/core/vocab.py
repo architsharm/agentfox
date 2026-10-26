@@ -97,3 +97,15 @@ __all__ = [
     "TAINT_ORDER",
     "taint_rank",
 ]
+
+
+#: Which of two verdicts is the stronger claim ("which is worse"). Here so that the
+#: runtime's rule merging and the red-team dry run read one ordering.
+VERDICT_RANK = {"allow": 0, "alter": 1, "redact": 1, "mask": 1, "escalate": 2, "block": 3}
+
+#: Every rule id that means "this call was refused at the capability layer": the
+#: enforcer's synthetic fallback, and what `auto()` and the dry run exempt for an
+#: agent that holds no grant yet.
+CAPABILITY_REFUSAL_RULE_IDS = frozenset(
+    {"capability.denied", "capability.default_deny", "capability.constraint_violated"}
+)

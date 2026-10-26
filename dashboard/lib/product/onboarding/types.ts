@@ -51,6 +51,9 @@ export type TestRun = {
   waitingForRunner?: boolean;
   /** Attacks that couldn't run (the agent's model errored). */
   errors?: number;
+  /** Not stopped only because the rule that would stop them is watching: they stop
+   * once it blocks. Live traffic doesn't apply a watching rule, so neither does the test. */
+  wouldStop?: number;
   /** Why a failed run failed. */
   error?: string | null;
 };
@@ -74,8 +77,20 @@ export type SuggestedGuardrail = {
   enabled: boolean;
 };
 
-/** A key the user pastes into `agentfox init --key`. Always retrievable, never "shown once". */
-export type OnboardingKey = { value: string; createdNow: boolean };
+/**
+ * The key the user pastes into `agentfox init --key`. Stored hashed, so `value` is
+ * there only on the call that made it (`createdNow`); later calls say a key exists
+ * (`hasKey`) and show its `prefix`, `createdAt` and `expiresAt`. Rotating makes a
+ * new one, shown that once.
+ */
+export type OnboardingKey = {
+  value: string | null;
+  createdNow: boolean;
+  hasKey?: boolean;
+  prefix?: string | null;
+  createdAt?: string | null;
+  expiresAt?: string | null;
+};
 
 /** The four states every step can be forced into from the dev panel. */
 export type ForcedState = "loading" | "empty" | "error" | "success";

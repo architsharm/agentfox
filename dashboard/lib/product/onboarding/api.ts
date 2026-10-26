@@ -21,6 +21,8 @@ export type OnboardingApi = {
   saveState(state: OnboardingState): Promise<OnboardingState>;
   reset(): Promise<OnboardingState>;
   getKey(): Promise<OnboardingKey>;
+  /** Revoke the key and make a new one, shown in full that once. */
+  rotateKey(): Promise<OnboardingKey>;
   /** `live`: Connect's status panel, which waits for the agent to report in. Other steps read the map as it stands. */
   getStructure(opts?: { live?: boolean }): Promise<{ connected: boolean; runnerConnected?: boolean; structure: Structure }>;
   /** Save the map after the user added or removed an agent or tool. */
@@ -68,6 +70,7 @@ export const mockApi: OnboardingApi = {
     return wait(store.EMPTY_SESSION.state);
   },
   getKey: () => wait({ value: store.onboardingKey(), createdNow: false }),
+  rotateKey: () => wait({ value: store.onboardingKey(), createdNow: true, hasKey: true }),
   getStructure: (opts) => {
     if (!opts?.live) return wait(store.currentStructure(load()));
     const { session, result } = store.pollStructure(load(), Date.now());
@@ -120,6 +123,7 @@ export const httpApi: OnboardingApi = {
   saveState: (state) => call("/api/onboarding/state", { method: "PATCH", body: JSON.stringify(state) }),
   reset: () => call("/api/onboarding/state", { method: "DELETE" }),
   getKey: () => call("/api/onboarding/key"),
+  rotateKey: () => call("/api/onboarding/key/rotate", { method: "POST" }),
   getStructure: (opts) => call(`/api/onboarding/structure${opts?.live ? "?live=1" : ""}`),
   saveStructure: (structure) =>
     call<{ structure: Structure }>("/api/onboarding/structure", { method: "PUT", body: JSON.stringify({ structure }) }).then(

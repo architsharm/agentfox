@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MAP_PROJECT_COOKIE, NEW_PROJECT, PROJECT_COOKIE_AGE } from "@/lib/product/project";
@@ -89,6 +90,11 @@ export function ProjectSwitcher({ projects, current }: { projects: ProjectOption
             ))}
           </div>
           {projects.length > 0 && <div className="project-switch-sep" />}
+          {/* Every project and agent, with the ones a later `agentfox init` proposed
+              waiting to be added. */}
+          <Link href="/app/projects" className="project-switch-foot" onClick={() => setOpen(false)}>
+            All projects and agents
+          </Link>
           <button type="button" onClick={() => go(NEW_PROJECT)} className="project-switch-foot">
             + Add a project
           </button>

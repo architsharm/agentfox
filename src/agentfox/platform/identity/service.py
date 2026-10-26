@@ -305,6 +305,25 @@ def default_deny_hint(principal: str | None, tool_key: str) -> str:
     return f"Allow it in the dashboard ({where}), or run `{command}`."
 
 
+def holds_any_grant(session: Session, identity: Identity | None) -> bool:
+    """Whether anyone has configured least privilege for this identity at all: at
+    least one capability row, expired or not.
+
+    ``agentfox.auto()`` (``"policy"`` mode) applies capability default-deny only once
+    this is true; before the first grant a refusal that is only a missing grant is
+    recorded, not raised. The onboarding attack test's dry run reads the same answer,
+    so it never reports a stop live traffic would not make.
+    """
+    if identity is None:
+        return False
+    from sqlalchemy import func
+
+    count = session.scalar(
+        select(func.count()).select_from(Capability).where(Capability.identity_id == identity.id)
+    )
+    return bool(count)
+
+
 def check_capability(
     session: Session,
     identity: Identity | None,

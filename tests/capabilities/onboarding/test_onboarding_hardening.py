@@ -405,3 +405,31 @@ def test_model_errors_name_the_provider():
     assert "API key" not in said
     said = runner_mod.explain_model_error("anthropic.AuthenticationError: invalid x-api-key")
     assert "API key" in said and "Anthropic" in said
+
+
+def test_init_does_not_claim_agents_were_set_up_when_none_were_found(tmp_path, monkeypatch):
+    """Found running init in an empty folder: it said 'Connected. Your agents are set
+    up' with 0 agents, and 'this folder has no other files were present'."""
+    from io import StringIO
+
+    from rich.console import Console
+
+    from agentfox.capabilities.onboarding import client as init_client
+
+    sent = []
+
+    def post(self, path, body=None):
+        sent.append(path)
+        if path == "/runner/poll":  # after connecting it polls for tests: stop there
+            raise KeyboardInterrupt
+        return {}
+
+    monkeypatch.setattr(init_client._Api, "post", post)
+    out = StringIO()
+    console = Console(file=out, width=200)
+    init_client.connect("afi_test", "http://127.0.0.1:1", path=tmp_path, console=console)
+    text = out.getvalue()
+    assert "/runner/connect" in sent
+    assert "Your agents are set up" not in text
+    assert "no agents were found" in text
+    assert "has no other files were present" not in text

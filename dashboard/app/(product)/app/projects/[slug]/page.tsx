@@ -131,6 +131,12 @@ export default async function ProjectDetail({ params, searchParams }: { params: 
           </>
         }
       />
+      {/* The agent's views: its map, its traffic, what it may do (the Access its refusals
+          point to), its feature switches, and its settings (owner, risk, emergency stop). */}
+      <Tabs
+        items={PROJECT_VIEWS.map((v) => ({ key: v.key, label: v.label, href: projectHref(slug, v.key, { range: sp.range }) }))}
+        active={view}
+      />
       {sp.review_error && <div className="error">{sp.review_error}</div>}
       {sp.review_notice && <div className="note-panel">Done: {sp.review_notice}.</div>}
 

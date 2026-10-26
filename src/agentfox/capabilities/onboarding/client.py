@@ -158,7 +158,16 @@ def connect(key: str, server: str, path: str | Path = ".", console: Console | No
     except (httpx.HTTPError, RuntimeError) as exc:
         console.print(f"[red]Couldn't reach AgentFox at {server}:[/red] {exc}")
         raise SystemExit(1) from exc
-    console.print("[green]●[/green] Connected. Your agents are set up: open AgentFox to see them.")
+    if structure["agents"]:
+        console.print(
+            "[green]●[/green] Connected. Open AgentFox to add the agents it found and see them."
+        )
+    else:
+        # Connected, but nothing to show: saying "your agents are set up" here was false.
+        console.print(
+            "[yellow]●[/yellow] Connected, but no agents were found, so there is nothing "
+            "to set up yet. Fix that (see below), then run this again."
+        )
     _print_missing_help(console)
     console.print(
         "[dim]Keep this running: it runs the attack tests on this machine when you start "
@@ -220,9 +229,15 @@ def _print_coverage(console: Console, mapped: dict[str, Any]) -> None:
         )
     # Nothing here in a language the scan reads: "found nothing" would be a guess.
     if not read:
+        skipped = mapped.get("skipped_summary") or ""
+        # The summary can itself be a sentence ("no other files were present").
+        rest = (
+            f"this folder has {skipped}"
+            if skipped and not skipped.startswith("no ")
+            else "this folder has nothing else"
+        )
         console.print(
-            f"[yellow]Read no source:[/yellow] init reads {SUPPORTED_LANGUAGES}; "
-            f"[dim]this folder has {mapped.get('skipped_summary') or 'nothing else'}.[/dim]"
+            f"[yellow]Read no source:[/yellow] init reads {SUPPORTED_LANGUAGES}; [dim]{rest}.[/dim]"
         )
     loose = mapped.get("unassigned_tools") or []
     if loose:

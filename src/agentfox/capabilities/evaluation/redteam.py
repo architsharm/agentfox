@@ -672,8 +672,14 @@ def dry_run_check(
 
     Returns ``verdict`` (what the bound policy asks for, the counterfactual in observe
     mode), ``applied`` (what would happen to live traffic now), ``mode``, ``rules``
-    (the rules that fired: id, effect, reason), ``reason`` and ``content`` (the
-    rewritten text when the verdict is a rewrite).
+    (the rules that fired: id, effect, reason, and ``liveEnforced: false`` on one live
+    traffic would not apply), ``reason`` and ``content`` (the rewritten text when the
+    verdict is a rewrite).
+
+    A tool call is judged as live traffic would judge it: for an agent nobody has
+    granted any tool yet, a refusal that is only a missing grant is recorded rather
+    than applied (see `_live_capability_scope`), so ``verdict`` and ``applied`` leave
+    it out and its rule is marked ``liveEnforced: false``.
     """
     if surface not in DRY_RUN_SURFACES:
         raise ValueError(f"unknown surface {surface!r}")
@@ -698,21 +704,93 @@ def dry_run_check(
         )
     outcome = NativeRedTeamRunner().run_probes(session, agent_slug, [probe])[0]
     detail = outcome.detail
+    fired = list(detail.get("rules_fired") or [])
+    verdict = outcome.verdict
+    applied = detail.get("applied_verdict") or "allow"
+    reason = detail.get("reason") or ""
+    waived: frozenset[str] = frozenset()
+    if surface == "tool_call":
+        waived = _live_capability_scope(session, agent_slug, fired)
+    if waived:
+        kept = [r for r in fired if (r.get("rule_id") or r.get("id")) not in waived]
+        verdict = _weaker(verdict, _strongest(kept))
+        applied = _weaker(
+            applied, _strongest([r for r in kept if r.get("mode", "enforce") == "enforce"])
+        )
+        # The decision's reason joins every rule's; say only what still applies.
+        deciding = [str(r.get("reason")) for r in kept if r.get("effect") == verdict]
+        reason = "; ".join(r for r in deciding if r) or (
+            NO_GRANTS_YET if verdict == "allow" else reason
+        )
     return {
-        "verdict": outcome.verdict,
-        "applied": detail.get("applied_verdict") or "allow",
+        "verdict": verdict,
+        "applied": applied,
         "mode": detail.get("mode"),
         "rules": [
             {
                 "id": r.get("rule_id") or r.get("id") or "",
                 "effect": r.get("effect") or "",
                 "reason": r.get("reason") or "",
+                **({"liveEnforced": False} if (r.get("rule_id") or r.get("id")) in waived else {}),
             }
-            for r in detail.get("rules_fired") or []
+            for r in fired
         ],
-        "reason": detail.get("reason") or "",
+        "reason": reason,
         "content": detail.get("content"),
     }
+
+
+#: Why a dry-run tool call refused only for a missing grant is not counted as stopped.
+NO_GRANTS_YET = (
+    "This agent has no tools allowed yet, so live traffic records a call to a tool it "
+    "wasn't given rather than refusing it. Default deny applies from the first tool "
+    "you allow."
+)
+
+
+def _live_capability_scope(
+    session: Session, agent_slug: str, fired: list[dict[str, Any]]
+) -> frozenset[str]:
+    """The capability-refusal rules live traffic would *not* apply to this call.
+
+    Mirrors ``agentfox.auto()`` in its default ``"policy"`` mode (the path onboarding
+    tells users to install): an agent that holds no capability grant at all has not
+    had least privilege configured, so a refusal that is only a missing grant is
+    recorded as would-have-blocked, not raised (`frameworks/autoguard`'s
+    ``_govern_tool_calls``). The first grant turns default deny on. A refusal for any
+    other reason stands either way. Empty when every fired rule applies.
+    """
+    from agentfox.core.models import Identity
+    from agentfox.core.vocab import CAPABILITY_REFUSAL_RULE_IDS as _CAPABILITY_REFUSAL_RULE_IDS
+    from agentfox.platform.identity.service import holds_any_grant
+
+    refusing = any(
+        (r.get("rule_id") or r.get("id")) in _CAPABILITY_REFUSAL_RULE_IDS
+        and r.get("effect") in ("block", "escalate")
+        for r in fired
+    )
+    if not refusing:
+        return frozenset()
+    agent = session.scalar(select(Agent).where(Agent.slug == agent_slug))
+    identity = (
+        session.scalar(select(Identity).where(Identity.agent_id == agent.id)) if agent else None
+    )
+    return frozenset() if holds_any_grant(session, identity) else _CAPABILITY_REFUSAL_RULE_IDS
+
+
+def _strongest(rules: list[dict[str, Any]]) -> str:
+    from agentfox.core.vocab import VERDICT_RANK as _VERDICT_RANK
+
+    effects = [str(r.get("effect") or "allow") for r in rules]
+    effects = [e for e in effects if e in _VERDICT_RANK]
+    return max(effects, key=lambda e: _VERDICT_RANK[e], default="allow")
+
+
+def _weaker(a: str, b: str) -> str:
+    """The weaker of two verdicts: removing a rule can only lower a verdict."""
+    from agentfox.core.vocab import VERDICT_RANK as _VERDICT_RANK
+
+    return a if _VERDICT_RANK.get(a, 0) <= _VERDICT_RANK.get(b, 0) else b
 
 
 class GarakRunner:

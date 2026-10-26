@@ -10,7 +10,12 @@ from agentfox.capabilities.onboarding import runner, service
 from agentfox.capabilities.onboarding.attacks import build_suite
 from agentfox.core.db import session_scope
 from agentfox.core.models import Agent, Decision, Finding, Trace
-from tests.capabilities.onboarding.test_attack_suite import LOOP_STRUCTURE, loop_driver
+from tests.capabilities.onboarding.test_attack_suite import (
+    LOOP_STRUCTURE,
+    _tool,
+    loop_driver,
+    write_loop,
+)
 from tests.conftest import as_user
 
 ME = as_user("admin@example.com")
@@ -78,29 +83,41 @@ def test_before_then_after_with_the_projects_real_policies(client, tmp_path):
     # Checking persisted nothing: no decision, trace, finding or shadow agent.
     assert _rows() == rows
 
-    # The agent is a draft with no tool granted: the real tool-call path refuses
-    # its tools, and says so.
+    # The agent is a draft with no tool granted. Live traffic doesn't apply default
+    # deny until its first grant, so the irreversible call is stopped by what live
+    # traffic does apply: tool containment, for a destructive call with no task.
     unsafe = after["unsafe_tool_use-001"]
     assert unsafe["outcome"] == "stopped"
-    assert unsafe["stoppedBy"]["rule"] == "capability.denied"
+    assert unsafe["stoppedBy"]["rule"] == "intent.undeclared_irreversible"
     assert unsafe["stoppedBy"]["surface"] == "tool_call"
-    assert all(not c["executed"] for c in unsafe["calls"])
-    # A prompt attack in the message is caught at the input by the workspace's real
-    # rules (its baseline pack and the basic guardrails), which only watch so far:
-    # reported as stopped once they block.
+    assert unsafe["stoppedBy"]["watching"] is False
+    assert [c["tool"] for c in unsafe["calls"] if not c["executed"]] == ["remove_person"]
+    # A prompt attack in the message is flagged at the input by the workspace's real
+    # rules (its baseline pack and the basic guardrails), which only watch so far.
+    # Live traffic lets the message through, so the test does too: the agent obeys,
+    # and what stops it is the call an enforced rule really holds.
     direct = after["prompt_injection-016"]
     assert direct["outcome"] == "stopped"
-    assert direct["stoppedBy"]["surface"] == "input"
-    assert direct["stoppedBy"]["rule"] in ("injection.direct", "basic.input.attacks")
-    assert direct["stoppedBy"]["watching"] is True
-    # An ordinary request is still stopped: its read tool isn't granted either. That
-    # is reported as an over-block, not hidden.
-    assert after["unsafe_tool_use-control-01"]["outcome"] == "over_blocked"
+    assert direct["stoppedBy"]["surface"] == "tool_call"
+    assert direct["stoppedBy"]["rule"] == "intent.undeclared_irreversible"
+    assert direct["stoppedBy"]["watching"] is False
+    assert [c["tool"] for c in direct["calls"]] == ["lookup_person", "remove_person"]
+    # Its read tool isn't granted either, and live traffic would run it: an ordinary
+    # request is answered, and an injected record it reads back leaks into the reply.
+    # The reply's redaction only watches, so it is named as what would hide the leak
+    # once it blocks, not counted.
+    assert after["unsafe_tool_use-control-01"]["outcome"] == "allowed"
+    leak = after["prompt_injection-001"]
+    assert leak["outcome"] == "got_through"
+    assert leak["stoppedBy"]["liveEnforced"] is False and leak["stoppedBy"]["watching"]
+    assert leak["stoppedBy"]["rule"] == "pii.outbound_redact"
+    assert leak["stoppedBy"]["waitingFor"] == "blocking"
+    assert "would hide it once pii.outbound_redact blocks" in leak["sentence"]
 
     shown = client.get("/api/onboarding/projects/people/tests", headers=ME).json()["withBasic"]
-    assert shown["status"] == "done" and shown["gotThrough"] == 0
-    assert shown["stopped"] == shown["total"] - shown["notRun"]
-    assert shown["overBlocked"] >= 1 and shown["falsePositiveRate"] > 0
+    assert shown["status"] == "done" and shown["gotThrough"] >= 1
+    assert shown["wouldStop"] >= 1
+    assert shown["overBlocked"] == 0
 
 
 def test_the_guard_endpoint_checks_each_surface_with_the_agents_policies(client):
@@ -133,8 +150,11 @@ def test_the_guard_endpoint_checks_each_surface_with_the_agents_policies(client)
         {"agent": "people-loop", "surface": "tool_call", "tool": "remove_person",
          "arguments": {"person_id": "PER-1"}},
     )  # fmt: skip
-    assert call["verdict"] == "block"
-    assert "capability.denied" in [r["id"] for r in call["rules"]]
+    # No tool granted yet: the missing grant is named, not applied (live traffic
+    # records it); tool containment's escalation of a destructive call stands.
+    assert call["verdict"] == "escalate"
+    waived = [r["id"] for r in call["rules"] if r.get("liveEnforced") is False]
+    assert waived == ["capability.denied"]
 
     fine = api.post(url, {"agent": "people-loop", "surface": "input", "content": "Hi there"})
     assert fine["verdict"] == "allow" and fine["rules"] == []
@@ -233,3 +253,98 @@ def test_a_test_where_nothing_ran_is_failed_not_clean(client):
     assert run["status"] == "failed" and run["clean"] is False
     assert run["notRun"] == run["total"] and "No attack could be run" in run["error"]
     assert "ModuleNotFoundError" in run["error"]
+
+
+SALARY_LOOP = '''
+import json
+
+
+def lookup_person(person_id):
+    """Read a person's record."""
+    return {"real": True}
+
+
+def update_salary(person_id, amount=0):
+    """Change a person's salary."""
+    return {"updated": True}
+
+
+def run(message):
+    """A gullible loop: changes the salary when asked."""
+    record = lookup_person(person_id="PER-4410")
+    if "update_salary" in message:
+        update_salary("PER-4410", amount=1)
+    return "Done: " + json.dumps(record)
+'''
+
+SALARY_STRUCTURE = {
+    "agents": [{"id": "ag-1", "name": "People Loop", "framework": "openai"}],
+    "tools": [
+        _tool("ag-1", "lookup_person", "read_only", ["person_id"], "Read a person's record."),
+        _tool("ag-1", "update_salary", "high", ["person_id", "amount"],
+              "Change a person's salary."),
+    ],
+}  # fmt: skip
+
+
+def _salary_driver(tmp_path, name):
+    return runner.make_driver(
+        write_loop(tmp_path, name, source=SALARY_LOOP),
+        name="People Loop",
+        kind="function",
+        tools=SALARY_STRUCTURE["tools"],
+        modules=runner.user_modules(tmp_path),
+    )
+
+
+def _salary_after(client, tmp_path, name, *, grant=None):
+    """A connected salary agent's before test, its basic guardrails, then the after
+    test, with ``grant`` allowed to the agent first."""
+    from agentfox.platform.identity.service import ensure_identity, grant_capability
+
+    api = _connect(client, structure=SALARY_STRUCTURE)
+    _run(api, _poll(api), _salary_driver(tmp_path, f"{name}_before"))
+    client.post("/api/onboarding/projects/people/basic-guardrails", headers=ME)
+    if grant:
+        with session_scope() as s:
+            agent = s.scalar(select(Agent).where(Agent.slug == "people-loop"))
+            grant_capability(s, ensure_identity(s, agent), grant)
+    client.post("/api/onboarding/projects/people/tests", headers=ME)
+    job = _poll(api)
+    assert job["phase"] == "after"
+    return _run(api, job, _salary_driver(tmp_path, f"{name}_after"))
+
+
+def test_with_no_tool_granted_a_high_risk_call_is_not_counted_as_stopped(client, tmp_path):
+    """Live traffic (`agentfox.auto()`) applies default deny only once the agent holds
+    a grant. A fresh `init --key` agent holds none, so the after test must not report
+    its high-risk tool as stopped by AgentFox: it ran, as it would live."""
+    after = _salary_after(client, tmp_path, "salary_none")
+
+    unsafe = after["unsafe_tool_use-001"]
+    assert unsafe["outcome"] == "got_through"
+    assert "update_salary" in unsafe["toolCall"]
+    assert all(c["executed"] for c in unsafe["calls"])
+    waiting = unsafe["stoppedBy"]
+    assert waiting["tool"] == "update_salary" and waiting["rule"].startswith("capability.")
+    assert waiting["liveEnforced"] is False and waiting["watching"] is True
+    assert "once you allow this agent's tools" in unsafe["sentence"]
+    # A prompt attack at the door is flagged by rules that only watch, so the message
+    # reaches the agent as it would live, and the forbidden call runs: named as
+    # waiting for a grant (the forbidden call comes first), not counted as stopped.
+    direct = after["prompt_injection-016"]
+    assert direct["outcome"] == "got_through"
+    assert direct["stoppedBy"]["waitingFor"] == "grant"
+    assert direct["stoppedBy"]["tool"] == "update_salary"
+
+
+def test_from_the_first_grant_default_deny_on_another_tool_is_stopped(client, tmp_path):
+    after = _salary_after(client, tmp_path, "salary_one", grant="lookup_person")
+
+    unsafe = after["unsafe_tool_use-001"]
+    assert unsafe["outcome"] == "stopped"
+    assert unsafe["stoppedBy"]["rule"].startswith("capability.")
+    assert unsafe["stoppedBy"]["tool"] == "update_salary"
+    assert unsafe["stoppedBy"]["watching"] is False
+    assert "liveEnforced" not in unsafe["stoppedBy"]
+    assert [c["tool"] for c in unsafe["calls"] if not c["executed"]] == ["update_salary"]

@@ -7,7 +7,7 @@ import { ArrowUpRight, Check, Copy, KeyRound, Loader2 } from "lucide-react";
 import { Logo } from "@/components/product/Logo";
 import { onboardingApi } from "@/lib/product/onboarding/api";
 import { INITIAL_STATE } from "@/lib/product/onboarding/steps";
-import type { Structure } from "@/lib/product/onboarding/types";
+import type { OnboardingKey, Structure } from "@/lib/product/onboarding/types";
 import { isFreshConnection } from "@/lib/product/onboarding/connect";
 import { MAP_PROJECT_COOKIE, PROJECT_COOKIE_AGE } from "@/lib/product/project";
 import { cn } from "@/lib/utils";
@@ -60,6 +60,13 @@ export function SetupCard({
 
   const [phase, setPhase] = useState<Phase>("key");
   const [key, setKey] = useState<string | null>(null);
+  // What the server says about the key: it is shown in full only when just made.
+  const [keyInfo, setKeyInfo] = useState<OnboardingKey | null>(null);
+  const [replacing, setReplacing] = useState(false);
+  // Agents init proposes wait to be added; the person here adds them in one click.
+  const [approved, setApproved] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
   const [found, setFound] = useState<Structure | null>(null);
@@ -100,21 +107,24 @@ export function SetupCard({
     };
   }, [phase, api, mock]);
 
-  // Found: say what arrived, fetch the project, check its guardrails, open it. Keyed on
-  // `found` alone: each step moves `phase` on, and that must not cancel the sequence.
+  // Found: say what arrived, and wait for the agents to be added.
   useEffect(() => {
     if (!found) return;
+    const tools = found.tools.length;
+    setDetail((d) => ({
+      ...d,
+      found: `${found.agents.map((a) => a.name).join(", ")} · ${tools} ${tools === 1 ? "tool" : "tools"}`,
+    }));
+  }, [found]);
+
+  // Added: fetch the project, check its guardrails, open it. Keyed on `approved`
+  // alone: each step moves `phase` on, and that must not cancel the sequence.
+  useEffect(() => {
+    if (!found || !approved) return;
     let stop = false;
     (async () => {
       const agents = found.agents as (Structure["agents"][number] & { slug?: string })[];
       const slug = agents[0]?.slug;
-      const tools = found.tools.length;
-      setDetail((d) => ({
-        ...d,
-        found: `${agents.map((a) => a.name).join(", ")} · ${tools} ${tools === 1 ? "tool" : "tools"}`,
-      }));
-      await sleep(STEP_MS);
-      if (stop) return;
 
       setPhase("fetching");
       // The project is the one the agent init just registered belongs to.
@@ -133,7 +143,7 @@ export function SetupCard({
       setDetail((d) => ({
         ...d,
         guarding: tests?.first
-          ? "140 attacks on your agent as it is, no guardrails yet. Tools are faked, nothing real happens. Results show beside the map."
+          ? `${tests.first.total ?? "The"} attacks on your agent as it is, no guardrails yet. Tools are faked, nothing real happens. Results show beside the map.`
           : "No tools found to test yet.",
       }));
       if (stop) return;
@@ -153,16 +163,63 @@ export function SetupCard({
     return () => {
       stop = true;
     };
-  }, [found, api, mock, router]);
+  }, [found, approved, api, mock, router]);
+
+  // `agentfox init` only proposes agents (a setup key can't add them by itself); the
+  // person here, who made the key, adds them.
+  const addAgents = async () => {
+    if (!found) return;
+    setAdding(true);
+    setAddError("");
+    try {
+      const slug = (found.agents[0] as { slug?: string } | undefined)?.slug;
+      const agent = slug && !mock ? await getJson<{ project?: string }>(`/api/agents/${encodeURIComponent(slug)}`) : null;
+      if (agent?.project) {
+        const r = await fetch(`/api/projects/${encodeURIComponent(agent.project)}/approve`, { method: "POST" });
+        if (!r.ok) {
+          setAddError(
+            r.status === 403
+              ? "You can't add agents in this workspace. Ask someone who can, or open the map to look first."
+              : "Couldn't add them. Try again, or open the map and add them there.",
+          );
+          return;
+        }
+      }
+      setApproved(true);
+    } catch {
+      setAddError("Couldn't reach AgentFox. Try again.");
+    } finally {
+      setAdding(false);
+    }
+  };
 
   const createKey = async () => {
     setCreating(true);
     setError("");
     try {
-      setKey((await api.getKey()).value);
+      const k = await api.getKey();
+      setKeyInfo(k);
+      setKey(k.value);
+      // An existing key isn't shown again, but whoever saved it can run init with it.
       setPhase("waiting");
     } catch (e: any) {
       setError(e?.message || "Couldn't create a key. Try again.");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const replaceKey = async () => {
+    setCreating(true);
+    setError("");
+    try {
+      const k = await api.rotateKey();
+      setKeyInfo(k);
+      setKey(k.value);
+      setReplacing(false);
+      setPhase("waiting");
+    } catch (e: any) {
+      setError(e?.message || "Couldn't make a new key. Try again.");
     } finally {
       setCreating(false);
     }
@@ -181,6 +238,8 @@ export function SetupCard({
   };
 
   const shownKey = key ?? "<your-key>";
+  // A key exists, shown now or earlier: the next steps can go ahead.
+  const haveKey = Boolean(key || keyInfo?.hasKey);
 
   return (
     <div className="tw mx-auto mt-8 w-full max-w-[640px] text-sm text-foreground">
@@ -203,14 +262,53 @@ export function SetupCard({
         </header>
 
         <ol className="px-7 pb-7">
-          <Step n={1} title="Create a key" state={key ? "done" : "active"}>
+          <Step n={1} title="Create a key" state={haveKey ? "done" : "active"}>
             {key ? (
               <>
                 <p className="text-muted-foreground">
-                  Your key. <code className="font-mono text-[12.5px]">agentfox init</code> uses it to send your agents&apos; map here. It
-                  can&apos;t read your data or change this workspace.
+                  Your key. <strong className="font-medium text-foreground">Copy it now: it&apos;s shown only once.</strong>{" "}
+                  <code className="font-mono text-[12.5px]">agentfox init</code> uses it to send your agents&apos; map here. It can&apos;t read your data or
+                  change this workspace.
                 </p>
                 <Code text={key} className="mt-3" />
+              </>
+            ) : keyInfo?.hasKey ? (
+              <>
+                <p className="text-muted-foreground">
+                  You already have a key{keyInfo.prefix ? <> (<code className="font-mono text-[12.5px]">{keyInfo.prefix}…</code>)</> : null}
+                  {keyInfo.createdAt ? `, made ${new Date(keyInfo.createdAt).toLocaleDateString()}` : ""}. It&apos;s shown only when it&apos;s made: use the one
+                  you saved, or make a new one.
+                </p>
+                {replacing ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-2" role="alertdialog" aria-label="Make a new key">
+                    <span className="text-[13px]">The old key stops working, including in a running agentfox init.</span>
+                    <button
+                      type="button"
+                      onClick={replaceKey}
+                      disabled={creating}
+                      className="inline-flex h-8 items-center gap-2 rounded-md bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
+                    >
+                      {creating ? <Loader2 className="size-3.5 animate-spin" /> : <KeyRound className="size-3.5" />}
+                      {creating ? "Making…" : "Make a new key"}
+                    </button>
+                    <button type="button" onClick={() => setReplacing(false)} className="h-8 px-2 text-[13px] text-muted-foreground hover:text-foreground">
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setReplacing(true)}
+                    className="mt-3 inline-flex h-8 items-center gap-2 rounded-md border bg-card px-3.5 text-[13px] font-medium hover:bg-muted"
+                  >
+                    <KeyRound className="size-3.5" /> Make a new key
+                  </button>
+                )}
+                {error && (
+                  <p className="mt-2 text-danger-ink" role="alert">
+                    {error}
+                  </p>
+                )}
               </>
             ) : (
               <>
@@ -238,13 +336,37 @@ export function SetupCard({
             <Install keyText={shownKey} server={server} muted={!key} />
           </Step>
 
-          <Step n={3} title="Your agents arrive" state={phase === "done" ? "done" : key ? "active" : "todo"} last>
-            {!key ? (
+          <Step n={3} title="Your agents arrive" state={phase === "done" ? "done" : haveKey ? "active" : "todo"} last>
+            {!haveKey ? (
               <p className="text-muted-foreground">Appears here the moment init reports in.</p>
             ) : phase === "waiting" ? (
               <Waiting />
             ) : (
-              <Progress phase={phase} detail={detail} />
+              <>
+                <Progress phase={phase} detail={detail} paused={phase === "found" && !approved} />
+                {phase === "found" && !approved && (
+                  <div className="mt-3">
+                    <p className="text-muted-foreground">
+                      init found {found?.agents.length === 1 ? "this agent" : `these ${found?.agents.length} agents`}. Add{" "}
+                      {found?.agents.length === 1 ? "it" : "them"} to AgentFox to guard and test {found?.agents.length === 1 ? "it" : "them"}.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={addAgents}
+                      disabled={adding}
+                      className="mt-3 inline-flex h-8 items-center gap-2 rounded-md bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
+                    >
+                      {adding ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+                      {adding ? "Adding…" : found?.agents.length === 1 ? "Add to AgentFox" : `Add ${found?.agents.length} agents to AgentFox`}
+                    </button>
+                    {addError && (
+                      <p className="mt-2 text-danger-ink" role="alert">
+                        {addError}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </Step>
         </ol>
@@ -293,34 +415,15 @@ function Step({
   );
 }
 
-/** The command, for this machine or for a server, one at a time. */
+/**
+ * The command. Always with `--server`: init's default is a gateway on this machine,
+ * which is only right for a local install. Pinned to 0.5, the first release with
+ * `init --key` (0.4 has no such option and failed as "no such option --key").
+ */
 function Install({ keyText, server, muted }: { keyText: string; server: string; muted: boolean }) {
-  const [where, setWhere] = useState<"here" | "server">("here");
-  const cmd =
-    where === "here"
-      ? `pip install agentfox\nagentfox init --key ${keyText}`
-      : `pip install agentfox\nagentfox init --key ${keyText} --server ${server}`;
+  const cmd = `pip install "agentfox>=0.5"\nagentfox init --key ${keyText} --server ${server}`;
   return (
     <div className="mt-3">
-      <div className="mb-2 inline-flex rounded-md border bg-muted p-0.5 text-[12px]" role="tablist">
-        {(
-          [
-            ["here", "On this machine"],
-            ["server", "On a server"],
-          ] as const
-        ).map(([k, label]) => (
-          <button
-            key={k}
-            type="button"
-            role="tab"
-            aria-selected={where === k}
-            onClick={() => setWhere(k)}
-            className={cn("rounded-[5px] px-2.5 py-1", where === k ? "bg-card font-medium shadow-[var(--af-shadow-1)]" : "text-muted-foreground")}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
       <Code text={cmd} muted={muted} />
     </div>
   );
@@ -376,13 +479,14 @@ const LINES: { phase: Phase; label: string; doing: string }[] = [
 ];
 const ORDER: Phase[] = ["found", "fetching", "guarding", "done"];
 
-/** Step 3 once init reports in: each line ticks over as its step really finishes. */
-function Progress({ phase, detail }: { phase: Phase; detail: Partial<Record<Phase, string>> }) {
+/** Step 3 once init reports in: each line ticks over as its step really finishes.
+ * `paused`: waiting on the person (adding the agents), so the current line is done, not spinning. */
+function Progress({ phase, detail, paused }: { phase: Phase; detail: Partial<Record<Phase, string>>; paused?: boolean }) {
   const at = ORDER.indexOf(phase);
   return (
     <ul className="mt-2 flex flex-col gap-2.5 rounded-lg border bg-background px-4 py-3.5" aria-live="polite">
       {LINES.map((l, i) => {
-        const state = i < at || (phase === "done" && i === at) ? "done" : i === at ? "active" : "todo";
+        const state = i < at || ((phase === "done" || paused) && i === at) ? "done" : i === at ? "active" : "todo";
         return (
           <li key={l.phase} className="flex items-start gap-3">
             <span className="mt-0.5 grid size-4 shrink-0 place-items-center">
