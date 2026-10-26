@@ -92,8 +92,12 @@ export function RetestStep() {
     <section className="flex flex-col gap-5" aria-labelledby="ob-h">
       <StepHero
         eyebrow="Step 5 of 5"
-        title={`Same ${after.total} attacks. Now only ${after.gotThrough} get through.`}
-        highlight={`only ${after.gotThrough}`}
+        title={
+          after.gotThrough < base.gotThrough
+            ? `Same ${after.total} attacks. Now only ${after.gotThrough} get through.`
+            : `Same ${after.total} attacks. ${after.gotThrough} still get through.`
+        }
+        highlight={after.gotThrough < base.gotThrough ? `only ${after.gotThrough}` : `${after.gotThrough} still`}
         sub="Here's what basic guardrails changed."
       />
 
@@ -184,8 +188,11 @@ export function RetestStep() {
       <div className="flex items-center gap-3 rounded-lg border border-warning/30 bg-warning-soft px-5 py-4 text-warning-ink" role="note">
         <Eye className="size-4 shrink-0" />
         <span>
-          Live traffic starts in watch mode. {after.gotThrough}{" "}
-          {after.gotThrough === 1 ? "attack still gets" : "attacks still get"} through: tune them next.
+          New guardrails start by watching: they record what they would stop, and stop nothing, so these numbers count
+          only what blocks today.{" "}
+          {after.wouldStop
+            ? `${after.wouldStop} more ${after.wouldStop === 1 ? "attack" : "attacks"} would be stopped once the watching rules block.`
+            : `${after.gotThrough} ${after.gotThrough === 1 ? "attack still gets" : "attacks still get"} through: tune them next.`}
         </span>
       </div>
 

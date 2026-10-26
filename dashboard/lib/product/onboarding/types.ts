@@ -51,6 +51,9 @@ export type TestRun = {
   waitingForRunner?: boolean;
   /** Attacks that couldn't run (the agent's model errored). */
   errors?: number;
+  /** Not stopped only because the rule that would stop them is watching: they stop
+   * once it blocks. Live traffic doesn't apply a watching rule, so neither does the test. */
+  wouldStop?: number;
   /** Why a failed run failed. */
   error?: string | null;
 };
