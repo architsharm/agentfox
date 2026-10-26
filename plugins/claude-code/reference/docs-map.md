@@ -81,6 +81,7 @@ Quote coverage numbers only from these, and only after regenerating.
 | `SECURITY.md` | reporting or triaging a vulnerability, including what is deliberately not one here |
 | `CODE_OF_CONDUCT.md` | Contributor Covenant 2.1, verbatim. Reporting contact only; nothing project-specific to read |
 | `CHANGELOG.md` | what changed in a release, and the section `.github/workflows/release.yml` turns into release notes |
+| `PRODUCT_TODO.md` | planning dashboard and onboarding work: the running product to-do list (onboarding, map, guardrail setup, observability, agent audit) and what is done |
 | `.github/PULL_REQUEST_TEMPLATE.md` | opening a pull request: the four checks that gate it and the vendored-wheel rule |
 | `deploy/README-dashboard.md` | deploying the hosted dashboard (Render/Fly/Vercel), its shared secrets and the Neon migration state |
 | `deploy/FLY.md` | deploying the dashboard to Fly.io step by step: `fly launch --no-deploy`, the three secrets, the deploy command, then the OAuth callback and playground origins |

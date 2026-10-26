@@ -13,6 +13,8 @@ import {
   toolTone,
   type MapRule,
   type MapTool,
+  feeds,
+  settingsFor,
 } from "./guardrailMap";
 
 const IMPACTS = ["read", "write", "high_impact", "irreversible", null];
@@ -97,7 +99,8 @@ describe("changes", () => {
   it("maps the rule control to a per-agent change", () => {
     expect(ruleChange("a", "off")).toEqual({ agents: ["a"], enabled: false });
     expect(ruleChange("a", "escalate")).toEqual({ agents: ["a"], enabled: true, effect: "escalate" });
-    expect(ruleSetting(rule({ effect: "redact" }))).toBeNull();
+    expect(ruleSetting(rule({ effect: "redact" }))).toBe("redact");
+    expect(ruleChange("a", "redact")).toEqual({ agents: ["a"], enabled: true, effect: "redact" });
     expect(ruleSetting(rule({ enabled: false }))).toBe("off");
   });
 
@@ -130,5 +133,25 @@ describe("what the canvas draws", () => {
   it("opens the only group there is", () => {
     const same = many.map((t) => ({ ...t, impact: "read" }));
     expect(drawTools(same, "impact", true, null).open?.label).toBe("Read only");
+  });
+});
+
+describe("how checks feed rules", () => {
+  const rule = (extra: Partial<MapRule>): MapRule => ({ id: "r", description: "", effect: "block", mode: "enforce", level: "agent", message: "", hits: 0, ...extra });
+
+  it("a check feeds a content rule when it reports what the rule looks for", () => {
+    const injection = rule({ kind: "content", finds: "INJECTION.JAILBREAK" });
+    expect(feeds({ finds: "INJECTION" }, injection)).toBe(true);
+    expect(feeds({ finds: "PII" }, injection)).toBe(false);
+  });
+
+  it("no check feeds a rule about tool calls or the run", () => {
+    expect(feeds({ finds: "INJECTION" }, rule({ kind: "action", about: "tools the code never declared" }))).toBe(false);
+  });
+
+  it("hiding is offered for content rules only, and masking shows as hiding", () => {
+    expect(settingsFor(rule({ kind: "content" })).map((o) => o.key)).toContain("redact");
+    expect(settingsFor(rule({ kind: "action" })).map((o) => o.key)).not.toContain("redact");
+    expect(ruleSetting(rule({ effect: "mask" }))).toBe("redact");
   });
 });

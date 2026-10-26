@@ -87,6 +87,38 @@ def _text_of(response: Any) -> str:
     return ""
 
 
+def _rewrite_text(response: Any, text: str) -> bool:
+    """Put ``text`` back where `_text_of` read the assistant text from, in the
+    client's own response object, so the caller's code keeps working on it.
+
+    Returns whether it was written. Mirrors `_text_of` shape for shape: OpenAI and
+    LiteLLM ``choices[0].message.content``; Anthropic text blocks (read as one
+    concatenated text, so the rewrite goes into the first text block and the others
+    are emptied — non-text blocks such as ``tool_use`` are left alone); LangChain's
+    ``AIMessage.content`` string.
+    """
+    try:
+        choices = getattr(response, "choices", None)
+        if choices:
+            message = choices[0].message
+            message.content = text
+            return getattr(message, "content", None) == text
+        content = getattr(response, "content", None)
+        if isinstance(content, list):
+            blocks = [b for b in content if isinstance(getattr(b, "text", None), str)]
+            if not blocks:
+                return False
+            for index, block in enumerate(blocks):
+                block.text = text if index == 0 else ""
+            return _text_of(response) == text
+        if isinstance(content, str):
+            response.content = text
+            return getattr(response, "content", None) == text
+    except Exception:  # read-only or frozen SDK object: the caller refuses instead
+        return False
+    return False
+
+
 def _usage_of(response: Any) -> dict[str, int]:
     """Pull input/output token counts out of whichever client shape came back —
     same normalise-across-providers pattern as `_text_of`, needed because this path

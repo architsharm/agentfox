@@ -21,51 +21,45 @@ import { projectHref } from "@/lib/product/project";
 export type NavItem = [label: string, href: string, also?: string[], icon?: string];
 export type NavGroup = { group: string; items: NavItem[] };
 
-const SETUP: NavGroup = {
-  group: "Setup",
-  items: [
-    ["Get started", "/app/start"],
-    [
-      "Settings",
-      "/app/settings",
-      ["/app/start?tab=connect", "/app/start?tab=tokens", "/app/sources", "/app/entitlement"],
-    ],
-  ],
-};
+const SETTINGS: NavItem = [
+  "Settings",
+  "/app/settings",
+  ["/app/start", "/app/start?tab=connect", "/app/start?tab=tokens", "/app/sources", "/app/entitlement", "/app/onboarding"],
+];
 
+/**
+ * Guardrails is everything: Agents (each project's map) is home and the place to set
+ * things up; Policies, Approvals, Issues and Testing are the ways back in to what
+ * needs a decision; Traces is the record behind all of it, for troubleshooting.
+ */
 export const WORKSPACE_NAV: NavGroup[] = [
   {
-    group: "",
+    group: "Guardrails",
     items: [
-      ["Home", "/app"],
-      ["Projects", "/app/projects"],
-      ["Observe", "/app/observe", ["/app/traces"]],
-      ["Issues", "/app/findings"],
-      ["Policies", "/app/policies"],
-      ["Features", "/app/features"],
+      ["Agents", "/app/map", ["/app/projects"], "/app/projects"],
+      ["Policies", "/app/policies", ["/app/features"]],
       ["Approvals", "/app/approvals"],
-      ["Test", "/app/test", ["/app/evals"]],
-      ["Reports", "/app/reports", ["/app/compliance", "/app/coverage"]],
+      ["Issues", "/app/findings"],
+      ["Testing", "/app/test"],
+      ["Traces", "/app/traces", ["/app/events", "/app/sessions", "/app/escalation/conversations"]],
     ],
   },
-  SETUP,
+  { group: "", items: [SETTINGS] },
 ];
 
 export function projectNav(slug: string): NavGroup[] {
   const q = `agent=${encodeURIComponent(slug)}`;
   return [
     {
-      group: "",
+      group: "Guardrails",
       items: [
-        ["Canvas", projectHref(slug), [`/app/projects/${encodeURIComponent(slug)}?view=canvas`], "canvas"],
-        ["Activity", projectHref(slug, "activity"), [`/app/observe?${q}`, `/app/traces?${q}`], "/app/observe"],
-        ["Access", projectHref(slug, "access"), [], "/app/entitlement"],
-        ["Features", projectHref(slug, "features"), [], "/app/features"],
-        ["Issues", `/app/findings?${q}`],
+        ["Agents", projectHref(slug), [`/app/projects/${encodeURIComponent(slug)}?view=canvas`], "/app/projects"],
+        ["Policies", projectHref(slug, "access"), [projectHref(slug, "features")], "/app/policies"],
         ["Approvals", `/app/approvals?${q}`],
-        ["Settings", projectHref(slug, "settings"), [], "/app/settings"],
+        ["Issues", `/app/findings?${q}`],
+        ["Traces", `/app/traces?${q}`, [projectHref(slug, "activity"), `/app/observe?${q}`], "/app/traces"],
       ],
     },
-    { group: "Workspace", items: [["Get started", "/app/start"], ["Workspace settings", "/app/settings", SETUP.items[1][2]]] },
+    { group: "", items: [["Settings", projectHref(slug, "settings"), [], "/app/settings"]] },
   ];
 }

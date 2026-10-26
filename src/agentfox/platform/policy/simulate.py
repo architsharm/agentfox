@@ -27,6 +27,9 @@ from agentfox.platform.policy.engine import NativePolicyEngine
 from agentfox.platform.policy.model import PolicyDecision, PolicyDocument, PolicyInput
 from agentfox.platform.policy.taint_view import policy_taint
 
+#: Effects that hide part of a payload rather than stop it.
+_HIDING = ("redact", "mask", "tokenize")
+
 
 @dataclass
 class SimulationDiff:
@@ -41,6 +44,10 @@ class SimulationDiff:
     #: on reads "0 newly blocked" however much it catches; this is the number the
     #: question "what changes if I enforce this?" needs.
     would_stop: list[dict[str, Any]] = field(default_factory=list)
+    #: Calls that went through untouched, where the candidate's own rules would have
+    #: hidden data (redact, mask, tokenize) with it enforcing: the other half of "what
+    #: changes if I enforce this?" for a pack that hides rather than stops.
+    would_hide: list[dict[str, Any]] = field(default_factory=list)
     #: Distinct runs (traces) the replayed checks belong to: what a person calls a
     #: request. One user message is several checks (input, each tool, output).
     runs: set[str] = field(default_factory=set)
@@ -55,11 +62,13 @@ class SimulationDiff:
             "newly_allowed": self.newly_allowed,
             "newly_escalated": self.newly_escalated,
             "would_stop": self.would_stop[:50],
+            "would_hide": self.would_hide[:50],
             "counts": {
                 "newly_blocked": len(self.newly_blocked),
                 "newly_allowed": len(self.newly_allowed),
                 "newly_escalated": len(self.newly_escalated),
                 "would_stop": len(self.would_stop),
+                "would_hide": len(self.would_hide),
             },
         }
 
@@ -183,6 +192,8 @@ def simulate(
         applied = (decision.verdict or "allow").lower()
         if new_effective in ("block", "escalate") and applied not in ("block", "escalate"):
             diff.would_stop.append(record)
+        elif new.redactions and applied not in ("block", "escalate", *_HIDING):
+            diff.would_hide.append(record)
 
         if new_effective == old_effective:
             diff.unchanged += 1

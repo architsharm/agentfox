@@ -176,6 +176,8 @@ const RULE_TITLES: Record<string, string> = {
 /** A rule's name. Custom rules are named by their author: pass the rule's description. */
 export function ruleTitle(ruleId: string, description?: string): string {
   if (RULE_TITLES[ruleId]) return RULE_TITLES[ruleId];
+  // init's first guardrails are described for people ("Secrets in what the LLM answers").
+  if (ruleId.startsWith("watch.") && description) return description;
   // A fired custom rule carries its name in its reason: "<name>: your rule"
   // (older saves: "<name> — your rule").
   if (ruleId.startsWith("custom.") && description) return description.split(/:\s*your rule| — your rule/)[0];
@@ -183,8 +185,24 @@ export function ruleTitle(ruleId: string, description?: string): string {
   const own = /^custom\.[a-z0-9-]+-(words|avoid|allowed)$/.exec(ruleId);
   if (own) return { words: "Blocked words", avoid: "Topics to avoid", allowed: "Off-topic question" }[own[1]]!;
   const tail = ruleId.split(".").slice(1).join(" ") || ruleId;
-  const words = tail.replace(/[_-]+/g, " ").trim();
+  const words = tail
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .map((w) => (ACRONYMS.has(w.toUpperCase()) ? w.toUpperCase() : w))
+    .join(" ");
   return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** Words a rule id spells in lower case that are acronyms in a title. */
+const ACRONYMS = new Set(["PII", "API", "URL", "SQL", "ID", "LLM", "MCP", "AI", "EU"]);
+
+/**
+ * What a rule does, said for while it only watches: "Blocks" → "Would block",
+ * "Asks a person" → "Would ask a person", "Hides" → "Would hide".
+ */
+export function wouldDo(does: string): string {
+  return does.replace(/^([A-Z][a-z]+)s\b/, (_m, verb: string) => `Would ${verb.toLowerCase()}`);
 }
 
 export function ruleCategory(ruleId: string): string {

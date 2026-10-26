@@ -1,0 +1,139 @@
+/*
+ * Tailwind v4 + shadcn/ui, alongside the existing stylesheet.
+ *
+ * - No preflight: the global reset would restyle every page built on globals.css.
+ *   Screens built with Tailwind opt into a scoped reset with `.tw` instead.
+ * - Utilities are unlayered on purpose. globals.css is unlayered, and unlayered
+ *   rules beat layered ones whatever their specificity, so layered utilities
+ *   would lose to globals.css's `h2 { margin }` or `input { border }`.
+ * - shadcn's colour names (--background, --muted, --accent, --border…) collide
+ *   with globals.css's, where they mean something else (--muted is a text grey
+ *   there). So shadcn's variables carry an `--sc-` prefix and the Tailwind colour
+ *   names are mapped onto them below; globals.css keeps its own.
+ *
+ * The look: Opero-style. Soft grey ground with a dotted grid, white cards with
+ * generous radii, violet accent, lavender gradient for hero moments.
+ */
+
+@import "tailwindcss/theme.css" layer(theme);
+/* Before the utilities, so a utility class always wins over the reset it sits on. */
+@import "./tw-reset.css";
+@import "tailwindcss/utilities.css";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is([data-theme="dark"] *));
+
+:root {
+  --radius: 0.5rem; /* cards 8; controls use rounded-md (6) */
+
+  /* Every colour comes from the theme (app/af-theme.css). */
+  --sc-background: var(--af-bg);
+  --sc-foreground: var(--af-fg);
+  --sc-card: var(--af-surface);
+  --sc-card-foreground: var(--af-fg);
+  --sc-popover: var(--af-surface);
+  --sc-popover-foreground: var(--af-fg);
+  --sc-primary: var(--af-brand);
+  --sc-primary-hover: var(--af-brand-press);
+  --sc-primary-foreground: var(--af-on-brand);
+  --sc-secondary: var(--af-subtle);
+  --sc-secondary-foreground: var(--af-fg);
+  --sc-muted: var(--af-subtle);
+  --sc-muted-foreground: var(--af-muted);
+  --sc-accent: var(--af-subtle);
+  --sc-accent-foreground: var(--af-fg);
+  --sc-destructive: var(--af-err);
+  --sc-border: var(--af-line);
+  --sc-input: var(--af-line-2);
+  --sc-ring: var(--af-link);
+
+  --sc-success: var(--af-ok);
+  --sc-success-soft: color-mix(in srgb, var(--af-ok) 12%, transparent);
+  --sc-success-ink: var(--af-ok);
+  --sc-warning: var(--af-warn);
+  --sc-warning-soft: color-mix(in srgb, var(--af-warn) 12%, transparent);
+  --sc-warning-ink: var(--af-warn);
+  --sc-danger: var(--af-err);
+  --sc-danger-soft: color-mix(in srgb, var(--af-err) 12%, transparent);
+  --sc-danger-ink: var(--af-err);
+  --sc-violet-soft: color-mix(in srgb, var(--af-brand) 8%, transparent);
+  --sc-violet-ink: var(--af-brand);
+  --sc-link: var(--af-link);
+
+  --sc-chart-violet: var(--af-s1);
+  --sc-chart-teal: var(--af-s2);
+  --sc-chart-pink: var(--af-s3);
+  --sc-chart-sage: var(--af-s4);
+  --sc-chart-mauve: var(--af-s5);
+  --sc-chart-lavender: var(--af-s6);
+
+  --sc-dot: transparent;
+}
+
+@theme inline {
+  --color-background: var(--sc-background);
+  --color-foreground: var(--sc-foreground);
+  --color-card: var(--sc-card);
+  --color-card-foreground: var(--sc-card-foreground);
+  --color-popover: var(--sc-popover);
+  --color-popover-foreground: var(--sc-popover-foreground);
+  --color-primary: var(--sc-primary);
+  --color-primary-foreground: var(--sc-primary-foreground);
+  --color-secondary: var(--sc-secondary);
+  --color-secondary-foreground: var(--sc-secondary-foreground);
+  --color-muted: var(--sc-muted);
+  --color-muted-foreground: var(--sc-muted-foreground);
+  --color-accent: var(--sc-accent);
+  --color-accent-foreground: var(--sc-accent-foreground);
+  --color-destructive: var(--sc-destructive);
+  --color-border: var(--sc-border);
+  --color-input: var(--sc-input);
+  --color-ring: var(--sc-ring);
+  --color-success: var(--sc-success);
+  --color-success-soft: var(--sc-success-soft);
+  --color-success-ink: var(--sc-success-ink);
+  --color-warning: var(--sc-warning);
+  --color-warning-soft: var(--sc-warning-soft);
+  --color-warning-ink: var(--sc-warning-ink);
+  --color-danger: var(--sc-danger);
+  --color-danger-soft: var(--sc-danger-soft);
+  --color-danger-ink: var(--sc-danger-ink);
+  --color-violet-soft: var(--sc-violet-soft);
+  --color-violet-ink: var(--sc-violet-ink);
+  --color-primary-hover: var(--sc-primary-hover);
+  --color-link: var(--sc-link);
+  --color-chart-violet: var(--sc-chart-violet);
+  --color-chart-teal: var(--sc-chart-teal);
+  --color-chart-pink: var(--sc-chart-pink);
+  --color-chart-sage: var(--sc-chart-sage);
+  --color-chart-mauve: var(--sc-chart-mauve);
+  --color-chart-lavender: var(--sc-chart-lavender);
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 12px;
+
+  --font-sans: var(--af-sans);
+  --font-mono: var(--af-mono);
+}
+
+/* The dotted grid from the Opero shot. */
+@utility bg-dots {
+  background-image: radial-gradient(var(--sc-dot) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+@utility bg-hero {
+  /* The "Describe the Automation" card: white into lavender, a mauve-pink glow bottom right. */
+  background:
+    radial-gradient(70% 120% at 82% 30%, #ddd0f4 0%, transparent 60%),
+    radial-gradient(60% 90% at 100% 100%, #e9c8dd 0%, transparent 60%),
+    linear-gradient(120deg, #f8f7fb 0%, #f1ecfa 45%, #e6dcf6 100%);
+}
+
+/* The indeterminate bar on "Identifying and installing guardrails". */
+@keyframes ob-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}

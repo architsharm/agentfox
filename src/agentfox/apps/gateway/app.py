@@ -50,6 +50,7 @@ from agentfox.apps.gateway.routes import features as feature_routes
 from agentfox.apps.gateway.routes import imports as import_routes
 from agentfox.apps.gateway.routes import library as library_routes
 from agentfox.apps.gateway.routes import metrics as metrics_routes
+from agentfox.apps.gateway.routes import onboarding_flow as onboarding_flow_routes
 from agentfox.apps.gateway.routes import protection as protection_routes
 from agentfox.apps.gateway.routes import rule_examples as rule_example_routes
 from agentfox.apps.gateway.routes import workspace as workspace_routes
@@ -393,6 +394,7 @@ def create_app() -> FastAPI:
     app.include_router(escalation.router)
     app.include_router(answerability.router)
     app.include_router(onboarding.router)
+    app.include_router(onboarding_flow_routes.router)
     app.include_router(provenance.router)
     app.include_router(entitlement.router)
     app.include_router(integrations.router)
@@ -558,10 +560,12 @@ def create_app() -> FastAPI:
 
         workspace_enabled = enabled_for(session)
         from agentfox.apps.gateway.routes.checks import latest_pull_jobs
-        from agentfox.capabilities.detection.catalog import GROUPS, describe
+        from agentfox.capabilities.detection.catalog import GROUPS, describe, feeds_for
         from agentfox.capabilities.detection.models import models_for, pull_blocker
 
         pull_jobs = latest_pull_jobs(session)
+        # What the workspace's own models and rules make the custom checks report.
+        feeds = feeds_for(all_detectors(), session)
         # Why the OSS-wrapped and licence-restricted detectors aren't live here —
         # shown in the UI so "not installed" doesn't read as a bug. The native
         # detectors (injection.heuristic, pii.native, safety.lexicon, schema.json,
@@ -620,7 +624,7 @@ def create_app() -> FastAPI:
                     "stats": stats.get(key, {}),
                     # For the Checks screen: what it catches, where it runs, where it
                     # comes from (built-in, open-source model, LLM judge, your own).
-                    **describe(detector),
+                    **describe(detector, feeds),
                     # Why the Download button cannot work on this server, if it cannot.
                     "pull_blocked": (
                         pull_blocker(detector)

@@ -36,7 +36,9 @@ Nothing is blocked by the line itself: `auto()` follows each policy's own mode, 
 observe, and capability default-deny on tool calls applies once the agent holds its first grant.
 After `agentfox init`, `tool-containment` enforces, so an irreversible tool whose arguments came from
 a tool result raises `agentfox.Blocked` instead of returning the response, and your code never gets
-to run it. `auto(mode="observe")` never raises. Not covered: the OpenAI Responses API, and tools
+to run it. An enforced redaction rule rewrites the reply in the response object your code gets
+back (a streamed reply, already sent, raises `agentfox.Blocked` at its end instead).
+`auto(mode="observe")` never raises or rewrites. Not covered: the OpenAI Responses API, and tools
 your code calls without the model asking.
 
 ### Any language — over HTTP

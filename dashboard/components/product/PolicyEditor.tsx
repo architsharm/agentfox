@@ -489,7 +489,7 @@ export function PolicyEditor({
       </div>
 
       {simulation && (
-        <div className={simulation.ok === false ? "error" : simulation.risky ? "note-panel" : "note-panel"} style={simulation.ok !== false && simulation.risky ? { borderLeftColor: "var(--warn)" } : undefined}>
+        <div className={simulation.ok === false ? "error" : simulation.risky ? "note-panel" : "note-panel"}>
           {simulation.ok === false ? (
             <>
               <strong>Simulation failed</strong> — {simulation.detail || simulation.error || "unknown error"}

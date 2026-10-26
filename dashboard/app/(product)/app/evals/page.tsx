@@ -265,7 +265,7 @@ export default async function Evals({
       </form>
 
       {drift_agent && drift_scorer && (
-        <div id="drift" className={`note-panel ${drift?.drifted ? "" : ""}`} style={{ borderLeftColor: drift?.drifted ? "var(--bad)" : "var(--accent)" }}>
+        <div id="drift" className={`note-panel ${drift?.drifted ? "" : ""}`}>
           <strong>
             Drift check: {drift_agent} / {drift_scorer}
             <InfoTip text="Whether this scorer's results have shifted from its own baseline, measured by PSI (population stability index), a standard statistic for how much a distribution has moved. Above ~0.1 usually means worth a look; above ~0.25 usually means something real changed." />

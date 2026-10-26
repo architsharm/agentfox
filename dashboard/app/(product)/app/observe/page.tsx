@@ -25,7 +25,7 @@ import { ensureRange } from "@/lib/product/range";
 import { RangeProvider } from "@/components/kit/RangeContext";
 import { CATEGORIES, categoryLabel, detectorName, dimLabel, ruleCategory, ruleTitle, sentence } from "@/lib/product/vocab";
 
-export const metadata: Metadata = appPageMetadata("Observe");
+export const metadata: Metadata = appPageMetadata("Activity");
 export const dynamic = "force-dynamic";
 
 type SP = Record<string, string | undefined>;
@@ -44,7 +44,7 @@ export default async function Observe({ searchParams }: { searchParams: Promise<
   return (
     <RangeProvider range={sp.range}>
     <>
-      <Header title="Observe" />
+      <Header title="Activity" />
       <Tabs items={observeTabs(f)} active={tab} />
       <FilterBar
         agents={(agents.agents || []).map((a: any) => ({ slug: a.slug, name: a.name }))}

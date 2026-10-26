@@ -34,6 +34,7 @@ not safe): the enforcer compiles the workspace's models, credentials decrypted, 
 
 from __future__ import annotations
 
+import contextvars
 import ipaddress
 import re
 from concurrent.futures import ThreadPoolExecutor
@@ -411,7 +412,13 @@ class CustomModelDetector(BaseDetector):
             except Exception as exc:  # noqa: BLE001 - one model must never fail the rest
                 return model, ModelUnavailable(f"{type(exc).__name__}: {exc}")
 
-        answers = [run(models[0])] if len(models) == 1 else list(_POOL.map(run, models))
+        if len(models) == 1:
+            answers = [run(models[0])]
+        else:
+            # Each call in a copy of the request's context (posture, tenant): pool
+            # threads don't inherit it.
+            futures = [_POOL.submit(contextvars.copy_context().run, run, m) for m in models]
+            answers = [f.result() for f in futures]
         degraded: list[dict[str, str]] = []
         for model, answer in answers:
             if isinstance(answer, ModelUnavailable):

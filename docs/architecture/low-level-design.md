@@ -249,11 +249,22 @@ session_id=None, intent=None, register=True, quiet=False, …)`:
    `TaintTracker` rebuilt from the conversation (`_provenance_of`); unseen tools are upserted
    with an inferred impact (`_register_tool`). A refused call raises `Blocked` in place of the
    response.
+7. An output redaction (`redact` / `mask` / `tokenize` on the output surface) is applied, not
+   only recorded: `_applied_rewrite` picks the enforcer's `EnforcementResult.content` under the
+   same mode rule as a block, and `shapes._rewrite_text` writes it into the client's own
+   response object (`choices[0].message.content`; Anthropic text blocks, the first taking the
+   whole rewrite and the others emptied; `AIMessage.content`). The recorded conversation turn
+   holds the redacted text. A response that cannot be rewritten is refused with `Blocked`; a
+   streamed response, whose chunks are already with the caller, raises `Blocked` at the end of
+   the stream instead (the gateway's buffered streaming is the way to get redacted streamed
+   text).
 
 The default mode is `policy`: `Blocked` is raised only when an enforce-mode policy, the kill
 switch or a budget cap stops the call, and an agent holding no grants at all is not refused
 for a missing grant until its first grant. `mode="observe"` never raises; `mode="enforce"`
-raises on anything a policy would block. `off()` reverses every patch.
+raises on anything a policy would block. Redaction follows the same rule: the enforced verdict
+in `policy` mode, the effective verdict in `enforce`, never in `observe`. `off()` reverses
+every patch.
 
 ---
 
@@ -308,6 +319,17 @@ raising, so the other packs are still evaluated. `Enforcer.evaluate()` then reco
 `enforce` blocks if the deployment's `fail_mode` or the pack's own declared `fail_mode` is
 `closed`, and otherwise the call is allowed with the gap named in the decision. Read-only views
 skip the layer and list it.
+
+**A judge outage is a degraded detector.** An LLM judge (`injection.judgment`, `pii.judgment`,
+a judge validator, a workspace rule that uses one) that times out, errors or reports
+`status="unavailable"` with `cause="outage"` is listed in `degraded` and in
+`PipelineResult.judge_outage` with the entity types it would have produced, so both `fail_mode`
+sources above treat "unreachable" and "timed out" alike. The judgment posture's `fail_closed` is a
+third source, for judges only: when it is on and the decision is enforcing, an enforcing pack with
+an enabled, non-allow detection rule on this surface that those entities could fire blocks the call
+as `pipeline.judge_outage`. It adds a block and never removes one, so it cannot loosen a closed
+deployment or pack. A payload the egress gate refused (`cause="refused"`, e.g. `pii_egress=block`
+on text with personal data) or a tier with no key (`not_configured`) is never an outage.
 
 **Saving and promoting are separate.** Saving appends an immutable version and leaves what is in
 force unchanged (`save_policy(..., rebind=False)`). Promotion (`POST /api/policies/{key}/mode`,

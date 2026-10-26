@@ -385,7 +385,7 @@ input       block    SAFETY.ILLICIT`}</Output>
           <tr><td><code>enforcement_budget_ms</code></td><td>300</td><td>The whole detector pipeline for one check.</td></tr>
           <tr><td><code>detector_timeout_ms</code></td><td>40</td><td>Per detector, unless the detector declares its own (the classifier 250, similarity 150, judgment 2000).</td></tr>
           <tr><td><code>request_budget_ms</code></td><td>350</td><td>Every check one governed call makes, together.</td></tr>
-          <tr><td><code>fail_mode</code></td><td><code>open</code></td><td>What a degraded check does: <code>open</code> lets it through and records the gap; <code>closed</code> blocks it as <code>pipeline.fail_closed</code> when the decision is enforcing. A pack&apos;s own <code>fail_mode: closed</code> also applies (below).</td></tr>
+          <tr><td><code>fail_mode</code></td><td><code>open</code></td><td>What a degraded check does: <code>open</code> lets it through and records the gap; <code>closed</code> blocks it as <code>pipeline.fail_closed</code> when the decision is enforcing. A pack&apos;s own <code>fail_mode: closed</code> also applies (below). An LLM judge that does not answer is degraded the same way, and the judgment posture can also block it as <code>pipeline.judge_outage</code>.</td></tr>
         </tbody>
       </table>
       <p>

@@ -12,7 +12,8 @@ export async function PUT(req: NextRequest) {
     tiers: Array.isArray(b.tiers) ? b.tiers.map(String) : [],
     pii_egress: String(b.pii_egress || "redact"),
     backend: String(b.backend || "local"),
-    fail_closed: b.fail_closed !== false,
+    // Absent means the gateway's default (off), the same as an unticked form box.
+    fail_closed: b.fail_closed === true,
     confirm_egress: b.confirm_egress === true,
     reason: String(b.reason || "").trim(),
   });
@@ -45,9 +46,9 @@ export async function POST(req: NextRequest) {
     pii_egress: String(form.get("pii_egress") || "redact"),
     backend: String(form.get("backend") || "local"),
     // An unchecked HTML checkbox sends nothing, so absent means off for both. The
-    // safe default for fail_closed comes from the form, not from here: the box is
-    // rendered checked, and when the deployment requires failing closed it is
-    // disabled and a hidden `fail_closed=on` is posted in its place
+    // current value of fail_closed comes from the form, not from here: the box is
+    // rendered as the stored posture has it, and when the deployment requires failing
+    // closed it is disabled and a hidden `fail_closed=on` is posted in its place
     // (components/product/policies/advanced.tsx). An unticked box is a deliberate choice to
     // fail open, and the gateway refuses it if the deployment does not allow that.
     fail_closed: form.get("fail_closed") !== null,

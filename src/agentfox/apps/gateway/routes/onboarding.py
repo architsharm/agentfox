@@ -23,6 +23,7 @@ from sqlalchemy.sql.selectable import ScalarSelect
 
 from agentfox.apps.gateway.deps import current_user, db
 from agentfox.apps.gateway.routes.integrations import LOGIN_TOKEN_NAME
+from agentfox.capabilities.onboarding.keys import SETUP_KEY_NAME
 from agentfox.capabilities.protection import layer_key as protection_layer_key
 from agentfox.core.models import (
     Agent,
@@ -144,7 +145,7 @@ def _onboarding_counts(session: Session) -> dict[str, int]:
             _count(
                 ApiToken,
                 ApiToken.revoked_at.is_(None),
-                ApiToken.name != LOGIN_TOKEN_NAME,
+                ApiToken.name.not_in((LOGIN_TOKEN_NAME, SETUP_KEY_NAME)),
                 (ApiToken.expires_at.is_(None)) | (ApiToken.expires_at > now),
             ).label("api_keys"),
             _count(Capability, Capability.tool_key.not_like("redteam.%")).label("grants"),

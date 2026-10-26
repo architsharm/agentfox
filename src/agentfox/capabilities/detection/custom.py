@@ -37,6 +37,7 @@ from agentfox.capabilities.detection.base import (
     BaseDetector,
     Detection,
     DetectionContext,
+    DetectorResult,
     redact_sample,
 )
 from agentfox.capabilities.detection.custom_conditions import ConditionSpec
@@ -586,21 +587,58 @@ class CustomValidatorDetector(BaseDetector):
         """The request budget the applicable rules need; 0 when the default will do."""
         return max((r.validator.requires_budget_ms or 0 for r in self._rules(context)), default=0)
 
-    def _detect(self, content: str, context: DetectionContext) -> list[Detection]:
+    def judge_entities(self, context: DetectionContext) -> tuple[str, ...]:
+        """The entities of the rules here that ask an LLM judge."""
+        return tuple(
+            r.entity for r in self._rules(context) if getattr(r.validator, "kind", "") == "judge"
+        )
+
+    def detect(self, content: str, context: DetectionContext) -> DetectorResult:
+        """Every applicable rule, each judged on its own.
+
+        A rule whose judge did not answer no longer takes the other rules down with
+        it: their detections stand, and this reports ``unavailable`` with the cause
+        and the entities of the rules that did not run, the way `injection.judgment`
+        does, so the pipeline can tell a judge outage from a refused payload.
+        """
         from agentfox.capabilities.detection.validators.detector import detections
+        from agentfox.capabilities.judgment.jev import OUTAGE, JevUnavailable, cause_of
 
         out: list[Detection] = []
+        failed: dict[str, tuple[str, str, str]] = {}  # rule key -> (cause, entity, why)
         for rule in self._rules(context):
             if not rule.validator.available():
                 continue
-            out.extend(
-                detections(
-                    rule.validator,
-                    rule.params,
-                    content,
-                    context,
-                    entity_type=rule.entity,
-                    detail={"custom_rule": rule.key, "kind": "validator"},
+            try:
+                out.extend(
+                    detections(
+                        rule.validator,
+                        rule.params,
+                        content,
+                        context,
+                        entity_type=rule.entity,
+                        detail={"custom_rule": rule.key, "kind": "validator"},
+                    )
                 )
-            )
-        return out
+            except JevUnavailable as exc:
+                failed[rule.key] = (cause_of(exc), rule.entity, str(exc))
+        result = DetectorResult(
+            detector_key=self.key,
+            version=self.version,
+            score=max((d.score for d in out), default=0.0),
+            detections=out,
+        )
+        if failed:
+            causes = {cause for cause, _e, _w in failed.values()}
+            cause = OUTAGE if OUTAGE in causes else sorted(causes)[0]
+            result.status = "unavailable"
+            result.raw = {
+                "reason": "; ".join(f"{key}: {why}" for key, (_c, _e, why) in failed.items()),
+                "cause": cause,
+                "entities": [e for c, e, _w in failed.values() if c == cause],
+                "rules": {key: c for key, (c, _e, _w) in failed.items()},
+            }
+        return result
+
+    def _detect(self, content: str, context: DetectionContext) -> list[Detection]:
+        return self.detect(content, context).detections

@@ -48,8 +48,15 @@ Three backends, chosen by the operator, defaulting to the safe one.
 | `remote` | May call the hosted model — but only with `allow_egress` on, and only after redaction. |
 | `auto` | Local where a local detector covers the question, remote for the rest, under the same gate. |
 
-Plus `judgment_redact_before_egress` (default on) and `judgment_fail_closed`
-(default on).
+Plus `judgment_redact_before_egress` (default on). If the local redactor cannot
+load, the payload is not sent, whatever else is set.
+
+`judgment_fail_closed` (default off, like `fail_mode`) is about outages, not
+egress: on, a judge that was asked and did not answer blocks an enforcing
+decision whose rules rely on what it finds (`pipeline.judge_outage`). A refusal
+by this gate is never an outage. `EgressRefused` carries `cause="refused"`, so
+`pii_egress = "block"` on a payload containing an email address means "not
+judged remotely", not "the judge is down".
 
 **`JudgmentGateway` is the only thing product code should call.** It is what
 holds the gate and the redaction; calling `JevClient` directly skips both,
@@ -140,7 +147,10 @@ judgment_backend = "local"
 allow_egress = true
 judgment_backend = "remote"
 
-# on by default; turning either off is a deliberate downgrade
+# on by default; turning it off is a deliberate downgrade
 judgment_redact_before_egress = true
-judgment_fail_closed = true
+
+# off by default; true makes a judge outage deny enforcing requests that rely
+# on that judge, and stops any workspace posture from turning that off
+judgment_fail_closed = false
 ```

@@ -39,7 +39,15 @@ from agentfox.capabilities.judgment.capability import (
     Tier,
 )
 from agentfox.capabilities.judgment.egress import JudgmentGateway
-from agentfox.capabilities.judgment.jev import JevAnswer, JevClient, JevResult, JevUnavailable
+from agentfox.capabilities.judgment.jev import (
+    NOT_CONFIGURED,
+    OUTAGE,
+    JevAnswer,
+    JevClient,
+    JevResult,
+    JevUnavailable,
+    cause_of,
+)
 
 log = logging.getLogger(__name__)
 
@@ -55,6 +63,8 @@ class PanelResult:
     answered_by: dict[str, list[Tier]] = field(default_factory=dict)
     tiers: tuple[Tier, ...] = ()
     failures: dict[Tier, str] = field(default_factory=dict)
+    #: Why each failed tier did not answer (`jev.OUTAGE`, `REFUSED`, `NOT_CONFIGURED`).
+    failure_causes: dict[Tier, str] = field(default_factory=dict)
     #: Tiers actually called. Under a cascade this is usually shorter than
     #: `tiers`, and the difference is the money not spent.
     consulted: tuple[Tier, ...] = ()
@@ -62,6 +72,19 @@ class PanelResult:
     @property
     def empty(self) -> bool:
         return not self.answers
+
+    @property
+    def cause(self) -> str:
+        """Why the tiers that failed did not answer, as one cause.
+
+        An outage if any tier was asked and did not answer: that tier would have
+        judged this payload. Otherwise the failures were all choices (the egress
+        gate, a missing key), and the cause is the first of those.
+        """
+        causes = set(self.failure_causes.values())
+        if not causes or OUTAGE in causes:
+            return OUTAGE
+        return sorted(causes)[0]
 
 
 def _jev_judge() -> Judge | None:
@@ -129,11 +152,13 @@ def ask(
     everyone and keeps the highest score, which is what union means.
 
     Raises `JevUnavailable` only when *no* judge could answer at all, so one
-    tier being down degrades to the others rather than failing the decision.
+    tier being down degrades to the others rather than failing the decision. Its
+    ``cause`` is ``outage`` if any tier was asked and failed, else the choice that
+    stopped them (``refused`` when every tier's egress gate declined the payload).
     """
     members = panel if panel is not None else judges_for(kind)
     if not members:
-        raise JevUnavailable(f"no judgment tier is enabled for {kind.value}")
+        raise JevUnavailable(f"no judgment tier is enabled for {kind.value}", cause=NOT_CONFIGURED)
 
     rule = ROUTING[kind]
     cascading = rule.combine is Combine.CASCADE
@@ -151,6 +176,7 @@ def ask(
             answers = judge.ask(state, pending).answers
         except JevUnavailable as exc:
             result.failures[tier] = str(exc)
+            result.failure_causes[tier] = cause_of(exc)
             log.info("judgment panel: %s unavailable (%s)", tier.value, exc)
             continue
 
@@ -169,5 +195,7 @@ def ask(
     result.consulted = tuple(consulted)
     if result.empty and result.failures:
         joined = "; ".join(f"{t.value}: {why}" for t, why in result.failures.items())
-        raise JevUnavailable(joined)
+        # The cause travels with the exception: a payload every tier refused to send
+        # was never judged, which is not the same as a judge that is down.
+        raise JevUnavailable(joined, cause=result.cause)
     return result

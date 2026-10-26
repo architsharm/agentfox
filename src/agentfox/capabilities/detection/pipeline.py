@@ -18,6 +18,7 @@ So the pipeline:
 
 from __future__ import annotations
 
+import contextvars
 import logging
 import threading
 import time
@@ -32,6 +33,7 @@ from agentfox.capabilities.detection.base import (
     DetectorResult,
     available_detectors,
 )
+from agentfox.capabilities.judgment.jev import OUTAGE
 from agentfox.core.config import get_settings
 
 log = logging.getLogger(__name__)
@@ -95,6 +97,19 @@ class PipelineResult:
     budget_ms: float = 0.0
     degraded: list[str] = field(default_factory=list)
     errored: list[str] = field(default_factory=list)
+    #: LLM judges that were asked and did not answer on this request: an outage
+    #: (no tier reachable, an error), a timeout, or the budget running out before
+    #: they started — detector key to the entity types that judge would have
+    #: produced. Every one is also in `degraded` (an outage is reduced coverage,
+    #: whichever way it showed up), so the deployment's and the packs' `fail_mode`
+    #: see it exactly as they see a timeout; the entities are what lets the judgment
+    #: posture's `fail_closed` block only where an enforcing rule depended on them.
+    #:
+    #: A judge that was *not asked* is not here: a payload the egress gate refused
+    #: (`pii_egress=block` on text with an email address in it) or a tier with no
+    #: key reports `status="unavailable"` with a cause other than `outage`, and is
+    #: coverage the operator chose not to have, not an outage.
+    judge_outage: dict[str, list[str]] = field(default_factory=dict)
 
     @property
     def detections(self) -> list[Detection]:
@@ -125,6 +140,7 @@ class PipelineResult:
             "detectors_run": [r.detector_key for r in self.results],
             "degraded": self.degraded,
             "errored": self.errored,
+            "judge_outage": sorted(self.judge_outage),
             "entities": sorted(self.by_entity()),
             "max_score": round(self.max_score, 3),
         }
@@ -229,8 +245,15 @@ class DetectorPipeline:
             return result
 
         started = time.perf_counter()
+        # Each detector runs in a copy of this request's context: pool threads don't
+        # inherit context variables, and the request's judgment posture (its judge
+        # tiers, whether personal data may reach a judge) and tenant live in them.
+        # One copy per submit, because a context can't be entered by two threads.
         futures = {
-            self._pool_for(d).submit(self._run_one, d, content, context): d for d in detectors
+            self._pool_for(d).submit(
+                contextvars.copy_context().run, self._run_one, d, content, context
+            ): d
+            for d in detectors
         }
 
         for future, detector in futures.items():
@@ -252,6 +275,7 @@ class DetectorPipeline:
                     )
                 )
                 result.degraded.append(detector.key)
+                _judge_out(result, detector, context)
                 future.cancel()
                 continue
 
@@ -262,6 +286,12 @@ class DetectorPipeline:
                 # reports it rather than raising; it is still a failure to count.
                 if finished.status == "error":
                     result.errored.append(detector.key)
+                    if _is_judge(detector):
+                        _judge_out(result, detector, context)
+                # A judge that was asked and got no answer: the same reduced
+                # coverage as a judge that timed out, so it degrades the same way.
+                elif finished.status == "unavailable" and finished.raw.get("cause") == OUTAGE:
+                    _judge_out(result, detector, context, entities=finished.raw.get("entities"))
             except FutureTimeout:
                 # The worker thread keeps running (Python cannot pre-empt it); we
                 # stop *waiting*, which is what protects the caller's latency. The
@@ -275,6 +305,7 @@ class DetectorPipeline:
                     )
                 )
                 result.degraded.append(detector.key)
+                _judge_out(result, detector, context)
             except Exception as exc:  # a detector must never take the request down
                 log.warning("detector %s failed: %s", detector.key, exc)
                 result.results.append(
@@ -286,6 +317,8 @@ class DetectorPipeline:
                     )
                 )
                 result.errored.append(detector.key)
+                if _is_judge(detector):
+                    _judge_out(result, detector, context)
 
         result.duration_ms = (time.perf_counter() - started) * 1000
         return result
@@ -309,6 +342,44 @@ class DetectorPipeline:
         calls it (confirmed by grep), and process-level cleanup of these pools
         happens naturally at interpreter exit, the same as any other module-level
         resource."""
+
+
+def judge_entities(detector: Detector, context: DetectionContext) -> tuple[str, ...]:
+    """The entity types this detector asks an LLM judge for on this request.
+
+    Empty for a detector that asks no judge. One that does says so through
+    `judge_entities(context)`: the two judgment detectors and a judge validator
+    always, `custom.validators` for the workspace rules here that use a judge.
+    """
+    fn = getattr(detector, "judge_entities", None)
+    return tuple(fn(context)) if callable(fn) else ()
+
+
+def _is_judge(detector: Detector) -> bool:
+    """A detector that *is* an LLM judge, so any failure of it is the judge's."""
+    from agentfox.capabilities.detection.catalog import source_of
+
+    return source_of(detector) == "llm_judge"
+
+
+def _judge_out(
+    result: PipelineResult,
+    detector: Detector,
+    context: DetectionContext,
+    *,
+    entities: list[str] | None = None,
+) -> None:
+    """Record a judge that did not answer — if this detector asks one here.
+
+    Also degrades it, so a judge that said "unreachable" and one that timed out
+    reach `fail_mode` the same way. A non-judge detector is left exactly as before.
+    """
+    found = list(entities) if entities else list(judge_entities(detector, context))
+    if not found and not _is_judge(detector):
+        return
+    result.judge_outage[detector.key] = found
+    if detector.key not in result.degraded:
+        result.degraded.append(detector.key)
 
 
 def fail_verdict(fail_mode: str | None = None) -> str:
