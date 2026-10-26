@@ -74,8 +74,20 @@ export type SuggestedGuardrail = {
   enabled: boolean;
 };
 
-/** A key the user pastes into `agentfox init --key`. Always retrievable, never "shown once". */
-export type OnboardingKey = { value: string; createdNow: boolean };
+/**
+ * The key the user pastes into `agentfox init --key`. Stored hashed, so `value` is
+ * there only on the call that made it (`createdNow`); later calls say a key exists
+ * (`hasKey`) and show its `prefix`, `createdAt` and `expiresAt`. Rotating makes a
+ * new one, shown that once.
+ */
+export type OnboardingKey = {
+  value: string | null;
+  createdNow: boolean;
+  hasKey?: boolean;
+  prefix?: string | null;
+  createdAt?: string | null;
+  expiresAt?: string | null;
+};
 
 /** The four states every step can be forced into from the dev panel. */
 export type ForcedState = "loading" | "empty" | "error" | "success";
