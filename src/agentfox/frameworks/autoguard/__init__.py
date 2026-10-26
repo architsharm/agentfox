@@ -700,16 +700,9 @@ def _register_tool(session: Any, name: str, descriptor: dict[str, Any] | None) -
 
 def _agent_has_grants(session: Any, identity: Any) -> bool:
     """Whether anyone has configured least privilege for this agent at all."""
-    if identity is None:
-        return False
-    from sqlalchemy import func, select
+    from agentfox.platform.identity.service import holds_any_grant
 
-    from agentfox.core.models import Capability
-
-    count = session.scalar(
-        select(func.count()).select_from(Capability).where(Capability.identity_id == identity.id)
-    )
-    return bool(count)
+    return holds_any_grant(session, identity)
 
 
 def _stopping_rules(result: EnforcementResult) -> list[dict[str, Any]]:
