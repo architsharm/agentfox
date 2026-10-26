@@ -21,7 +21,7 @@ import Link from "next/link";
 import { Logo } from "@/components/product/Logo";
 import { useRouter } from "next/navigation";
 import { Bot, Cpu, FileText, Plus, Search, User, Wrench, X, type LucideIcon } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ModePill, Pill } from "@/components/kit";
 import {
   GROUP_BY,
@@ -1209,6 +1209,53 @@ function Legend() {
   );
 }
 
+/** The lines drawn on the map, in reading order: the ones a phone lists as buttons. */
+const LINE_ORDER = ["input", "output", "prompt", "response", "tool_call", "tool_result", "context"];
+
+/**
+ * On a phone the map's pills are too small to tap, so its lines are also listed here
+ * as full-size buttons: each opens the same panel as tapping the line on the map.
+ */
+function LineList({ map, onSelect }: { map: AgentMap; onSelect: (next: Selected) => void }) {
+  const lines = LINE_ORDER.map((key) => map.stages.find((s) => s.key === key)).filter((s): s is Stage => Boolean(s));
+  return (
+    <div className="gm-lines" aria-label="Lines on this map">
+      <p className="gm-lines-head">Tap a line to see and change its guardrails</p>
+      <div className="gm-lines-grid">
+        {lines.map((s) => (
+          <button key={s.key} type="button" className="gm-line-btn" onClick={() => onSelect({ kind: "stage", key: s.key })}>
+            <span>{RAIL[s.key]?.name ?? s.title}</span>
+            <small>{s.rules.length ? `${s.rules.length} rule${s.rules.length === 1 ? "" : "s"}` : "none yet"}</small>
+          </button>
+        ))}
+        {map.tools.length > 0 && (
+          <button type="button" className="gm-line-btn" onClick={() => onSelect({ kind: "tools", key: "" })}>
+            <span>Tools</span>
+            <small>{map.tools.length}</small>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A phone-width screen. There one finger must scroll the page, not drag the map
+ * (otherwise a visitor's finger is trapped on the canvas): the map pans and zooms
+ * with two fingers or its +/- buttons instead.
+ */
+function useNarrow(): boolean {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const q = window.matchMedia("(max-width: 760px)");
+    const on = () => setNarrow(q.matches);
+    on();
+    q.addEventListener("change", on);
+    return () => q.removeEventListener("change", on);
+  }, []);
+  return narrow;
+}
+
 /**
  * One project's guardrails, drawn where they act. The user outside; inside the
  * project's box, each agent with its LLM, tools and documents; rails on the lines
@@ -1229,6 +1276,11 @@ export function GuardrailMap({
   const [active, setActive] = useState(focus);
   const [selected, setSelected] = useState<Selected>(null);
   const [hovered, setHovered] = useState<string | null>(null);
+  const narrow = useNarrow();
+  // On a phone the panel sits below the map: bring it into view when a line or tool is tapped.
+  useEffect(() => {
+    if (narrow && selected) document.querySelector(".gm-side")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [narrow, selected]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
   const [by, setBy] = useState<GroupBy>("impact");
@@ -1322,10 +1374,13 @@ export function GuardrailMap({
             fitViewOptions={
               maps.length > 1
                 ? { padding: 0.25, maxZoom: 1, nodes: laid.nodes.filter((n) => (n.id.startsWith(`${active}|`) || (n.id === "user" && laid.edges.some((e) => e.source === "user" && e.target === `${active}|agent`))) && !n.parentId).map((n) => ({ id: n.id })) }
-                : { padding: 0.12, maxZoom: 1 }
+                : { padding: narrow ? 0.04 : 0.12, maxZoom: 1 }
             }
             minZoom={0.15}
             maxZoom={1.5}
+            panOnDrag={!narrow}
+            zoomOnScroll={!narrow}
+            preventScrolling={!narrow}
             nodesDraggable={false}
             nodesConnectable={false}
             proOptions={{ hideAttribution: true }}
@@ -1346,6 +1401,7 @@ export function GuardrailMap({
       </div>
       <div className="gm-side">
         {agentSwitch}
+        {narrow && !selected && <LineList map={map} onSelect={setSelected} />}
         <Panel map={map} selected={selected} groups={groups} onSelect={setSelected} project={project} catalog={catalog} toolList={toolList} />
       </div>
     </div>

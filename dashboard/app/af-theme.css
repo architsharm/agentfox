@@ -643,3 +643,149 @@ a.gm-add { align-self: flex-start; text-decoration: none; }
 .lib-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .lib-foot { margin-top: auto; }
 .lib-default { border-color: color-mix(in srgb, var(--af-brand) 35%, var(--af-line)); }
+
+/* ── Phones (≤760px) ─────────────────────────────────────────────────────────
+ * The rail becomes a top bar: the mark, the project switcher and a Menu button
+ * (MobileMenu). The nav opens below it as a full, labelled list with 44px rows,
+ * rather than main's row of unlabelled icons. Pages get a 16px gutter. */
+.side-menu-btn { display: none; }
+@media (max-width: 760px) {
+  nav.side {
+    width: 100%; flex-basis: auto; flex-direction: row; flex-wrap: wrap; align-items: center;
+    gap: 6px; padding: 6px 12px; overflow: visible;
+    position: sticky; top: 0; z-index: 40;
+    border-right: 0; border-bottom: 1px solid var(--af-line);
+    background: var(--af-bg); backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+  nav.side .brand { border-bottom: 0; padding: 4px 2px; flex: none; }
+  nav.side .brand-text { display: none; }
+  nav.side .project-switch { flex: 1 1 auto; min-width: 0; margin: 0; }
+  nav.side .project-switch-btn { padding: 7px 10px; width: 100%; }
+  nav.side .project-switch-name small { display: none; }
+  nav.side .project-switch-menu { position: fixed; top: 56px; left: 12px; right: 12px; min-width: 0; max-width: none; width: auto; }
+  .side-menu-btn {
+    display: inline-flex; align-items: center; gap: 6px; flex: none;
+    min-height: 40px; padding: 0 12px; border: 1px solid var(--af-line-2); border-radius: 3px;
+    background: transparent; color: var(--af-fg); font: inherit; font-size: 13px; cursor: pointer;
+  }
+  /* The nav groups and the foot: hidden until Menu is opened, then a full-width list. */
+  /* As specific as globals.css's `display: contents` rule for the same divs, plus .shell. */
+  .shell nav.side > div:not(.brand):not(.theme-toggle):not(.project-switch) { display: none; order: 4; }
+  .shell nav.side[data-open] > div:not(.brand):not(.theme-toggle):not(.project-switch) { display: block; flex-basis: 100%; }
+  nav.side .brand { order: 1; }
+  nav.side .project-switch { order: 2; }
+  .side-menu-btn { order: 3; }
+  nav.side[data-open] { max-height: 100dvh; overflow-y: auto; padding-bottom: 12px; }
+  nav.side[data-open] .group { display: block; padding: 12px 4px 4px; border-top: 0; }
+  nav.side[data-open] a { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 10px 8px; white-space: normal; font-size: 15px; }
+  nav.side[data-open] a span { position: static; width: auto; height: auto; margin: 0; overflow: visible; clip: auto; clip-path: none; white-space: normal; }
+  nav.side[data-open] .side-foot { display: flex; padding: 12px 4px 0; border-top: 1px solid var(--af-line); margin-top: 8px; }
+
+  /* The top bar under it: crumbs on one line, the actions beside them; no email text. */
+  .topbar { position: static; padding: 8px 16px; gap: 8px; flex-wrap: wrap; }
+  .topbar .account-summary { display: none; }
+  .shell main { padding: 20px 16px 48px; }
+}
+@media (max-width: 760px) {
+  /* The map: most of the screen, not a 600px box; the panel below grows with its content. */
+  .gm { --gm-h: 62vh; }
+  .gm-canvas { min-height: 380px; }
+  .gm-side { height: auto; }
+  .gm-side > .gm-panel, .gm-side > .gm-list { max-height: none; }
+}
+@media (max-width: 760px) {
+  /* Full-bleed tables bleed into the phone gutter (16px), not the desktop one (32px);
+     wide ones scroll sideways inside themselves. */
+  .obs-table { margin: 0 -16px; }
+  .obs-table th:first-child, .obs-table td:first-child { padding-left: 16px; }
+}
+@media (max-width: 760px) { .gm-side { scroll-margin-top: 64px; } }
+@media (max-width: 760px) {
+  nav.side .project-switch-menu button, nav.side .project-switch-menu .project-switch-foot { min-height: 44px; }
+  .notif-body, .account-menu-body { position: fixed; top: auto; left: 12px; right: 12px; width: auto; max-width: none; max-height: 70dvh; overflow-y: auto; }
+  .account-menu-row { min-height: 44px; display: flex; align-items: center; }
+}
+/* The map's lines as tappable buttons, phones only (LineList). */
+.gm-lines { display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid var(--af-line); border-radius: var(--af-r-card); background: var(--af-surface); }
+.gm-lines-head { margin: 0; font-size: 13px; color: var(--af-fg-2); }
+.gm-lines-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.gm-line-btn { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; min-height: 52px; padding: 8px 12px; border: 1px solid var(--af-line-2); border-radius: 8px; background: var(--af-bg); color: var(--af-fg); font: inherit; font-size: 14px; font-weight: 500; text-align: left; cursor: pointer; }
+.gm-line-btn small { font-size: 12px; font-weight: 400; color: var(--af-muted); }
+.gm-line-btn:active { background: var(--af-subtle); }
+@media (max-width: 760px) {
+  /* The legend explains the map's pills, which a phone uses through the line list instead. */
+  .gm-bar .gm-legend { display: none; }
+  .gm-bar:not(:has(.gm-bar-end)) { display: none; }
+}
+@media (max-width: 760px) {
+  /* Tables become stacked rows (TableLabels names each cell). `:root` lifts these above
+     globals.css's `.k-table .tight { width: 1% }`, which otherwise squeezes the chips.
+     Short cells as a line of chips, the row's title in full, then each other cell
+     under its column's name. */
+  :root .shell main :is(table:has(> thead), table.k-table), :root .shell main :is(table:has(> thead), table.k-table) tbody { display: block; width: 100%; min-width: 0; }
+  :root .shell main :is(table:has(> thead), table.k-table) thead { display: none; }
+  :root .shell main :is(table:has(> thead), table.k-table) tr { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 12px 14px; border-bottom: 1px solid var(--af-line); }
+  :root .shell main :is(table:has(> thead), table.k-table) tr:last-child { border-bottom: 0; }
+  :root .shell main :is(table:has(> thead), table.k-table) td { display: block; width: auto; min-width: 0; height: auto; padding: 0; border: 0; white-space: normal; text-align: left; overflow-wrap: anywhere; }
+  :root .shell main :is(table:has(> thead), table.k-table) td:empty { display: none; }
+  :root .shell main :is(table:has(> thead), table.k-table) td.tight { order: 0; }
+  :root .shell main :is(table:has(> thead), table.k-table) td:not(.tight) { order: 1; flex-basis: 100%; }
+  :root .shell main :is(table:has(> thead), table.k-table) td[data-primary] { font-size: 14px; }
+  /* Other wide cells: two to a line, each under its column's name. */
+  :root .shell main :is(table:has(> thead), table.k-table) td:not(.tight):not([data-primary])[data-label] { flex: 1 1 calc(50% - 10px); }
+  :root .shell main :is(table:has(> thead), table.k-table) td:not(.tight):not([data-primary])[data-label]::before {
+    content: attr(data-label); display: block; margin-bottom: 1px; font-size: 11px; font-weight: 500; color: var(--af-muted);
+  }
+  :root .shell main :is(table:has(> thead), table.k-table) tbody tr:hover td { background: transparent; }
+}
+@media (max-width: 760px) {
+  /* Page titles: big enough to be the title, not half the first screen. */
+  :where(.shell) h1 { font-size: 26px; line-height: 32px; }
+  /* Fields with a fixed desktop width (inline style) fill the line; their button wraps under. */
+  .shell main input.k-input, .shell main textarea.k-input, .shell main select.k-input { max-width: 100%; }
+  .shell main input.k-input[style*="width"], .shell main .k-input[style*="width"] { width: 100% !important; flex: 1 1 100%; }
+}
+@media (max-width: 760px) {
+  /* List rows with actions on the right (k-list): the actions drop under the text. */
+  .shell main .k-list > li { flex-wrap: wrap; }
+  .shell main .k-list > li > .k-list-end { flex: 1 1 100%; justify-content: flex-start !important; }
+}
+@media (max-width: 760px) {
+  /* Key/value tables (two cells a row): the key above its value, long ids wrapped. */
+  .shell main table:not(.k-table) tr:has(> td:nth-child(2):last-child) > td { display: block; width: auto; max-width: none !important; white-space: normal !important; overflow-wrap: anywhere; }
+  .shell main table:not(.k-table) tr:has(> td:nth-child(2):last-child) > td:first-child { padding-bottom: 0; border-bottom: 0; }
+}
+@media (max-width: 760px) {
+  .shell main table:not(.k-table):has(> tbody > tr > td:nth-child(2):last-child),
+  .shell main table:not(.k-table):has(> tbody > tr > td:nth-child(2):last-child) > tbody,
+  .shell main table:not(.k-table) tr:has(> td:nth-child(2):last-child) { display: block; width: 100%; min-width: 0; }
+  /* globals.css gives tables in a panel a 900px floor so wide ones scroll; a key/value list stacks instead. */
+  .shell main table:not(.k-table):has(> tbody > tr > td:nth-child(2):last-child) { min-width: 0; }
+}
+@media (max-width: 760px) {
+  /* New project: the connection card is the point; the empty placeholders go. */
+  .np-cards { display: none; }
+  /* Tab rows that scroll sideways fade at the edge, so a cut-off tab reads as "more". */
+  .shell main .k-tabs { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); padding-right: 24px; }
+  /* Library descriptions in full: the clamp hid how a library starts (watching first). */
+  .lib-card p { display: block; -webkit-line-clamp: unset; overflow: visible; }
+  /* A check's remove button: a finger-sized target, not an 11px icon. */
+  .gm-rule-checks .gm-chip button { min-width: 32px; min-height: 32px; margin: -8px -8px -8px 0; display: inline-flex; align-items: center; justify-content: center; }
+  /* No keyboard shortcut on a phone. */
+  .topbar .cmdk-kbd { display: none; }
+}
+@media (max-width: 760px) {
+  /* Stacked, the Observe tables no longer need to bleed past the gutter or scroll. */
+  .obs-table { margin: 0; overflow-x: visible; }
+  .obs-table td { height: auto; white-space: normal; }
+}
+@media (max-width: 760px) {
+  /* A table without a header row (a list of named things with controls): keep its own
+     order, the name in full first, its chips and controls on the line below. */
+  :root .shell main table.k-table:not(:has(> thead)) td.tight { order: 2; }
+}
+@media (max-width: 760px) {
+  /* Attack test: Run and + at finger size; the library opens across the panel. */
+  .at-icon { width: 40px; height: 40px; }
+  .at-lib { left: 0; right: 0; width: auto; max-width: none; }
+}
