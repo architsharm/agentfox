@@ -15,10 +15,13 @@ What a detection is called decides what acts on it:
 
 **Failing safely.** The endpoint is somebody else's server. A timeout, an error or an
 unreadable answer is recorded on the detector run (status `error`, the reason in
-`raw`) and never, by itself, blocks traffic: with `fail_mode="open"` (the default)
-the request goes on unchecked by this model. `fail_mode="closed"` turns an outage
-into a hit on the model's own entity, so whatever rule acts on the model acts on its
-absence. That is the operator's explicit choice, per model.
+`raw`), and the pipeline counts it as degraded, like any detector that errored or
+timed out. So the deployment's and the packs' `fail_mode` decide it: `open` (the
+default for both) lets the request go on unchecked by this model and records the gap;
+`closed` blocks it as `pipeline.fail_closed`. The model's own `fail_mode="closed"`
+adds one more, per-model choice: it turns an outage into a hit on the model's own
+entity, so whatever rule acts on the model acts on its absence, even when the
+deployment and the packs fail open.
 
 **Egress.** Posting text to a model sends customer content off the process. An
 endpoint on a public address is called only when the deployment allows egress
@@ -437,8 +440,9 @@ class CustomModelDetector(BaseDetector):
             result.detections.extend(detections_for(model, answer, content))
         result.score = max((d.score for d in result.detections), default=0.0)
         if degraded:
-            # Recorded, not raised: `error` is reported on the run and in the
-            # pipeline's `errored`, which never by itself fails a request closed.
+            # Recorded, not raised: `error` is reported on the run, and the pipeline
+            # counts it as degraded (and errored), so the deployment's and the packs'
+            # `fail_mode` decide it exactly as they decide a timeout.
             result.status = "error"
             result.raw = {"degraded": degraded}
         return result
