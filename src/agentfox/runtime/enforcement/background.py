@@ -47,12 +47,23 @@ def foreground() -> Iterator[None]:
             _wake.notify_all()
 
 
+def _count_shed() -> None:
+    """Count a dropped job on `/metrics` and health (`backstop_shed_total`)."""
+    try:
+        from agentfox.runtime.availability import get_check_meter
+
+        get_check_meter().shed_backstop()
+    except Exception:  # pragma: no cover - counting must never break submission
+        pass
+
+
 def submit(job: Callable[[], None]) -> None:
     """Run ``job`` when the gateway is idle. Never raises into the caller."""
     global _worker
     with _lock:
         if len(_jobs) == _jobs.maxlen:
             log.debug("background queue full; dropping the oldest job")
+            _count_shed()
         _jobs.append(job)
         if _worker is None or not _worker.is_alive():
             _worker = threading.Thread(target=_run, name="agentfox-background", daemon=True)

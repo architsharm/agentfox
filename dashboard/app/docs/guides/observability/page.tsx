@@ -452,6 +452,25 @@ agentfox_traces_total 6
         open). Observe-mode decisions are labelled <code>mode=&quot;observe&quot;</code>, so a
         dashboard can keep would-have-blocked apart from blocked.
       </p>
+      <p>
+        Checks answered without a detector are also counted per process, in memory:{" "}
+        <code>agentfox_checks_total</code>,{" "}
+        <code>agentfox_checks_degraded_total&#123;detector, cause&#125;</code> (cause is{" "}
+        <code>timeout</code>, <code>skipped_budget</code>, <code>error</code> or{" "}
+        <code>unavailable</code>) and <code>agentfox_checks_degraded_ratio</code>, the share
+        of checks in the last <code>degraded_window_seconds</code> (60 by default). These two
+        counters only go up until the process restarts, so <code>rate()</code> works on them.
+        A saturated gateway shows here first: a model-backed detector that cannot keep up
+        times out, and with <code>fail_mode</code> left at <code>open</code> those checks are
+        answered on the other detectors&apos; findings alone; with <code>closed</code> they are
+        blocked. Above <code>degraded_warn_ratio</code> (5% by default, once at least{" "}
+        <code>degraded_warn_min_checks</code> checks are in the window) the gateway logs a
+        warning once per window and <code>/api/health</code> reports{" "}
+        <code>governance_healthy: false</code>, with the counts under{" "}
+        <code>degradation.checks</code>. <code>agentfox_classifier_backstop_shed_total</code>{" "}
+        counts advisory backstop runs dropped under load (never enforced, so no verdict
+        changes).
+      </p>
 
       <h2 id="siem">SIEM export</h2>
       <p>
