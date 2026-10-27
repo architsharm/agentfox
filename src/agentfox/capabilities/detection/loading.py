@@ -64,6 +64,106 @@ def inference_lock(model: Any) -> threading.Lock:
     return lock
 
 
+class BatchedScorer:
+    """Forward passes for one loaded text-classification model, batched across
+    requests.
+
+    Each caller hands in its texts and waits. One worker drains whatever is queued,
+    up to ``max_batch`` texts, and runs them in a single forward pass under the
+    model's inference lock, then hands each caller its rows. Under concurrency this
+    turns N sequential passes into a few batched ones (the latency study: 8 texts in
+    67 ms batched against 225 ms one by one). Results for a text already scored are
+    served from an LRU cache keyed by its hash: agents resend the same system
+    prompts, tool descriptions and retrieved chunks.
+    """
+
+    def __init__(self, pipe: Any, *, max_batch: int = 16, cache_size: int = 4096) -> None:
+        import collections
+        import queue
+
+        self.pipe = pipe
+        self.max_batch = max_batch
+        self.cache_size = cache_size
+        self._cache: collections.OrderedDict[str, list] = collections.OrderedDict()
+        self._cache_lock = threading.Lock()
+        self._queue: queue.Queue = queue.Queue()
+        self._worker = threading.Thread(target=self._run, name="agentfox-batch", daemon=True)
+        self._worker.start()
+
+    @staticmethod
+    def _key(text: str) -> str:
+        import hashlib
+
+        return hashlib.sha256(text.encode("utf-8", "ignore")).hexdigest()
+
+    def score(self, texts: list[str]) -> list[list[dict[str, Any]]]:
+        """The label rows for each of ``texts``, in order."""
+        from concurrent.futures import Future
+
+        out: list[list[dict[str, Any]] | None] = [None] * len(texts)
+        missing: list[int] = []
+        with self._cache_lock:
+            for i, text in enumerate(texts):
+                hit = self._cache.get(self._key(text))
+                if hit is not None:
+                    self._cache.move_to_end(self._key(text))
+                    out[i] = hit
+                else:
+                    missing.append(i)
+        if missing:
+            future: Future = Future()
+            self._queue.put(([texts[i] for i in missing], future))
+            rows = future.result()
+            with self._cache_lock:
+                for i, row in zip(missing, rows, strict=True):
+                    out[i] = row
+                    self._cache[self._key(texts[i])] = row
+                while len(self._cache) > self.cache_size:
+                    self._cache.popitem(last=False)
+        return [row or [] for row in out]
+
+    def _run(self) -> None:
+        import queue
+
+        while True:
+            jobs = [self._queue.get()]
+            count = len(jobs[0][0])
+            while count < self.max_batch:
+                try:
+                    job = self._queue.get_nowait()
+                except queue.Empty:
+                    break
+                jobs.append(job)
+                count += len(job[0])
+            batch = [text for texts, _future in jobs for text in texts]
+            try:
+                with inference_lock(self.pipe):
+                    # A Hugging Face pipeline given a list still runs it one text at a
+                    # time unless told a batch size: this is the single padded pass.
+                    scored = self.pipe(batch, batch_size=len(batch))
+                rows = [r if isinstance(r, list) else [r] for r in scored]
+                start = 0
+                for texts, future in jobs:
+                    future.set_result(rows[start : start + len(texts)])
+                    start += len(texts)
+            except Exception as exc:  # the callers see the failure, not the worker
+                for _texts, future in jobs:
+                    if not future.done():
+                        future.set_exception(exc)
+
+
+def batched(pipe: Any) -> BatchedScorer:
+    """The one `BatchedScorer` for a loaded model."""
+    scorer = getattr(pipe, "_agentfox_batched", None)
+    if scorer is None:
+        with _load_lock:
+            scorer = getattr(pipe, "_agentfox_batched", None)
+            if scorer is None:
+                scorer = BatchedScorer(pipe)
+                pipe._agentfox_batched = scorer
+    return scorer
+
+
 def model_device() -> str:
     """Where this process runs its models: "cpu", "cuda" or "mps".
 

@@ -29,6 +29,7 @@ from agentfox.capabilities.detection.base import (
     redact_sample,
 )
 from agentfox.capabilities.detection.loading import (
+    batched,
     inference_lock,
     load_once,
     model_device,
@@ -310,6 +311,18 @@ WINDOW_TOKENS = 256
 WINDOW_OVERLAP = 32
 
 
+def _score_windows(pipe: Any, windows: list[str]) -> list[list[dict[str, Any]]]:
+    """Rows per window: through the model's batching scorer (and its cache) when the
+    pipe is a loaded model, directly for anything else (a test double)."""
+    if hasattr(pipe, "tokenizer") and hasattr(pipe, "model"):
+        return batched(pipe).score(windows)
+    with inference_lock(pipe):
+        scored = pipe(windows if len(windows) > 1 else windows[0])
+    if len(windows) == 1:
+        return [scored[0] if scored and isinstance(scored[0], list) else list(scored or [])]
+    return [r if isinstance(r, list) else [r] for r in scored]
+
+
 def _scored(pipe: Any, content: str) -> list[dict[str, Any]]:
     """Label scores for ``content``: the highest per label across its windows."""
     text = content[:4000]
@@ -326,10 +339,9 @@ def _scored(pipe: Any, content: str) -> list[dict[str, Any]]:
             step = WINDOW_TOKENS - WINDOW_OVERLAP
             starts = list(range(0, len(ids) - WINDOW_OVERLAP, step))
             windows = [tokenizer.decode(ids[i : i + WINDOW_TOKENS]) for i in starts]
-    with inference_lock(pipe):
-        scores = pipe(windows if len(windows) > 1 else windows[0])
+    scores = _score_windows(pipe, windows)
     if len(windows) == 1:
-        return scores[0] if scores and isinstance(scores[0], list) else list(scores or [])
+        return list(scores[0] or [])
     best: dict[str, dict[str, Any]] = {}
     for rows in scores:
         for row in rows if isinstance(rows, list) else [rows]:
