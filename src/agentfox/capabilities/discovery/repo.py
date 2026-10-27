@@ -37,6 +37,7 @@ import ast
 import logging
 import os
 import re
+import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -1159,6 +1160,32 @@ def scan_file(path: Path, root: Path) -> tuple[list[Site], set[str], bool]:
     return sites, frameworks, governed
 
 
+#: A code file this large is generated or minified (a bundle, a vendored build), not
+#: code anyone wrote an agent in; reading it costs more than every other file.
+MAX_CODE_BYTES = 1_000_000
+
+
+def _git_files(root: Path) -> tuple[set[str], set[str]] | None:
+    """The files git would show here (tracked, plus untracked ones not ignored) and
+    their directories; None when the root is not a git work tree. What `.gitignore`
+    leaves out (build output, generated code, data) is not the repository's code."""
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(root), "ls-files", "-co", "--exclude-standard", "-z"],
+            capture_output=True,
+            timeout=60,
+            check=True,
+        ).stdout.decode(errors="ignore")
+    except (OSError, subprocess.SubprocessError):
+        return None
+    files = {f for f in out.split("\0") if f}
+    if not files:
+        return None
+    dirs = {str(Path(f).parent) for f in files}
+    dirs |= {str(p) for d in list(dirs) for p in Path(d).parents}
+    return files, dirs
+
+
 def scan(root: str | Path = ".", *, include_config: bool = True) -> ScanReport:
     """Walk a repository and report every surface worth governing."""
     root_path = Path(root).resolve()
@@ -1170,11 +1197,26 @@ def scan(root: str | Path = ".", *, include_config: bool = True) -> ScanReport:
     if include_config:
         suffixes |= CONFIG_SUFFIXES
     report.code_files_scanned = 0
+    git = _git_files(root_path)
 
     for dirpath, dirnames, filenames in os.walk(root_path):
-        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS and not d.startswith(".")]
+        rel_dir = os.path.relpath(dirpath, root_path)
+        dirnames[:] = [
+            d
+            for d in dirnames
+            if d not in SKIP_DIRS
+            and not d.startswith(".")
+            and (git is None or os.path.normpath(os.path.join(rel_dir, d)) in git[1])
+        ]
         for filename in filenames:
             path = Path(dirpath) / filename
+            if git is not None and os.path.normpath(os.path.join(rel_dir, filename)) not in git[0]:
+                continue
+            if path.suffix in CODE_SUFFIXES and path.stat().st_size > MAX_CODE_BYTES:
+                report.skipped_suffixes["(generated or minified)"] = (
+                    report.skipped_suffixes.get("(generated or minified)", 0) + 1
+                )
+                continue
             if path.suffix not in suffixes:
                 # Recorded, not discarded: "we read nothing here" is the finding that
                 # matters when the answer comes back empty, and it cannot be recovered
@@ -1204,6 +1246,8 @@ def scan(root: str | Path = ".", *, include_config: bool = True) -> ScanReport:
                 report.sites.append(site)
 
     report.agents, report.agent_edges = agents.finish()
+    if not report.agents:
+        report.agents = _llm_apps(report)
     given = {name for a in report.agents for name in a.tools}
     report.unassigned_tools = sorted(
         {
@@ -1219,6 +1263,53 @@ def scan(root: str | Path = ".", *, include_config: bool = True) -> ScanReport:
     _detect_mcp(root_path, report)
     _detect_trifectas(report)
     return report
+
+
+#: Directories that hold packages rather than being one: an app is named by the
+#: directory under them.
+_CONTAINER_DIRS = {"src", "apps", "packages", "libs", "lib", "services", "backend", "frontend"}
+
+
+def _llm_apps(report: ScanReport) -> list[AgentSpec]:
+    """When no agent structure is found but the code calls a model: one low-confidence
+    "LLM app" per package that calls one, with the tools defined in that package as
+    its possible tools. Init then says what it saw instead of "no agents"."""
+    calls = [s for s in report.model_calls if not is_test_path(s.file)]
+    if not calls:
+        return []
+
+    def package(rel: str) -> str:
+        parts = Path(rel).parts[:-1]
+        while parts and parts[0] in _CONTAINER_DIRS:
+            parts = parts[1:]
+        return parts[0] if parts else Path(rel).stem
+
+    groups: dict[str, list[Site]] = {}
+    for site in calls:
+        groups.setdefault(package(site.file), []).append(site)
+    tools: dict[str, list[str]] = {}
+    for site in report.tools:
+        if site.name and not is_test_path(site.file):
+            tools.setdefault(package(site.file), []).append(site.name)
+    out = []
+    for name, sites in sorted(groups.items(), key=lambda kv: -len(kv[1]))[:10]:
+        first = min(sites, key=lambda s: (s.file, s.line))
+        provider = next((s.provider for s in sites if s.provider), None)
+        out.append(
+            AgentSpec(
+                key=re.sub(r"[^a-z0-9-]+", "-", name.lower()).strip("-") or "llm-app",
+                name=name,
+                framework=f"{provider} calls" if provider else "LLM calls",
+                kind="agent",
+                file=first.file,
+                line=first.line,
+                tools=sorted(set(tools.get(name, []))),
+                named=False,
+                confidence="low",
+                evidence=f"{len(sites)} model call(s), no agent structure found",
+            )
+        )
+    return out
 
 
 def _detect_mcp(root: Path, report: ScanReport) -> None:
