@@ -60,7 +60,9 @@ def configure_pool(url: str, *, workers: int = 1) -> dict:
                 "contention surfaces as intermittent latency rather than an error. "
                 "Use PostgreSQL for a multi-worker deployment, or run one worker."
             )
-        return {"connect_args": {"check_same_thread": False}}
+        # A writer waits up to 30 s for SQLite's single write lock instead of failing at
+        # the driver's 5 s default with "database is locked" (an HTTP 500 under load).
+        return {"connect_args": {"check_same_thread": False, "timeout": 30}}
     return {
         "pool_size": 5,
         "max_overflow": 10,
@@ -103,6 +105,9 @@ def _build_engine() -> Engine:
             cur = dbapi_conn.cursor()
             # WAL keeps the gateway's write path from blocking dashboard reads.
             cur.execute("PRAGMA journal_mode=WAL")
+            # Durable under WAL (a crash loses at most the last transactions, never
+            # the file) and drops an fsync from every commit on the request path.
+            cur.execute("PRAGMA synchronous=NORMAL")
             cur.execute("PRAGMA foreign_keys=ON")
             cur.close()
     else:
@@ -123,6 +128,23 @@ def _build_engine() -> Engine:
             dbapi_conn.commit()
 
     return engine
+
+
+_PROBE_ENGINE: Engine | None = None
+
+
+def probe_engine() -> Engine:
+    """An engine for health probes only: no pool, one connection per probe. A probe
+    that borrowed from the request pool would wait behind the very requests it is
+    checking on, and report a busy database as a hang."""
+    global _PROBE_ENGINE
+    if _PROBE_ENGINE is None:
+        from sqlalchemy.pool import NullPool
+
+        url = get_settings().database_url
+        connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
+        _PROBE_ENGINE = create_engine(url, poolclass=NullPool, connect_args=connect_args)
+    return _PROBE_ENGINE
 
 
 def get_engine() -> Engine:

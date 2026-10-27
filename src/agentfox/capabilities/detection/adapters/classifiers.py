@@ -20,6 +20,8 @@ by running ``docker compose up``.
 
 from __future__ import annotations
 
+from typing import Any
+
 from agentfox.capabilities.detection.base import (
     BaseDetector,
     Detection,
@@ -128,10 +130,7 @@ class _TransformersClassifier(BaseDetector):
     def _detect(self, content: str, context: DetectionContext) -> list[Detection]:
         if not content:
             return []
-        pipe = self._pipeline
-        with inference_lock(pipe):
-            scores = pipe(content[:4000])
-        rows = scores[0] if scores and isinstance(scores[0], list) else scores
+        rows = _scored(self._pipeline, content)
         out: list[Detection] = []
         for row in rows or []:
             label = str(row.get("label", ""))
@@ -265,9 +264,7 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
         pipe = self._secondary_pipeline
         if pipe is None or not content:
             return primary
-        with inference_lock(pipe):
-            scores = pipe(content[:4000])
-        rows = scores[0] if scores and isinstance(scores[0], list) else scores
+        rows = _scored(pipe, content)
         for row in rows or []:
             label = str(row.get("label", ""))
             score = float(row.get("score", 0.0))
@@ -293,6 +290,44 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
                 )
             ]
         return []
+
+
+#: Tokens per window a classifier scores. Text this short or shorter is scored whole;
+#: longer text is scored in overlapping windows over all of it, in one batched pass.
+#: The models here declare no maximum length, so 4,000 characters went in as one
+#: sequence of about 650 tokens: slower (super-linear) and past the length they were
+#: trained on, where a long benign document scored as a jailbreak.
+WINDOW_TOKENS = 256
+WINDOW_OVERLAP = 32
+
+
+def _scored(pipe: Any, content: str) -> list[dict[str, Any]]:
+    """Label scores for ``content``: the highest per label across its windows."""
+    text = content[:4000]
+    windows = [text]
+    tokenizer = getattr(pipe, "tokenizer", None)
+    if tokenizer is not None:
+        try:
+            ids = tokenizer(text, add_special_tokens=False)["input_ids"]
+        except Exception:  # pragma: no cover - a tokenizer that cannot count: score whole
+            ids = []
+        if len(ids) > WINDOW_TOKENS:
+            # Overlapping windows over the whole text, so an injection in the middle of
+            # a long document is read too, each within the length the model handles.
+            step = WINDOW_TOKENS - WINDOW_OVERLAP
+            starts = list(range(0, len(ids) - WINDOW_OVERLAP, step))
+            windows = [tokenizer.decode(ids[i : i + WINDOW_TOKENS]) for i in starts]
+    with inference_lock(pipe):
+        scores = pipe(windows if len(windows) > 1 else windows[0])
+    if len(windows) == 1:
+        return scores[0] if scores and isinstance(scores[0], list) else list(scores or [])
+    best: dict[str, dict[str, Any]] = {}
+    for rows in scores:
+        for row in rows if isinstance(rows, list) else [rows]:
+            label = str(row.get("label", ""))
+            if label not in best or float(row.get("score", 0.0)) > float(best[label]["score"]):
+                best[label] = row
+    return list(best.values())
 
 
 class GraniteGuardianDetector(_TransformersClassifier):

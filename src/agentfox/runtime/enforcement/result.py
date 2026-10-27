@@ -32,6 +32,8 @@ class EnforcementResult:
     findings: list[dict[str, Any]] = field(default_factory=list)
     taint: dict[str, Any] = field(default_factory=dict)
     latency_ms: float = 0.0
+    #: `latency_ms` plus writing the decision and its records (see Enforcer.evaluate).
+    total_ms: float = 0.0
     degraded: list[str] = field(default_factory=list)
     content: str | None = None  # redacted content, when the verdict is a redaction
     reason: str = ""
@@ -89,6 +91,7 @@ class EnforcementResult:
             "findings": self.findings,
             "taint": self.taint,
             "latency_ms": round(self.latency_ms, 2),
+            "total_ms": round(self.total_ms, 2),
             "degraded": self.degraded,
             "reason": self.reason,
             "explanation": self.explanation,

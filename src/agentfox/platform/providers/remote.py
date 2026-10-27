@@ -162,7 +162,7 @@ class OpenAIProvider(_HttpProvider):
             f"{settings.openai_base_url}/v1/chat/completions",
             json=body,
             headers={"Authorization": f"Bearer {self._api_key()}"},
-            timeout=self.timeout_s,
+            timeout=request.timeout_s or self.timeout_s,
         )
         r.raise_for_status()
         data = r.json()
@@ -191,7 +191,7 @@ class OpenAIProvider(_HttpProvider):
             f"{settings.openai_base_url}/v1/chat/completions",
             json=body,
             headers={"Authorization": f"Bearer {self._api_key()}"},
-            timeout=self.timeout_s,
+            timeout=request.timeout_s or self.timeout_s,
         ) as response:
             response.raise_for_status()
             for payload in _sse_lines(response):
@@ -266,7 +266,7 @@ class AnthropicProvider(_HttpProvider):
                 "x-api-key": self._api_key() or "",
                 "anthropic-version": "2023-06-01",
             },
-            timeout=self.timeout_s,
+            timeout=request.timeout_s or self.timeout_s,
         )
         r.raise_for_status()
         data = r.json()
@@ -307,7 +307,7 @@ class AnthropicProvider(_HttpProvider):
                 "x-api-key": self._api_key() or "",
                 "anthropic-version": "2023-06-01",
             },
-            timeout=self.timeout_s,
+            timeout=request.timeout_s or self.timeout_s,
         ) as response:
             response.raise_for_status()
             for payload in _sse_lines(response):

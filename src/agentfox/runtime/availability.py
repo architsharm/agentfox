@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import datetime as dt
 import logging
+import threading
 from collections import deque
 from dataclasses import dataclass
 from typing import Any
@@ -571,10 +572,10 @@ def _probe_database() -> str:
     """
     from sqlalchemy import text
 
-    from agentfox.core.db import session_scope
+    from agentfox.core.db import probe_engine
 
-    with session_scope() as probe:
-        probe.execute(text("SELECT 1"))
+    with probe_engine().connect() as conn:
+        conn.execute(text("SELECT 1"))
     return ""
 
 
@@ -599,14 +600,37 @@ _PROBES = {
 #: remote OPA, an HTTP call; paying that per request would make this module the
 #: latency problem it exists to prevent.
 _PROBE_CACHE: dict[str, tuple[dt.datetime, str]] = {}
+#: Held while a background refresh runs, so a burst of requests starts one, not many.
+_REFRESHING = threading.Lock()
 
 
-def probe_services(*, now: dt.datetime | None = None, force: bool = False) -> dict[str, str]:
+def _refresh_in_background() -> None:
+    """Re-probe every dependency off the request path, once at a time."""
+    if not _REFRESHING.acquire(blocking=False):
+        return
+
+    def run() -> None:
+        try:
+            probe_services(force=True)
+        except Exception:  # pragma: no cover - a probe never raises out of here
+            log.warning("background service probe failed", exc_info=True)
+        finally:
+            _REFRESHING.release()
+
+    threading.Thread(target=run, name="agentfox-service-probe", daemon=True).start()
+
+
+def probe_services(
+    *, now: dt.datetime | None = None, force: bool = False, block: bool = True
+) -> dict[str, str]:
     """Which dependencies are currently unhealthy, as ``{service: error}``.
 
     Results are cached for `service_probe_interval_seconds`; `force` skips the cache
     for the status endpoints, where an operator asking "is it up *now*" should not be
-    told what was true five seconds ago.
+    told what was true five seconds ago. ``block=False`` (the request path) probes
+    inline only the first time; after that a stale entry starts one background
+    refresh and the last known answer stands, so a slow dependency cannot stall
+    every request behind it.
     """
     from agentfox.core.config import get_settings
 
@@ -621,6 +645,9 @@ def probe_services(*, now: dt.datetime | None = None, force: bool = False) -> di
         cached = _PROBE_CACHE.get(service)
         if not force and cached is not None and now - cached[0] < ttl:
             error = cached[1]
+        elif not block and cached is not None:
+            _refresh_in_background()
+            error = cached[1]
         else:
             try:
                 error = probe() or ""
@@ -634,7 +661,9 @@ def probe_services(*, now: dt.datetime | None = None, force: bool = False) -> di
     return errors
 
 
-def check_services(*, now: dt.datetime | None = None, force: bool = False) -> list[Degradation]:
+def check_services(
+    *, now: dt.datetime | None = None, force: bool = False, block: bool = True
+) -> list[Degradation]:
     """Probe every dependency, record what is down, and return the verdicts.
 
     Never raises. A ledger that can break a request is worse than no ledger: the whole
@@ -645,7 +674,7 @@ def check_services(*, now: dt.datetime | None = None, force: bool = False) -> li
     try:
         now = now or dt.datetime.now(dt.UTC)
         ledger = get_degradation_ledger()
-        errors = probe_services(now=now, force=force)
+        errors = probe_services(now=now, force=force, block=block)
         for service in SERVICES:
             error = errors.get(service)
             if not error:

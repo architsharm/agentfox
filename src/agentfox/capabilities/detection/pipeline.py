@@ -31,7 +31,7 @@ from agentfox.capabilities.detection.base import (
     DetectionContext,
     Detector,
     DetectorResult,
-    available_detectors,
+    all_detectors,
 )
 from agentfox.capabilities.judgment.jev import OUTAGE
 from agentfox.core.config import get_settings
@@ -209,7 +209,9 @@ class DetectorPipeline:
             candidates = list(self._explicit)
         else:
             chosen = set(enabled) if enabled is not None else set(get_settings().enabled_detectors)
-            candidates = [d for k, d in available_detectors().items() if k in chosen]
+            # Only the chosen detectors are asked whether they can run: asking all
+            # of them on every request cost more than the detectors themselves.
+            candidates = [d for k, d in all_detectors().items() if k in chosen]
         applicable = [d for d in candidates if surface in d.surfaces and d.available()]
         return sorted(applicable, key=lambda d: _COST_ORDER.get(d.key, 50))
 
@@ -306,6 +308,9 @@ class DetectorPipeline:
                 )
                 result.degraded.append(detector.key)
                 _judge_out(result, detector, context)
+                # Still queued (not started): drop it. Left in the pool it runs anyway
+                # after the request has moved on, delaying the next request's detectors.
+                future.cancel()
             except Exception as exc:  # a detector must never take the request down
                 log.warning("detector %s failed: %s", detector.key, exc)
                 result.results.append(

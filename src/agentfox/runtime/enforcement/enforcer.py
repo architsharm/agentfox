@@ -399,6 +399,10 @@ class Enforcer(
         if not persist:
             return result
         self._persist_decision(call, result)
+        # The whole check, persistence included: `latency_ms` stops when the verdict
+        # is built, before the decision, audit and finding rows are written, which is
+        # more than half of a fast check.
+        result.total_ms = (time.perf_counter() - call.started) * 1000
         return result
 
     # ------------------------------------------------------------------
