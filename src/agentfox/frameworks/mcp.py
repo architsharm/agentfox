@@ -548,7 +548,7 @@ class McpGovernor:
         self._prior_steps.append({"tool": key, "arguments": called_with, "observation": raw})
 
         post = self._govern_result(key, tool, raw, arguments)
-        content = post.content if post.content is not None else None
+        content = post.applied_content
         return McpCallOutcome(
             tool=tool,
             server=self.server_name,

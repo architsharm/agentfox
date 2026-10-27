@@ -223,8 +223,8 @@ class AgentFoxGuard:
                         governance["last_verdict"] = outbound.verdict
                         if outbound.blocked or outbound.escalated:
                             self._stop(outbound)
-                        if outbound.content is not None:
-                            result = _replace_text(result, messages_key, outbound.content)
+                        if outbound.applied_content is not None:
+                            result = _replace_text(result, messages_key, outbound.applied_content)
 
                 return _with_governance(result, self._merge(governance))
 

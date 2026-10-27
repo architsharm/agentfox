@@ -102,11 +102,24 @@ A running list as we go. Newest priorities first. `[ ]` open · `[~]` started ·
   - [ ] Dashboard: read `lineStats` for the LLM line's numbers, and don't count `sharedWith` rules / `detectorsSharedWith` checks again.
 - [x] (2026-10-21) Projects are PR #112 systems: a root agent (nothing hands it work; in a cycle, the one that hands off to most, ties by name) and its `delegates_to` closure of any kind, across repositories. `/api/projects` lists them (key = root slug, plus `root`, `members` with depth/relation/repo, `repos`); `/api/projects/{p}/map` draws the closure; a repository name still resolves (to the systems with its agents) and an unknown name is a 404. `agents.project` is provenance only.
 - [x] (2026-10-21) `talks_to` / `touches` edges keep their detail and resource kind in `lineage_edges.attrs` (migration `d7a4c2e9f1b6`); `kind` is the delegation relation only. Input boxes are no longer part of an agent's blast radius (`registry.service.lineage`).
-- [ ] Injection check false positive, found by the attack test's harmless controls (2026-10-21 local run): "Please ignore the typo in my last message and look up customer CUS-441…" is stopped by `basic.input.attacks`. Tune the heuristic for "ignore the typo/that" phrasings.
+- [x] (2026-10-26) The completion proxy (sync and streaming), LangGraph, MCP and memory writes applied a rewrite (redact/mask/tokenize) that the policy only watched: `EnforcementResult.content` is computed for the effective verdict. They now use `applied_content`, which `/v1/guard` already followed. A block outranking the rewrite hid the bug; an email alone showed it.
+- [ ] **Decision needed.** Libraries are applied as per-agent copies (`agent.<slug>.<policy>`) instead of the existing mechanism, one policy with `scope.agents` (the coding pack, `platform/policy/coding.py`). Copies buy per-agent watch/block and per-agent simulation, but need the "outdated" machinery to stay in sync, and they multiply policies. Middle option: one copy per (library, project), scoped to the project's agents, with one mode per project. Not changed: it is shipped.
+- [x] Attack test follows live traffic (#126): a capability refusal for an agent with no grants and a rule that only watches don't count as stopped; results carry `stoppedBy.waitingFor` ("grant" / "blocking") and runs carry `wouldStop`.
+- [x] Injection check false positive, found by the attack test's harmless controls (2026-10-21 local run): "Please ignore the typo in my last message and look up customer CUS-441…" was stopped by `basic.input.attacks`. No longer reproduces on main (2026-10-26): every rendered control passes the default pipeline. It was likely fixed by enforcing on the classifier (e2e4a1f4). It is pinned by `overBlocked == 0` in `test_attack_policies` and by the heuristic's benign list.
 - [ ] Red-team runs aren't tied to an agent, so "last test run" on the map is the workspace's last run.
 - [ ] `sqlglot` (the `sql` extra) and Presidio (`pii` extra) aren't installed locally; one backend test needs Presidio.
 
 ## 6. UI changes, deferred (review of PR #122, 2026-10-21)
+
+**Rule (2026-10-26):** nothing here gets built unless the owner picks it. Keep the product lean, and restore only what is genuinely useful. Fixes that are functionality with little or no UI may go ahead; everything else waits here.
+
+### Declined for now: PR #128 (closed unmerged, branch `claude/feature-disconnects`)
+After #122 merged, these pages exist but are linked only from the search box. #128 reconnected them; it was not merged. Each line is one commit-sized change on that branch, if any comes back.
+- [ ] Sidebar "Insights" group: Monitoring (`/app/observe`) and Reports (`/app/reports`, compliance, coverage); Features as its own row. *Recommendation: low priority; search reaches them.*
+- [ ] Policies tabs: All rules, Performance, Suggested changes, Checks, Code, Advanced (judges/detectors, incl. the judgment posture). *Recommendation: Advanced matters most, because the judge settings and fail-closed live only there. The rest can wait.*
+- [ ] Map: mark a rail whose rules only watch ("watching", amber; enforcing/watching counts in its label; a legend entry). On the sample payments agent, 6 of 7 rails stop nothing yet, and they look the same as the one that blocks. *Recommendation: worth it. It's the honesty problem (a watching rail looks protected), and the cost is one small tag.*
+- [ ] Severity: high and held orange (`--af-held` #a04407 / #ffa06b) apart from medium amber. Today high and medium look identical. *Recommendation: worth it, CSS only.*
+- [ ] Topbar critical/high count and the bell's "N more" link to `/app`, which redirects to the map. Point them at `/app/findings`. *Recommendation: worth it, it's a broken link.*
 
 The new design stays. These are the UI fixes the review found. They come after the backend fixes, so some items depend on API changes listed under "Needs the backend first".
 
@@ -119,10 +132,10 @@ The new design stays. These are the UI fixes the review found. They come after t
 - [ ] Per-line traffic stats ("Last N days: X checked · blocked · held") and the inline Block / Ask / Watch / Off control on each rule row.
 - [ ] Map panel with nothing selected: the tools summary (allowed / ask / not allowed, "Browse and change access").
 - [ ] Nav:
-  - Projects list with the Proposed tab and Add all (PR #112).
+  - [x] Projects list with the Proposed tab and Add all (PR #112): the switcher's "All projects and agents" link (#126).
   - Reports.
   - The "All projects" scope.
-  - Features, reachable again.
+  - Features, reachable again (today only from an agent's Features view → "Workspace features").
 - [ ] Severity colours that `af-theme.css` neutralised:
   - eval drift vs healthy (`evals/page.tsx`)
   - risky vs safe policy simulation (`PolicyEditor.tsx`)
@@ -131,7 +144,7 @@ The new design stays. These are the UI fixes the review found. They come after t
 - [ ] Setup banner: fold main's banner (`SetupBanner.tsx`, `/api/onboarding` checklist) into the setup card, so there's one setup guide, not two.
 
 ### Fix
-- [ ] Mobile: `af-theme.css:161` fixes the sidebar at 212px, so below 760px the nav links disappear.
+- [x] Mobile: `af-theme.css:161` fixes the sidebar at 212px, so below 760px the nav links disappear (fixed in #124).
 - [ ] Redirect loop: `/app/map` goes to `/app/onboarding` when a map is empty or its call fails, and `/app/onboarding` goes straight back to `/app/map`.
 - [ ] Attack test panel:
   - It polls `/tests` every 1.5s forever on a project that can't run.
@@ -159,9 +172,9 @@ The new design stays. These are the UI fixes the review found. They come after t
 - [ ] The orphaned 6-step wizard (`/app/onboarding/[step]`, ~2,600 lines): move its risk-label copy (RISK_HELP / RISK_WHY) into the setup card, then delete it along with its wizard-only endpoints.
 
 ### Needs the backend first (see the fix branches)
-- [ ] The setup card's install line has no `--server`, so on a hosted deployment it points at localhost. Also pin `agentfox>=0.5` until PyPI has 0.5.
-- [ ] The setup key is shown once and has rotation: show its prefix, and add a Rotate button.
-- [ ] Agents arriving from `init --key` come in as proposed: the setup card needs an "Add all" step and a tool-access step.
+- [x] The setup card's install line has no `--server`, so on a hosted deployment it points at localhost. Also pin `agentfox>=0.5` until PyPI has 0.5. (#126)
+- [x] The setup key is shown once and has rotation: show its prefix, and add a Rotate button. (#126)
+- [~] Agents arriving from `init --key` come in as proposed: the setup card needs an "Add all" step and a tool-access step. "Add to AgentFox" done (#126); tool access is still the agent page's Access tab.
 - [~] Projects become PR #112 systems (root agent plus everything it hands work to): the switcher and map read the system. Backend done 2026-10-21; UI to do:
   - [ ] Switcher and `/app/map`: key projects by `project` (= root slug) from `/api/projects`; label with `name` (the root's) and show `repos` / member count; draw `members` (depth, relation) instead of assuming one repo = one project.
   - [ ] Onboarding panel calls (`/api/onboarding/projects/{p}/tests`, `/tests/sets`, `/basic-guardrails`) are still keyed by the repository init connected: pass `repos[0]` from the project, not the root slug (or ask for a resolver on those routes).

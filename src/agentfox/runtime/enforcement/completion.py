@@ -401,9 +401,12 @@ class _CompletionMixin:
                 # it was granted for is the one it releases.
                 approval_id=approval_id,
             )
-            if outcome.content is not None:
+            # Only a rewrite the policy applies: one that only watches records it.
+            if outcome.applied_content is not None:
                 i = segment.index
-                redacted_messages[i] = _redacted(redacted_messages[i], segment, outcome.content)
+                redacted_messages[i] = _redacted(
+                    redacted_messages[i], segment, outcome.applied_content
+                )
             if self._severity(outcome) >= self._severity(worst):
                 worst = outcome
 
@@ -608,8 +611,8 @@ class _CompletionMixin:
                 schema=schema,
                 model_provider=model_provider,
             )
-        if outbound.content is not None:
-            response.text = outbound.content
+        if outbound.applied_content is not None:
+            response.text = outbound.applied_content
         final = outbound if rank(outbound) >= rank(worst) else worst
         for called in self._guard_response_tool_calls(
             response,
