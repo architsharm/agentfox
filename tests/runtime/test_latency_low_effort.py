@@ -49,7 +49,7 @@ def test_the_request_path_answers_from_the_probe_cache(monkeypatch):
         return "down"
 
     monkeypatch.setattr(availability, "_PROBES", {"database": probe})
-    stale = dt.datetime.now(dt.UTC) - dt.timedelta(minutes=5)
+    stale = dt.datetime.now(dt.UTC) - dt.timedelta(seconds=10)  # past 5 s, under 6 x 5 s
     monkeypatch.setattr(availability, "_PROBE_CACHE", {"database": (stale, "")})
     # Stale: the last known answer stands, and one refresh starts in the background.
     assert availability.probe_services(block=False) == {}
@@ -223,3 +223,25 @@ def test_a_zero_cache_size_scores_every_time():
         scorer.score(["same text"])
         scorer.score(["same text"])
     assert calls == [["same text"], ["same text"], ["same text"]]  # cached once, uncached twice
+
+
+def test_pattern_checks_run_even_when_the_budget_is_spent():
+    """The built-in pattern detectors are never skipped for time: with the request's
+    budget already spent, a secret in the text is still found."""
+    from agentfox.capabilities.detection.base import DetectionContext
+    from agentfox.capabilities.detection.pipeline import DetectorPipeline
+
+    text = "deploy with AKIAIOSFODNN7EXAMPLE and the matching secret"
+    result = DetectorPipeline().run(text, DetectionContext(surface="input"), budget_ms=0.5)
+    found = {d.entity_type for r in result.results for d in r.detections}
+    assert any(e.startswith("SECRET") for e in found), result.results
+    skipped = {r.detector_key for r in result.results if r.status == "skipped_budget"}
+    assert not skipped & {"secrets.native", "injection.heuristic", "pii.native"}
+
+
+def test_a_probe_verdict_far_past_its_interval_is_reprobed_inline(monkeypatch):
+    monkeypatch.setattr(availability, "_PROBES", {"database": lambda: "down"})
+    ancient = dt.datetime.now(dt.UTC) - dt.timedelta(hours=1)
+    monkeypatch.setattr(availability, "_PROBE_CACHE", {"database": (ancient, "")})
+    # The background refresh never ran: an hour-old "healthy" is not trusted.
+    assert availability.probe_services(block=False) == {"database": "down"}

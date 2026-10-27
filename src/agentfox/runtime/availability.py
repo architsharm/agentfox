@@ -600,6 +600,10 @@ _PROBES = {
 #: remote OPA, an HTTP call; paying that per request would make this module the
 #: latency problem it exists to prevent.
 _PROBE_CACHE: dict[str, tuple[dt.datetime, str]] = {}
+#: A cached verdict this many intervals old is re-probed inline even on the request
+#: path: the background refresh never ran (a serverless host can suspend a thread
+#: after its response), and a verdict that old is no longer evidence of anything.
+_STALE_FACTOR = 6
 #: Held while a background refresh runs, so a burst of requests starts one, not many.
 _REFRESHING = threading.Lock()
 
@@ -645,7 +649,7 @@ def probe_services(
         cached = _PROBE_CACHE.get(service)
         if not force and cached is not None and now - cached[0] < ttl:
             error = cached[1]
-        elif not block and cached is not None:
+        elif not block and cached is not None and now - cached[0] < ttl * _STALE_FACTOR:
             _refresh_in_background()
             error = cached[1]
         else:
