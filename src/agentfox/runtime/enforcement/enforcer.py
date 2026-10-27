@@ -400,6 +400,14 @@ class Enforcer(
             principal=principal,
         )
         self._resolve_tool(call)
+        if call.surface == "output" and call.content:
+            # The commitment judge (a content check after the detectors) starts now,
+            # in parallel with them: the same question, asked earlier.
+            from agentfox.capabilities.judgment import commitments
+
+            commitments.prefetch(
+                call.content, authorised=bool((self.evidence or {}).get("authorised"))
+            )
         self._run_detectors(call)
         self._check_capability(call)
         self._run_content_checks(call)

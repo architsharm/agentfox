@@ -123,6 +123,51 @@ def _ask(state, questions, gateway: JudgmentGateway | None):
     return panel.ask(DecisionKind.PERFORMATIVE, state, questions).answers
 
 
+#: How much of a reply the commitment check reads (`grounding.checks` uses the same).
+SCAN_CHARS = 32_000
+
+#: Judge questions started early (`prefetch`), by a hash of the reply: an output
+#: check asks the commitment judge at its start, in parallel with the detector
+#: pipeline, instead of after it (the latency study: a reply waited ~0.9 s for the
+#: pipeline's judge, then ~0.9 s more for this one).
+_PREFETCHED: dict[str, Any] = {}
+_PREFETCH_LIMIT = 256
+_POOL: Any = None
+
+
+def _key(text: str) -> str:
+    import hashlib
+
+    return hashlib.sha256(text.encode("utf-8", "ignore")).hexdigest()
+
+
+def prefetch(text: str, *, authorised: bool = False) -> None:
+    """Start asking the judge about ``text`` now, if `augment` would ask it later.
+    ``text`` is the whole reply; it is cut as the commitment check cuts it, so the
+    early answer is found under the same key."""
+    global _POOL
+    text = text[:SCAN_CHARS]
+    if authorised or not text.strip() or not enabled(None):
+        return
+    from agentfox.capabilities.grounding.commitments import detect_commitments
+
+    if detect_commitments(text, authorised=authorised):
+        return  # `augment` asks only when the closed set found nothing
+    key = _key(text)
+    if key in _PREFETCHED:
+        return
+    import contextvars
+    from concurrent.futures import ThreadPoolExecutor
+
+    if _POOL is None:
+        _POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="agentfox-commitments")
+    while len(_PREFETCHED) >= _PREFETCH_LIMIT:
+        _PREFETCHED.pop(next(iter(_PREFETCHED)))
+    # The request's context (the tenant's judgment posture) goes with the question.
+    ctx = contextvars.copy_context()
+    _PREFETCHED[key] = _POOL.submit(ctx.run, _ask, {"reply": text}, QUESTIONS, None)
+
+
 def augment(
     found: list[Commitment],
     text: str,
@@ -145,7 +190,8 @@ def augment(
     if found:
         return found
     try:
-        answers = _ask({"reply": text}, QUESTIONS, gateway)
+        early = _PREFETCHED.pop(_key(text), None) if gateway is None else None
+        answers = early.result() if early is not None else _ask({"reply": text}, QUESTIONS, gateway)
     except JevUnavailable as exc:
         log.info("commitment judgment unavailable: %s", exc)
         return found

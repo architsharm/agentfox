@@ -134,3 +134,24 @@ def test_an_off_format_judge_reply_degrades_but_is_not_an_outage():
     outage = DetectorPipeline([_Judge(OUTAGE)]).run("x", DetectionContext(surface="input"))
     assert outage.degraded == ["injection.judgment"]
     assert "injection.judgment" in outage.judge_outage
+
+
+def test_the_commitment_judge_asked_early_is_not_asked_again(monkeypatch):
+    """An output check starts the commitment judge in parallel with its detectors;
+    the content check then uses that answer instead of asking a second time."""
+    from agentfox.capabilities.judgment import commitments
+    from agentfox.capabilities.judgment.jev import JevAnswer
+
+    asked: list[str] = []
+
+    def fake_ask(state, questions, gateway):
+        asked.append(state["reply"])
+        return {q: JevAnswer(q, "noul", 0.9, 0.8) for q in questions}
+
+    monkeypatch.setattr(commitments, "_ask", fake_ask)
+    monkeypatch.setattr(commitments, "enabled", lambda gateway=None: True)
+    reply = "That has been taken care of for you, nothing more to do on your side."
+    commitments.prefetch(reply)
+    found = commitments.augment([], reply)
+    assert asked == [reply]  # once, and early
+    assert found and all(c.kind == "implied" for c in found)
