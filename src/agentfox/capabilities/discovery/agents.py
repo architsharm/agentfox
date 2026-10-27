@@ -321,6 +321,14 @@ class _FileResult:
     #: is a tool only when some file defines a function by it (else it is a list
     #: or a parameter, and naming a tool after it would invent one).
     functions: set[str] = field(default_factory=set)
+    #: Local name -> (module, name) it was imported as (``from .tools import TOOLS``,
+    #: relative imports made absolute), and local name -> (module, "") for
+    #: ``import a.b as c``: how a name two modules define is followed to the one this
+    #: file means, rather than dropped as ambiguous.
+    imports: dict[str, tuple[str, str]] = field(default_factory=dict)
+    #: Attribute -> the imported module name it was read off (``support_tools.TOOLS``).
+    #: Empty when this file reads it off two different modules.
+    attr_modules: dict[str, str] = field(default_factory=dict)
 
 
 #: Constructor -> (framework, role). Matched on the import-resolved dotted path's root
@@ -477,6 +485,41 @@ def _module_name(rel: str) -> str | None:
     if not parts or not all(p.isidentifier() for p in parts):
         return None
     return ".".join(parts)
+
+
+def _dotted(rel: str) -> list[str]:
+    """A file's path as module parts, ``__init__`` dropped: matched against an
+    import by its tail, so ``src/app/tools.py`` and ``backend/app/tools.py`` are both
+    ``app.tools``."""
+    parts = list(Path(rel).with_suffix("").parts)
+    return parts[:-1] if parts and parts[-1] == "__init__" else parts
+
+
+def _import_base(rel: str, module: str | None, level: int) -> str | None:
+    """The absolute module ``from <level dots><module> import ...`` reads from."""
+    if not level:
+        return module
+    package = _dotted(rel) if Path(rel).stem == "__init__" else _dotted(rel)[:-1]
+    if level - 1 > len(package):
+        return None
+    package = package[: len(package) - (level - 1)]
+    return ".".join([*package, *([module] if module else [])]) or None
+
+
+def _record_imports(tree: ast.Module, rel: str, out: _FileResult) -> None:
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.asname:
+                    out.imports[alias.asname] = (alias.name, "")
+                else:
+                    first = alias.name.split(".")[0]
+                    out.imports.setdefault(first, (first, ""))
+        elif isinstance(node, ast.ImportFrom):
+            base = _import_base(rel, node.module, node.level)
+            for alias in node.names:
+                if base and alias.name != "*":
+                    out.imports[alias.asname or alias.name] = (base, alias.name)
 
 
 def _constructor(qual: str) -> tuple[str, str] | None:
@@ -765,6 +808,7 @@ class _Extractor:
                         self.imports[alias.asname or alias.name] = f"{node.module}.{alias.name}"
             elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                 self.defs.setdefault(node.name, node)
+        _record_imports(self.tree, self.rel, self.out)
         self._module_level()
         for stmt in self.tree.body:
             for target in _assigned_names(stmt):
@@ -1494,10 +1538,21 @@ class _Extractor:
         if isinstance(expr, ast.Attribute):
             if _path(expr.value) == "self":
                 return ("class", None) if expr.attr == "agents" else ("var", expr.attr)
+            self._note_attr(expr)
             return ("var", expr.attr)
         if (s := _str(expr)) is not None:
             return ("label", s)
         return None
+
+    def _note_attr(self, expr: ast.AST) -> None:
+        """``mod.name`` with ``mod`` an imported module: remember which module."""
+        if isinstance(expr, ast.Attribute) and isinstance(expr.value, ast.Name):
+            base = expr.value.id
+            if base in self.out.imports:
+                if self.out.attr_modules.get(expr.attr, base) != base:
+                    self.out.attr_modules[expr.attr] = ""
+                else:
+                    self.out.attr_modules[expr.attr] = base
 
     def _child(self, raw: _Raw, expr: ast.AST | None, relation: str) -> None:
         ref = self._ref(expr)
@@ -1513,6 +1568,7 @@ class _Extractor:
             # in a name this file does not show (a parameter, a list built elsewhere). It
             # is looked up as a list; it is never itself a tool named after the variable.
             name = expr.id if isinstance(expr, ast.Name) else expr.attr
+            self._note_attr(expr)
             if not (isinstance(expr, ast.Name) and expr.id in self.dicts):
                 raw.tools.append(("list", name))
                 return
@@ -1580,6 +1636,7 @@ class _Extractor:
             elif isinstance(elt, ast.Name):
                 raw.tools.append(("var", elt.id))
             elif isinstance(elt, ast.Attribute):
+                self._note_attr(elt)
                 raw.tools.append(("var", elt.attr))
             elif (s := _str(elt)) is not None:
                 raw.tools.append(("name", s))
@@ -2073,7 +2130,7 @@ class AgentCollector:
         if not _HINT.search(source):
             # No framework here, but a plain module of functions another file turns
             # into tools (`function_tool(tools.get_ticket)`): keep what each says.
-            if suffix == ".py" and "def " in source:
+            if suffix == ".py" and ("def " in source or Path(rel).stem == "__init__"):
                 self._functions_only(source, rel)
             return
         if suffix == ".py":
@@ -2103,6 +2160,7 @@ class AgentCollector:
             or result.consts
             or result.func_info
             or result.functions
+            or result.imports
         ):
             self.files.append(result)
 
@@ -2113,13 +2171,16 @@ class AgentCollector:
             return
         result = _FileResult(file=rel)
         result.module = _module_name(rel)
+        if Path(rel).stem == "__init__":
+            # A package's re-exports (`from .tools import TOOLS`), for an import of it.
+            _record_imports(tree, rel, result)
         for stmt in tree.body:
             if isinstance(stmt, ast.FunctionDef | ast.AsyncFunctionDef):
                 result.functions.add(stmt.name)
                 doc, args = _fn_info(stmt)
                 if doc or args:
                     result.func_info.setdefault(stmt.name, (doc, args))
-        if result.func_info or result.functions:
+        if result.func_info or result.functions or result.imports:
             self.files.append(result)
 
     def finish(self) -> tuple[list[AgentSpec], list[AgentEdge]]:
@@ -2159,6 +2220,12 @@ class _Linker:
         for f in files:
             for name, info in f.func_info.items():
                 self.global_funcs[name].append(info)
+        #: Module path, and every tail of it, -> the files it names (see _dotted).
+        self.modules: dict[str, list[_FileResult]] = defaultdict(list)
+        for f in files:
+            parts = _dotted(f.file)
+            for i in range(len(parts)):
+                self.modules[".".join(parts[i:])].append(f)
         #: inner raw -> the AgentExecutor raw that runs it (the two are one agent)
         self.merged: dict[int, int] = {}
         #: raw -> tool references added after construction, with their own file
@@ -2169,9 +2236,41 @@ class _Linker:
         #: (graph raw, node name) -> raw, filled by the graph pass
         self.node_agents: dict[tuple[int, str], int] = {}
 
+    def _module(self, name: str) -> _FileResult | None:
+        found = self.modules.get(name) or []
+        return found[0] if len(found) == 1 else None
+
+    def _source(
+        self, name: str, file: _FileResult | None, depth: int = 0
+    ) -> tuple[_FileResult, str] | None:
+        """The file and name an imported ``name`` (or ``mod.name``) comes from, through
+        a package's re-export. None when the import names no file of the repository."""
+        if file is None or depth > 3:
+            return None
+        target: tuple[str, str] | None = None
+        if name in file.imports and file.imports[name][1]:
+            target = file.imports[name]
+        elif base := file.attr_modules.get(name):
+            module, sub = file.imports[base]
+            target = (f"{module}.{sub}" if sub else module, name)
+        if target is None:
+            return None
+        module, orig = target
+        owner = self._module(module)
+        if owner is None:
+            return None
+        if orig in owner.imports and orig not in owner.exported and owner is not file:
+            return self._source(orig, owner, depth + 1) or (owner, orig)
+        return owner, orig
+
     def _by_var(self, var: str, file: _FileResult | None, depth: int = 0) -> int | None:
         if file is not None and var in file.vars:
             return file.vars[var]
+        src = self._source(var, file) if depth < 3 else None
+        if src is not None and src[0] is not file:
+            hit = self._by_var(src[1], src[0], depth + 1)
+            if hit is not None:
+                return hit
         found = self.global_vars.get(var) or set()
         if len(found) == 1:
             return next(iter(found))
@@ -2222,6 +2321,13 @@ class _Linker:
                 return [file.tool_defs[value]]
             if file is not None and value in file.tool_lists:
                 return self._expand(file.tool_lists[value], file, depth)
+            src = self._source(value, file)
+            if src is not None:
+                owner, orig = src
+                if orig in owner.tool_defs:
+                    return [owner.tool_defs[orig]]
+                if orig in owner.tool_lists:
+                    return self._expand(owner.tool_lists[orig], owner, depth)
             found = self.global_tools.get(value) or set()
             if len(found) == 1:
                 return [next(iter(found))]
@@ -2231,6 +2337,13 @@ class _Linker:
                     return []
                 return self._expand(owners[0].tool_lists[value], owners[0], depth)
             return [value]
+        if kind in ("call", "list"):
+            src = self._source(value, file)
+            if src is not None:
+                owner, orig = src
+                found_refs = (owner.tool_helpers if kind == "call" else owner.tool_lists).get(orig)
+                if found_refs is not None:
+                    return self._expand(found_refs, owner, depth)
         if kind == "call":
             if file is not None and value in file.tool_helpers:
                 return self._expand(file.tool_helpers[value], file, depth)
@@ -2268,6 +2381,9 @@ class _Linker:
                 if outer == idx:
                     model, var = self.raws[inner].model, self.raws[inner].model_var
         if model is None and var is not None:
+            src = self._source(var, self.file_of.get(idx))
+            if src is not None and src[1] in src[0].consts:
+                return src[0].consts[src[1]]
             found = self.global_consts.get(var) or set()
             model = next(iter(found)) if len(found) == 1 else None
         return model

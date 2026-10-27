@@ -458,14 +458,19 @@ def test_a_degraded_check_is_counted_on_metrics_and_follows_fail_mode(
 
 
 def test_a_full_backstop_backlog_is_dropped_and_counted(monkeypatch):
-    from agentfox.runtime.enforcement import enforcer
+    from collections import deque
+
+    from agentfox.runtime.enforcement import background
 
     reset_check_meter()
     try:
-        monkeypatch.setattr(enforcer, "BACKSTOP_MAX_PENDING", 0)
-        ran: list[bool] = []
-        assert enforcer._submit_backstop(lambda: ran.append(True)) is False
-        assert get_check_meter().snapshot()["backstop_shed_total"] == 1
-        assert ran == []
+        # A check in flight keeps the worker waiting, so the queue fills.
+        monkeypatch.setattr(background, "_jobs", deque(maxlen=1))
+        ran: list[str] = []
+        with background.foreground():
+            background.submit(lambda: ran.append("first"))
+            background.submit(lambda: ran.append("second"))
+            assert get_check_meter().snapshot()["backstop_shed_total"] == 1
+            assert list(background._jobs) and ran == []
     finally:
         reset_check_meter()

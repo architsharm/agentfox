@@ -300,6 +300,14 @@ class DetectorPipeline:
         # so they run while these do, and stay under the budget.
         inline = [d for d in detectors if _runs_inline(d)]
         pooled = [d for d in detectors if not _runs_inline(d)]
+        # Judges of one kind asking about this content share one model call
+        # (`panel.ask_shared`); each needs to know how many of them run here.
+        party: dict[str, int] = {}
+        for d in pooled:
+            if getattr(d, "shares_judge_call", False):
+                party[d.kind.value] = party.get(d.kind.value, 0) + 1
+        if party:
+            context.extra["judge_party"] = party
         # Each pooled call carries its bounds: no wait below can outlast the whole
         # budget, and `abandon()` (on a timeout or a budget skip) drops whatever it
         # still has queued for a model, so work nobody waits for does not delay the

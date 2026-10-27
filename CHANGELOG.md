@@ -24,12 +24,26 @@ the file it came from.
   model, which runs after the response, ran its forward passes on the same device in
   turn with the request-path classifier's and slowed them several-fold; one in-process
   inference scheduler now runs every batched pass, request-path work first, the backstop
-  only when nothing a request waits on is queued, and backstop runs are bounded (256
-  waiting; past that they are dropped and counted). Texts whose check had already timed
+  only when nothing a request waits on is queued; backstop runs wait for an idle
+  gateway, and when that queue is full the oldest is dropped and counted
+  (`backstop_shed_total`). Texts whose check had already timed
   out were still scored, delaying the next checks; a pipeline that stops waiting now
   drops its queued texts unscored and releases the thread. A degraded check is still
   degraded: listed in the response's `degraded`, blocked under `fail_mode = "closed"`.
   Measured before/after numbers are in the pull request.
+
+- **An MCP tool listed with `"inputSchema": null` is callable, and accepting it works.**
+  github-mcp-server v0.24.0 lists `get_me` that way. The registry recorded the schema as
+  `{}` while the call-time pin check digested the raw `null`, so the two never matched:
+  the tool was refused with `mcp.schema_drift` from its first call, and accepting the
+  listing re-recorded `{}` and left it refused for good. A `null` description had the
+  same shape of bug (recorded as the text `"None"`). Registering, filing a change,
+  accepting it and checking a call now all read a listing through one canonical form:
+  a missing field, JSON `null` and the empty value are the same for the description,
+  the input schema and the annotations (and for an impact hint set to `null`). The pin
+  is no looser: any other change to the description, schema or impact hints is still
+  held. A listed schema can no longer carry the registry's own `x-agentfox-*` markers
+  into the record.
 
 - **A detector that errors now follows `fail_mode`, exactly as one that times out.**
   A detector that raised, or reported `status="error"` (a custom model whose endpoint

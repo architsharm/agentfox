@@ -45,7 +45,7 @@ from agentfox.core.models import Capability, Decision, Identity, McpToolSnapshot
 from agentfox.errors import AgentFoxError
 from agentfox.platform.ledger.findings import raise_finding
 from agentfox.platform.registry.digest import (
-    impact_annotations,
+    listed_definition,
     record_digest,
     tool_digest,
 )
@@ -214,6 +214,7 @@ class McpGovernor:
                 continue
             if existing is None and listed_before:
                 added.append(name)
+            definition = listed_definition(descriptor)
             upsert_tool(
                 self.session,
                 key,
@@ -221,10 +222,10 @@ class McpGovernor:
                 kind="mcp",
                 impact=infer_impact(name, descriptor),
                 impact_source="inferred",
-                schema=descriptor.get("inputSchema") or descriptor.get("input_schema") or {},
-                description=str(descriptor.get("description", "")),
+                schema=definition["inputSchema"],
+                description=definition["description"],
                 mcp_server_id=self.server.id,
-                annotations=impact_annotations(descriptor),
+                annotations=definition["annotations"],
                 listed=True,
             )
         if held:
@@ -250,10 +251,11 @@ class McpGovernor:
 
         name = str(descriptor["name"])
         live = tool_digest(descriptor)
+        definition = listed_definition(descriptor)
         after = {
-            "description": str(descriptor.get("description", "")),
-            "inputSchema": descriptor.get("inputSchema") or descriptor.get("input_schema") or {},
-            "annotations": impact_annotations(descriptor),
+            "description": definition["description"],
+            "inputSchema": definition["inputSchema"],
+            "annotations": definition["annotations"],
         }
         poisoning = [
             i
@@ -428,6 +430,7 @@ class McpGovernor:
         if self.session.scalar(select(Tool).where(Tool.key == key)) is not None:
             return False
         descriptor = self._descriptor(tool) or {}
+        definition = listed_definition(descriptor)
         upsert_tool(
             self.session,
             key,
@@ -435,8 +438,8 @@ class McpGovernor:
             kind="mcp",
             impact=infer_impact(tool, descriptor),
             impact_source="inferred",
-            schema=descriptor.get("inputSchema") or descriptor.get("input_schema") or {},
-            description=str(descriptor.get("description", "")),
+            schema=definition["inputSchema"],
+            description=definition["description"],
             mcp_server_id=self.server.id,
             # Recorded from the latest snapshot's listing, so pinned to it.
             listed=bool(descriptor),

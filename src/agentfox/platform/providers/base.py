@@ -14,9 +14,36 @@ demonstrable with no account anywhere.
 from __future__ import annotations
 
 import json
+import threading
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
+
+if TYPE_CHECKING:
+    import httpx
+
+_HTTP: httpx.Client | None = None
+_HTTP_LOCK = threading.Lock()
+
+
+def http() -> httpx.Client:
+    """The one pooled HTTP client every hosted provider calls through.
+
+    A call over a fresh connection pays the TCP and TLS handshakes each time: to
+    OpenAI from India, 951 ms per small judge call against 798 ms on a kept-alive
+    connection (measured 2026-10-28). Thread-safe, so concurrent checks share it;
+    each call still passes its own timeout.
+    """
+    global _HTTP
+    if _HTTP is None:
+        with _HTTP_LOCK:
+            if _HTTP is None:
+                import httpx
+
+                _HTTP = httpx.Client(
+                    limits=httpx.Limits(max_connections=64, max_keepalive_connections=16)
+                )
+    return _HTTP
 
 
 @dataclass
