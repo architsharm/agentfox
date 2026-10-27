@@ -49,7 +49,7 @@ Each repository was mapped with `agentfox init`. Its own agents, tools and hando
 - **L4** adds the LLM judge (OpenAI gpt-4.1-mini). It ran on a 40-repo subset (622 calls), because every call is a paid model request.
 
 **Setup.**
-- Machine: Apple M1 Pro, 8 cores, 16 GB.
+- Machine: Apple M1 Pro, 8 cores, 16 GB. The ML models ran on its built-in GPU (Metal), which the default `model_device = "auto"` picks on a Mac.
 - Gateway: one uvicorn worker on SQLite, with production defaults otherwise.
 - Each layer starts a new gateway with an empty database and is warmed with 5 calls.
 
@@ -199,7 +199,7 @@ Few vendors publish latency, and almost none publish the conditions behind it. T
 
 | Product | Where it runs | Published latency | Conditions |
 |---|---|---|---|
-| **AgentFox, default (ML classifier)** | Self-hosted, in-process | **37 ms p50 / 181 ms p95** | Laptop CPU, real agent traffic, network excluded |
+| **AgentFox, default (ML classifier)** | Self-hosted, in-process | **37 ms p50 / 181 ms p95** | M1 Pro, models on its built-in GPU, real agent traffic, network excluded |
 | **AgentFox, deterministic** | Self-hosted, in-process | **2 ms p50 / 6 ms p95** | Same |
 | [Protect AI LLM Guard](https://protectai.github.io/llm-guard/input_scanners/prompt_injection/), prompt-injection scanner | Self-hosted, in-process | 104 ms mean / 107 ms p95 (ONNX); 213 ms mean / 296 ms p95 (PyTorch) | AWS m5.xlarge CPU, 384-token input |
 | [Meta Llama Prompt Guard 2](https://github.com/meta-llama/PurpleLlama/blob/main/Llama-Prompt-Guard-2/86M/MODEL_CARD.md) | Self-hosted model | 86M: 92.4 ms; 22M: 19.3 ms | A100 GPU, 512 tokens |
