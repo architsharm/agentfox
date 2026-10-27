@@ -1181,7 +1181,7 @@ def guard_content(
     """
     from agentfox.core.config import get_settings
     from agentfox.core.models import Trace
-    from agentfox.platform.ledger.trace import end_trace, start_trace
+    from agentfox.platform.ledger.trace import commit_before_checks, end_trace, start_trace
     from agentfox.platform.registry.service import slugify
 
     surface = "output" if request.url.path.endswith("/output") else payload.surface
@@ -1248,6 +1248,7 @@ def guard_content(
         )
         if payload.error and trace.status == "ok":
             trace.status = "error"
+    commit_before_checks(session)
     if surface == "completion":
         # The completion gate: the claim is checked like any output, and the
         # caller's reported facts decide the `completion_requires` rules.
@@ -1313,7 +1314,7 @@ def guard_tool_call(
     count as untainted: taint rules cannot fire.
     """
     from agentfox.capabilities.detection import TaintTracker
-    from agentfox.platform.ledger.trace import start_trace
+    from agentfox.platform.ledger.trace import commit_before_checks, start_trace
     from agentfox.platform.registry.service import slugify
 
     enforcer = Enforcer(session)
@@ -1326,6 +1327,7 @@ def guard_tool_call(
         environment=payload.environment or "production",
         intent=payload.intent,
     )
+    commit_before_checks(session)
     tracker, prior_tools = None, payload.prior_tools
     if payload.messages:
         tracker = TaintTracker(trace_id=trace.id)
@@ -1365,7 +1367,7 @@ def guard_memory_write(
     session: Session = Depends(db),
     credential: str | None = Depends(agent_credential),
 ) -> dict[str, Any]:
-    from agentfox.platform.ledger.trace import start_trace
+    from agentfox.platform.ledger.trace import commit_before_checks, start_trace
     from agentfox.platform.registry.service import slugify
 
     enforcer = Enforcer(session)
@@ -1376,6 +1378,7 @@ def guard_memory_write(
         agent_slug=slugify(payload.agent),
         session_id=payload.session_id,
     )
+    commit_before_checks(session)
     result = enforcer.guard_memory_write(
         agent_slug=payload.agent,
         content=payload.content,
@@ -1406,7 +1409,7 @@ def guard_agent_message(
     session: Session = Depends(db),
     credential: str | None = Depends(agent_credential),
 ) -> dict[str, Any]:
-    from agentfox.platform.ledger.trace import start_trace
+    from agentfox.platform.ledger.trace import commit_before_checks, start_trace
     from agentfox.platform.registry.service import slugify
 
     enforcer = Enforcer(session)
@@ -1417,6 +1420,7 @@ def guard_agent_message(
         agent_slug=slugify(payload.sender),
         session_id=payload.session_id,
     )
+    commit_before_checks(session)
     result = enforcer.guard_agent_message(
         sender_slug=payload.sender,
         content=payload.content,

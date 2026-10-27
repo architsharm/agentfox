@@ -47,6 +47,27 @@ ATTR_TAINT = "agentfox.taint.max_source"
 ATTR_TOOL_IMPACT = "agentfox.tool.impact"
 
 
+def commit_before_checks(session: Session) -> None:
+    """Commit what a request has written so far (the trace, a shadow agent, last
+    seen) before its detectors run. Held open, that write transaction kept SQLite's
+    single write lock and Postgres's row locks for the whole check, so concurrent
+    requests queued behind each other's detectors (the 2026-10-27 latency study:
+    ~15 req/s ceiling, 5 s tails, "database is locked"). The decision rows are
+    written in a second, short transaction once the verdict is known.
+
+    Only a transaction the session began on its own (autobegin, the request
+    session's normal case): a caller that opened one with ``session.begin()`` owns
+    when it ends, and committing inside it would break that caller."""
+    trans = session.get_transaction()
+    origin = getattr(trans, "origin", None) if trans is not None else None
+    if (
+        trans is not None
+        and getattr(origin, "name", "") == "AUTOBEGIN"
+        and not session.in_nested_transaction()  # inside a caller's savepoint
+    ):
+        session.commit()
+
+
 def start_trace(
     session: Session,
     *,

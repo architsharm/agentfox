@@ -34,6 +34,7 @@ from agentfox.platform.ledger.trace import (
     ATTR_TOOL_NAME,
     ATTR_VERDICT,
     add_span,
+    commit_before_checks,
     end_trace,
     start_trace,
 )
@@ -338,6 +339,7 @@ class _CompletionMixin:
         )
 
         self._correlate(trace, correlation)
+        commit_before_checks(self.session)
 
         # Hard caps, checked before the model call rather than after the spend.
         budget = self._budget_gate(agent, trace)
