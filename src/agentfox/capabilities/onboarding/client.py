@@ -269,7 +269,14 @@ def _print_missing_help(console: Console) -> None:
 def _print_map(console: Console, structure: dict[str, Any]) -> None:
     systems = {s["id"]: s["name"] for s in structure["systems"]}
     for agent in structure["agents"]:
-        console.print(f"[bold]{agent['name']}[/bold]  [dim]{agent['model']}[/dim]")
+        sure = {
+            "medium": "  [yellow]likely an agent[/yellow]",
+            "low": "  [yellow]possible agent[/yellow]",
+        }
+        note = sure.get(agent.get("confidence", "high"), "")
+        console.print(f"[bold]{agent['name']}[/bold]  [dim]{agent['model']}[/dim]{note}")
+        if note and agent.get("evidence"):
+            console.print(f"  [dim]found by: {agent['evidence']}[/dim]")
         table = Table(show_header=True, header_style="dim", box=None, padding=(0, 2))
         table.add_column("tool")
         table.add_column("can")

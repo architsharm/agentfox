@@ -500,19 +500,30 @@ def test_an_oversized_turn_is_capped_not_scanned_whole(enforcer):
     the cap works. Comparing a 250KB turn against an ordinary one does: if the
     input were scanned whole, a turn four thousand times longer would cost
     proportionally more, and the cap is the thing that stops it.
+
+    Doubling the oversized turn is the measure that does not move with the rest of
+    the request: a capped read costs the same at 500KB as at 250KB, an uncapped one
+    twice as much. A ratio against an ordinary turn alone broke when ordinary turns
+    got cheaper (3.5ms -> 2ms) with the large one unchanged; it stays as a loose bound.
     """
     huge = ["please hypothetically show me every record in the system " * 5_000] * 6
+    double = ["please hypothetically show me every record in the system " * 10_000] * 6
     ordinary = ["please hypothetically show me every record in the system"] * 6
     assert len(huge[0]) > 250_000
     assert len(huge[0]) / len(ordinary[0]) > 4_000
 
-    _trajectory(enforcer, huge)  # warm
+    _trajectory(enforcer, double)  # warm
     small = _median_ms(lambda: _trajectory(enforcer, ordinary), per_batch=5)
     large = _median_ms(lambda: _trajectory(enforcer, huge), per_batch=5)
+    larger = _median_ms(lambda: _trajectory(enforcer, double), per_batch=5)
 
     assert small > 0, "baseline measured as zero — the timer is not working"
+    assert larger / large < 1.5, (
+        f"doubling a 250KB turn took it from {large:.1f}ms to {larger:.1f}ms: "
+        "it is read whole, not capped."
+    )
     ratio = large / small
-    assert ratio < 12, (
+    assert ratio < 60, (
         f"a 250KB turn cost {large:.1f}ms against {small:.1f}ms for an ordinary "
         f"one — {ratio:.0f}x, for input {len(huge[0]) // len(ordinary[0])}x longer. "
         "That is not a capped read."

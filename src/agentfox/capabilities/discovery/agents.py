@@ -103,7 +103,17 @@ RECOGNISED = (
         "chat.completions.create / responses.create / messages.create / litellm "
         "completion(tools=[...]) with JSON tool schemas",
     ),
-    ("TypeScript / JavaScript", "OpenAI Agents SDK new Agent({...})"),
+    (
+        "TypeScript / JavaScript",
+        "new XAgent({...}), create…Agent({...}), streamText/generateText with tools, "
+        "responses/messages.create with tools, Claude Agent SDK query()",
+    ),
+    (
+        "Any other framework",
+        "an imported constructor given tools and instructions, a model or a name; a class "
+        "extending *Agent or *Role; a LangGraph graph whose nodes call a model; code that "
+        "only calls a model is reported at low confidence",
+    ),
 )
 
 
@@ -141,6 +151,12 @@ class AgentSpec:
     #: that can be read without running anything. Local only: never serialised, never
     #: part of a submission; a caller may derive a label from it (who the agent serves).
     instructions: str | None = field(default=None, repr=False)
+    #: How sure the scan is that this is an agent: ``high`` for a framework constructor
+    #: it knows, ``medium`` for an agent-shaped call or a hand-written loop it does
+    #: not, ``low`` for a class that only looks like one or an app that only calls a
+    #: model. ``evidence`` is the rule that matched.
+    confidence: str = "high"
+    evidence: str = ""
 
     @property
     def top_dir(self) -> str:
@@ -163,6 +179,8 @@ class AgentSpec:
                 else None
             ),
             "tool_details": self.tool_details,
+            "confidence": self.confidence,
+            "evidence": self.evidence,
         }
 
 
@@ -229,6 +247,9 @@ class _Raw:
     #: A bare provider-SDK function-calling loop, reported only when the repository
     #: has no framework agent: beside one it is a script, a demo or a helper.
     loop: bool = False
+    #: See AgentSpec.confidence / evidence.
+    confidence: str = "high"
+    evidence: str = ""
 
 
 class _Deferred(ast.expr):
@@ -264,6 +285,9 @@ class _Graph:
     nodes: dict[str, _Node] = field(default_factory=dict)
     #: (source, target, how) with how in "edge" | "route"
     routes: list[tuple[str, str, str]] = field(default_factory=list)
+    #: Nodes whose function calls a model (`.invoke`, `.ainvoke`, a chat model): a
+    #: graph of such nodes with no tool-bound model is a workflow agent, not nothing.
+    llm_nodes: int = 0
 
 
 @dataclass
@@ -293,6 +317,10 @@ class _FileResult:
     #: function in another module it wraps: what `function_tool(mod.fn)` says.
     func_info: dict[str, tuple[str, list[str]]] = field(default_factory=dict)
     tool_fn: dict[str, str] = field(default_factory=dict)
+    #: Every module-level function this file defines: a bare name in a tools list
+    #: is a tool only when some file defines a function by it (else it is a list
+    #: or a parameter, and naming a tool after it would invent one).
+    functions: set[str] = field(default_factory=set)
 
 
 #: Constructor -> (framework, role). Matched on the import-resolved dotted path's root
@@ -350,6 +378,50 @@ _TOOL_ROLES = (
     "lc_init",
     "lc_executor",
 )
+
+#: An agent-shaped call to a framework the scan has no constructor for: an imported
+#: callable given tools (under any of these names) and an instruction, a model or a
+#: name. Enough to say "an agent is built here" without knowing the framework.
+_GENERIC_TOOLS_KW = (
+    "tools",
+    "functions",
+    "toolsets",
+    "toolkits",
+    "allowed_tools",
+    "mcp_servers",
+    "server_names",
+    "tool_list",
+)
+_GENERIC_NAME_KW = ("name", "agent_name", "role")
+_GENERIC_MODEL_KW = ("model", "llm", "model_client", "llm_config", "model_name", "client")
+_GENERIC_INSTRUCTION_KW = (*_INSTRUCTION_KW, "instruction", "description", "persona", "role")
+#: Where such an agent names the agents it works with, and how.
+_GENERIC_CHILDREN_KW = {
+    "handoffs": "handoff",
+    "can_handoff_to": "handoff",
+    "sub_agents": "delegates",
+    "managed_agents": "delegates",
+    "agents": "member",
+    "participants": "member",
+}
+#: Calls that take tools but build no agent: a tool node, a toolkit, an MCP server.
+#: A task, pack, plugin, chain or pipeline takes tools too and is not the agent.
+_NOT_AN_AGENT = re.compile(
+    r"(?i)(?:tool(?:node|kit|set|box|pack)?|server|executor|registry|bind_tools|task|pack"
+    r"|plugin|chain|pipeline)$"
+)
+#: A callee named like an agent: a class ending in Agent (`ChatAgent`, `FnCallAgent`),
+#: or a factory that makes one (`create_deep_agent`, `define_agent`, `build_agent`).
+_AGENT_CALLEE = re.compile(r"(?:Agent$|^(?:create|make|build|define|new|get)_?\w*_?agent$)", re.I)
+#: A class that only carries data about an agent: its config, a message, an event.
+_AGENT_DATA = re.compile(
+    r"(?:Config|Configuration|Message|Event|Output|Result|Request|Response|Schema|Settings"
+    r"|Params|Parameters|State|Card|Info|Metadata|Context|Error|Exception|Type|Status)$"
+)
+#: Base classes that make a class an agent (`class Planner(BaseAgent)`).
+_AGENT_BASE = re.compile(r"(?:Agent|Role)$")
+#: A method call that hands a class's tools to its model.
+_CLASS_TOOL_CALLS = ("set_actions", "add_tools", "register_tools", "set_tools")
 
 #: A provider SDK's own function-calling entry points (`client.<path>(tools=...)`),
 #: by the package the file must import for the call to count.
@@ -471,6 +543,12 @@ _HINT = re.compile(
     r"|@openai/agents|@(?:\w+\.)?(?:function_)?tool\b"
     # `triage.handoffs.append(x)` in a file of wiring that imports no framework itself.
     r"|\.(?:handoffs|tools)\s*(?:=|\+=|\.(?:append|extend|insert)\s*\()"
+    # Shapes any framework shares: an agent class, a call given tools or sub-agents.
+    r"|class\s+\w+\s*\([^)]*(?:Agent|Role)\b"
+    r"|\b(?:tools|functions|toolsets|allowed_tools|sub_agents|handoffs|mcp_servers)\s*="
+    # The same in TypeScript and JavaScript.
+    r"|\b(?:tools|allowedTools|handoffs)\s*:|\bcreate\w*Agent\s*\(|\bnew\s+\w*Agent\s*\("
+    r"|\b(?:streamText|generateText)\s*\("
     # `MODEL = os.getenv(...)` in a config module an agent file imports its model from.
     r"|(?m:^[A-Z0-9_]*MODEL[A-Z0-9_]*\s*(?::[^=\n]*)?=)"
 )
@@ -667,6 +745,8 @@ class _Extractor:
         self.enclosing: dict[int, str] = {}
         #: variable -> every call assigned to it (`tools = build_tools(kit)`)
         self.bound_calls: dict[str, list[ast.Call]] = defaultdict(list)
+        #: variable -> tools its decorator registers (`@support_agent.tool`)
+        self.receiver_tools: dict[str, list[str]] = defaultdict(list)
 
     # -- pass A: imports, assignments, functions, tools ----------------------
 
@@ -691,6 +771,7 @@ class _Extractor:
                 self.out.exported.add(target)
             if isinstance(stmt, ast.FunctionDef | ast.AsyncFunctionDef):
                 self.out.exported.add(stmt.name)
+                self.out.functions.add(stmt.name)
         self._walk_scope(self.tree.body, cls=None)
 
     def _module_level(self) -> None:
@@ -895,6 +976,15 @@ class _Extractor:
     def _check_tool(self, fn: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
         for decorator in fn.decorator_list:
             name = _decorator_name(decorator)
+            receiver, _, method = name.rpartition(".")
+            if (
+                receiver.isidentifier()
+                and receiver not in self.imports
+                and method in ("tool", "tool_plain", "register_tool", "function_tool")
+            ):
+                # `@support_agent.tool`: a tool of the agent held in that variable (an
+                # MCP server's `@mcp.tool` is kept as a tool and attaches to nothing).
+                self.receiver_tools[receiver].append(fn.name)
             if any(name.endswith(marker) for marker in _TOOL_DECORATORS):
                 explicit = None
                 if isinstance(decorator, ast.Call) and decorator.args:
@@ -929,7 +1019,10 @@ class _Extractor:
         for node in ast.walk(self.tree):
             if not isinstance(node, ast.Call):
                 continue
-            match = _constructor(self.qual(node.func))
+            qual = self.qual(node.func)
+            match = _constructor(qual)
+            if match is None:
+                match = self._agent_shaped(node, qual)
             if match is None:
                 if _kw(node, "tools") is not None:
                     loop = self._loop(node, loop)
@@ -955,6 +1048,11 @@ class _Extractor:
             raw.name = self._name(node, role, var, cls)
             raw.named = raw.name is not None and raw.name not in (var, cls)
             raw.instructions = self.resolve_str(_kw(node, *_INSTRUCTION_KW))
+            if role == "generic_agent":
+                raw.confidence = "medium"
+                raw.evidence = f"agent-shaped call to {qual or _path(node.func)}"
+            else:
+                raw.evidence = f"{framework} constructor {qual.rsplit('.', 1)[-1]}"
             model_node = _kw(node, *_MODEL_KW.get(role, ()))
             if model_node is None and role in _MODEL_ARG and len(node.args) > _MODEL_ARG[role]:
                 model_node = node.args[_MODEL_ARG[role]]
@@ -974,6 +1072,91 @@ class _Extractor:
             if var:
                 self.out.vars.setdefault(var, raw.idx)
             self.made[raw.idx] = (node, role)
+
+    def _agent_shaped(self, call: ast.Call, qual: str) -> tuple[str, str] | None:
+        """An agent built by a framework this scan has no constructor for: a call to
+        an imported callable that is given tools (or sub-agents) and an instruction,
+        a model or a name. A callee named like an agent needs only one of those.
+        Provider SDK calls, tool nodes, toolkits and MCP servers are not agents."""
+        func = call.func.value if isinstance(call.func, ast.Subscript) else call.func
+        path = _path(func)
+        head = path.split(".")[0]
+        if not path or (not qual and head not in self.imported):
+            return None
+        last = path.rsplit(".", 1)[-1]
+        if _NOT_AN_AGENT.search(last) or any(
+            path == suffix or path.endswith(f".{suffix}") for suffix in _LOOP_CALLS
+        ):
+            return None
+        if _AGENT_DATA.search(last):
+            return None
+        kwargs = {kw.arg for kw in call.keywords if kw.arg}
+        has_tools = bool(kwargs & {*_GENERIC_TOOLS_KW, *_GENERIC_CHILDREN_KW})
+        says_who = bool(kwargs & {*_GENERIC_NAME_KW, *_GENERIC_MODEL_KW, *_GENERIC_INSTRUCTION_KW})
+        agentish = bool(_AGENT_CALLEE.search(last))
+        # Something is built, not a helper called: a class (CamelCase) or an agent factory.
+        constructs = last[:1].isupper() or agentish
+        if not constructs:
+            return None
+        if not ((has_tools and says_who) or (agentish and (has_tools or says_who))):
+            return None
+        root = (qual or self.imports.get(head, head) or head).split(".")[0]
+        return _framework_label(root), "generic_agent"
+
+    def classes(self) -> None:
+        """Agents written as classes: ``class Planner(BaseAgent)``, ``class Architect(Role)``.
+        Their tools are what the class body or a method hands over: ``tools = [...]``,
+        ``self.tools = [...]``, ``self.set_actions([...])``, ``functions=[...]``."""
+        for node in ast.walk(self.tree):
+            if not isinstance(node, ast.ClassDef):
+                continue
+            bases = [_path(b).rsplit(".", 1)[-1] for b in node.bases]
+            if not any(_AGENT_BASE.search(b) for b in bases if b):
+                continue
+            if node.name.startswith(("Base", "Abstract", "Mock", "Fake", "Dummy")):
+                continue
+            if node.name.endswith(("Base", "Mixin", "Protocol", "Interface")):
+                continue
+            raw = _Raw(
+                idx=self.next_idx,
+                framework=_framework_label(
+                    next(
+                        (
+                            self.imports[b].split(".")[0]
+                            for b in (_path(x).split(".")[0] for x in node.bases)
+                            if b in self.imports
+                        ),
+                        "custom",
+                    )
+                ),
+                kind="agent",
+                file=self.rel,
+                line=node.lineno,
+                name=node.name,
+                cls=node.name,
+                confidence="low",
+                evidence=f"class {node.name}({', '.join(b for b in bases if b)})",
+            )
+            raw.attr, raw.attr_kind = node.name, "factory"
+            for sub in ast.walk(node):
+                if isinstance(sub, ast.Assign | ast.AnnAssign):
+                    targets = sub.targets if isinstance(sub, ast.Assign) else [sub.target]
+                    if any(_target_name(t) in ("tools", "functions") for t in targets):
+                        self._tools(raw, sub.value)
+                elif isinstance(sub, ast.Call):
+                    last = _path(sub.func).rsplit(".", 1)[-1]
+                    if last in _CLASS_TOOL_CALLS and sub.args:
+                        self._tools(raw, sub.args[0])
+                    elif (fns := _kw(sub, "functions")) is not None and id(
+                        sub
+                    ) not in self.call_raw:
+                        self._tools(raw, fns)
+            self.next_idx += 1
+            self.out.raws.append(raw)
+            self.made[raw.idx] = (
+                ast.Call(func=ast.Name(id=node.name), args=[], keywords=[]),
+                "class_agent",
+            )
 
     def _loop(self, call: ast.Call, loop: _Raw | None) -> _Raw | None:
         """``client.chat.completions.create(..., tools=TOOLS)`` and its Anthropic and
@@ -1006,6 +1189,8 @@ class _Extractor:
                 line=call.lineno,
                 name=name,
                 loop=True,
+                confidence="medium",
+                evidence=f"{framework} function-calling call with tools",
             )
             func = self.enclosing.get(id(call))
             if func:
@@ -1036,13 +1221,26 @@ class _Extractor:
             return self._label(_kw(call, "supervisor_name")) or "supervisor"
         if role == "graph":
             return var
+        if role == "generic_agent":
+            return self._label(_kw(call, *_GENERIC_NAME_KW)) or var
         return self._label(_kw(call, "name")) or var
 
     # -- pass C: tools and children -----------------------------------------
 
     def link(self) -> None:
         for raw in list(self.out.raws):
+            if raw.var and raw.var in self.receiver_tools:
+                raw.tools.extend(("var", t) for t in self.receiver_tools[raw.var])
             call, role = self.made[raw.idx]
+            if role == "class_agent":
+                continue
+            if role == "generic_agent":
+                self._tools(raw, _kw(call, *_GENERIC_TOOLS_KW))
+                for kw in call.keywords:
+                    if kw.arg in _GENERIC_CHILDREN_KW:
+                        for elt in self._elements(kw.value):
+                            self._child(raw, elt, _GENERIC_CHILDREN_KW[kw.arg])
+                continue
             if role in _TOOL_ROLES:
                 tools_expr = _kw(call, "tools")
                 if tools_expr is None and role in _TOOLS_ARG and len(call.args) > _TOOLS_ARG[role]:
@@ -1310,6 +1508,14 @@ class _Extractor:
         raw.children.append((ref, relation))
 
     def _tools(self, raw: _Raw, expr: ast.AST | None) -> None:
+        if isinstance(expr, ast.Name | ast.Attribute) and self._sequence(expr, 0) is None:
+            # `tools=tools`, `tools=final_tools`, `tools=self.tools`: the whole list sits
+            # in a name this file does not show (a parameter, a list built elsewhere). It
+            # is looked up as a list; it is never itself a tool named after the variable.
+            name = expr.id if isinstance(expr, ast.Name) else expr.attr
+            if not (isinstance(expr, ast.Name) and expr.id in self.dicts):
+                raw.tools.append(("list", name))
+                return
         self._tool_elements(raw, self._elements(expr))
 
     def _tool_elements(self, raw: _Raw, elements: list[ast.AST]) -> None:
@@ -1338,6 +1544,10 @@ class _Extractor:
                     continue
                 path = _path(elt.func)
                 last = path.rsplit(".", 1)[-1]
+                if last in ("tools", "get_tools", "list_tools", "load_tools", "as_tools"):
+                    # `fs.tools(...)`, `toolkit.get_tools()`: a list a call returns.
+                    raw.tools.append(("call", last))
+                    continue
                 if last in ("as_tool", "asTool") and isinstance(elt.func, ast.Attribute):
                     self._child(raw, elt.func.value, "as_tool")
                     continue
@@ -1379,14 +1589,14 @@ class _Extractor:
     def _graph(self, raw: _Raw) -> None:
         graph = _Graph(raw=raw.idx, file=self.rel)
         names = {raw.var} if raw.var else set()
-        if not names:
-            return
+        ctor = self.made[raw.idx][0]
         for node in ast.walk(self.tree):
             if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
                 continue
             receiver = _path(node.func.value)
             method = node.func.attr
-            if receiver not in names:
+            # `StateGraph(S).add_node(...).add_edge(...)`: a chain on the constructor.
+            if receiver not in names and _chain_root(node.func.value) is not ctor:
                 continue
             if method == "add_node":
                 self._add_node(graph, node)
@@ -1424,7 +1634,10 @@ class _Extractor:
                     graph.routes.append((gname, dst, "route"))
                 gnode.bound_tools = self._bound_tools(gnode.func)
                 gnode.loads = _loaded_names(gnode.func)
-        self.out.graphs.append(graph)
+                if _calls_model(gnode.func):
+                    graph.llm_nodes += 1
+        if graph.nodes:
+            self.out.graphs.append(graph)
 
     def _add_node(self, graph: _Graph, call: ast.Call) -> None:
         if not call.args:
@@ -1443,8 +1656,11 @@ class _Extractor:
             func = self.functions[value.id]
         graph.nodes[name] = _Node(name=name, ref=self._ref(value), func=func)
 
-    def _bound_tools(self, fn: ast.AST) -> list[tuple[str, str]] | None:
-        """The tools a node function binds to its model, or None when it binds none."""
+    def _bound_tools(self, fn: ast.AST, depth: int = 0) -> list[tuple[str, str]] | None:
+        """The tools a node function binds to its model, or None when it binds none:
+        in its own body, through a name this file binds with ``.bind_tools(T)``
+        (``llm_with_tools = llm.bind_tools(tools)`` at module level), or through a
+        helper of this file it calls that binds them."""
         for sub in ast.walk(fn):
             if (
                 isinstance(sub, ast.Call)
@@ -1454,6 +1670,17 @@ class _Extractor:
                 probe = _Raw(idx=-1, framework="", kind="", file="", line=0)
                 self._tools(probe, sub.args[0] if sub.args else _kw(sub, "tools"))
                 return probe.tools
+        if depth > 1:
+            return None
+        for name in _loaded_names(fn):
+            for call in self.bound_calls.get(name, []):
+                found = self._bound_tools(call, depth + 1)
+                if found is not None:
+                    return found
+            if name in self.functions and self.functions[name] is not fn:
+                found = self._bound_tools(self.functions[name], depth + 1)
+                if found is not None:
+                    return found
         return None
 
 
@@ -1475,7 +1702,40 @@ _KIND = {
     "graph": "graph",
     "supervisor": "supervisor",
     "swarm": "team",
+    "generic_agent": "agent",
+    "class_agent": "agent",
 }
+
+#: Display names for packages the agent-shaped rule meets; anything else is shown as
+#: its package name. A label only: detection never depends on it.
+_FRAMEWORK_LABELS = {
+    "pydantic_ai": "Pydantic AI",
+    "smolagents": "smolagents",
+    "llama_index": "LlamaIndex",
+    "swarm": "OpenAI Swarm",
+    "mcp_agent": "mcp-agent",
+    "claude_agent_sdk": "Claude Agent SDK",
+    "agno": "Agno",
+    "phi": "Agno",
+    "camel": "CAMEL",
+    "strands": "Strands Agents",
+    "semantic_kernel": "Semantic Kernel",
+    "haystack": "Haystack",
+    "dspy": "DSPy",
+    "metagpt": "MetaGPT",
+    "azure": "Azure AI Agents",
+    "agents": "OpenAI Agents SDK",
+    "langgraph": "LangGraph",
+    "langchain": "LangChain",
+    "crewai": "CrewAI",
+    "autogen": "AutoGen",
+    "autogen_agentchat": "AutoGen",
+    "google": "Google ADK",
+}
+
+
+def _framework_label(root: str) -> str:
+    return _FRAMEWORK_LABELS.get(root, root or "custom")
 
 
 def _target_name(target: ast.AST) -> str:
@@ -1537,19 +1797,43 @@ def _goto_strings(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> list[str]:
     return [s for s in out if isinstance(s, str)]
 
 
+def _chain_root(expr: ast.AST) -> ast.AST:
+    """The object a method chain starts from: ``StateGraph(S)`` in
+    ``StateGraph(S).add_node(...).add_edge(...)``."""
+    while isinstance(expr, ast.Call) and isinstance(expr.func, ast.Attribute):
+        expr = expr.func.value
+    return expr
+
+
+#: Calls that ask a model for something: a LangChain runnable or chat model.
+_MODEL_METHODS = {
+    "invoke",
+    "ainvoke",
+    "stream",
+    "astream",
+    "batch",
+    "abatch",
+    "with_structured_output",
+    "generate_content",
+    "create",
+}
+
+
+def _calls_model(fn: ast.AST) -> bool:
+    for sub in ast.walk(fn):
+        if isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute):
+            if sub.func.attr in _MODEL_METHODS:
+                return True
+    return False
+
+
 def _loaded_names(fn: ast.AST) -> set[str]:
     return {n.id for n in ast.walk(fn) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
 
 
 # ---------------------------------------------------------------------------
-# TypeScript / JavaScript — OpenAI Agents SDK only
+# TypeScript / JavaScript: agents by shape, any framework
 # ---------------------------------------------------------------------------
-
-_JS_AGENT_DECL = re.compile(
-    r"(?:const|let|var)\s+(\w+)\s*=\s*(?:new\s+Agent|Agent\.create)\s*\(\s*\{"
-)
-_JS_TOOL_DECL = re.compile(r"(?:const|let|var)\s+(\w+)\s*=\s*tool\s*\(\s*\{")
-_JS_AGENTS_IMPORT = re.compile(r"""from\s+["']@openai/agents(?:[-/][\w/-]*)?["']""")
 
 
 def _js_object(source: str, start: int) -> dict[str, str]:
@@ -1619,40 +1903,153 @@ def _js_string(value: str) -> str | None:
     return m.group(2) if m else None
 
 
+#: An agent built in TypeScript or JavaScript, by shape: ``new XAgent({...})`` /
+#: ``XAgent.create({...})``, ``create…Agent({...})`` (LangGraph.js, deep agents),
+#: ``streamText`` / ``generateText`` given tools (Vercel AI SDK), a provider SDK's
+#: ``…responses|messages|chat.completions.create({tools})``, and the Claude Agent
+#: SDK's ``query({options: {allowedTools}})``. Optionally assigned: ``const x = …``.
+_JS_AGENT_CALL = re.compile(
+    r"(?:(?:const|let|var|export\s+const)\s+(?P<var>\w+)\s*(?::[^=]{0,80})?=\s*)?(?:await\s+)?"
+    r"(?:new\s+(?P<cls>\w*Agent)|(?P<create>\w*Agent)\.create|(?P<factory>create\w*Agent)"
+    r"|(?P<vercel>streamText|generateText|streamObject|generateObject)"
+    r"|(?P<sdk>(?:\w+\.)*(?:responses|messages|chat\.completions)\.(?:create|stream|parse))"
+    r"|(?P<query>\bquery))\s*\(\s*\{"
+)
+#: ``const x = tool({...})`` / ``createTool({...})`` / ``new DynamicStructuredTool({...})``
+#: / ``tool(fn, {name: ...})``: a tool, by the variable and its ``name``.
+_JS_TOOL_DECL = re.compile(
+    r"(?:const|let|var|export\s+const)\s+(\w+)\s*=\s*(?:new\s+)?(?:tool|createTool|DynamicStructuredTool"
+    r"|DynamicTool|FunctionTool|betaZodTool)\s*\("
+)
+_JS_AGENTS_IMPORT = re.compile(r"""from\s+["']@openai/agents(?:[-/][\w/-]*)?["']""")
+_JS_FRAMEWORKS = (
+    (re.compile(r"""from\s+["']@openai/agents"""), "OpenAI Agents SDK"),
+    (re.compile(r"""from\s+["']@langchain/langgraph"""), "LangGraph"),
+    (re.compile(r"""from\s+["']@anthropic-ai/claude-agent-sdk"""), "Claude Agent SDK"),
+    (re.compile(r"""from\s+["']@mastra/"""), "Mastra"),
+    (re.compile(r"""from\s+["']ai["']"""), "Vercel AI SDK"),
+    (re.compile(r"""from\s+["']@anthropic-ai/sdk"""), "Anthropic SDK"),
+    (re.compile(r"""from\s+["']openai["']"""), "OpenAI SDK"),
+)
+#: Keys an agent-ish object must have one of to be taken for an agent.
+_JS_AGENT_KEYS = {
+    "name",
+    "instructions",
+    "tools",
+    "model",
+    "handoffs",
+    "llm",
+    "prompt",
+    "systemPrompt",
+}
+
+
+def _js_tool_refs(value: str) -> tuple[list[tuple[str, str]], list[str]]:
+    """Tool references in a ``tools`` value, and the agents it lists as tools
+    (``x.asTool(...)``). An array of names, factory calls or strings; an object whose
+    keys are the tool names (Vercel AI SDK); or one name holding a list elsewhere."""
+    value = value.strip()
+    tools: list[tuple[str, str]] = []
+    as_tools: list[str] = []
+    if value.startswith("{"):
+        return [("name", k) for k in _js_object(value, 0)], as_tools
+    if re.fullmatch(r"[\w.]+", value):
+        return [("list", value.rsplit(".", 1)[-1])], as_tools
+    for item in _js_elements(value):
+        if m := re.match(r"(\w+)\.asTool\s*\(", item):
+            as_tools.append(m.group(1))
+        elif re.fullmatch(r"\w+", item):
+            tools.append(("var", item))
+        elif (s := _js_string(item)) is not None:
+            tools.append(("name", s))
+        elif m := re.match(r"(?:new\s+)?(\w+)\s*\(", item):
+            named = re.search(r"""name\s*:\s*["'`]([^"'`]+)""", item)
+            tools.append(("name", named.group(1) if named else m.group(1)))
+    return tools, as_tools
+
+
 def _extract_js(source: str, rel: str, start: int) -> _FileResult:
     out = _FileResult(file=rel)
-    if not _JS_AGENTS_IMPORT.search(source):
-        return out
+    framework = next((name for pat, name in _JS_FRAMEWORKS if pat.search(source)), "JavaScript")
     for m in _JS_TOOL_DECL.finditer(source):
-        fields = _js_object(source, m.end() - 1)
+        brace = source.find("{", m.end() - 1, m.end() + 600)
+        fields = _js_object(source, brace) if brace != -1 else {}
         out.tool_defs[m.group(1)] = _js_string(fields.get("name", "")) or m.group(1)
     idx = start
-    for m in _JS_AGENT_DECL.finditer(source):
+    loop: _Raw | None = None
+    for m in _JS_AGENT_CALL.finditer(source):
         fields = _js_object(source, m.end() - 1)
-        var = m.group(1)
+        var = m.group("var")
+        line = source.count("\n", 0, m.start()) + 1
+        tools_value = fields.get("tools", "")
+        if m.group("query"):
+            options = fields.get("options", "")
+            opts = _js_object(options, 0) if options.startswith("{") else {}
+            tools_value = opts.get("allowedTools") or opts.get("tools") or ""
+            if not tools_value and "mcpServers" not in opts:
+                continue
+        elif m.group("vercel") or m.group("sdk"):
+            if not tools_value:
+                continue
+        elif not (set(fields) & _JS_AGENT_KEYS):
+            continue
+        tools, as_tools = _js_tool_refs(tools_value) if tools_value else ([], [])
+        if m.group("sdk"):
+            # A hand-written loop, one per file, like the Python one: reported only
+            # when the repository has no agent of a framework.
+            if loop is None:
+                stem = Path(rel).stem
+                parent = Path(rel).parent.name
+                loop = _Raw(
+                    idx=idx,
+                    framework=framework,
+                    kind="agent",
+                    file=rel,
+                    line=line,
+                    name=parent if stem in _GENERIC_STEMS and parent else stem,
+                    loop=True,
+                    confidence="medium",
+                    evidence="provider SDK call with tools",
+                )
+                idx += 1
+                out.raws.append(loop)
+            loop.tools.extend(tools)
+            continue
+        callee = (
+            m.group("cls")
+            or m.group("create")
+            or m.group("factory")
+            or m.group("vercel")
+            or "query"
+        )
+        known = framework == "OpenAI Agents SDK" and callee in ("Agent", "RealtimeAgent")
+        stem = Path(rel).stem
+        parent = Path(rel).parent.name
         raw = _Raw(
             idx=idx,
-            framework="OpenAI Agents SDK",
+            framework=framework,
             kind="agent",
             file=rel,
-            line=source.count("\n", 0, m.start()) + 1,
-            name=_js_string(fields.get("name", "")) or var,
+            line=line,
+            name=_js_string(fields.get("name", ""))
+            or var
+            or (parent if stem in _GENERIC_STEMS and parent else stem),
             var=var,
+            confidence="high" if known else "medium",
+            evidence=f"{callee}({{...}})",
         )
+        raw.named = bool(_js_string(fields.get("name", "")))
         idx += 1
-        for item in _js_elements(fields.get("tools", "")):
-            as_tool = re.match(r"(\w+)\.asTool\s*\(", item)
-            if as_tool:
-                raw.children.append((("var", as_tool.group(1)), "as_tool"))
-            elif re.fullmatch(r"\w+", item):
-                raw.tools.append(("var", item))
+        raw.tools.extend(tools)
+        raw.children.extend((("var", a), "as_tool") for a in as_tools)
         for item in _js_elements(fields.get("handoffs", "")):
             target = re.match(r"(?:handoff\s*\(\s*)?(\w+)", item)
             if target:
                 raw.children.append((("var", target.group(1)), "handoff"))
         out.raws.append(raw)
-        out.vars.setdefault(var, raw.idx)
-        out.exported.add(var)
+        if var:
+            out.vars.setdefault(var, raw.idx)
+            out.exported.add(var)
     return out
 
 
@@ -1688,6 +2085,7 @@ class AgentCollector:
             ex.out.module = _module_name(rel)
             ex.collect()
             ex.create()
+            ex.classes()
             ex.link()
             ex.mutate()
             ex.export()
@@ -1704,6 +2102,7 @@ class AgentCollector:
             or result.tool_helpers
             or result.consts
             or result.func_info
+            or result.functions
         ):
             self.files.append(result)
 
@@ -1716,10 +2115,11 @@ class AgentCollector:
         result.module = _module_name(rel)
         for stmt in tree.body:
             if isinstance(stmt, ast.FunctionDef | ast.AsyncFunctionDef):
+                result.functions.add(stmt.name)
                 doc, args = _fn_info(stmt)
                 if doc or args:
                     result.func_info.setdefault(stmt.name, (doc, args))
-        if result.func_info:
+        if result.func_info or result.functions:
             self.files.append(result)
 
     def finish(self) -> tuple[list[AgentSpec], list[AgentEdge]]:
@@ -1754,6 +2154,7 @@ class _Linker:
                 self.global_consts[name].add(value)
             for name, info in f.tool_info.items():
                 self.global_info[name].append(info)
+        self.global_fn_names: set[str] = {n for f in files for n in f.functions}
         self.global_funcs: dict[str, list[tuple[str, list[str]]]] = defaultdict(list)
         for f in files:
             for name, info in f.func_info.items():
@@ -1950,6 +2351,8 @@ class _Linker:
                     tool_details=self._details(i, tools),
                     named=raw.named,
                     instructions=raw.instructions,
+                    confidence=raw.confidence,
+                    evidence=raw.evidence,
                 )
             )
         seen: set[tuple[int, int]] = set()
@@ -2066,7 +2469,43 @@ class _Linker:
                         continue  # a worker returning to its supervisor
                     edges.append((a, b, "handoff"))
                     has_parent.add(b)
-                for idx in dict.fromkeys(agents.values()):
+                distinct = list(dict.fromkeys(agents.values()))
+                if not distinct and graph.llm_nodes:
+                    # Nodes that call a model but bind no tools: the graph is one
+                    # workflow agent (it reasons step by step; it does not pick tools).
+                    graph_raw.kind = "agent"
+                    graph_raw.confidence = "medium"
+                    n, total = graph.llm_nodes, len(graph.nodes)
+                    graph_raw.evidence = f"LangGraph workflow: {n} of {total} nodes call a model"
+                    continue
+                if (
+                    not distinct
+                    and len(graph.nodes) > 1
+                    and all(node.func is None for node in graph.nodes.values())
+                ):
+                    # Every node is built elsewhere (a factory, another module): what the
+                    # nodes do is not followed, but a graph of them is still an agent.
+                    graph_raw.kind = "agent"
+                    graph_raw.confidence = "low"
+                    graph_raw.evidence = (
+                        f"LangGraph graph of {len(graph.nodes)} nodes defined in other code"
+                    )
+                    continue
+                if (
+                    len(distinct) == 1
+                    and self.raws[distinct[0]].file == graph_raw.file
+                    and not routed
+                ):
+                    # A graph around exactly one agent is that agent: reported once,
+                    # under the graph's name and entry point.
+                    only = self.raws[distinct[0]]
+                    if graph_raw.name:
+                        only.name = graph_raw.name
+                        only.named = graph_raw.named or only.named
+                    if graph_raw.attr:
+                        only.attr, only.attr_kind = graph_raw.attr, graph_raw.attr_kind
+                    continue
+                for idx in distinct:
                     if idx not in has_parent:
                         edges.append((graph.raw, idx, "member"))
         return edges

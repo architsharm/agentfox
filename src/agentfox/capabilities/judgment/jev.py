@@ -47,7 +47,8 @@ OUTAGE = "outage"  # the judge was asked and did not answer: unreachable, error,
 REFUSED = "refused"  # the payload was not allowed to leave (egress gate, PII policy)
 NOT_CONFIGURED = "not_configured"  # no key, no provider, egress off: nothing to ask
 #: The judge answered, but not in a form that could be read. Not an outage: the
-#: service is up, so failing closed on it would block traffic over a formatting quirk.
+#: service is up, so it never triggers the `fail_closed` judge-outage block. It still
+#: degrades the detector (see the pipeline), so `fail_mode` and status record it.
 MALFORMED = "malformed"
 
 

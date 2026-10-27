@@ -207,7 +207,7 @@ def map_repository(root: str | Path = ".") -> dict[str, Any]:
     what the scan could not read.
     """
     root = Path(root).resolve()
-    report = scan(root, include_config=False)
+    report = scan(root, include_config=False, llm_apps=True)
     return structure_from_scan(report, root)
 
 
@@ -253,6 +253,9 @@ def structure_from_scan(report: ScanReport, root: Path) -> dict[str, Any]:
                 "models": [spec.model] if spec.model else [],
                 "framework": spec.framework,
                 "kind": spec.kind,
+                # How sure the scan is (high | medium | low) and the rule that matched.
+                "confidence": spec.confidence,
+                "evidence": spec.evidence,
                 # The entry point of its system: nothing else hands it work.
                 "root": spec.key in roots,
                 "file": spec.file,

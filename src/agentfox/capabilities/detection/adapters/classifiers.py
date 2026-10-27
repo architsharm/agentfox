@@ -293,7 +293,8 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
 
 
 #: Tokens per window a classifier scores. Text this short or shorter is scored whole;
-#: longer text is scored in overlapping windows over all of it, in one batched pass.
+#: longer text is scored in overlapping windows over its first 4,000 characters, in
+#: one batched pass.
 #: The models here declare no maximum length, so 4,000 characters went in as one
 #: sequence of about 650 tokens: slower (super-linear) and past the length they were
 #: trained on, where a long benign document scored as a jailbreak.

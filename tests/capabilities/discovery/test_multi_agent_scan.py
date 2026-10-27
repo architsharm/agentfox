@@ -132,7 +132,10 @@ def test_a_local_agent_class_is_not_an_agent(tmp_path):
         b = Other(name="x", tools=[])
         """,
     )
-    assert scan(tmp_path).agents == []
+    # The local `Agent("worker")` is no agent. An imported callable given a name and
+    # tools is agent-shaped: reported, but only at medium confidence, under its package.
+    [found] = scan(tmp_path).agents
+    assert (found.name, found.framework, found.confidence) == ("x", "mylib", "medium")
 
 
 def test_unresolvable_handoff_is_left_out(tmp_path):
