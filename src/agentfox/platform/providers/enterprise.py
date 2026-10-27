@@ -94,7 +94,7 @@ class AzureOpenAIProvider(OpenAIProvider):
             self._url(deployment),
             json=body,
             headers={"api-key": self._api_key() or ""},
-            timeout=self.timeout_s,
+            timeout=request.timeout_s or self.timeout_s,
         )
         r.raise_for_status()
         data = r.json()
@@ -131,7 +131,7 @@ class AzureOpenAIProvider(OpenAIProvider):
             self._url(deployment),
             json=body,
             headers={"api-key": self._api_key() or ""},
-            timeout=self.timeout_s,
+            timeout=request.timeout_s or self.timeout_s,
         ) as response:
             response.raise_for_status()
             for payload in _sse_lines(response):
@@ -190,7 +190,7 @@ class LiteLLMProvider(OpenAIProvider):
             f"{settings.litellm_base_url.rstrip('/')}/v1/chat/completions",
             json=body,
             headers=headers,
-            timeout=self.timeout_s,
+            timeout=request.timeout_s or self.timeout_s,
         )
         r.raise_for_status()
         data = r.json()
@@ -350,7 +350,7 @@ class VertexProvider(_HttpProvider):
             url,
             json=body,
             headers={"Authorization": f"Bearer {self._token()}"},
-            timeout=self.timeout_s,
+            timeout=request.timeout_s or self.timeout_s,
         )
         r.raise_for_status()
         data = r.json()

@@ -34,6 +34,9 @@ class CompletionRequest:
     #: it did not think of, and an agent framework depends on all of it.
     passthrough: dict[str, Any] | None = None
     passthrough_protocol: str | None = None  # "openai" | "anthropic"
+    #: A deadline for this one call, in seconds, overriding the adapter's default
+    #: (60 s): a judge on the request path must answer in seconds or not at all.
+    timeout_s: float | None = None
 
     def passthrough_for(self, protocol: str) -> dict[str, Any] | None:
         return self.passthrough if self.passthrough_protocol == protocol else None

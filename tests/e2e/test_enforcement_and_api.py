@@ -53,6 +53,34 @@ def test_observe_mode_reports_the_counterfactual(seeded, enforcer):
     assert any(r["rule_id"] == "injection.indirect" for r in result.rules_fired)
 
 
+def test_a_watching_policy_rewrites_nothing_through_the_proxy(seeded, enforcer):
+    """A redaction the policy only watches is recorded, not applied: the model gets
+    the message as sent and the caller gets its reply as written, streamed or not.
+    Enforced, the same rule rewrites both."""
+    text = "Sure, you can write to jane.doe@example.com about it."
+    msgs = [{"role": "user", "content": text}]
+
+    def both():
+        result, response = enforcer.run_completion(
+            agent_slug="support-triage", messages=msgs, model="echo-1"
+        )
+        events = list(
+            enforcer.run_completion_stream(
+                agent_slug="support-triage", messages=msgs, model="echo-1"
+            )
+        )
+        return result, response.text, "".join(e.delta for e in events if e.kind != "done")
+
+    result, reply, streamed = both()
+    assert result.verdict == "allow" and result.effective_verdict in ("redact", "mask", "tokenize")
+    assert "jane.doe@example.com" in reply and "jane.doe@example.com" in streamed
+    assert result.applied_content is None
+
+    set_mode(seeded, "baseline", "enforce")
+    result, reply, streamed = both()
+    assert "jane.doe@example.com" not in reply and "jane.doe@example.com" not in streamed
+
+
 def test_enforce_mode_blocks(seeded, enforcer):
     set_mode(seeded, "baseline", "enforce")
     result, response = enforcer.run_completion(

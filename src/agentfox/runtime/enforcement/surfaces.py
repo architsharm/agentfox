@@ -223,7 +223,7 @@ class _SurfacesMixin:
             entry = MemoryEntry(
                 agent_id=agent.id if agent else None,
                 subject=subject,
-                content=result.content if result.content is not None else content,
+                content=result.applied_content if result.applied_content is not None else content,
                 taint_source=taint_source,
                 provenance=provenance or {},
                 decision_id=result.decision_id,

@@ -32,6 +32,8 @@ class EnforcementResult:
     findings: list[dict[str, Any]] = field(default_factory=list)
     taint: dict[str, Any] = field(default_factory=dict)
     latency_ms: float = 0.0
+    #: `latency_ms` plus writing the decision and its records (see Enforcer.evaluate).
+    total_ms: float = 0.0
     degraded: list[str] = field(default_factory=list)
     content: str | None = None  # redacted content, when the verdict is a redaction
     reason: str = ""
@@ -48,6 +50,14 @@ class EnforcementResult:
     #: correction to send the model. The gateway's proxy uses it itself; a guard
     #: endpoint returns it for the caller to use.
     reask_instruction: str = ""
+
+    @property
+    def applied_content(self) -> str | None:
+        """The rewritten content to hand on, or None: only when the applied verdict
+        rewrites. ``content`` is computed for the effective verdict, so for a policy
+        that only watches it is what the content *would* be, and live traffic must
+        not get it."""
+        return self.content if self.verdict in REWRITE_VERDICTS else None
 
     @property
     def detections_found(self) -> bool:
@@ -67,7 +77,7 @@ class EnforcementResult:
             # The rewritten text when the applied verdict rewrites it (redact, mask,
             # tokenize); null otherwise. Without it a guard endpoint could say
             # "redact" and leave every caller to mask the content themselves.
-            "content": self.content if self.verdict in REWRITE_VERDICTS else None,
+            "content": self.applied_content,
             # The rewrite the bound policy asks for when it is only watching (the
             # counterfactual `effective_verdict` is a rewrite, the applied one is
             # not): what the content *would* be once the policy enforces. Null
@@ -89,6 +99,7 @@ class EnforcementResult:
             "findings": self.findings,
             "taint": self.taint,
             "latency_ms": round(self.latency_ms, 2),
+            "total_ms": round(self.total_ms, 2),
             "degraded": self.degraded,
             "reason": self.reason,
             "explanation": self.explanation,

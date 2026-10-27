@@ -36,7 +36,13 @@ import time
 from typing import Any
 
 from agentfox.capabilities.judgment.capability import Tier
-from agentfox.capabilities.judgment.jev import NOT_CONFIGURED, JevAnswer, JevResult, JevUnavailable
+from agentfox.capabilities.judgment.jev import (
+    MALFORMED,
+    NOT_CONFIGURED,
+    JevAnswer,
+    JevResult,
+    JevUnavailable,
+)
 from agentfox.platform.providers.base import is_local_endpoint
 
 log = logging.getLogger(__name__)
@@ -57,7 +63,7 @@ explanation. Every id must appear exactly once."""
 class LlmJudge:
     """Answers judgment questions with any registered model provider."""
 
-    def __init__(self, provider_key: str | None = None, *, timeout_s: float = 20.0) -> None:
+    def __init__(self, provider_key: str | None = None, *, timeout_s: float = 4.0) -> None:
         self._key = provider_key
         self._timeout = timeout_s
 
@@ -122,6 +128,10 @@ class LlmJudge:
                     # dataclass default of "default" is not a model name.
                     model=getattr(self._settings(), "judgment_llm_model", "") or "",
                     temperature=0.0,
+                    # The judge answers in about a second; one that takes longer is
+                    # holding a request (and a worker) for nothing. Was the HTTP
+                    # client's 60 s, with this timeout stored and never used.
+                    timeout_s=self._timeout,
                 )
             )
         except Exception as exc:  # noqa: BLE001 - network, auth, quota
@@ -129,7 +139,7 @@ class LlmJudge:
 
         answers = _parse(response.text or "", questions)
         if not answers:
-            raise JevUnavailable("judge returned no parseable scores")
+            raise JevUnavailable("judge returned no parseable scores", cause=MALFORMED)
         return JevResult(
             answers=answers,
             model=response.model or provider.key,
@@ -156,8 +166,10 @@ def _parse(text: str, questions: dict[str, dict[str, Any]]) -> dict[str, JevAnsw
     """
     out: dict[str, JevAnswer] = {}
     for qid in questions:
+        # Tolerates the wrappers models add around `id: NN`: bullets, bold, backticks,
+        # quotes, a JSON object (`"id": 12`), a trailing `%`.
         match = re.search(
-            rf"(?:^|\n)\s*[-*\s]*{re.escape(qid)}\s*[:=]\s*(\d{{1,3}})",
+            rf"(?:^|[\n{{,])[\s\-*`\"']*{re.escape(qid)}[`\"'*\s]*[:=][\s`\"'*]*(\d{{1,3}})",
             text,
             re.I,
         )
