@@ -27,6 +27,7 @@ and asking twice would be two places to get it wrong.
 from __future__ import annotations
 
 import logging
+import threading
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -199,3 +200,66 @@ def ask(
         # was never judged, which is not the same as a judge that is down.
         raise JevUnavailable(joined, cause=result.cause)
     return result
+
+
+#: How long the first judge of a check waits for the others to add their questions.
+#: They are submitted together, so they normally arrive within a millisecond.
+SHARE_WAIT_S = 0.05
+
+
+@dataclass
+class _Shared:
+    expected: int
+    questions: dict[str, dict[str, Any]] = field(default_factory=dict)
+    joined: int = 0
+    full: threading.Event = field(default_factory=threading.Event)
+    done: threading.Event = field(default_factory=threading.Event)
+    result: PanelResult | None = None
+    error: JevUnavailable | None = None
+
+
+_SHARED: dict[tuple[int, DecisionKind, str], _Shared] = {}
+_SHARED_LOCK = threading.Lock()
+
+
+def ask_shared(
+    group: Any, party: int, kind: DecisionKind, state: Any, questions: dict[str, dict[str, Any]]
+) -> PanelResult:
+    """:func:`ask`, with the other judges of one check that ask about the same content.
+
+    ``group`` identifies the check and ``party`` is how many judges of ``kind`` it runs.
+    The first to arrive waits (at most :data:`SHARE_WAIT_S`) for the rest, then asks
+    every question in one call: two judges each asking alone cost two round trips,
+    and the check waited for the slower one. Each caller reads its own ids from the
+    shared answers. The payload is the same for all of them, so the egress gate and
+    redaction decide exactly as they would alone.
+    """
+    if party <= 1:
+        return ask(kind, state, questions)
+    key = (id(group), kind, repr(state))
+    with _SHARED_LOCK:
+        shared = _SHARED.get(key)
+        leader = shared is None
+        if shared is None:
+            shared = _SHARED[key] = _Shared(expected=party)
+        shared.questions.update(questions)
+        shared.joined += 1
+        if shared.joined >= shared.expected:
+            shared.full.set()
+    if leader:
+        shared.full.wait(SHARE_WAIT_S)
+        with _SHARED_LOCK:
+            _SHARED.pop(key, None)  # a judge arriving later asks on its own
+            asked = dict(shared.questions)
+        try:
+            shared.result = ask(kind, state, asked)
+        except JevUnavailable as exc:
+            shared.error = exc
+        finally:
+            shared.done.set()
+    else:
+        shared.done.wait()
+    if shared.error is not None:
+        raise shared.error
+    assert shared.result is not None
+    return shared.result

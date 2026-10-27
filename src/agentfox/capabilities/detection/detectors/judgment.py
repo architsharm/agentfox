@@ -254,11 +254,21 @@ class InjectionJudgmentDetector(BaseDetector):
     def unavailable_reason(self) -> str:
         return _why_unavailable(self.kind)
 
-    def _ask(self, state, questions):
-        """One judgment, from every enabled tier, unioned by score."""
+    @property
+    def shares_judge_call(self) -> bool:
+        """Joins the check's shared judge call (an injected test transport does not)."""
+        return self._gateway is None
+
+    def _ask(self, state, questions, context: DetectionContext | None = None):
+        """One judgment, from every enabled tier, unioned by score: in one call with
+        the check's other judges (see `panel.ask_shared`)."""
         if self._gateway is not None:  # injected for tests
             return self._gateway.ask(state, questions).answers
-        return panel.ask(self.kind, state, questions).answers
+        party = ((context.extra or {}).get("judge_party") or {}) if context else {}
+        group = context.extra if context is not None else None
+        return panel.ask_shared(
+            group, int(party.get(self.kind.value, 1)), self.kind, state, questions
+        ).answers
 
     # -- detection -------------------------------------------------------
     def detect(self, content: str, context: DetectionContext) -> DetectorResult:
@@ -267,7 +277,7 @@ class InjectionJudgmentDetector(BaseDetector):
             return DetectorResult(detector_key=self.key, version=self.version)
 
         try:
-            answers = self._ask({"content": text}, QUESTIONS)
+            answers = self._ask({"content": text}, QUESTIONS, context)
         except JevUnavailable as exc:
             # Covers egress refusal, the PII gate, a missing key and an outage
             # alike. All of them mean "this check did not run" rather than a clean
@@ -402,18 +412,28 @@ class PiiJudgmentDetector(BaseDetector):
     def unavailable_reason(self) -> str:
         return _why_unavailable(self.kind)
 
-    def _ask(self, state, questions):
-        """One judgment, from every enabled tier, unioned by score."""
+    @property
+    def shares_judge_call(self) -> bool:
+        """Joins the check's shared judge call (an injected test transport does not)."""
+        return self._gateway is None
+
+    def _ask(self, state, questions, context: DetectionContext | None = None):
+        """One judgment, from every enabled tier, unioned by score: in one call with
+        the check's other judges (see `panel.ask_shared`)."""
         if self._gateway is not None:  # injected for tests
             return self._gateway.ask(state, questions).answers
-        return panel.ask(self.kind, state, questions).answers
+        party = ((context.extra or {}).get("judge_party") or {}) if context else {}
+        group = context.extra if context is not None else None
+        return panel.ask_shared(
+            group, int(party.get(self.kind.value, 1)), self.kind, state, questions
+        ).answers
 
     def detect(self, content: str, context: DetectionContext) -> DetectorResult:
         text = (content or "").strip()
         if not text:
             return DetectorResult(detector_key=self.key, version=self.version)
         try:
-            answers = self._ask({"content": text}, PII_QUESTIONS)
+            answers = self._ask({"content": text}, PII_QUESTIONS, context)
         except JevUnavailable as exc:
             log.info("pii.judgment unavailable: %s", exc)
             return unavailable_result(self, exc, self.judge_entities(context))
