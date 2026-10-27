@@ -245,6 +245,23 @@ class Enforcer(
         model: str | None = None,
         framework: str | None = None,
     ) -> tuple[Agent | None, Identity | None, bool]:
+        """The agent and identity a call is governed as. Remembered for this enforcer
+        (one request or one in-process call): a guard route and the check it runs
+        both resolve the same agent, and each resolve is several queries."""
+        key = (agent_slug, credential, environment, model, framework)
+        cache = self.__dict__.setdefault("_resolved", {})
+        if key not in cache:
+            cache[key] = self._resolve(agent_slug, credential, environment, model, framework)
+        return cache[key]
+
+    def _resolve(
+        self,
+        agent_slug: str | None,
+        credential: str | None = None,
+        environment: str = "production",
+        model: str | None = None,
+        framework: str | None = None,
+    ) -> tuple[Agent | None, Identity | None, bool]:
         identity = verify_credential(self.session, credential) if credential else None
         if identity is not None and identity.agent_id and not agent_slug:
             agent = self.session.get(Agent, identity.agent_id)
