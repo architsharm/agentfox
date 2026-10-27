@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from agentfox import __version__
 from agentfox.apps.gateway.deps import current_user, db
@@ -116,6 +117,18 @@ async def lifespan(app: FastAPI):
     from agentfox.capabilities.detection import warm_all
 
     warm_all()
+    # The shipped policy packs and the check modules load lazily on first use (about
+    # 180 ms, mostly YAML parsing), which the first guarded request of every process
+    # paid. Load them here instead. Never fatal: the request path loads them anyway.
+    try:
+        from agentfox.platform import checks as check_registry
+        from agentfox.runtime.checks import BUILTIN_CHECK_MODULES
+        from agentfox.runtime.enforcement.rules import _fallback_policies
+
+        _fallback_policies()
+        check_registry.load(BUILTIN_CHECK_MODULES)
+    except Exception:  # pragma: no cover - warm-up only
+        log.warning("could not preload policy packs and checks", exc_info=True)
     yield
 
 
@@ -315,7 +328,10 @@ def create_app() -> FastAPI:
         # traffic — five degraded requests out of five is an outage, five out of fifty
         # thousand is a blip, and a fraction over failures alone cannot tell them apart.
         observe_governed_request()
-        events = check_services()
+        # Cached verdicts only: a stale probe refreshes in the background. Probing
+        # here blocked the event loop on a database connection under load, which
+        # stalled every request until the pool timed out (30 s).
+        events = await run_in_threadpool(check_services, block=False)
         if not request.url.path.startswith(MODEL_ROUTES):
             # Guard, MCP and trace routes never call the model: a provider outage is
             # no reason to stop checking the traffic of teams that call it themselves.
