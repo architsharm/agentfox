@@ -90,6 +90,42 @@
         "source ~/.zshrc >/dev/null 2>&1; cd /Users/architsharma/guardrails/.claude/worktrees/agent-fox-ux-redesign-b53bd5/demo/live-airline && ./gateway.sh"
       ],
       "port": 8091
+    },
+    {
+      "name": "onbgw",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/architsharma/guardrails && AGENTFOX_DATABASE_URL=sqlite:////private/tmp/claude-501/-Users-architsharma-guardrails/9eacd14c-18c2-46b9-a5f6-5695b6d37d27/scratchpad/onb3.db AGENTFOX_PLAYGROUND_CORS_ORIGIN=http://localhost:3020 uv run uvicorn agentfox.apps.gateway.app:app --host 127.0.0.1 --port 8095"
+      ],
+      "port": 8095
+    },
+    {
+      "name": "onbdash",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/architsharma/guardrails/dashboard && AGENTFOX_API_URL=http://127.0.0.1:8095 AGENTFOX_PLAYGROUND_API_URL=http://127.0.0.1:8095 NEXT_DIST_DIR=.next-onb PORT=3020 npm run dev -- -p 3020"
+      ],
+      "port": 3020
+    },
+    {
+      "name": "garimagw",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/architsharma/guardrails-trial && AGENTFOX_DATABASE_URL=sqlite:////private/tmp/claude-501/-Users-architsharma-guardrails/9eacd14c-18c2-46b9-a5f6-5695b6d37d27/scratchpad/garima.db PYTHONPATH=src /Users/architsharma/guardrails/.venv/bin/python -m uvicorn agentfox.apps.gateway.app:app --host 127.0.0.1 --port 8096"
+      ],
+      "port": 8096
+    },
+    {
+      "name": "garimadash",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/architsharma/guardrails-trial/dashboard && AGENTFOX_API_URL=http://127.0.0.1:8096 AGENTFOX_PLAYGROUND_API_URL=http://127.0.0.1:8096 NEXT_DIST_DIR=.next-garima PORT=3021 npm run dev -- -p 3021"
+      ],
+      "port": 3021
     }
   ]
 }

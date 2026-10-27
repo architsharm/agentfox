@@ -1,0 +1,16 @@
+layer,repo_kind,repos,calls,p50_ms,p90_ms,p95_ms,p99_ms,mean_ms,degraded_pct
+L1 Deterministic,independent agents,42,3470,2.0,4.2,5.7,6.8,2.4,0.0
+L1 Deterministic,multi-agent (handoffs),41,5074,2.1,5.4,6.3,7.1,2.7,0.0
+L1 Deterministic,single agent,26,1384,1.8,2.6,4.7,6.6,2.1,0.0
+L2 Default (+ML classifier),independent agents,42,3470,3.1,117.2,168.7,201.8,32.7,0.1
+L2 Default (+ML classifier),multi-agent (handoffs),41,5074,4.2,142.5,175.7,205.2,40.0,0.1
+L2 Default (+ML classifier),single agent,26,1384,2.6,45.5,80.0,181.5,14.4,0.0
+L2n Default (cache off),independent agents,42,3470,35.6,106.3,172.3,211.4,46.3,0.1
+L2n Default (cache off),multi-agent (handoffs),41,5074,39.7,162.1,186.6,219.9,57.2,0.2
+L2n Default (cache off),single agent,26,1384,33.3,60.7,94.5,207.2,34.7,0.0
+L3 Extended (+similarity),independent agents,42,3470,14.5,115.5,195.4,235.5,41.4,0.4
+L3 Extended (+similarity),multi-agent (handoffs),41,5074,21.7,166.1,205.5,242.8,51.0,0.6
+L3 Extended (+similarity),single agent,26,1384,12.7,52.0,80.1,203.2,21.1,0.1
+L4 Full (+LLM judge),independent agents,13,168,83.7,1062.4,1210.1,1412.2,366.0,3.6
+L4 Full (+LLM judge),multi-agent (handoffs),16,358,78.3,1073.6,1179.7,1422.0,331.2,1.7
+L4 Full (+LLM judge),single agent,11,96,103.7,1134.1,1253.5,1765.3,504.3,3.1
