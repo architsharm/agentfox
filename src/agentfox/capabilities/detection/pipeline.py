@@ -252,12 +252,38 @@ class DetectorPipeline:
         # inherit context variables, and the request's judgment posture (its judge
         # tiers, whether personal data may reach a judge) and tenant live in them.
         # One copy per submit, because a context can't be entered by two threads.
+        # Built-in pattern detectors (no declared `timeout_ms`: secrets, injection
+        # heuristic, PII, lexicon, schema, unicode, insecure code) take well under a
+        # millisecond. They run here, in the request's own thread, and are never
+        # skipped for time: a wall-clock deadline on them under CPU load let a check
+        # pass with the secrets and injection patterns unread. Detectors that declare
+        # a timeout (models, network judges, user-defined code) are submitted first,
+        # so they run while these do, and stay under the budget.
+        inline = [d for d in detectors if _runs_inline(d)]
+        pooled = [d for d in detectors if not _runs_inline(d)]
         futures = {
             self._pool_for(d).submit(
                 contextvars.copy_context().run, self._run_one, d, content, context
             ): d
-            for d in detectors
+            for d in pooled
         }
+        for detector in inline:
+            try:
+                finished = self._run_one(detector, content, context)
+                result.results.append(finished)
+                if finished.status == "error":
+                    result.errored.append(detector.key)
+            except Exception as exc:  # a detector must never take the request down
+                log.warning("detector %s failed: %s", detector.key, exc)
+                result.results.append(
+                    DetectorResult(
+                        detector_key=detector.key,
+                        version=detector.version,
+                        status="error",
+                        raw={"error": str(exc)[:500]},
+                    )
+                )
+                result.errored.append(detector.key)
 
         for future, detector in futures.items():
             elapsed_ms = (time.perf_counter() - started) * 1000
@@ -355,6 +381,30 @@ class DetectorPipeline:
         calls it (confirmed by grep), and process-level cleanup of these pools
         happens naturally at interpreter exit, the same as any other module-level
         resource."""
+
+
+#: The built-in in-process pattern detectors: regex and character scans that take
+#: well under a millisecond. Only these run inline and unbudgeted; any other detector
+#: (a model, a judge, a workspace's own patterns, a plugin or pack) is pooled under
+#: its deadline, because nothing guarantees it is fast.
+INLINE_DETECTORS = frozenset(
+    {
+        "secrets.native",
+        "injection.heuristic",
+        "pii.native",
+        "safety.lexicon",
+        "schema.json",
+        "unicode.tags",
+        "code.insecure",
+    }
+)
+
+
+def _runs_inline(detector: Detector) -> bool:
+    from agentfox.capabilities.detection.base import get_detector
+
+    # The registered built-in itself, not a stand-in that borrowed its key.
+    return detector.key in INLINE_DETECTORS and get_detector(detector.key) is detector
 
 
 def judge_entities(detector: Detector, context: DetectionContext) -> tuple[str, ...]:
