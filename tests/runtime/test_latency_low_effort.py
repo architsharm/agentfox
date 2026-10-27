@@ -97,3 +97,40 @@ def test_short_text_is_scored_whole(monkeypatch):
     pipe = _Pipe()
     classifiers._scored(pipe, "what is the refund window")
     assert pipe.seen == ["what is the refund window"]
+
+
+class _Judge:
+    """A judge that answered, but off-format (or, with OUTAGE, did not answer)."""
+
+    key = "injection.judgment"
+    version = "1"
+    surfaces = ("input",)
+    timeout_ms = 1000
+
+    def __init__(self, cause):
+        self.cause = cause
+
+    def available(self):
+        return True
+
+    def detect(self, content, context):
+        from agentfox.capabilities.detection.base import DetectorResult
+
+        return DetectorResult(
+            self.key, self.version, status="unavailable", raw={"cause": self.cause}
+        )
+
+
+def test_an_off_format_judge_reply_degrades_but_is_not_an_outage():
+    """An input crafted to make the judge answer unparseably must not switch the judge
+    off unseen: it is degraded (fail_mode sees it), but not a judge outage (no
+    fail_closed block on a healthy judge). A real outage stays both."""
+    from agentfox.capabilities.detection.base import DetectionContext
+    from agentfox.capabilities.detection.pipeline import DetectorPipeline
+
+    malformed = DetectorPipeline([_Judge(MALFORMED)]).run("x", DetectionContext(surface="input"))
+    assert malformed.degraded == ["injection.judgment"]
+    assert malformed.judge_outage == {}
+    outage = DetectorPipeline([_Judge(OUTAGE)]).run("x", DetectionContext(surface="input"))
+    assert outage.degraded == ["injection.judgment"]
+    assert "injection.judgment" in outage.judge_outage

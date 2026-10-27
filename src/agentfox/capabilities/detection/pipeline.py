@@ -33,7 +33,7 @@ from agentfox.capabilities.detection.base import (
     DetectorResult,
     all_detectors,
 )
-from agentfox.capabilities.judgment.jev import OUTAGE
+from agentfox.capabilities.judgment.jev import MALFORMED, OUTAGE
 from agentfox.core.config import get_settings
 
 log = logging.getLogger(__name__)
@@ -294,6 +294,13 @@ class DetectorPipeline:
                 # coverage as a judge that timed out, so it degrades the same way.
                 elif finished.status == "unavailable" and finished.raw.get("cause") == OUTAGE:
                     _judge_out(result, detector, context, entities=finished.raw.get("entities"))
+                # A judge that answered off-format: the service is up, so it is not an
+                # outage (no `fail_closed` block), but nothing was checked. It degrades,
+                # so `fail_mode` and control status see it: an input crafted to make the
+                # judge reply unparseably must not switch the judge off unseen.
+                elif finished.status == "unavailable" and finished.raw.get("cause") == MALFORMED:
+                    if detector.key not in result.degraded:
+                        result.degraded.append(detector.key)
             except FutureTimeout:
                 # The worker thread keeps running (Python cannot pre-empt it); we
                 # stop *waiting*, which is what protects the caller's latency. The
