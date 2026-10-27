@@ -70,6 +70,7 @@ from agentfox.platform.policy import (
 from agentfox.platform.policy.taint_view import policy_taint
 from agentfox.platform.registry.service import observe_agent
 from agentfox.runtime.checks import checks_for
+from agentfox.runtime.enforcement import background
 from agentfox.runtime.enforcement.approvals import held_call
 from agentfox.runtime.enforcement.completion import _CompletionMixin
 from agentfox.runtime.enforcement.findings import _FindingsMixin
@@ -559,7 +560,6 @@ class Enforcer(
         where the primary model ran and found nothing, as inline. A hit is recorded
         as a detection on the same trace."""
         import logging
-        import threading
 
         from agentfox.capabilities.detection.base import DetectorResult
         from agentfox.capabilities.detection.pipeline import PipelineResult
@@ -605,7 +605,7 @@ class Enforcer(
             except Exception:  # pragma: no cover - after the response; never raises
                 logging.getLogger(__name__).warning("deferred backstop failed", exc_info=True)
 
-        threading.Thread(target=run, name="agentfox-backstop", daemon=True).start()
+        background.submit(run)  # when no check is in flight (see background.py)
 
     def _run_detectors(self, call: _Evaluation) -> None:
         """The detector pipeline (budgeted, concurrent), then suppressions."""
@@ -646,9 +646,10 @@ class Enforcer(
             context.extra["defer_backstop"] = True
             call.defer_backstop = True
         ledger = self.ledger()
-        pipeline_result = self.pipeline.run(
-            call.content, context, budget_ms=ledger.allowance_ms(self.pipeline.budget_ms)
-        )
+        with background.foreground():
+            pipeline_result = self.pipeline.run(
+                call.content, context, budget_ms=ledger.allowance_ms(self.pipeline.budget_ms)
+            )
         ledger.charge(pipeline_result, call.surface)
         call.ledger = ledger
         call.pipeline_result = pipeline_result
