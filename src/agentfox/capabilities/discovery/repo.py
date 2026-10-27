@@ -1186,8 +1186,15 @@ def _git_files(root: Path) -> tuple[set[str], set[str]] | None:
     return files, dirs
 
 
-def scan(root: str | Path = ".", *, include_config: bool = True) -> ScanReport:
-    """Walk a repository and report every surface worth governing."""
+def scan(
+    root: str | Path = ".", *, include_config: bool = True, llm_apps: bool = False
+) -> ScanReport:
+    """Walk a repository and report every surface worth governing.
+
+    ``llm_apps``: with no agent structure found, report each package that calls a
+    model as a low-confidence "LLM app" agent. `agentfox init` asks for it so it can
+    say what it saw; discovery submissions do not, so a scan never proposes a draft
+    agent on model calls alone."""
     root_path = Path(root).resolve()
     report = ScanReport(root=str(root_path))
     frameworks: set[str] = set()
@@ -1246,7 +1253,7 @@ def scan(root: str | Path = ".", *, include_config: bool = True) -> ScanReport:
                 report.sites.append(site)
 
     report.agents, report.agent_edges = agents.finish()
-    if not report.agents:
+    if not report.agents and llm_apps:
         report.agents = _llm_apps(report)
     given = {name for a in report.agents for name in a.tools}
     report.unassigned_tools = sorted(

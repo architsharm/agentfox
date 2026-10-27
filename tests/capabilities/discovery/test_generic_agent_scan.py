@@ -220,7 +220,8 @@ def test_an_app_that_only_calls_a_model_is_reported_at_low_confidence(tmp_path):
             return client.chat.completions.create(model="gpt-4o", messages=msgs)
         """,
     )
-    [agent] = scan(tmp_path).agents
+    assert scan(tmp_path).agents == []  # a discovery submission proposes nothing
+    [agent] = scan(tmp_path, llm_apps=True).agents  # `agentfox init` says what it saw
     assert (agent.name, agent.confidence) == ("search", "low")
     assert "no agent structure" in agent.evidence
 

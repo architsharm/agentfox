@@ -207,7 +207,7 @@ def map_repository(root: str | Path = ".") -> dict[str, Any]:
     what the scan could not read.
     """
     root = Path(root).resolve()
-    report = scan(root, include_config=False)
+    report = scan(root, include_config=False, llm_apps=True)
     return structure_from_scan(report, root)
 
 
