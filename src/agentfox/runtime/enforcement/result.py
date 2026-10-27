@@ -50,6 +50,14 @@ class EnforcementResult:
     reask_instruction: str = ""
 
     @property
+    def applied_content(self) -> str | None:
+        """The rewritten content to hand on, or None: only when the applied verdict
+        rewrites. ``content`` is computed for the effective verdict, so for a policy
+        that only watches it is what the content *would* be, and live traffic must
+        not get it."""
+        return self.content if self.verdict in REWRITE_VERDICTS else None
+
+    @property
     def detections_found(self) -> bool:
         return bool(self.entities) or bool(self.rules_fired)
 
@@ -67,7 +75,7 @@ class EnforcementResult:
             # The rewritten text when the applied verdict rewrites it (redact, mask,
             # tokenize); null otherwise. Without it a guard endpoint could say
             # "redact" and leave every caller to mask the content themselves.
-            "content": self.content if self.verdict in REWRITE_VERDICTS else None,
+            "content": self.applied_content,
             # The rewrite the bound policy asks for when it is only watching (the
             # counterfactual `effective_verdict` is a rewrite, the applied one is
             # not): what the content *would* be once the policy enforces. Null
