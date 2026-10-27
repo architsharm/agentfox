@@ -11,6 +11,7 @@ import type { FaqItem } from "@/components/marketing/blog/blocks";
 import type { Slug } from "@/lib/marketing/blog";
 
 import * as release05 from "./agentfox-0-5-release";
+import * as latency from "./ai-agent-guardrail-latency";
 import * as auditTrail from "./ai-agent-audit-trail";
 import * as asciiSmuggling from "./ascii-smuggling-unicode-tag-prompt-injection";
 import * as hooks from "./claude-code-hooks-security";
@@ -22,6 +23,7 @@ import * as containment from "./prompt-injection-containment-not-detection";
 export type PostBody = { Body: ComponentType; toc: TocItem[]; faq: FaqItem[] };
 
 export const POST_BODIES: Record<Slug, PostBody> = {
+  "ai-agent-guardrail-latency": latency,
   "agentfox-0-5-release": release05,
   "ascii-smuggling-unicode-tag-prompt-injection": asciiSmuggling,
   "mcp-rug-pull-tool-poisoning": mcp,

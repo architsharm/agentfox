@@ -19,6 +19,7 @@
  */
 
 export const SLUGS = [
+  "ai-agent-guardrail-latency",
   "agentfox-0-5-release",
   "ascii-smuggling-unicode-tag-prompt-injection",
   "mcp-rug-pull-tool-poisoning",
@@ -45,7 +46,8 @@ export type BlogPost = {
     | "Coding agents"
     | "Red teaming"
     | "Audit and compliance"
-    | "Release notes";
+    | "Release notes"
+    | "Benchmarks";
   /** What a searcher types. The first is the phrase the post is built around. */
   keywords: string[];
   /** ISO dates. `updated` only when a post changed in substance. */
@@ -61,6 +63,34 @@ export type BlogPost = {
 export const AUTHOR = { name: "The AgentFox team", url: "https://github.com/architsharm/agentfox" };
 
 export const BLOG_POSTS: BlogPost[] = [
+  {
+    slug: "ai-agent-guardrail-latency",
+    title: "How much latency does a guardrail add to an AI agent? We measured 109 agent repositories",
+    seoTitle: "Guardrail latency, measured on 109 agents",
+    description:
+      "A guard check adds 49.6 ms at the median on traffic from 109 real agent repositories. What moves it, and how it compares with other guards.",
+    tag: "Benchmarks",
+    keywords: [
+      "AI guardrail latency",
+      "LLM guardrails latency",
+      "prompt injection detection latency",
+      "AI agent security performance",
+      "LLM Guard vs NeMo Guardrails",
+    ],
+    published: "2026-10-28",
+    readMinutes: 7,
+    image: {
+      src: "/blog/latency-benchmark.png",
+      alt: "The AgentFox latency benchmark page: per-check latency for the deterministic, default and extended layers.",
+      width: 1600,
+      height: 900,
+    },
+    pillars: [
+      { href: "/benchmark/latency", label: "Latency benchmark", why: "Every table behind this post." },
+      { href: "/benchmark", label: "Security benchmarks", why: "What the checks catch, including the losses." },
+      { href: "/docs/quickstart", label: "Quickstart", why: "From pip install to a governed agent." },
+    ],
+  },
   {
     slug: "agentfox-0-5-release",
     title: "AgentFox 0.5: one-command setup and multi-agent systems scanned as their agents",
