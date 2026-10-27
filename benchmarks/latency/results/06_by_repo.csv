@@ -1,0 +1,477 @@
+repo,repo_kind,layer,calls,engine_p50_ms,engine_p95_ms,http_local_p50_ms,http_local_p95_ms,avg_chars,blocked,would_act_once_enforcing,degraded_pct
+ChatDev,single agent,L1 Deterministic,36,1.6,2.0,5.4,7.8,11,0,0,0.0
+ChatDev,single agent,L2 Default (+ML classifier),36,2.4,3.2,7.9,15.1,11,0,0,0.0
+ChatDev,single agent,L2n Default (cache off),36,16.5,40.2,27.0,46.6,11,0,0,0.0
+ChatDev,single agent,L3 Extended (+similarity),36,8.8,19.0,18.0,26.1,11,0,0,0.0
+ChatDev,single agent,L4 Full (+LLM judge),8,615.0,1224.1,629.2,1237.6,11,0,0,25.0
+Controllable-RAG-Agent,multi-agent (handoffs),L1 Deterministic,70,1.6,2.0,5.7,8.4,12,0,0,0.0
+Controllable-RAG-Agent,multi-agent (handoffs),L2 Default (+ML classifier),70,2.1,2.8,6.8,10.0,12,0,0,0.0
+Controllable-RAG-Agent,multi-agent (handoffs),L2n Default (cache off),70,38.6,46.6,45.5,54.9,12,0,0,0.0
+Controllable-RAG-Agent,multi-agent (handoffs),L3 Extended (+similarity),70,12.8,15.6,18.1,22.3,12,0,0,0.0
+Controllable-RAG-Agent,multi-agent (handoffs),L4 Full (+LLM judge),13,96.0,1263.2,110.6,1274.4,13,0,0,0.0
+DB-GPT,independent agents,L1 Deterministic,50,1.7,2.0,5.7,7.3,11,0,0,0.0
+DB-GPT,independent agents,L2 Default (+ML classifier),50,2.1,2.5,6.7,8.3,11,0,0,0.0
+DB-GPT,independent agents,L2n Default (cache off),50,14.9,47.5,23.5,54.7,11,0,0,0.0
+DB-GPT,independent agents,L3 Extended (+similarity),50,7.8,15.0,14.8,22.4,11,0,0,0.0
+GenAI-Showcase,independent agents,L1 Deterministic,100,2.2,5.6,7.0,10.8,151,25,6,0.0
+GenAI-Showcase,independent agents,L2 Default (+ML classifier),100,31.0,183.6,36.9,189.8,162,25,42,0.0
+GenAI-Showcase,independent agents,L2n Default (cache off),100,43.6,91.3,49.8,101.0,122,25,28,0.0
+GenAI-Showcase,independent agents,L3 Extended (+similarity),100,35.7,216.2,41.3,223.7,159,25,24,3.0
+GenAI-Showcase,independent agents,L4 Full (+LLM judge),16,91.0,1136.0,98.5,1148.9,143,4,6,0.0
+MetaGPT,independent agents,L1 Deterministic,100,1.9,2.5,6.1,8.7,97,25,4,0.0
+MetaGPT,independent agents,L2 Default (+ML classifier),100,3.3,159.3,10.6,165.4,125,25,35,0.0
+MetaGPT,independent agents,L2n Default (cache off),100,30.7,77.4,37.3,84.2,97,25,35,0.0
+MetaGPT,independent agents,L3 Extended (+similarity),100,15.8,205.0,23.3,211.5,118,25,33,0.0
+NeMo-Agent-Toolkit,multi-agent (handoffs),L1 Deterministic,128,2.1,5.5,6.9,10.3,182,29,23,0.0
+NeMo-Agent-Toolkit,multi-agent (handoffs),L2 Default (+ML classifier),128,31.4,174.8,37.5,180.9,192,29,57,0.0
+NeMo-Agent-Toolkit,multi-agent (handoffs),L2n Default (cache off),128,47.9,206.4,55.2,213.9,194,29,57,0.8
+NeMo-Agent-Toolkit,multi-agent (handoffs),L3 Extended (+similarity),128,43.7,242.7,51.6,252.5,184,29,55,3.1
+OpenHands,single agent,L1 Deterministic,36,1.6,1.8,5.4,6.8,11,0,0,0.0
+OpenHands,single agent,L2 Default (+ML classifier),36,2.4,2.9,7.3,9.1,11,0,0,0.0
+OpenHands,single agent,L2n Default (cache off),36,21.1,41.4,28.9,47.5,11,0,0,0.0
+OpenHands,single agent,L3 Extended (+similarity),36,6.9,12.9,12.9,18.1,11,0,0,0.0
+OpenHands,single agent,L4 Full (+LLM judge),8,491.7,1573.1,504.3,1586.3,11,0,0,0.0
+PraisonAI,multi-agent (handoffs),L1 Deterministic,128,2.1,6.1,6.8,10.3,169,29,16,0.0
+PraisonAI,multi-agent (handoffs),L2 Default (+ML classifier),128,28.4,191.1,33.9,197.8,162,29,54,0.0
+PraisonAI,multi-agent (handoffs),L2n Default (cache off),128,31.4,166.1,38.3,172.7,143,29,53,0.0
+PraisonAI,multi-agent (handoffs),L3 Extended (+similarity),128,42.5,197.6,49.8,204.8,174,29,48,0.8
+Qwen-Agent,multi-agent (handoffs),L1 Deterministic,70,1.6,1.9,5.7,6.9,12,0,0,0.0
+Qwen-Agent,multi-agent (handoffs),L2 Default (+ML classifier),70,2.2,3.0,7.5,9.5,12,0,0,0.0
+Qwen-Agent,multi-agent (handoffs),L2n Default (cache off),70,39.8,48.8,46.6,56.6,12,0,0,0.0
+Qwen-Agent,multi-agent (handoffs),L3 Extended (+similarity),70,11.4,13.1,16.6,18.8,12,0,0,0.0
+RD-Agent,independent agents,L1 Deterministic,50,1.7,2.2,6.2,7.8,11,0,0,0.0
+RD-Agent,independent agents,L2 Default (+ML classifier),50,2.2,2.5,7.2,8.9,11,0,0,0.0
+RD-Agent,independent agents,L2n Default (cache off),50,19.1,48.8,26.7,56.4,11,0,0,0.0
+RD-Agent,independent agents,L3 Extended (+similarity),50,6.9,13.6,12.9,19.7,11,0,0,0.0
+RD-Agent,independent agents,L4 Full (+LLM judge),8,475.6,1026.2,493.7,1035.8,11,0,0,0.0
+SWE-agent,independent agents,L1 Deterministic,48,1.9,2.3,6.7,8.8,11,0,0,0.0
+SWE-agent,independent agents,L2 Default (+ML classifier),48,2.2,2.8,7.2,8.7,11,0,0,0.0
+SWE-agent,independent agents,L2n Default (cache off),48,19.2,53.7,29.2,64.3,11,0,0,0.0
+SWE-agent,independent agents,L3 Extended (+similarity),48,7.6,13.4,13.4,19.4,11,0,0,0.0
+TaskWeaver,independent agents,L1 Deterministic,50,1.8,2.4,6.6,8.1,11,0,0,0.0
+TaskWeaver,independent agents,L2 Default (+ML classifier),50,2.3,2.9,7.5,10.3,11,0,0,0.0
+TaskWeaver,independent agents,L2n Default (cache off),50,15.0,43.9,25.7,50.9,11,0,0,0.0
+TaskWeaver,independent agents,L3 Extended (+similarity),50,7.9,15.6,14.5,22.0,11,0,0,0.0
+TradingAgents,single agent,L1 Deterministic,36,1.8,2.1,6.3,7.7,11,0,0,0.0
+TradingAgents,single agent,L2 Default (+ML classifier),36,2.3,3.0,7.5,10.8,11,0,0,0.0
+TradingAgents,single agent,L2n Default (cache off),36,19.0,48.0,30.0,54.8,11,0,0,0.0
+TradingAgents,single agent,L3 Extended (+similarity),36,8.2,15.1,17.7,21.2,11,0,0,0.0
+Upsonic,independent agents,L1 Deterministic,100,2.2,6.3,7.2,11.3,177,25,18,0.0
+Upsonic,independent agents,L2 Default (+ML classifier),100,3.6,176.4,11.8,182.8,180,25,42,0.0
+Upsonic,independent agents,L2n Default (cache off),100,34.9,167.5,41.1,174.1,180,25,45,0.0
+Upsonic,independent agents,L3 Extended (+similarity),100,18.6,215.3,26.1,224.6,184,25,44,0.0
+Upsonic,independent agents,L4 Full (+LLM judge),16,91.4,1139.0,106.5,1155.1,211,4,7,6.2
+XAgent,independent agents,L1 Deterministic,100,2.1,5.8,7.0,10.3,178,25,17,0.0
+XAgent,independent agents,L2 Default (+ML classifier),100,3.5,184.1,12.7,190.4,186,25,24,0.0
+XAgent,independent agents,L2n Default (cache off),100,53.3,181.4,59.8,188.4,181,25,24,0.0
+XAgent,independent agents,L3 Extended (+similarity),100,23.0,233.1,32.4,240.7,187,25,25,1.0
+XAgent,independent agents,L4 Full (+LLM judge),16,102.9,996.9,118.5,1005.6,211,4,5,12.5
+adk-docs,multi-agent (handoffs),L1 Deterministic,128,2.1,6.3,7.1,11.2,185,29,20,0.0
+adk-docs,multi-agent (handoffs),L2 Default (+ML classifier),128,38.8,183.4,45.5,194.5,193,29,47,0.0
+adk-docs,multi-agent (handoffs),L2n Default (cache off),128,50.6,190.7,58.2,201.5,206,29,53,0.0
+adk-docs,multi-agent (handoffs),L3 Extended (+similarity),128,42.6,211.6,50.1,218.7,183,29,51,0.0
+adk-python,multi-agent (handoffs),L1 Deterministic,128,2.1,5.4,7.0,10.5,184,29,24,0.0
+adk-python,multi-agent (handoffs),L2 Default (+ML classifier),128,4.0,171.9,15.1,178.4,144,29,48,0.0
+adk-python,multi-agent (handoffs),L2n Default (cache off),128,39.7,182.9,49.6,190.0,185,29,54,0.0
+adk-python,multi-agent (handoffs),L3 Extended (+similarity),128,37.1,184.9,43.8,192.0,148,29,54,0.0
+adk-python,multi-agent (handoffs),L4 Full (+LLM judge),23,92.2,992.0,108.1,1009.7,229,5,9,0.0
+adk-samples,multi-agent (handoffs),L1 Deterministic,128,2.2,6.4,7.1,11.2,193,29,21,0.0
+adk-samples,multi-agent (handoffs),L2 Default (+ML classifier),128,33.8,174.4,40.9,182.4,191,29,49,0.0
+adk-samples,multi-agent (handoffs),L2n Default (cache off),128,35.2,172.9,42.1,181.1,172,29,55,0.8
+adk-samples,multi-agent (handoffs),L3 Extended (+similarity),128,46.5,225.7,56.5,234.9,174,29,43,1.6
+adk-samples,multi-agent (handoffs),L4 Full (+LLM judge),23,79.7,1327.5,92.5,1339.8,216,5,12,0.0
+ag2,independent agents,L1 Deterministic,100,2.1,6.1,7.1,10.6,149,25,12,0.0
+ag2,independent agents,L2 Default (+ML classifier),100,14.3,180.6,24.1,186.3,156,25,31,0.0
+ag2,independent agents,L2n Default (cache off),100,41.3,200.8,51.5,207.8,147,25,28,0.0
+ag2,independent agents,L3 Extended (+similarity),100,44.5,218.7,50.3,226.2,178,25,28,0.0
+agency-swarm,independent agents,L1 Deterministic,100,2.2,6.2,7.2,11.5,162,25,11,0.0
+agency-swarm,independent agents,L2 Default (+ML classifier),100,45.5,182.2,53.1,188.3,202,25,30,0.0
+agency-swarm,independent agents,L2n Default (cache off),100,56.2,166.2,63.2,175.9,177,25,28,0.0
+agency-swarm,independent agents,L3 Extended (+similarity),100,48.6,163.1,58.7,170.5,198,25,27,0.0
+agent-framework,multi-agent (handoffs),L1 Deterministic,128,2.1,5.9,7.0,10.5,179,29,15,0.0
+agent-framework,multi-agent (handoffs),L2 Default (+ML classifier),128,4.2,158.3,13.8,165.3,184,29,42,0.0
+agent-framework,multi-agent (handoffs),L2n Default (cache off),128,36.2,177.2,44.5,185.0,165,29,43,0.0
+agent-framework,multi-agent (handoffs),L3 Extended (+similarity),128,36.1,193.5,45.0,201.0,190,29,41,0.0
+agent-framework,multi-agent (handoffs),L4 Full (+LLM judge),23,91.6,1304.5,99.2,1316.2,267,5,9,0.0
+agent-squad,independent agents,L1 Deterministic,100,2.1,5.8,6.8,11.1,175,25,16,0.0
+agent-squad,independent agents,L2 Default (+ML classifier),100,31.7,163.2,38.0,170.0,175,25,38,0.0
+agent-squad,independent agents,L2n Default (cache off),100,38.1,173.7,43.6,182.2,178,25,41,0.0
+agent-squad,independent agents,L3 Extended (+similarity),100,36.4,195.5,42.7,202.6,177,25,33,1.0
+agent-starter-pack,independent agents,L1 Deterministic,100,2.1,5.7,6.9,10.4,172,25,15,0.0
+agent-starter-pack,independent agents,L2 Default (+ML classifier),100,3.5,182.2,10.7,189.6,168,25,35,0.0
+agent-starter-pack,independent agents,L2n Default (cache off),100,46.9,204.8,56.1,213.0,172,25,35,0.0
+agent-starter-pack,independent agents,L3 Extended (+similarity),100,15.2,197.1,22.0,202.9,172,25,33,0.0
+agentops,multi-agent (handoffs),L1 Deterministic,128,2.1,4.9,7.0,10.2,186,29,21,0.0
+agentops,multi-agent (handoffs),L2 Default (+ML classifier),128,35.9,184.6,41.8,191.2,209,29,41,0.0
+agentops,multi-agent (handoffs),L2n Default (cache off),128,55.0,210.5,62.6,220.2,189,29,40,0.0
+agentops,multi-agent (handoffs),L3 Extended (+similarity),128,45.6,214.3,55.8,223.9,224,29,41,1.6
+agentops,multi-agent (handoffs),L4 Full (+LLM judge),23,88.9,1071.9,97.7,1094.5,188,5,6,0.0
+agents,multi-agent (handoffs),L1 Deterministic,128,2.1,6.3,7.3,11.0,181,29,16,0.0
+agents,multi-agent (handoffs),L2 Default (+ML classifier),128,33.5,179.6,42.0,186.0,199,29,50,0.0
+agents,multi-agent (handoffs),L2n Default (cache off),128,49.3,192.8,57.5,200.8,197,29,49,0.0
+agents,multi-agent (handoffs),L3 Extended (+similarity),128,44.2,214.5,52.9,222.0,220,29,47,1.6
+agents-from-scratch,multi-agent (handoffs),L1 Deterministic,70,1.6,2.0,5.7,7.4,12,0,0,0.0
+agents-from-scratch,multi-agent (handoffs),L2 Default (+ML classifier),70,2.0,2.5,6.6,8.8,12,0,0,0.0
+agents-from-scratch,multi-agent (handoffs),L2n Default (cache off),70,41.4,54.6,47.9,66.6,12,0,0,0.0
+agents-from-scratch,multi-agent (handoffs),L3 Extended (+similarity),70,11.1,14.3,16.6,21.0,12,0,0,0.0
+agents-towards-production,multi-agent (handoffs),L1 Deterministic,128,2.3,7.1,7.3,12.2,257,29,24,0.0
+agents-towards-production,multi-agent (handoffs),L2 Default (+ML classifier),128,3.6,181.8,11.8,188.2,248,29,58,0.0
+agents-towards-production,multi-agent (handoffs),L2n Default (cache off),128,40.9,209.0,48.9,215.7,248,29,60,0.0
+agents-towards-production,multi-agent (handoffs),L3 Extended (+similarity),128,38.9,236.6,46.0,244.2,257,29,62,3.9
+agents-towards-production,multi-agent (handoffs),L4 Full (+LLM judge),23,73.4,1083.7,82.7,1095.6,270,5,14,0.0
+agno,multi-agent (handoffs),L1 Deterministic,128,2.1,5.9,7.1,10.7,187,29,25,0.0
+agno,multi-agent (handoffs),L2 Default (+ML classifier),128,24.9,175.7,37.7,183.3,189,29,43,0.0
+agno,multi-agent (handoffs),L2n Default (cache off),128,48.7,192.9,57.4,201.5,184,29,46,0.8
+agno,multi-agent (handoffs),L3 Extended (+similarity),128,45.5,214.3,54.8,221.4,177,29,43,0.0
+agno,multi-agent (handoffs),L4 Full (+LLM judge),23,73.4,997.9,89.8,1012.3,171,5,6,4.3
+ai-engineering-hub,multi-agent (handoffs),L1 Deterministic,128,2.1,6.1,7.2,10.8,183,29,20,0.0
+ai-engineering-hub,multi-agent (handoffs),L2 Default (+ML classifier),128,39.8,186.1,52.3,202.8,194,29,45,0.0
+ai-engineering-hub,multi-agent (handoffs),L2n Default (cache off),128,53.9,183.6,61.6,194.2,199,29,45,0.0
+ai-engineering-hub,multi-agent (handoffs),L3 Extended (+similarity),128,45.8,226.7,53.2,234.8,182,29,45,0.8
+aider,single agent,L1 Deterministic,36,1.6,2.0,5.5,7.9,11,0,0,0.0
+aider,single agent,L2 Default (+ML classifier),36,2.3,3.5,7.6,11.0,11,0,0,0.0
+aider,single agent,L2n Default (cache off),36,17.3,52.5,43.1,63.9,11,0,0,0.0
+aider,single agent,L3 Extended (+similarity),36,7.3,14.7,14.5,21.6,11,0,0,0.0
+atomic-agents,single agent,L1 Deterministic,36,1.6,2.0,5.5,6.6,11,0,0,0.0
+atomic-agents,single agent,L2 Default (+ML classifier),36,2.3,2.6,7.2,10.1,11,0,0,0.0
+atomic-agents,single agent,L2n Default (cache off),36,19.5,44.7,29.4,52.6,11,0,0,0.0
+atomic-agents,single agent,L3 Extended (+similarity),36,10.2,17.0,19.6,25.0,11,0,0,0.0
+private-app-3,single agent,L1 Deterministic,36,1.6,1.9,5.5,7.4,11,0,0,0.0
+private-app-3,single agent,L2 Default (+ML classifier),36,2.2,2.8,7.5,10.1,11,0,0,0.0
+private-app-3,single agent,L2n Default (cache off),36,18.3,45.0,42.0,54.3,11,0,0,0.0
+private-app-3,single agent,L3 Extended (+similarity),36,8.0,14.3,16.4,19.9,11,0,0,0.0
+private-app-3,single agent,L4 Full (+LLM judge),8,482.3,1368.3,501.4,1379.7,11,0,0,0.0
+autogen,multi-agent (handoffs),L1 Deterministic,128,2.1,6.3,7.1,10.8,203,29,15,0.0
+autogen,multi-agent (handoffs),L2 Default (+ML classifier),128,6.5,180.6,24.2,188.3,243,29,41,1.6
+autogen,multi-agent (handoffs),L2n Default (cache off),128,34.1,177.2,41.0,184.6,160,29,45,0.0
+autogen,multi-agent (handoffs),L3 Extended (+similarity),128,17.5,168.7,24.3,174.5,162,29,46,0.0
+autogen,multi-agent (handoffs),L4 Full (+LLM judge),23,75.5,1117.0,83.8,1130.6,251,5,7,0.0
+awesome-llm-apps,multi-agent (handoffs),L1 Deterministic,128,2.1,5.8,7.1,10.2,179,29,18,0.0
+awesome-llm-apps,multi-agent (handoffs),L2 Default (+ML classifier),128,4.0,188.3,14.5,199.0,162,29,44,0.0
+awesome-llm-apps,multi-agent (handoffs),L2n Default (cache off),128,53.0,197.1,61.9,204.1,202,29,50,0.0
+awesome-llm-apps,multi-agent (handoffs),L3 Extended (+similarity),128,44.3,205.7,51.8,212.6,185,29,45,2.3
+browser-use,independent agents,L1 Deterministic,50,1.6,2.0,5.5,6.8,11,0,0,0.0
+browser-use,independent agents,L2 Default (+ML classifier),50,2.1,3.0,6.8,12.0,11,0,0,0.0
+browser-use,independent agents,L2n Default (cache off),50,23.3,51.8,49.0,61.8,11,0,0,0.0
+browser-use,independent agents,L3 Extended (+similarity),50,11.0,18.3,18.9,28.0,11,0,0,0.0
+build-with-ag2,multi-agent (handoffs),L1 Deterministic,128,2.1,6.4,7.1,11.3,166,29,10,0.0
+build-with-ag2,multi-agent (handoffs),L2 Default (+ML classifier),128,3.0,67.7,9.6,77.7,130,29,51,0.0
+build-with-ag2,multi-agent (handoffs),L2n Default (cache off),128,35.2,206.6,43.2,214.6,199,29,48,1.6
+build-with-ag2,multi-agent (handoffs),L3 Extended (+similarity),128,18.0,209.8,25.9,216.6,163,29,44,0.0
+build-with-ag2,multi-agent (handoffs),L4 Full (+LLM judge),23,79.3,1299.3,88.2,1319.7,231,5,11,0.0
+chat-langchain,single agent,L1 Deterministic,100,2.3,6.6,7.3,11.2,243,25,15,0.0
+chat-langchain,single agent,L2 Default (+ML classifier),100,3.6,181.9,14.6,188.0,243,25,31,0.0
+chat-langchain,single agent,L2n Default (cache off),100,51.9,220.2,59.5,229.9,250,25,30,0.0
+chat-langchain,single agent,L3 Extended (+similarity),100,17.9,222.4,25.3,229.7,244,25,35,1.0
+chatbot,single agent,L1 Deterministic,100,1.8,2.4,6.0,8.1,72,25,6,0.0
+chatbot,single agent,L2 Default (+ML classifier),100,2.5,41.0,7.9,47.9,71,25,34,0.0
+chatbot,single agent,L2n Default (cache off),100,30.0,54.0,36.0,63.2,74,25,35,0.0
+chatbot,single agent,L3 Extended (+similarity),100,14.4,59.9,21.2,70.3,73,25,36,0.0
+claude-agent-sdk-demos,independent agents,L1 Deterministic,100,1.9,2.7,6.3,8.8,93,25,8,0.0
+claude-agent-sdk-demos,independent agents,L2 Default (+ML classifier),100,3.3,114.4,11.2,122.4,107,25,29,0.0
+claude-agent-sdk-demos,independent agents,L2n Default (cache off),100,30.0,73.3,36.5,87.1,98,25,39,0.0
+claude-agent-sdk-demos,independent agents,L3 Extended (+similarity),100,17.8,91.9,25.3,101.7,125,25,36,0.0
+claude-agent-sdk-python,independent agents,L1 Deterministic,100,1.9,5.5,6.2,10.5,114,25,6,0.0
+claude-agent-sdk-python,independent agents,L2 Default (+ML classifier),100,3.0,165.3,9.8,172.2,134,25,34,0.0
+claude-agent-sdk-python,independent agents,L2n Default (cache off),100,31.2,80.8,37.2,87.4,96,25,30,0.0
+claude-agent-sdk-python,independent agents,L3 Extended (+similarity),100,14.1,109.3,20.1,115.3,100,25,29,0.0
+claude-cookbooks,independent agents,L1 Deterministic,100,2.1,5.9,6.8,10.3,164,25,14,0.0
+claude-cookbooks,independent agents,L2 Default (+ML classifier),100,3.5,181.3,10.8,188.3,147,25,34,0.0
+claude-cookbooks,independent agents,L2n Default (cache off),100,36.5,179.5,43.6,186.6,157,25,35,0.0
+claude-cookbooks,independent agents,L3 Extended (+similarity),100,18.1,198.3,26.6,204.9,132,25,34,1.0
+claude-quickstarts,independent agents,L1 Deterministic,100,1.9,4.8,6.2,9.5,111,25,7,0.0
+claude-quickstarts,independent agents,L2 Default (+ML classifier),100,2.8,153.0,9.1,160.1,116,25,33,0.0
+claude-quickstarts,independent agents,L2n Default (cache off),100,33.7,115.7,40.2,122.3,101,25,31,0.0
+claude-quickstarts,independent agents,L3 Extended (+similarity),100,15.1,119.7,22.1,130.1,109,25,29,0.0
+company-researcher,single agent,L1 Deterministic,36,1.7,2.2,5.7,7.0,11,0,0,0.0
+company-researcher,single agent,L2 Default (+ML classifier),36,2.1,2.6,6.6,8.9,11,0,0,0.0
+company-researcher,single agent,L2n Default (cache off),36,21.1,42.7,28.7,50.1,11,0,0,0.0
+company-researcher,single agent,L3 Extended (+similarity),36,7.0,13.9,14.4,21.2,11,0,0,0.0
+composio,multi-agent (handoffs),L1 Deterministic,128,2.4,6.6,7.9,12.0,194,29,23,0.0
+composio,multi-agent (handoffs),L2 Default (+ML classifier),128,30.4,180.6,37.1,187.2,189,29,39,0.8
+composio,multi-agent (handoffs),L2n Default (cache off),128,54.8,192.9,61.5,201.5,191,29,42,0.0
+composio,multi-agent (handoffs),L3 Extended (+similarity),128,44.0,218.9,50.8,230.5,196,29,43,0.8
+crewAI,multi-agent (handoffs),L1 Deterministic,128,2.1,6.3,7.1,10.8,203,29,22,0.0
+crewAI,multi-agent (handoffs),L2 Default (+ML classifier),128,7.6,178.1,14.1,185.0,206,29,52,0.0
+crewAI,multi-agent (handoffs),L2n Default (cache off),128,37.5,166.9,43.1,174.3,194,29,54,0.0
+crewAI,multi-agent (handoffs),L3 Extended (+similarity),128,37.2,199.9,43.8,206.5,204,29,56,0.0
+crewAI-examples,multi-agent (handoffs),L1 Deterministic,128,2.2,6.5,7.5,11.5,193,29,21,0.0
+crewAI-examples,multi-agent (handoffs),L2 Default (+ML classifier),128,35.4,186.9,44.0,194.9,187,29,46,0.0
+crewAI-examples,multi-agent (handoffs),L2n Default (cache off),128,41.2,164.1,48.5,170.6,188,29,52,0.0
+crewAI-examples,multi-agent (handoffs),L3 Extended (+similarity),128,36.2,180.9,44.4,187.0,186,29,54,0.0
+crewAI-examples,multi-agent (handoffs),L4 Full (+LLM judge),23,89.8,1072.6,97.3,1089.0,233,5,11,0.0
+crewAI-tools,multi-agent (handoffs),L1 Deterministic,128,2.2,6.2,7.3,11.0,198,29,26,0.0
+crewAI-tools,multi-agent (handoffs),L2 Default (+ML classifier),128,31.5,181.5,38.3,188.0,202,29,53,0.0
+crewAI-tools,multi-agent (handoffs),L2n Default (cache off),128,46.9,186.0,53.9,192.9,205,29,55,0.0
+crewAI-tools,multi-agent (handoffs),L3 Extended (+similarity),128,39.4,199.6,46.4,208.3,203,29,57,0.0
+data-enrichment,multi-agent (handoffs),L1 Deterministic,128,2.1,6.7,7.3,12.4,199,29,28,0.0
+data-enrichment,multi-agent (handoffs),L2 Default (+ML classifier),128,6.2,162.5,11.8,169.1,190,29,62,0.0
+data-enrichment,multi-agent (handoffs),L2n Default (cache off),128,35.0,159.8,41.1,166.2,199,29,66,0.0
+data-enrichment,multi-agent (handoffs),L3 Extended (+similarity),128,34.3,191.7,40.6,199.1,202,29,61,0.0
+data-enrichment,multi-agent (handoffs),L4 Full (+LLM judge),23,62.6,1153.1,73.5,1166.9,218,5,14,0.0
+private-app-2,independent agents,L1 Deterministic,42,1.6,2.0,5.5,7.2,11,0,0,0.0
+private-app-2,independent agents,L2 Default (+ML classifier),42,2.1,2.5,6.7,8.7,11,0,0,0.0
+private-app-2,independent agents,L2n Default (cache off),42,16.4,41.6,26.8,48.5,11,0,0,0.0
+private-app-2,independent agents,L3 Extended (+similarity),42,7.8,13.7,17.4,19.6,11,0,0,0.0
+private-app-2,independent agents,L4 Full (+LLM judge),8,434.0,1234.9,443.8,1247.8,11,0,0,0.0
+deep-research,independent agents,L1 Deterministic,42,1.7,2.0,5.5,7.1,11,0,0,0.0
+deep-research,independent agents,L2 Default (+ML classifier),42,2.1,2.4,6.5,8.3,11,0,0,0.0
+deep-research,independent agents,L2n Default (cache off),42,21.3,44.9,31.1,53.2,11,0,0,0.0
+deep-research,independent agents,L3 Extended (+similarity),42,7.9,14.5,14.2,21.1,11,0,0,0.0
+deep-research,independent agents,L4 Full (+LLM judge),8,438.6,1140.8,456.9,1151.2,11,0,0,0.0
+deep-searcher,independent agents,L1 Deterministic,50,1.6,2.1,5.6,7.5,11,0,0,0.0
+deep-searcher,independent agents,L2 Default (+ML classifier),50,2.1,2.5,6.6,8.7,11,0,0,0.0
+deep-searcher,independent agents,L2n Default (cache off),50,18.8,42.7,26.5,50.4,11,0,0,0.0
+deep-searcher,independent agents,L3 Extended (+similarity),50,7.9,14.1,16.1,19.8,11,0,0,0.0
+deepagents,independent agents,L1 Deterministic,100,2.2,6.7,7.1,11.4,218,25,16,0.0
+deepagents,independent agents,L2 Default (+ML classifier),100,30.8,186.1,37.3,194.6,233,25,33,0.0
+deepagents,independent agents,L2n Default (cache off),100,42.4,201.9,48.5,209.1,224,25,35,0.0
+deepagents,independent agents,L3 Extended (+similarity),100,44.6,238.6,51.1,250.3,226,25,30,4.0
+deer-flow,independent agents,L1 Deterministic,100,2.0,5.6,6.6,10.6,175,25,10,0.0
+deer-flow,independent agents,L2 Default (+ML classifier),100,29.8,152.0,36.2,158.3,191,25,41,0.0
+deer-flow,independent agents,L2n Default (cache off),100,35.3,182.0,41.7,190.7,199,25,39,0.0
+deer-flow,independent agents,L3 Extended (+similarity),100,39.1,205.9,46.8,213.7,198,25,38,0.0
+deer-flow,independent agents,L4 Full (+LLM judge),16,63.8,1078.5,73.1,1087.8,215,4,6,6.2
+e2b-cookbook,multi-agent (handoffs),L1 Deterministic,128,2.1,5.1,7.1,10.3,143,29,14,0.0
+e2b-cookbook,multi-agent (handoffs),L2 Default (+ML classifier),128,3.4,168.8,10.9,184.7,148,29,44,0.0
+e2b-cookbook,multi-agent (handoffs),L2n Default (cache off),128,33.4,182.9,40.2,190.2,154,29,42,0.0
+e2b-cookbook,multi-agent (handoffs),L3 Extended (+similarity),128,15.7,93.2,23.1,108.3,120,29,44,0.0
+examples,multi-agent (handoffs),L1 Deterministic,128,2.2,6.6,7.2,11.1,202,29,24,0.0
+examples,multi-agent (handoffs),L2 Default (+ML classifier),128,3.4,168.7,11.1,175.1,194,29,45,0.0
+examples,multi-agent (handoffs),L2n Default (cache off),128,47.5,190.8,55.4,198.1,199,29,47,0.0
+examples,multi-agent (handoffs),L3 Extended (+similarity),128,21.2,218.5,28.7,226.4,188,29,40,0.0
+executive-ai-assistant,independent agents,L1 Deterministic,100,2.3,5.9,7.1,10.2,205,25,15,0.0
+executive-ai-assistant,independent agents,L2 Default (+ML classifier),100,3.3,188.6,10.7,194.7,205,25,26,0.0
+executive-ai-assistant,independent agents,L2n Default (cache off),100,57.3,185.5,64.1,193.2,206,25,22,1.0
+executive-ai-assistant,independent agents,L3 Extended (+similarity),100,36.8,201.9,44.7,211.0,200,25,21,0.0
+gemini-fullstack-langgraph-quickstart,single agent,L1 Deterministic,36,1.6,1.9,5.5,8.0,11,0,0,0.0
+gemini-fullstack-langgraph-quickstart,single agent,L2 Default (+ML classifier),36,2.1,2.6,6.5,8.8,11,0,0,0.0
+gemini-fullstack-langgraph-quickstart,single agent,L2n Default (cache off),36,22.1,53.5,32.5,71.1,11,0,0,0.0
+gemini-fullstack-langgraph-quickstart,single agent,L3 Extended (+similarity),36,7.6,13.7,17.4,21.5,11,0,0,0.0
+gemini-fullstack-langgraph-quickstart,single agent,L4 Full (+LLM judge),8,444.3,1182.8,457.3,1192.9,11,0,0,0.0
+get-started-with-ai-agents,single agent,L1 Deterministic,100,2.1,6.2,7.1,10.8,167,25,16,0.0
+get-started-with-ai-agents,single agent,L2 Default (+ML classifier),100,3.0,153.5,9.1,159.9,163,25,45,0.0
+get-started-with-ai-agents,single agent,L2n Default (cache off),100,36.4,198.2,43.3,207.6,164,25,45,0.0
+get-started-with-ai-agents,single agent,L3 Extended (+similarity),100,15.3,186.1,22.9,192.4,163,25,45,1.0
+gpt-researcher,independent agents,L1 Deterministic,100,2.3,6.3,7.1,11.1,218,25,16,0.0
+gpt-researcher,independent agents,L2 Default (+ML classifier),100,30.3,189.5,36.3,195.5,233,25,46,0.0
+gpt-researcher,independent agents,L2n Default (cache off),100,35.3,174.8,44.0,185.0,211,25,44,0.0
+gpt-researcher,independent agents,L3 Extended (+similarity),100,38.7,209.9,45.6,217.5,214,25,41,0.0
+hello-agents,multi-agent (handoffs),L1 Deterministic,128,2.5,6.3,7.6,11.8,215,29,22,0.0
+hello-agents,multi-agent (handoffs),L2 Default (+ML classifier),128,32.3,169.8,39.4,176.4,195,29,59,0.0
+hello-agents,multi-agent (handoffs),L2n Default (cache off),128,48.5,198.8,56.9,206.6,207,29,56,0.8
+hello-agents,multi-agent (handoffs),L3 Extended (+similarity),128,43.9,226.5,50.7,233.3,216,29,62,0.8
+hello-agents,multi-agent (handoffs),L4 Full (+LLM judge),23,62.1,1015.7,78.0,1023.4,214,5,12,0.0
+humanlayer,independent agents,L1 Deterministic,100,2.1,6.0,6.8,10.1,183,25,16,0.0
+humanlayer,independent agents,L2 Default (+ML classifier),100,3.2,180.2,10.5,186.9,184,25,34,0.0
+humanlayer,independent agents,L2n Default (cache off),100,39.0,165.7,45.3,173.5,180,25,35,0.0
+humanlayer,independent agents,L3 Extended (+similarity),100,20.9,218.4,29.4,225.2,184,25,40,1.0
+humanlayer,independent agents,L4 Full (+LLM judge),16,90.3,905.7,99.1,922.2,201,4,6,6.2
+khoj,independent agents,L1 Deterministic,48,1.6,2.1,5.5,7.3,11,0,0,0.0
+khoj,independent agents,L2 Default (+ML classifier),48,2.1,2.5,6.6,9.3,11,0,0,0.0
+khoj,independent agents,L2n Default (cache off),48,22.6,49.4,45.1,59.2,11,0,0,0.0
+khoj,independent agents,L3 Extended (+similarity),48,7.7,13.9,17.3,20.0,11,0,0,0.0
+langchain-academy,independent agents,L1 Deterministic,100,1.9,4.8,6.1,9.9,99,25,7,0.0
+langchain-academy,independent agents,L2 Default (+ML classifier),100,3.2,153.9,10.1,159.9,115,25,34,0.0
+langchain-academy,independent agents,L2n Default (cache off),100,30.2,152.9,36.5,160.5,108,25,37,0.0
+langchain-academy,independent agents,L3 Extended (+similarity),100,15.5,70.9,22.7,78.7,87,25,34,0.0
+langgraph,independent agents,L1 Deterministic,100,2.2,6.8,7.1,11.8,186,25,15,0.0
+langgraph,independent agents,L2 Default (+ML classifier),100,31.3,178.4,38.7,184.7,186,25,28,0.0
+langgraph,independent agents,L2n Default (cache off),100,64.4,203.9,73.3,213.0,184,25,29,1.0
+langgraph,independent agents,L3 Extended (+similarity),100,24.8,202.7,33.0,208.9,185,25,27,0.0
+langgraph-101,multi-agent (handoffs),L1 Deterministic,128,2.3,7.3,7.5,12.7,237,29,20,0.0
+langgraph-101,multi-agent (handoffs),L2 Default (+ML classifier),128,4.1,177.7,13.5,185.7,242,29,41,0.0
+langgraph-101,multi-agent (handoffs),L2n Default (cache off),128,37.2,198.4,44.0,206.0,221,29,56,0.8
+langgraph-101,multi-agent (handoffs),L3 Extended (+similarity),128,17.5,139.0,26.5,151.2,239,29,48,3.1
+langgraph-bigtool,single agent,L1 Deterministic,36,1.6,2.1,5.5,7.4,11,0,0,0.0
+langgraph-bigtool,single agent,L2 Default (+ML classifier),36,2.2,2.5,6.9,8.9,11,0,0,0.0
+langgraph-bigtool,single agent,L2n Default (cache off),36,20.9,52.2,31.7,60.5,11,0,0,0.0
+langgraph-bigtool,single agent,L3 Extended (+similarity),36,7.7,13.5,15.6,19.1,11,0,0,0.0
+langgraph-codeact,single agent,L1 Deterministic,36,1.6,2.1,5.5,7.4,11,0,0,0.0
+langgraph-codeact,single agent,L2 Default (+ML classifier),36,2.1,2.6,6.4,9.4,11,0,0,0.0
+langgraph-codeact,single agent,L2n Default (cache off),36,20.7,42.0,28.8,48.9,11,0,0,0.0
+langgraph-codeact,single agent,L3 Extended (+similarity),36,7.6,13.3,16.6,18.4,11,0,0,0.0
+langgraph-example,single agent,L1 Deterministic,36,1.6,2.0,5.5,6.5,11,0,0,0.0
+langgraph-example,single agent,L2 Default (+ML classifier),36,2.1,2.4,6.4,8.4,11,0,0,0.0
+langgraph-example,single agent,L2n Default (cache off),36,15.9,45.5,24.7,52.5,11,0,0,0.0
+langgraph-example,single agent,L3 Extended (+similarity),36,7.3,13.4,14.2,18.7,11,0,0,0.0
+langgraph-example,single agent,L4 Full (+LLM judge),8,447.8,1104.6,463.1,1116.7,11,0,0,0.0
+langgraph-reflection,independent agents,L1 Deterministic,100,2.3,6.3,7.4,11.5,177,25,16,0.0
+langgraph-reflection,independent agents,L2 Default (+ML classifier),100,3.6,167.7,10.4,173.5,180,25,44,0.0
+langgraph-reflection,independent agents,L2n Default (cache off),100,33.7,188.0,40.5,196.5,179,25,43,1.0
+langgraph-reflection,independent agents,L3 Extended (+similarity),100,15.2,201.1,22.0,208.9,179,25,42,0.0
+langgraph-supervisor-js,independent agents,L1 Deterministic,42,1.6,2.0,5.5,7.0,11,0,0,0.0
+langgraph-supervisor-js,independent agents,L2 Default (+ML classifier),42,2.1,2.3,6.5,10.1,11,0,0,0.0
+langgraph-supervisor-js,independent agents,L2n Default (cache off),42,35.0,80.4,47.7,114.6,11,0,0,0.0
+langgraph-supervisor-js,independent agents,L3 Extended (+similarity),42,8.0,15.1,17.7,21.7,11,0,0,0.0
+langgraph-supervisor-js,independent agents,L4 Full (+LLM judge),8,530.1,1378.1,542.2,1390.6,11,0,0,0.0
+langgraph-supervisor-py,single agent,L1 Deterministic,36,1.7,2.0,5.6,8.0,11,0,0,0.0
+langgraph-supervisor-py,single agent,L2 Default (+ML classifier),36,2.1,2.5,6.5,9.9,11,0,0,0.0
+langgraph-supervisor-py,single agent,L2n Default (cache off),36,20.1,45.5,28.1,52.9,11,0,0,0.0
+langgraph-supervisor-py,single agent,L3 Extended (+similarity),36,8.2,15.8,14.7,22.1,11,0,0,0.0
+langgraph-swarm-py,multi-agent (handoffs),L1 Deterministic,128,2.0,5.2,6.4,10.4,143,29,12,0.0
+langgraph-swarm-py,multi-agent (handoffs),L2 Default (+ML classifier),128,3.9,160.6,12.4,167.5,156,29,39,0.0
+langgraph-swarm-py,multi-agent (handoffs),L2n Default (cache off),128,43.4,186.3,53.0,193.8,158,29,42,0.0
+langgraph-swarm-py,multi-agent (handoffs),L3 Extended (+similarity),128,16.6,140.2,23.6,146.9,123,29,34,0.0
+langgraphjs,independent agents,L1 Deterministic,100,2.1,5.8,7.0,10.7,147,25,13,0.0
+langgraphjs,independent agents,L2 Default (+ML classifier),100,3.6,188.2,11.5,195.4,154,25,36,0.0
+langgraphjs,independent agents,L2n Default (cache off),100,38.7,208.8,53.6,219.9,169,25,38,1.0
+langgraphjs,independent agents,L3 Extended (+similarity),100,17.2,177.4,24.9,191.2,172,25,35,0.0
+langgraphjs,independent agents,L4 Full (+LLM judge),16,105.6,1076.8,116.7,1091.9,208,4,5,0.0
+langmem,single agent,L1 Deterministic,36,1.6,1.9,5.5,7.1,11,0,0,0.0
+langmem,single agent,L2 Default (+ML classifier),36,2.1,2.8,6.7,10.3,11,0,0,0.0
+langmem,single agent,L2n Default (cache off),36,18.6,47.3,31.4,55.5,11,0,0,0.0
+langmem,single agent,L3 Extended (+similarity),36,7.5,14.2,17.3,20.4,11,0,0,0.0
+langmem,single agent,L4 Full (+LLM judge),8,475.1,1087.9,486.3,1100.4,11,0,0,0.0
+langroid,independent agents,L1 Deterministic,50,1.6,2.1,5.6,8.0,11,0,0,0.0
+langroid,independent agents,L2 Default (+ML classifier),50,2.0,2.5,6.8,9.7,11,0,0,0.0
+langroid,independent agents,L2n Default (cache off),50,17.6,47.6,28.6,54.9,11,0,0,0.0
+langroid,independent agents,L3 Extended (+similarity),50,7.5,14.7,15.1,20.6,11,0,0,0.0
+langroid,independent agents,L4 Full (+LLM judge),8,469.8,1206.1,488.5,1218.7,11,0,0,0.0
+llama_index,independent agents,L1 Deterministic,100,2.1,6.1,7.2,10.5,170,25,15,0.0
+llama_index,independent agents,L2 Default (+ML classifier),100,15.6,181.4,24.3,187.8,169,25,45,0.0
+llama_index,independent agents,L2n Default (cache off),100,36.9,179.6,45.5,188.6,170,25,43,0.0
+llama_index,independent agents,L3 Extended (+similarity),100,13.8,185.8,22.0,192.9,169,25,45,0.0
+local-deep-researcher,single agent,L1 Deterministic,36,1.7,1.9,5.5,7.5,11,0,0,0.0
+local-deep-researcher,single agent,L2 Default (+ML classifier),36,3.0,5.1,9.4,15.6,11,0,0,0.0
+local-deep-researcher,single agent,L2n Default (cache off),36,21.0,46.5,44.9,64.4,11,0,0,0.0
+local-deep-researcher,single agent,L3 Extended (+similarity),36,8.2,16.3,18.7,24.3,11,0,0,0.0
+magentic-ui,single agent,L1 Deterministic,36,1.6,2.2,5.4,6.7,11,0,0,0.0
+magentic-ui,single agent,L2 Default (+ML classifier),36,2.7,3.4,9.3,11.3,11,0,0,0.0
+magentic-ui,single agent,L2n Default (cache off),36,18.8,47.6,28.5,55.4,11,0,0,0.0
+magentic-ui,single agent,L3 Extended (+similarity),36,9.5,18.4,17.5,25.3,11,0,0,0.0
+mcp-agent,multi-agent (handoffs),L1 Deterministic,128,2.2,6.1,7.2,11.0,190,29,22,0.0
+mcp-agent,multi-agent (handoffs),L2 Default (+ML classifier),128,9.1,179.3,18.5,186.0,177,29,48,0.0
+mcp-agent,multi-agent (handoffs),L2n Default (cache off),128,38.7,178.4,50.2,189.1,164,29,48,0.0
+mcp-agent,multi-agent (handoffs),L3 Extended (+similarity),128,47.1,216.0,54.3,223.7,180,29,49,0.0
+mem0,multi-agent (handoffs),L1 Deterministic,128,2.2,6.9,7.3,12.0,179,29,17,0.0
+mem0,multi-agent (handoffs),L2 Default (+ML classifier),128,5.0,189.3,15.4,199.0,170,29,52,0.0
+mem0,multi-agent (handoffs),L2n Default (cache off),128,32.5,164.9,39.2,172.5,140,29,50,0.0
+mem0,multi-agent (handoffs),L3 Extended (+similarity),128,37.5,201.3,46.8,211.0,166,29,53,0.0
+mem0,multi-agent (handoffs),L4 Full (+LLM judge),23,89.6,1151.2,114.3,1160.9,177,5,8,8.7
+memory-agent,single agent,L1 Deterministic,100,2.1,2.7,7.0,9.3,73,25,2,0.0
+memory-agent,single agent,L2 Default (+ML classifier),100,3.7,54.0,11.8,64.3,72,25,34,0.0
+memory-agent,single agent,L2n Default (cache off),100,27.2,47.4,33.1,54.1,74,25,33,0.0
+memory-agent,single agent,L3 Extended (+similarity),100,12.9,53.2,19.2,60.4,72,25,33,0.0
+naive-agent,single agent,L1 Deterministic,100,2.0,2.7,6.1,10.3,131,25,5,0.0
+naive-agent,single agent,L2 Default (+ML classifier),100,3.7,103.8,11.7,112.0,138,25,19,0.0
+naive-agent,single agent,L2n Default (cache off),100,44.0,101.7,53.0,109.1,131,25,17,0.0
+naive-agent,single agent,L3 Extended (+similarity),100,16.6,88.7,23.8,97.1,119,25,15,0.0
+private-app-4,independent agents,L1 Deterministic,50,1.7,2.0,5.6,8.2,11,0,0,0.0
+private-app-4,independent agents,L2 Default (+ML classifier),50,2.2,2.7,6.9,10.3,11,0,0,0.0
+private-app-4,independent agents,L2n Default (cache off),50,14.2,41.6,36.9,49.9,11,0,0,0.0
+private-app-4,independent agents,L3 Extended (+similarity),50,9.5,18.2,19.9,28.9,11,0,0,0.0
+open-deep-research,single agent,L1 Deterministic,36,1.6,1.9,5.5,8.0,11,0,0,0.0
+open-deep-research,single agent,L2 Default (+ML classifier),36,2.2,2.9,7.3,10.3,11,0,0,0.0
+open-deep-research,single agent,L2n Default (cache off),36,17.5,40.8,24.5,47.5,11,0,0,0.0
+open-deep-research,single agent,L3 Extended (+similarity),36,7.8,15.8,14.8,24.1,11,0,0,0.0
+open-deep-research,single agent,L4 Full (+LLM judge),8,453.8,1049.1,469.0,1062.0,11,0,0,0.0
+open_deep_research,multi-agent (handoffs),L1 Deterministic,128,2.2,6.4,7.2,10.9,194,29,24,0.0
+open_deep_research,multi-agent (handoffs),L2 Default (+ML classifier),128,4.5,174.2,13.8,181.6,196,29,59,0.0
+open_deep_research,multi-agent (handoffs),L2n Default (cache off),128,34.3,158.1,41.3,164.7,194,29,59,0.0
+open_deep_research,multi-agent (handoffs),L3 Extended (+similarity),128,15.6,187.1,24.6,195.7,193,29,66,0.0
+openai-agents-js,multi-agent (handoffs),L1 Deterministic,128,2.1,6.0,7.4,11.1,180,29,19,0.0
+openai-agents-js,multi-agent (handoffs),L2 Default (+ML classifier),128,21.1,185.0,41.3,192.8,161,29,40,0.0
+openai-agents-js,multi-agent (handoffs),L2n Default (cache off),128,52.0,190.5,59.2,197.5,191,29,48,0.0
+openai-agents-js,multi-agent (handoffs),L3 Extended (+similarity),128,53.7,219.4,61.8,227.3,190,29,42,0.0
+openai-agents-python,multi-agent (handoffs),L1 Deterministic,128,2.2,6.3,7.3,11.8,194,29,19,0.0
+openai-agents-python,multi-agent (handoffs),L2 Default (+ML classifier),128,8.8,174.1,28.2,180.0,181,29,45,0.0
+openai-agents-python,multi-agent (handoffs),L2n Default (cache off),128,41.0,178.0,51.7,190.7,173,29,39,0.0
+openai-agents-python,multi-agent (handoffs),L3 Extended (+similarity),128,16.7,192.2,25.4,199.7,144,29,43,0.0
+openai-cs-agents-demo,multi-agent (handoffs),L1 Deterministic,128,2.1,6.2,7.0,10.6,176,29,15,0.0
+openai-cs-agents-demo,multi-agent (handoffs),L2 Default (+ML classifier),128,4.0,155.3,13.4,162.4,174,29,56,0.0
+openai-cs-agents-demo,multi-agent (handoffs),L2n Default (cache off),128,32.3,128.5,38.3,138.7,147,29,45,0.0
+openai-cs-agents-demo,multi-agent (handoffs),L3 Extended (+similarity),128,19.9,150.6,30.0,158.1,152,29,50,0.0
+openai-cua-sample-app,independent agents,L1 Deterministic,100,1.9,2.3,6.0,7.9,72,25,2,0.0
+openai-cua-sample-app,independent agents,L2 Default (+ML classifier),100,3.2,49.5,10.8,56.9,72,25,33,0.0
+openai-cua-sample-app,independent agents,L2n Default (cache off),100,28.4,48.5,34.4,55.6,72,25,32,0.0
+openai-cua-sample-app,independent agents,L3 Extended (+similarity),100,13.2,53.1,19.0,60.1,75,25,29,0.0
+openai-cua-sample-app,independent agents,L4 Full (+LLM judge),16,59.8,1179.3,70.0,1191.5,77,4,5,0.0
+openai-realtime-agents,multi-agent (handoffs),L1 Deterministic,128,2.1,5.1,6.7,10.4,158,29,14,0.0
+openai-realtime-agents,multi-agent (handoffs),L2 Default (+ML classifier),128,4.2,154.0,13.8,163.0,140,29,33,0.0
+openai-realtime-agents,multi-agent (handoffs),L2n Default (cache off),128,41.2,173.6,48.9,181.4,151,29,35,0.8
+openai-realtime-agents,multi-agent (handoffs),L3 Extended (+similarity),128,18.0,194.1,25.9,202.8,134,29,35,0.0
+openai-responses-starter-app,single agent,L1 Deterministic,36,1.7,2.0,5.6,7.4,11,0,0,0.0
+openai-responses-starter-app,single agent,L2 Default (+ML classifier),36,2.2,2.7,7.0,8.8,11,0,0,0.0
+openai-responses-starter-app,single agent,L2n Default (cache off),36,21.0,44.1,28.9,50.5,11,0,0,0.0
+openai-responses-starter-app,single agent,L3 Extended (+similarity),36,7.7,13.4,15.5,19.0,11,0,0,0.0
+openai-responses-starter-app,single agent,L4 Full (+LLM judge),8,464.8,1035.3,480.4,1048.8,11,0,0,0.0
+openinference,multi-agent (handoffs),L1 Deterministic,128,2.2,6.2,7.3,10.7,203,29,26,0.0
+openinference,multi-agent (handoffs),L2 Default (+ML classifier),128,4.8,169.9,18.8,177.4,182,29,47,0.0
+openinference,multi-agent (handoffs),L2n Default (cache off),128,41.3,199.6,50.5,209.1,190,29,45,0.0
+openinference,multi-agent (handoffs),L3 Extended (+similarity),128,38.9,223.7,46.1,231.5,195,29,49,0.8
+openllmetry,multi-agent (handoffs),L1 Deterministic,128,2.1,6.4,7.1,11.3,170,29,13,0.0
+openllmetry,multi-agent (handoffs),L2 Default (+ML classifier),128,3.7,173.6,13.5,179.9,187,29,49,0.0
+openllmetry,multi-agent (handoffs),L2n Default (cache off),128,41.6,197.7,50.9,207.1,184,29,48,0.8
+openllmetry,multi-agent (handoffs),L3 Extended (+similarity),128,15.2,206.4,25.3,213.6,163,29,43,0.0
+owl,independent agents,L1 Deterministic,100,1.9,2.6,6.2,9.3,101,25,7,0.0
+owl,independent agents,L2 Default (+ML classifier),100,3.2,151.9,10.3,159.0,128,25,35,0.0
+owl,independent agents,L2n Default (cache off),100,36.4,124.0,44.3,132.1,111,25,38,0.0
+owl,independent agents,L3 Extended (+similarity),100,14.8,104.2,21.8,112.4,128,25,33,1.0
+private-app-1,independent agents,L1 Deterministic,100,2.1,6.1,7.3,10.9,179,25,15,0.0
+private-app-1,independent agents,L2 Default (+ML classifier),100,34.9,160.7,43.3,168.8,176,25,33,0.0
+private-app-1,independent agents,L2n Default (cache off),100,45.7,183.1,55.9,190.3,175,25,38,1.0
+private-app-1,independent agents,L3 Extended (+similarity),100,41.0,201.8,49.3,208.9,179,25,36,0.0
+private-app-1,independent agents,L4 Full (+LLM judge),16,84.4,1133.8,100.5,1147.8,212,4,7,6.2
+pydantic-ai,independent agents,L1 Deterministic,100,2.1,6.1,7.2,10.9,208,25,16,0.0
+pydantic-ai,independent agents,L2 Default (+ML classifier),100,35.2,186.1,43.8,193.4,183,25,27,1.0
+pydantic-ai,independent agents,L2n Default (cache off),100,52.9,191.1,59.6,198.5,205,25,25,0.0
+pydantic-ai,independent agents,L3 Extended (+similarity),100,39.3,221.5,50.2,231.0,183,25,22,1.0
+python-sdk,single agent,L1 Deterministic,36,1.7,2.4,5.9,9.2,11,0,0,0.0
+python-sdk,single agent,L2 Default (+ML classifier),36,2.2,2.6,6.8,8.7,11,0,0,0.0
+python-sdk,single agent,L2n Default (cache off),36,21.0,43.3,44.7,53.0,11,0,0,0.0
+python-sdk,single agent,L3 Extended (+similarity),36,8.5,15.5,18.3,24.5,11,0,0,0.0
+python-sdk,single agent,L4 Full (+LLM judge),8,470.5,1166.2,482.3,1178.7,11,0,0,0.0
+react-agent,single agent,L1 Deterministic,100,2.1,5.8,7.0,10.5,177,25,16,0.0
+react-agent,single agent,L2 Default (+ML classifier),100,3.6,168.0,11.6,176.8,182,25,36,0.0
+react-agent,single agent,L2n Default (cache off),100,46.5,180.5,54.1,188.3,181,25,33,0.0
+react-agent,single agent,L3 Extended (+similarity),100,12.5,192.3,20.2,200.0,184,25,37,0.0
+react-agent,single agent,L4 Full (+LLM judge),16,81.0,994.7,91.9,1011.3,206,4,6,6.2
+recipes,independent agents,L1 Deterministic,100,2.0,5.0,6.2,9.1,117,25,7,0.0
+recipes,independent agents,L2 Default (+ML classifier),100,3.5,110.0,11.2,159.4,117,25,30,1.0
+recipes,independent agents,L2n Default (cache off),100,29.3,54.7,35.3,78.2,98,25,32,0.0
+recipes,independent agents,L3 Extended (+similarity),100,15.4,101.7,22.1,109.6,116,25,30,0.0
+redteam-live,multi-agent (handoffs),L1 Deterministic,128,2.1,5.6,6.3,11.2,153,29,10,0.0
+redteam-live,multi-agent (handoffs),L2 Default (+ML classifier),128,3.0,72.2,9.6,101.5,134,29,33,0.0
+redteam-live,multi-agent (handoffs),L2n Default (cache off),128,40.5,102.0,49.4,138.4,145,29,27,0.0
+redteam-live,multi-agent (handoffs),L3 Extended (+similarity),128,13.6,56.9,20.1,85.1,128,29,27,0.0
+redteam-live-lang,single agent,L1 Deterministic,100,2.1,5.5,6.4,10.7,155,25,7,0.0
+redteam-live-lang,single agent,L2 Default (+ML classifier),100,3.4,127.7,10.8,154.8,147,25,20,0.0
+redteam-live-lang,single agent,L2n Default (cache off),100,42.4,102.9,49.7,110.3,148,25,18,0.0
+redteam-live-lang,single agent,L3 Extended (+similarity),100,14.5,73.8,21.4,84.4,125,25,15,0.0
+retrieval-agent-template,single agent,L1 Deterministic,36,1.7,1.9,5.6,8.2,11,0,0,0.0
+retrieval-agent-template,single agent,L2 Default (+ML classifier),36,2.6,3.4,8.6,13.2,11,0,0,0.0
+retrieval-agent-template,single agent,L2n Default (cache off),36,14.0,43.1,27.6,49.8,11,0,0,0.0
+retrieval-agent-template,single agent,L3 Extended (+similarity),36,7.9,16.1,17.3,25.6,11,0,0,0.0
+retrieval-agent-template,single agent,L4 Full (+LLM judge),8,450.0,1737.4,470.9,1748.4,11,0,0,0.0
+samples,multi-agent (handoffs),L1 Deterministic,128,2.4,6.4,7.5,11.3,234,29,22,0.0
+samples,multi-agent (handoffs),L2 Default (+ML classifier),128,4.1,168.5,14.3,186.1,221,29,42,0.0
+samples,multi-agent (handoffs),L2n Default (cache off),128,43.9,196.5,51.8,203.8,206,29,42,0.0
+samples,multi-agent (handoffs),L3 Extended (+similarity),128,42.8,199.8,51.2,219.6,244,29,45,1.6
+samples,multi-agent (handoffs),L4 Full (+LLM judge),23,81.5,1163.1,89.0,1179.6,277,5,9,0.0
+semantic-kernel,independent agents,L1 Deterministic,100,2.1,5.2,6.9,10.1,171,25,15,0.0
+semantic-kernel,independent agents,L2 Default (+ML classifier),100,3.5,179.4,12.1,186.5,181,25,30,0.0
+semantic-kernel,independent agents,L2n Default (cache off),100,50.3,183.0,57.5,190.3,173,25,32,0.0
+semantic-kernel,independent agents,L3 Extended (+similarity),100,27.4,224.6,45.3,232.1,177,25,31,1.0
+smolagents,multi-agent (handoffs),L1 Deterministic,128,2.1,6.0,7.0,11.2,166,29,14,0.0
+smolagents,multi-agent (handoffs),L2 Default (+ML classifier),128,3.3,159.8,11.2,169.5,162,29,41,0.0
+smolagents,multi-agent (handoffs),L2n Default (cache off),128,36.6,164.3,42.9,170.8,145,29,41,0.0
+smolagents,multi-agent (handoffs),L3 Extended (+similarity),128,20.7,194.8,31.8,202.2,163,29,44,0.0
+smolagents,multi-agent (handoffs),L4 Full (+LLM judge),23,70.2,1153.5,81.1,1170.1,229,5,9,13.0
+storm,independent agents,L1 Deterministic,50,1.6,2.0,5.5,8.9,11,0,0,0.0
+storm,independent agents,L2 Default (+ML classifier),50,2.3,2.8,7.3,11.0,11,0,0,0.0
+storm,independent agents,L2n Default (cache off),50,13.7,40.8,33.2,47.8,11,0,0,0.0
+storm,independent agents,L3 Extended (+similarity),50,7.6,13.9,17.3,19.6,11,0,0,0.0
+swarm,multi-agent (handoffs),L1 Deterministic,128,1.9,2.8,6.3,9.9,109,29,5,0.0
+swarm,multi-agent (handoffs),L2 Default (+ML classifier),128,3.1,59.7,10.2,69.4,95,29,35,0.0
+swarm,multi-agent (handoffs),L2n Default (cache off),128,32.0,143.2,38.5,150.0,113,29,39,0.0
+swarm,multi-agent (handoffs),L3 Extended (+similarity),128,14.5,62.8,21.1,74.4,88,29,39,0.0
+swarm,multi-agent (handoffs),L4 Full (+LLM judge),23,56.2,1139.4,70.2,1159.3,113,5,9,0.0
+swarms,multi-agent (handoffs),L1 Deterministic,128,2.1,5.9,7.6,10.6,156,29,16,0.0
+swarms,multi-agent (handoffs),L2 Default (+ML classifier),128,4.0,166.4,15.8,173.9,144,29,42,0.0
+swarms,multi-agent (handoffs),L2n Default (cache off),128,34.5,182.4,44.5,198.8,135,29,44,1.6
+swarms,multi-agent (handoffs),L3 Extended (+similarity),128,16.9,179.7,24.2,190.6,152,29,47,0.0
+vanna,independent agents,L1 Deterministic,48,1.7,1.9,5.5,8.0,11,0,0,0.0
+vanna,independent agents,L2 Default (+ML classifier),48,2.3,2.7,7.2,10.2,11,0,0,0.0
+vanna,independent agents,L2n Default (cache off),48,22.0,54.1,45.9,93.4,11,0,0,0.0
+vanna,independent agents,L3 Extended (+similarity),48,11.3,13.5,17.4,19.6,11,0,0,0.0

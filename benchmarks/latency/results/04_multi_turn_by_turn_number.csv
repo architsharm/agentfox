@@ -1,0 +1,24 @@
+layer,turn_in_session,calls,engine_p50_ms,engine_p95_ms,degraded_pct
+L1 Deterministic,1,1092,1.9,2.5,0.0
+L1 Deterministic,2,1092,1.9,2.5,0.0
+L1 Deterministic,3,1092,2.1,6.3,0.0
+L1 Deterministic,4,1092,2.1,6.4,0.0
+L1 Deterministic,5,1092,2.1,6.3,0.0
+L2 Default (+ML classifier),1,1092,2.9,55.4,0.0
+L2 Default (+ML classifier),2,1092,2.9,46.5,0.0
+L2 Default (+ML classifier),3,1092,3.7,183.8,0.1
+L2 Default (+ML classifier),4,1092,3.6,181.9,0.0
+L2 Default (+ML classifier),5,1092,3.7,183.3,0.2
+L2n Default (cache off),1,1092,36.1,70.8,0.0
+L2n Default (cache off),2,1092,31.5,57.3,0.0
+L2n Default (cache off),3,1092,38.5,194.3,0.5
+L2n Default (cache off),4,1092,35.9,196.6,0.5
+L2n Default (cache off),5,1092,37.0,189.5,0.1
+L3 Extended (+similarity),1,1092,12.8,65.5,0.0
+L3 Extended (+similarity),2,1092,12.7,53.2,0.0
+L3 Extended (+similarity),3,1092,16.2,213.2,1.1
+L3 Extended (+similarity),4,1092,17.6,215.6,1.0
+L3 Extended (+similarity),5,1092,17.8,212.6,0.4
+L4 Full (+LLM judge),1,128,74.1,1265.8,0.0
+L4 Full (+LLM judge),2,128,90.6,1083.5,4.7
+L4 Full (+LLM judge),3,128,90.1,1282.2,1.6

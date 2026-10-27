@@ -1,0 +1,16 @@
+layer,scenario,calls,engine_p50_ms_per_call,engine_p95_ms_per_call,agent_turns,engine_p50_ms_per_agent_turn,engine_p95_ms_per_agent_turn,degraded_pct
+L1 Deterministic,multi_agent,1124,2.2,6.5,164,17.2,30.9,0.0
+L1 Deterministic,multi_turn,5460,2.0,5.9,1635,7.8,16.6,0.0
+L1 Deterministic,single_turn,3344,2.0,5.7,942,8.0,16.3,0.0
+L2 Default (+ML classifier),multi_agent,1124,7.7,166.3,164,232.4,557.3,0.1
+L2 Default (+ML classifier),multi_turn,5460,3.1,170.2,1635,15.3,403.2,0.1
+L2 Default (+ML classifier),single_turn,3344,3.5,169.9,942,72.0,407.1,0.0
+L2n Default (cache off),multi_agent,1124,50.4,192.6,164,421.6,887.4,0.2
+L2n Default (cache off),multi_turn,5460,35.1,178.1,1635,116.7,438.4,0.2
+L2n Default (cache off),single_turn,3344,37.3,175.6,942,140.9,423.8,0.1
+L3 Extended (+similarity),multi_agent,1124,37.2,205.0,164,312.2,675.6,0.4
+L3 Extended (+similarity),multi_turn,5460,13.9,196.6,1635,66.1,487.1,0.5
+L3 Extended (+similarity),single_turn,3344,17.6,196.7,942,105.5,471.0,0.4
+L4 Full (+LLM judge),multi_agent,110,70.9,1138.0,16,2324.6,2662.1,0.0
+L4 Full (+LLM judge),multi_turn,384,80.5,1201.8,120,1152.4,1574.1,2.1
+L4 Full (+LLM judge),single_turn,128,92.3,1202.4,40,1251.5,1498.0,5.5
