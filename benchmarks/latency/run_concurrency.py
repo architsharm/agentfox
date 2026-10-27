@@ -20,7 +20,10 @@ msgs = []
 for f in sorted(maps.glob("*.json"))[:40]:
     m = json.loads(f.read_text())
     if m["structure"].get("agents"):
-        msgs += [{"message": a.message} for a in build_suite(m["structure"])[:10]]
+        # Runnable items only: a skipped item has an empty message, which every layer
+        # answers in a few milliseconds and would pass for throughput.
+        runnable = [a for a in build_suite(m["structure"]) if not a.skip and a.message]
+        msgs += [{"message": a.message} for a in runnable[:10]]
 results = {}
 for name in [
     "L1 Deterministic",

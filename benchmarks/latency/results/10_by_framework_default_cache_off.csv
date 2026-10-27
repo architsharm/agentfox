@@ -1,36 +1,36 @@
 framework,repos,calls,p50_ms,p95_ms
-LangGraph,26,1954,36.0,171.6
-Agno,8,1024,46.0,195.8
-AutoGen,7,840,43.7,192.2
-CrewAI,6,768,42.3,189.3
-custom,9,610,35.9,134.9
-JavaScript,6,564,39.6,194.1
-Google ADK,4,484,35.4,180.0
-OpenAI Agents SDK,4,484,43.2,178.3
-Claude Agent SDK,3,300,32.0,154.2
-Agent,2,256,33.0,174.7
-Vercel AI SDK,2,200,32.1,110.2
-LangChain,2,200,52.4,180.9
-Pydantic AI,3,186,39.7,178.1
-browser_use,2,178,34.5,175.8
-openai calls,3,172,28.4,46.9
-Anthropic SDK,2,170,33.3,158.3
-AgentSpanData,1,128,41.0,178.0
-OpenAI Swarm,1,128,32.0,143.2
-MetaGPT,1,100,30.7,77.4
-upsonic,1,100,34.9,167.5
-XAgent,1,100,53.3,181.4
-ag2,1,100,41.3,200.8
-managed_deepagents,1,100,51.9,220.2
-agent,1,100,33.7,115.7
-Azure AI Agents,1,100,36.4,198.2
-LlamaIndex,1,100,36.9,179.6
-CAMEL,1,100,36.4,124.0
-vercel-ai calls,2,78,18.1,44.8
-abc,1,50,14.9,47.5
-taskweaver,1,50,15.0,43.9
-khoj,1,48,22.6,49.4
-vanna,1,48,22.0,54.1
-litellm calls,1,36,17.3,52.5
-progressive_disclosure,1,36,19.5,44.7
-OpenAI SDK,1,36,21.0,44.1
+LangGraph,26,2106,49.3,256.0
+Agno,8,1024,51.4,266.7
+AutoGen,7,840,50.9,266.7
+CrewAI,6,768,51.5,267.1
+custom,9,626,49.3,170.8
+JavaScript,6,578,50.5,258.4
+Google ADK,4,484,50.4,256.4
+OpenAI Agents SDK,4,484,49.4,255.1
+Claude Agent SDK,3,300,49.4,162.9
+Agent,2,256,51.5,263.7
+openai calls,3,200,48.9,55.3
+Pydantic AI,3,200,49.4,256.7
+Vercel AI SDK,2,200,49.4,255.0
+LangChain,2,200,49.6,124.4
+browser_use,2,178,49.0,146.3
+Anthropic SDK,2,178,48.8,184.2
+AgentSpanData,1,128,51.1,265.5
+OpenAI Swarm,1,128,48.9,83.9
+MetaGPT,1,100,50.8,261.3
+upsonic,1,100,51.0,261.4
+XAgent,1,100,52.3,258.3
+ag2,1,100,49.8,260.7
+managed_deepagents,1,100,62.9,267.6
+agent,1,100,49.6,240.9
+vercel-ai calls,2,100,48.8,52.6
+Azure AI Agents,1,100,49.7,266.4
+LlamaIndex,1,100,49.9,258.8
+CAMEL,1,100,50.9,262.6
+abc,1,50,49.5,79.4
+taskweaver,1,50,49.6,54.1
+litellm calls,1,50,48.4,52.8
+progressive_disclosure,1,50,48.4,103.3
+khoj,1,50,49.2,96.3
+OpenAI SDK,1,50,48.9,54.9
+vanna,1,50,48.9,96.5

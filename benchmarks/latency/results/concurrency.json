@@ -2,133 +2,133 @@
  "L1 Deterministic": {
   "1": {
    "clients": 1,
-   "throughput_rps": 43.8,
-   "p50_ms": 7.6,
-   "p95_ms": 9.9,
-   "p99_ms": 41.4,
+   "throughput_rps": 94.4,
+   "p50_ms": 6.4,
+   "p95_ms": 10.5,
+   "p99_ms": 11.9,
    "runs": [
     {
      "workers": 1,
      "calls": 200,
-     "throughput_rps": 42.9,
-     "p50_ms": 7.8,
-     "p95_ms": 10.9,
-     "p99_ms": 43.1
-    },
-    {
-     "workers": 1,
-     "calls": 200,
-     "throughput_rps": 43.8,
-     "p50_ms": 7.6,
-     "p95_ms": 9.9,
-     "p99_ms": 41.4
-    },
-    {
-     "workers": 1,
-     "calls": 200,
-     "throughput_rps": 47.4,
+     "throughput_rps": 94.7,
      "p50_ms": 6.3,
-     "p95_ms": 9.0,
-     "p99_ms": 39.5
+     "p95_ms": 10.5,
+     "p99_ms": 11.1
+    },
+    {
+     "workers": 1,
+     "calls": 200,
+     "throughput_rps": 94.4,
+     "p50_ms": 6.4,
+     "p95_ms": 10.0,
+     "p99_ms": 11.9
+    },
+    {
+     "workers": 1,
+     "calls": 200,
+     "throughput_rps": 92.7,
+     "p50_ms": 6.4,
+     "p95_ms": 10.7,
+     "p99_ms": 12.3
     }
    ]
   },
   "4": {
    "clients": 4,
-   "throughput_rps": 45.3,
-   "p50_ms": 8.9,
-   "p95_ms": 32.2,
-   "p99_ms": 56.7,
+   "throughput_rps": 139.2,
+   "p50_ms": 14.1,
+   "p95_ms": 42.7,
+   "p99_ms": 169.5,
    "runs": [
     {
      "workers": 4,
      "calls": 200,
-     "throughput_rps": 44.1,
-     "p50_ms": 7.9,
-     "p95_ms": 21.7,
-     "p99_ms": 53.0
+     "throughput_rps": 143.0,
+     "p50_ms": 11.6,
+     "p95_ms": 41.5,
+     "p99_ms": 213.9
     },
     {
      "workers": 4,
      "calls": 200,
-     "throughput_rps": 45.3,
-     "p50_ms": 8.9,
-     "p95_ms": 32.2,
-     "p99_ms": 56.7
+     "throughput_rps": 139.2,
+     "p50_ms": 14.1,
+     "p95_ms": 42.7,
+     "p99_ms": 111.3
     },
     {
      "workers": 4,
      "calls": 200,
-     "throughput_rps": 46.4,
-     "p50_ms": 15.3,
-     "p95_ms": 66.0,
-     "p99_ms": 112.4
+     "throughput_rps": 132.8,
+     "p50_ms": 14.9,
+     "p95_ms": 91.9,
+     "p99_ms": 169.5
     }
    ]
   },
   "8": {
    "clients": 8,
-   "throughput_rps": 22.5,
-   "p50_ms": 28.5,
-   "p95_ms": 81.7,
-   "p99_ms": 127.4,
+   "throughput_rps": 138.7,
+   "p50_ms": 20.6,
+   "p95_ms": 224.4,
+   "p99_ms": 487.9,
    "runs": [
     {
      "workers": 8,
      "calls": 200,
-     "throughput_rps": 23.8,
-     "p50_ms": 28.5,
-     "p95_ms": 98.5,
-     "p99_ms": 139.1
+     "throughput_rps": 138.7,
+     "p50_ms": 20.6,
+     "p95_ms": 224.4,
+     "p99_ms": 487.9
     },
     {
      "workers": 8,
      "calls": 200,
-     "throughput_rps": 22.5,
-     "p50_ms": 29.4,
-     "p95_ms": 81.7,
-     "p99_ms": 127.4
+     "throughput_rps": 139.7,
+     "p50_ms": 17.6,
+     "p95_ms": 256.9,
+     "p99_ms": 594.3
     },
     {
      "workers": 8,
      "calls": 200,
-     "throughput_rps": 16.9,
-     "p50_ms": 23.7,
-     "p95_ms": 59.9,
-     "p99_ms": 94.1
+     "throughput_rps": 129.9,
+     "p50_ms": 20.6,
+     "p95_ms": 176.0,
+     "p99_ms": 480.7
     }
    ]
   },
   "16": {
    "clients": 16,
-   "throughput_rps": 17.7,
-   "p50_ms": 23.3,
-   "p95_ms": 214.0,
-   "p99_ms": 314.7,
+   "throughput_rps": 115.5,
+   "p50_ms": 25.7,
+   "p95_ms": 643.7,
+   "p99_ms": 931.3,
    "runs": [
     {
      "workers": 16,
      "calls": 200,
-     "throughput_rps": 16.4,
-     "p50_ms": 21.7,
-     "p95_ms": 210.9,
-     "p99_ms": 400.4
-    },
-    {
-     "workers": 16,
-     "calls": 200,
-     "throughput_rps": 17.7,
-     "p50_ms": 27.2,
-     "p95_ms": 232.4,
-     "p99_ms": 314.7
-    },
-    {
-     "workers": 16,
-     "calls": 200,
-     "throughput_rps": 24.7,
+     "throughput_rps": 112.3,
      "p50_ms": 23.3,
-     "p95_ms": 214.0,
-     "p99_ms": 257.4
+     "p95_ms": 643.7,
+     "p99_ms": 1269.7
+    },
+    {
+     "workers": 16,
+     "calls": 200,
+     "throughput_rps": 115.5,
+     "p50_ms": 25.7,
+     "p95_ms": 669.8,
+     "p99_ms": 926.0
+    },
+    {
+     "workers": 16,
+     "calls": 200,
+     "throughput_rps": 123.8,
+     "p50_ms": 30.8,
+     "p95_ms": 577.0,
+     "p99_ms": 931.3
     }
    ]
   }
@@ -136,133 +136,133 @@
  "L2 Default (+ML classifier)": {
   "1": {
    "clients": 1,
-   "throughput_rps": 39.6,
-   "p50_ms": 8.1,
-   "p95_ms": 15.6,
-   "p99_ms": 44.9,
+   "throughput_rps": 88.2,
+   "p50_ms": 7.1,
+   "p95_ms": 11.2,
+   "p99_ms": 11.8,
    "runs": [
     {
      "workers": 1,
      "calls": 200,
-     "throughput_rps": 34.3,
-     "p50_ms": 8.1,
-     "p95_ms": 45.3,
-     "p99_ms": 70.2
-    },
-    {
-     "workers": 1,
-     "calls": 200,
-     "throughput_rps": 39.6,
-     "p50_ms": 8.6,
-     "p95_ms": 15.6,
-     "p99_ms": 44.9
-    },
-    {
-     "workers": 1,
-     "calls": 200,
-     "throughput_rps": 43.5,
+     "throughput_rps": 30.8,
      "p50_ms": 7.9,
-     "p95_ms": 11.6,
-     "p99_ms": 43.1
+     "p95_ms": 62.0,
+     "p99_ms": 67.2
+    },
+    {
+     "workers": 1,
+     "calls": 200,
+     "throughput_rps": 89.8,
+     "p50_ms": 7.0,
+     "p95_ms": 11.0,
+     "p99_ms": 11.8
+    },
+    {
+     "workers": 1,
+     "calls": 200,
+     "throughput_rps": 88.2,
+     "p50_ms": 7.1,
+     "p95_ms": 11.2,
+     "p99_ms": 11.8
     }
    ]
   },
   "4": {
    "clients": 4,
-   "throughput_rps": 42.2,
-   "p50_ms": 8.9,
-   "p95_ms": 34.7,
-   "p99_ms": 65.9,
+   "throughput_rps": 127.5,
+   "p50_ms": 15.4,
+   "p95_ms": 77.9,
+   "p99_ms": 237.3,
    "runs": [
     {
      "workers": 4,
      "calls": 200,
-     "throughput_rps": 42.2,
-     "p50_ms": 8.6,
-     "p95_ms": 25.0,
-     "p99_ms": 56.5
+     "throughput_rps": 121.0,
+     "p50_ms": 15.4,
+     "p95_ms": 110.4,
+     "p99_ms": 237.3
     },
     {
      "workers": 4,
      "calls": 200,
-     "throughput_rps": 43.9,
-     "p50_ms": 8.9,
-     "p95_ms": 34.7,
-     "p99_ms": 65.9
+     "throughput_rps": 127.5,
+     "p50_ms": 15.3,
+     "p95_ms": 65.4,
+     "p99_ms": 268.7
     },
     {
      "workers": 4,
      "calls": 200,
-     "throughput_rps": 42.0,
-     "p50_ms": 9.1,
-     "p95_ms": 36.1,
-     "p99_ms": 69.9
+     "throughput_rps": 128.8,
+     "p50_ms": 17.5,
+     "p95_ms": 77.9,
+     "p99_ms": 181.4
     }
    ]
   },
   "8": {
    "clients": 8,
-   "throughput_rps": 17.2,
-   "p50_ms": 25.4,
-   "p95_ms": 78.7,
-   "p99_ms": 119.8,
+   "throughput_rps": 116.4,
+   "p50_ms": 22.7,
+   "p95_ms": 230.9,
+   "p99_ms": 694.8,
    "runs": [
     {
      "workers": 8,
      "calls": 200,
-     "throughput_rps": 19.5,
-     "p50_ms": 28.6,
-     "p95_ms": 95.5,
-     "p99_ms": 129.2
+     "throughput_rps": 116.4,
+     "p50_ms": 24.3,
+     "p95_ms": 230.9,
+     "p99_ms": 607.6
     },
     {
      "workers": 8,
      "calls": 200,
-     "throughput_rps": 17.2,
-     "p50_ms": 25.4,
-     "p95_ms": 62.7,
-     "p99_ms": 86.0
+     "throughput_rps": 120.6,
+     "p50_ms": 22.7,
+     "p95_ms": 197.8,
+     "p99_ms": 694.8
     },
     {
      "workers": 8,
      "calls": 200,
-     "throughput_rps": 16.5,
-     "p50_ms": 23.5,
-     "p95_ms": 78.7,
-     "p99_ms": 119.8
+     "throughput_rps": 108.3,
+     "p50_ms": 22.4,
+     "p95_ms": 283.4,
+     "p99_ms": 838.5
     }
    ]
   },
   "16": {
    "clients": 16,
-   "throughput_rps": 19.9,
-   "p50_ms": 25.0,
-   "p95_ms": 265.1,
-   "p99_ms": 394.5,
+   "throughput_rps": 112.1,
+   "p50_ms": 38.9,
+   "p95_ms": 598.1,
+   "p99_ms": 1023.1,
    "runs": [
     {
      "workers": 16,
      "calls": 200,
-     "throughput_rps": 18.8,
-     "p50_ms": 25.0,
-     "p95_ms": 273.2,
-     "p99_ms": 394.5
+     "throughput_rps": 112.2,
+     "p50_ms": 31.4,
+     "p95_ms": 589.8,
+     "p99_ms": 1021.3
     },
     {
      "workers": 16,
      "calls": 200,
-     "throughput_rps": 19.9,
-     "p50_ms": 24.1,
-     "p95_ms": 265.1,
-     "p99_ms": 407.2
+     "throughput_rps": 112.1,
+     "p50_ms": 38.9,
+     "p95_ms": 598.1,
+     "p99_ms": 1322.7
     },
     {
      "workers": 16,
      "calls": 200,
-     "throughput_rps": 20.6,
-     "p50_ms": 28.4,
-     "p95_ms": 234.9,
-     "p99_ms": 295.3
+     "throughput_rps": 105.6,
+     "p50_ms": 40.7,
+     "p95_ms": 642.3,
+     "p99_ms": 1023.1
     }
    ]
   }
@@ -270,133 +270,133 @@
  "L2n Default (cache off)": {
   "1": {
    "clients": 1,
-   "throughput_rps": 31.0,
-   "p50_ms": 8.7,
-   "p95_ms": 41.8,
-   "p99_ms": 70.5,
+   "throughput_rps": 16.8,
+   "p50_ms": 54.1,
+   "p95_ms": 60.7,
+   "p99_ms": 64.0,
    "runs": [
     {
      "workers": 1,
      "calls": 200,
-     "throughput_rps": 31.0,
-     "p50_ms": 8.7,
-     "p95_ms": 57.1,
-     "p99_ms": 72.0
+     "throughput_rps": 16.9,
+     "p50_ms": 53.9,
+     "p95_ms": 60.7,
+     "p99_ms": 64.0
     },
     {
      "workers": 1,
      "calls": 200,
-     "throughput_rps": 30.2,
-     "p50_ms": 9.6,
-     "p95_ms": 41.8,
-     "p99_ms": 70.5
+     "throughput_rps": 16.8,
+     "p50_ms": 54.1,
+     "p95_ms": 60.6,
+     "p99_ms": 63.6
     },
     {
      "workers": 1,
      "calls": 200,
-     "throughput_rps": 33.3,
-     "p50_ms": 8.2,
-     "p95_ms": 40.0,
-     "p99_ms": 51.8
+     "throughput_rps": 16.6,
+     "p50_ms": 54.7,
+     "p95_ms": 63.0,
+     "p99_ms": 68.1
     }
    ]
   },
   "4": {
    "clients": 4,
-   "throughput_rps": 39.7,
-   "p50_ms": 11.0,
-   "p95_ms": 129.1,
-   "p99_ms": 170.2,
+   "throughput_rps": 30.1,
+   "p50_ms": 125.0,
+   "p95_ms": 150.0,
+   "p99_ms": 163.6,
    "runs": [
     {
      "workers": 4,
      "calls": 200,
-     "throughput_rps": 39.1,
-     "p50_ms": 13.6,
+     "throughput_rps": 31.0,
+     "p50_ms": 119.4,
+     "p95_ms": 145.7,
+     "p99_ms": 246.7
+    },
+    {
+     "workers": 4,
+     "calls": 200,
+     "throughput_rps": 30.0,
+     "p50_ms": 125.0,
+     "p95_ms": 153.3,
+     "p99_ms": 163.6
+    },
+    {
+     "workers": 4,
+     "calls": 200,
+     "throughput_rps": 30.1,
+     "p50_ms": 125.0,
      "p95_ms": 150.0,
-     "p99_ms": 184.9
-    },
-    {
-     "workers": 4,
-     "calls": 200,
-     "throughput_rps": 39.7,
-     "p50_ms": 11.0,
-     "p95_ms": 129.1,
-     "p99_ms": 170.2
-    },
-    {
-     "workers": 4,
-     "calls": 200,
-     "throughput_rps": 39.7,
-     "p50_ms": 10.0,
-     "p95_ms": 124.5,
-     "p99_ms": 143.9
+     "p99_ms": 159.4
     }
    ]
   },
   "8": {
    "clients": 8,
-   "throughput_rps": 25.6,
-   "p50_ms": 35.9,
-   "p95_ms": 238.5,
-   "p99_ms": 366.0,
+   "throughput_rps": 40.6,
+   "p50_ms": 183.2,
+   "p95_ms": 265.8,
+   "p99_ms": 296.3,
    "runs": [
     {
      "workers": 8,
      "calls": 200,
-     "throughput_rps": 22.0,
-     "p50_ms": 33.1,
-     "p95_ms": 238.5,
-     "p99_ms": 304.4
+     "throughput_rps": 40.6,
+     "p50_ms": 181.4,
+     "p95_ms": 268.2,
+     "p99_ms": 319.4
     },
     {
      "workers": 8,
      "calls": 200,
-     "throughput_rps": 36.1,
-     "p50_ms": 59.7,
-     "p95_ms": 319.3,
-     "p99_ms": 407.3
+     "throughput_rps": 41.5,
+     "p50_ms": 183.2,
+     "p95_ms": 231.1,
+     "p99_ms": 279.8
     },
     {
      "workers": 8,
      "calls": 200,
-     "throughput_rps": 25.6,
-     "p50_ms": 35.9,
-     "p95_ms": 229.3,
-     "p99_ms": 366.0
+     "throughput_rps": 40.6,
+     "p50_ms": 184.3,
+     "p95_ms": 265.8,
+     "p99_ms": 296.3
     }
    ]
   },
   "16": {
    "clients": 16,
-   "throughput_rps": 24.9,
-   "p50_ms": 74.3,
-   "p95_ms": 442.3,
-   "p99_ms": 549.9,
+   "throughput_rps": 50.3,
+   "p50_ms": 283.4,
+   "p95_ms": 394.4,
+   "p99_ms": 440.7,
    "runs": [
     {
      "workers": 16,
      "calls": 200,
-     "throughput_rps": 21.4,
-     "p50_ms": 37.4,
-     "p95_ms": 442.3,
-     "p99_ms": 637.6
+     "throughput_rps": 50.9,
+     "p50_ms": 283.4,
+     "p95_ms": 386.4,
+     "p99_ms": 428.6
     },
     {
      "workers": 16,
      "calls": 200,
-     "throughput_rps": 24.9,
-     "p50_ms": 74.3,
-     "p95_ms": 444.7,
-     "p99_ms": 549.9
+     "throughput_rps": 49.6,
+     "p50_ms": 282.4,
+     "p95_ms": 405.4,
+     "p99_ms": 549.5
     },
     {
      "workers": 16,
      "calls": 200,
-     "throughput_rps": 29.8,
-     "p50_ms": 87.3,
-     "p95_ms": 393.2,
-     "p99_ms": 470.9
+     "throughput_rps": 50.3,
+     "p50_ms": 284.0,
+     "p95_ms": 394.4,
+     "p99_ms": 440.7
     }
    ]
   }
@@ -404,133 +404,133 @@
  "L3 Extended (+similarity)": {
   "1": {
    "clients": 1,
-   "throughput_rps": 36.1,
-   "p50_ms": 9.0,
-   "p95_ms": 22.1,
-   "p99_ms": 48.0,
+   "throughput_rps": 57.1,
+   "p50_ms": 13.1,
+   "p95_ms": 17.4,
+   "p99_ms": 18.2,
    "runs": [
     {
      "workers": 1,
      "calls": 200,
-     "throughput_rps": 29.0,
-     "p50_ms": 9.3,
-     "p95_ms": 63.9,
-     "p99_ms": 125.0
+     "throughput_rps": 27.3,
+     "p50_ms": 13.9,
+     "p95_ms": 64.2,
+     "p99_ms": 67.8
     },
     {
      "workers": 1,
      "calls": 200,
-     "throughput_rps": 38.0,
-     "p50_ms": 7.8,
-     "p95_ms": 21.5,
-     "p99_ms": 45.6
+     "throughput_rps": 57.1,
+     "p50_ms": 13.1,
+     "p95_ms": 17.2,
+     "p99_ms": 18.2
     },
     {
      "workers": 1,
      "calls": 200,
-     "throughput_rps": 36.1,
-     "p50_ms": 9.0,
-     "p95_ms": 22.1,
-     "p99_ms": 48.0
+     "throughput_rps": 57.4,
+     "p50_ms": 13.1,
+     "p95_ms": 17.4,
+     "p99_ms": 17.9
     }
    ]
   },
   "4": {
    "clients": 4,
-   "throughput_rps": 47.2,
-   "p50_ms": 15.6,
-   "p95_ms": 66.2,
-   "p99_ms": 107.8,
+   "throughput_rps": 75.9,
+   "p50_ms": 47.4,
+   "p95_ms": 59.2,
+   "p99_ms": 111.5,
    "runs": [
     {
      "workers": 4,
      "calls": 200,
-     "throughput_rps": 49.2,
-     "p50_ms": 15.4,
-     "p95_ms": 68.3,
-     "p99_ms": 107.8
+     "throughput_rps": 73.3,
+     "p50_ms": 47.7,
+     "p95_ms": 59.2,
+     "p99_ms": 170.8
     },
     {
      "workers": 4,
      "calls": 200,
-     "throughput_rps": 47.2,
-     "p50_ms": 16.1,
-     "p95_ms": 66.2,
-     "p99_ms": 81.2
+     "throughput_rps": 75.9,
+     "p50_ms": 47.4,
+     "p95_ms": 64.3,
+     "p99_ms": 111.5
     },
     {
      "workers": 4,
      "calls": 200,
-     "throughput_rps": 43.4,
-     "p50_ms": 15.6,
-     "p95_ms": 64.4,
-     "p99_ms": 199.8
+     "throughput_rps": 77.5,
+     "p50_ms": 47.1,
+     "p95_ms": 53.9,
+     "p99_ms": 84.7
     }
    ]
   },
   "8": {
    "clients": 8,
-   "throughput_rps": 20.2,
-   "p50_ms": 31.8,
-   "p95_ms": 135.0,
-   "p99_ms": 178.5,
+   "throughput_rps": 72.4,
+   "p50_ms": 99.6,
+   "p95_ms": 137.4,
+   "p99_ms": 238.0,
    "runs": [
     {
      "workers": 8,
      "calls": 200,
-     "throughput_rps": 20.1,
-     "p50_ms": 39.6,
+     "throughput_rps": 72.4,
+     "p50_ms": 90.5,
+     "p95_ms": 139.0,
+     "p99_ms": 600.1
+    },
+    {
+     "workers": 8,
+     "calls": 200,
+     "throughput_rps": 76.2,
+     "p50_ms": 99.6,
+     "p95_ms": 107.8,
+     "p99_ms": 144.1
+    },
+    {
+     "workers": 8,
+     "calls": 200,
+     "throughput_rps": 71.2,
+     "p50_ms": 101.1,
      "p95_ms": 137.4,
-     "p99_ms": 194.9
-    },
-    {
-     "workers": 8,
-     "calls": 200,
-     "throughput_rps": 20.2,
-     "p50_ms": 31.8,
-     "p95_ms": 135.0,
-     "p99_ms": 162.5
-    },
-    {
-     "workers": 8,
-     "calls": 200,
-     "throughput_rps": 21.0,
-     "p50_ms": 31.8,
-     "p95_ms": 132.6,
-     "p99_ms": 178.5
+     "p99_ms": 238.0
     }
    ]
   },
   "16": {
    "clients": 16,
-   "throughput_rps": 20.1,
-   "p50_ms": 46.7,
-   "p95_ms": 260.2,
-   "p99_ms": 477.0,
+   "throughput_rps": 74.3,
+   "p50_ms": 195.7,
+   "p95_ms": 321.4,
+   "p99_ms": 390.6,
    "runs": [
     {
      "workers": 16,
      "calls": 200,
-     "throughput_rps": 21.4,
-     "p50_ms": 43.4,
-     "p95_ms": 260.2,
-     "p99_ms": 515.5
+     "throughput_rps": 78.9,
+     "p50_ms": 195.3,
+     "p95_ms": 202.4,
+     "p99_ms": 251.3
     },
     {
      "workers": 16,
      "calls": 200,
-     "throughput_rps": 18.8,
-     "p50_ms": 46.7,
-     "p95_ms": 295.3,
-     "p99_ms": 477.0
+     "throughput_rps": 74.2,
+     "p50_ms": 197.5,
+     "p95_ms": 323.2,
+     "p99_ms": 390.6
     },
     {
      "workers": 16,
      "calls": 200,
-     "throughput_rps": 20.1,
-     "p50_ms": 50.7,
-     "p95_ms": 225.2,
-     "p99_ms": 300.3
+     "throughput_rps": 74.3,
+     "p50_ms": 195.7,
+     "p95_ms": 321.4,
+     "p99_ms": 473.9
     }
    ]
   }

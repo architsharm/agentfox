@@ -1,0 +1,103 @@
+{
+ "calls": 41540,
+ "repos_tested": 109,
+ "repos_examined": 119,
+ "agents": 8839,
+ "tools": 5734,
+ "per_check": {
+  "deterministic": {
+   "p50": 2.1,
+   "p95": 6.0
+  },
+  "default_cached": {
+   "p50": 2.7,
+   "p95": 258
+  },
+  "default": {
+   "p50": 49.6,
+   "p95": 260
+  },
+  "extended": {
+   "p50": 9.4,
+   "p95": 262
+  },
+  "judge": {
+   "p50": 68.7,
+   "p95": 949
+  }
+ },
+ "per_turn": {
+  "deterministic": {
+   "single_turn": {
+    "p50": 8.0,
+    "p95": 16.4
+   },
+   "multi_agent": {
+    "p50": 17.2,
+    "p95": 31.7
+   }
+  },
+  "default_cached": {
+   "single_turn": {
+    "p50": 58.1,
+    "p95": 573
+   },
+   "multi_agent": {
+    "p50": 287,
+    "p95": 805
+   }
+  },
+  "default": {
+   "single_turn": {
+    "p50": 156,
+    "p95": 571
+   },
+   "multi_agent": {
+    "p50": 476,
+    "p95": 1170
+   }
+  },
+  "extended": {
+   "single_turn": {
+    "p50": 73.9,
+    "p95": 581
+   },
+   "multi_agent": {
+    "p50": 322,
+    "p95": 908
+   }
+  },
+  "judge": {
+   "single_turn": {
+    "p50": 1017,
+    "p95": 1511
+   },
+   "multi_agent": {
+    "p50": 2007,
+    "p95": 2266
+   }
+  }
+ },
+ "tool_call": {
+  "deterministic": {
+   "p50": 2.2,
+   "p95": 2.8
+  },
+  "default_cached": {
+   "p50": 2.4,
+   "p95": 3.0
+  },
+  "default": {
+   "p50": 2.4,
+   "p95": 2.9
+  },
+  "extended": {
+   "p50": 2.6,
+   "p95": 3.1
+  },
+  "judge": {
+   "p50": 2.7,
+   "p95": 3.3
+  }
+ }
+}

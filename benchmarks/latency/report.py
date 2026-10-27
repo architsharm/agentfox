@@ -313,3 +313,45 @@ for fw, rs in sorted(by_fw.items(), key=lambda kv: -len(kv[1])):
         }
     )
 write("10_by_framework_default_cache_off.csv", out)
+
+# headline.json: the figures the website and the blog quote, bound in benchmarks/claims.yaml
+LAYER_KEYS = {
+    "L1 Deterministic": "deterministic",
+    "L2 Default (+ML classifier)": "default_cached",
+    "L2n Default (cache off)": "default",
+    "L3 Extended (+similarity)": "extended",
+    "L4 Full (+LLM judge)": "judge",
+}
+
+
+def _round(value):
+    return round(value) if value >= 100 else round(value, 1)
+
+
+headline: dict = {
+    "calls": len(rows),
+    "repos_tested": len(meta["repos"]),
+    "repos_examined": len({*meta["repos"], *skipped}),
+    "agents": sum(m["agents"] for m in meta["repos"].values()),
+    "tools": sum(m["tools"] for m in meta["repos"].values()),
+    "per_check": {},
+    "per_turn": {},
+    "tool_call": {},
+}
+for layer, key in LAYER_KEYS.items():
+    rs = [r for r in rows if r["layer"] == layer]
+    if not rs:
+        continue
+    v = [r["server_ms"] for r in rs]
+    headline["per_check"][key] = {"p50": _round(pct(v, 0.5)), "p95": _round(pct(v, 0.95))}
+    tc = [r["server_ms"] for r in rs if r["step"] == "tool_call"]
+    if tc:
+        headline["tool_call"][key] = {"p50": _round(pct(tc, 0.5)), "p95": _round(pct(tc, 0.95))}
+    for sc in ("single_turn", "multi_agent"):
+        pt = per_turn.get((layer, sc)) or []
+        if pt:
+            headline["per_turn"].setdefault(key, {})[sc] = {
+                "p50": _round(pct(pt, 0.5)),
+                "p95": _round(pct(pt, 0.95)),
+            }
+(OUT / "headline.json").write_text(json.dumps(headline, indent=1))
