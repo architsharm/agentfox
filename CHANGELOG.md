@@ -13,6 +13,21 @@ the file it came from.
 
 ### Fixed
 
+- **A detector that errors now follows `fail_mode`, exactly as one that times out.**
+  A detector that raised, or reported `status="error"` (a custom model whose endpoint
+  was down, for one), was recorded as `errored` and the call was allowed whatever
+  `fail_mode` said, even with the deployment and an enforcing pack both set to
+  `closed`: only timeouts counted as degraded. An error is now degraded too (and still
+  listed in `errored`). Under `closed` it blocks as `pipeline.fail_closed`, whose reason
+  names each degraded detector and why (`fm.boom: error: <cause>`, `fm.slow: timeout`).
+  Under `open` (the default) the call is allowed and the error is surfaced where a
+  timeout is: the decision's `degraded`, `detector_degraded` for rules, and a
+  `budget_breach` finding. A custom model set to "Let traffic through" when down adds
+  no detection, as before, but a `closed` deployment or pack now blocks its outage as
+  it already blocked its timeout. LLM judges already behaved this way and are unchanged. This
+  applies to every path that uses the Enforcer: the gateway, the SDK and the
+  coding-agent hooks.
+
 - **Libraries on the Policies page go live like any policy.** Applying the basic
   guardrails from the Libraries tab failed outright; it now takes the onboarding card's
   path: watching, and blocking only for a role that may change production policy once

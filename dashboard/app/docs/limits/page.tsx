@@ -155,7 +155,8 @@ export default function Page() {
         adaptive attacker that reads the verdict and retries gets 73% of the attacks the
         default detectors catch through within 50 attempts. The model-backed detectors are
         opt-in, need weights, and can time out on long inputs; with <code>fail_mode</code>{" "}
-        left at <code>open</code>, a timeout lets the request through and records the gap.{" "}
+        left at <code>open</code>, a timeout or an error lets the request through and
+        records the gap; with <code>closed</code> either one blocks.{" "}
         <code>agentfox doctor</code> says so on every run.
       </p>
 

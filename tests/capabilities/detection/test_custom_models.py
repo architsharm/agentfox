@@ -170,15 +170,18 @@ def test_one_broken_model_does_not_hide_another(monkeypatch, egress):
     assert [d["model"] for d in out.raw["degraded"]] == ["bad"]
 
 
-def test_the_pipeline_counts_a_failed_model_as_errored_not_degraded(monkeypatch, egress):
+def test_the_pipeline_counts_a_failed_model_as_errored_and_degraded(monkeypatch, egress):
     _serve(monkeypatch, lambda r: httpx.Response(500))
     pipeline = DetectorPipeline(detectors=[CustomModelDetector()], budget_ms=3000)
     result = pipeline.run(
         "hello", DetectionContext(surface="input", extra={"custom_models": [_model()]})
     )
-    # `degraded` is what fail-closed deployments block on; a model's own outage
-    # must not block traffic unless that model says so.
-    assert result.errored == ["custom.models"] and result.degraded == []
+    # A model that did not answer checked nothing, the same reduced coverage as one
+    # that timed out: degraded, so the deployment's and packs' `fail_mode` decide it
+    # (both open by default). The model's own fail_mode (open here) adds no detection.
+    assert result.errored == ["custom.models"] and result.degraded == ["custom.models"]
+    assert result.detections == []
+    assert result.degradation()["custom.models"].startswith("error: ")
 
 
 def test_spec_validation():

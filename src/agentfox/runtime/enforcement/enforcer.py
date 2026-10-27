@@ -93,6 +93,15 @@ from agentfox.runtime.enforcement.surfaces import _SurfacesMixin
 from agentfox.runtime.enforcement.tool_calls import _ToolCallMixin
 
 
+def _degradation_text(pipeline_result: Any) -> str:
+    """The degraded detectors and why, for a `pipeline.fail_closed` reason: a
+    timeout and an error read the same way, and an error carries its cause."""
+    degradation = getattr(pipeline_result, "degradation", None)
+    if not callable(degradation):
+        return str(list(pipeline_result.degraded))
+    return ", ".join(f"{key}: {why}" for key, why in degradation().items())
+
+
 def _relies_on_detections(doc: Any, surface: str) -> bool:
     """Does this pack have an enabled detection rule that applies on ``surface``?"""
     return any(
@@ -1175,8 +1184,10 @@ class Enforcer(
     def _apply_fail_modes(self, call: _Evaluation) -> None:
         """Degraded detectors and unloadable packs, under the deployment's and packs' fail modes."""
         pipeline_result, rules_fired = call.pipeline_result, call.rules_fired
-        # A degraded pipeline means reduced coverage. Fail-closed converts that
-        # into a block; fail-open accepts it and records the gap.
+        # A degraded pipeline means reduced coverage: a detector that timed out, was
+        # shed for budget, or errored (raised, or reported `status="error"`) did not
+        # check this content, whichever way it failed. Fail-closed converts that into
+        # a block; fail-open accepts it and records the gap.
         #
         # Two sources, the stricter wins: the deployment-wide `fail_mode`, for an
         # enforcing decision, and each pack's own `fail_mode`. A pack fails closed only
@@ -1206,7 +1217,7 @@ class Enforcer(
                 _fired_rule(
                     "pipeline.fail_closed",
                     "block",
-                    f"detectors degraded ({pipeline_result.degraded}) and {source}",
+                    f"detectors degraded ({_degradation_text(pipeline_result)}) and {source}",
                     severity="medium",
                     controls=["NOM-RTG-06"],
                 )

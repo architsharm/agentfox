@@ -95,7 +95,12 @@ class PipelineResult:
     results: list[DetectorResult] = field(default_factory=list)
     duration_ms: float = 0.0
     budget_ms: float = 0.0
+    #: Detectors that did not check this content: timed out, shed for budget,
+    #: errored (raised, or reported `status="error"`), or a judge that did not
+    #: answer. This is what `fail_mode` reads.
     degraded: list[str] = field(default_factory=list)
+    #: The subset of `degraded` that failed with an error rather than running out
+    #: of time; the reason is on the detector's result (`raw["error"]`).
     errored: list[str] = field(default_factory=list)
     #: LLM judges that were asked and did not answer on this request: an outage
     #: (no tier reachable, an error), a timeout, or the budget running out before
@@ -132,6 +137,28 @@ class PipelineResult:
             grouped.setdefault(det.entity_type, []).append(det)
         return grouped
 
+    def degradation(self) -> dict[str, str]:
+        """Each degraded detector and why: its status, and for an error the reason."""
+        by_key = {r.detector_key: r for r in self.results}
+        out: dict[str, str] = {}
+        for key in dict.fromkeys(self.degraded):
+            run = by_key.get(key)
+            if run is None:
+                out[key] = "degraded"
+                continue
+            why = run.status
+            if run.status == "error":
+                raw = run.raw or {}
+                error = raw.get("error") or "; ".join(
+                    f"{d.get('model')}: {d.get('error')}" for d in raw.get("degraded") or []
+                )
+                if error:
+                    why = f"error: {str(error)[:200]}"
+            elif run.status == "unavailable" and (run.raw or {}).get("cause"):
+                why = f"unavailable ({run.raw['cause']})"
+            out[key] = why
+        return out
+
     def summary(self) -> dict:
         return {
             "duration_ms": round(self.duration_ms, 2),
@@ -140,6 +167,7 @@ class PipelineResult:
             "detectors_run": [r.detector_key for r in self.results],
             "degraded": self.degraded,
             "errored": self.errored,
+            "degradation": self.degradation(),
             "judge_outage": sorted(self.judge_outage),
             "entities": sorted(self.by_entity()),
             "max_score": round(self.max_score, 3),
@@ -272,7 +300,7 @@ class DetectorPipeline:
                 finished = self._run_one(detector, content, context)
                 result.results.append(finished)
                 if finished.status == "error":
-                    result.errored.append(detector.key)
+                    _errored(result, detector, context)
             except Exception as exc:  # a detector must never take the request down
                 log.warning("detector %s failed: %s", detector.key, exc)
                 result.results.append(
@@ -283,7 +311,7 @@ class DetectorPipeline:
                         raw={"error": str(exc)[:500]},
                     )
                 )
-                result.errored.append(detector.key)
+                _errored(result, detector, context)
 
         for future, detector in futures.items():
             elapsed_ms = (time.perf_counter() - started) * 1000
@@ -314,9 +342,7 @@ class DetectorPipeline:
                 # A detector that caught its own failure (an unreachable endpoint)
                 # reports it rather than raising; it is still a failure to count.
                 if finished.status == "error":
-                    result.errored.append(detector.key)
-                    if _is_judge(detector):
-                        _judge_out(result, detector, context)
+                    _errored(result, detector, context)
                 # A judge that was asked and got no answer: the same reduced
                 # coverage as a judge that timed out, so it degrades the same way.
                 elif finished.status == "unavailable" and finished.raw.get("cause") == OUTAGE:
@@ -355,9 +381,7 @@ class DetectorPipeline:
                         raw={"error": str(exc)[:500]},
                     )
                 )
-                result.errored.append(detector.key)
-                if _is_judge(detector):
-                    _judge_out(result, detector, context)
+                _errored(result, detector, context)
 
         result.duration_ms = (time.perf_counter() - started) * 1000
         return result
@@ -423,6 +447,23 @@ def _is_judge(detector: Detector) -> bool:
     from agentfox.capabilities.detection.catalog import source_of
 
     return source_of(detector) == "llm_judge"
+
+
+def _errored(result: PipelineResult, detector: Detector, context: DetectionContext) -> None:
+    """Record a detector that failed (raised, or reported `status="error"`).
+
+    An error is reduced coverage exactly as a timeout is: the detector did not
+    check this content. So it is degraded too, and the deployment's and the packs'
+    `fail_mode` decide it the way they decide a timeout (`closed` blocks as
+    `pipeline.fail_closed`, `open` allows and records the gap). `errored` keeps
+    saying *how* it degraded. A judge that errored is also a judge outage.
+    """
+    if detector.key not in result.errored:
+        result.errored.append(detector.key)
+    if detector.key not in result.degraded:
+        result.degraded.append(detector.key)
+    if _is_judge(detector):
+        _judge_out(result, detector, context)
 
 
 def _judge_out(
