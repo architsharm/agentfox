@@ -319,6 +319,16 @@ class Settings(BaseSettings):
     # not answer). Judges are also subject to the judgment posture's
     # `fail_closed`, which can add a block here but never remove one.
     fail_mode: str = "open"  # open | closed
+    # The share of checks, over a sliding window, answered without at least one
+    # selected detector (a timeout, an error, a budget skip) above which the gateway
+    # logs a warning and `/api/health` reports `healthy: false`. Counted per process;
+    # also on `/metrics` as `agentfox_checks_degraded_total` and
+    # `agentfox_checks_degraded_ratio`. Under `fail_mode = "open"` those checks were
+    # answered on the other detectors' findings; under "closed" they were blocked.
+    degraded_warn_ratio: float = 0.05
+    degraded_window_seconds: int = 60
+    # Fewer checks than this in the window never warn: 1 of 2 is not a rate.
+    degraded_warn_min_checks: int = 20
     #: How long a held call waits for a person before it is denied (fails closed).
     approval_ttl_minutes: int = 30
     #: How long an onboarding setup key (`agentfox init --key`, ``afi_…``) stays valid

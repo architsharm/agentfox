@@ -7,6 +7,7 @@ where they become one object.
 from __future__ import annotations
 
 import datetime as dt
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -69,6 +70,7 @@ from agentfox.platform.policy import (
 )
 from agentfox.platform.policy.taint_view import policy_taint
 from agentfox.platform.registry.service import observe_agent
+from agentfox.runtime.availability import observe_check
 from agentfox.runtime.checks import checks_for
 from agentfox.runtime.enforcement import background
 from agentfox.runtime.enforcement.approvals import held_call
@@ -528,7 +530,6 @@ class Enforcer(
         """Run the deferred judges after the response, in this workspace, and record
         what they find against the same trace, as an inline run would have."""
         import logging
-        import threading
 
         from agentfox.capabilities.detection.pipeline import DetectorPipeline
         from agentfox.core.db import session_scope
@@ -585,9 +586,14 @@ class Enforcer(
         content, surface, trace_id = call.content, call.surface, call.trace_id
 
         def run() -> None:
+            from agentfox.capabilities.detection.loading import InferenceShed, background_inference
+            from agentfox.runtime.availability import get_check_meter
+
             try:
                 started = time.perf_counter()
-                found = detector.backstop(content)
+                # Behind every request-path forward pass: advisory, after the response.
+                with background_inference():
+                    found = detector.backstop(content)
                 if not found:
                     return
                 result = PipelineResult()
@@ -602,6 +608,8 @@ class Enforcer(
                 )
                 with tenant(org), session_scope() as session:
                     persist_detector_runs(session, result, trace_id, surface)
+            except InferenceShed:
+                get_check_meter().shed_backstop()
             except Exception:  # pragma: no cover - after the response; never raises
                 logging.getLogger(__name__).warning("deferred backstop failed", exc_info=True)
 
@@ -651,6 +659,9 @@ class Enforcer(
                 call.content, context, budget_ms=ledger.allowance_ms(self.pipeline.budget_ms)
             )
         ledger.charge(pipeline_result, call.surface)
+        # Counted per check, so a share of checks answered without a detector (under
+        # load, say) shows on /metrics and /api/health, and is logged above threshold.
+        observe_check(pipeline_result)
         call.ledger = ledger
         call.pipeline_result = pipeline_result
 
