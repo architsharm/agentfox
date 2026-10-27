@@ -221,6 +221,9 @@ def test_a_refused_payload_with_a_healthy_judge_is_not_an_outage(
     the judge healthy. The payload is not sent, which is the policy working, and
     neither the posture nor a closed deployment treats it as an outage."""
     monkeypatch.setattr(get_settings(), "fail_mode", "closed")
+    # Recorded checks run a judge no enforcing rule relies on after the response;
+    # this is about the refusal itself, so the judge runs inline either way.
+    monkeypatch.setattr(get_settings(), "judgment_inline", "always")
     client = _Client()
     gateway = JudgmentGateway(client, backend="remote", pii_egress="block")
     seen = []
@@ -390,3 +393,49 @@ def _raises(exc: Exception):
         raise exc
 
     return ask
+
+
+def test_a_judge_no_enforcing_rule_relies_on_runs_after_the_response(session, judgment_on):
+    """`judgment_inline = "when_relied"`: when no enforcing rule here could act on the
+    judge's findings, a recorded check does not wait for it (about a second in
+    production). The judge still runs, after the response, and its run is recorded
+    the same way an inline one is."""
+    from agentfox.core.models import DetectorRun
+
+    assert get_settings().judgment_inline == "when_relied"
+    agent = register_agent(session, "judged-bot")
+    doc = PolicyDocument.from_yaml(NO_DETECTION_PACK.format())
+    save_policy(session, doc, bind_mode=doc.mode)
+    session.commit()
+    detector = InjectionJudgmentDetector(_Slow())
+    started = time.perf_counter()
+    with judgment_posture.use(LAX):
+        result = Enforcer(session, pipeline=DetectorPipeline(detectors=[detector])).evaluate(
+            agent=agent, identity=None, content="hello", surface="input"
+        )
+    session.commit()
+    assert time.perf_counter() - started < 0.25  # the judge sleeps 0.3 s
+    assert "injection.judgment" not in result.degraded
+    deadline = time.time() + 5
+    while time.time() < deadline:
+        session.expire_all()
+        if session.query(DetectorRun).filter_by(detector_key="injection.judgment").count():
+            break
+        time.sleep(0.05)
+    assert session.query(DetectorRun).filter_by(detector_key="injection.judgment").count() == 1
+
+
+def test_a_judge_an_enforcing_rule_relies_on_stays_inline(session, judgment_on):
+    """A recorded check whose enforcing rule could act on the judge waits for it: the
+    judge's outage is seen, and blocks, on this very check."""
+    agent = register_agent(session, "judged-bot")
+    doc = PolicyDocument.from_yaml(INJECTION_PACK.format(mode="enforce", fail_mode="open"))
+    save_policy(session, doc, bind_mode=doc.mode)
+    session.commit()
+    detector = InjectionJudgmentDetector(_Down())
+    with judgment_posture.use(STRICT):
+        result = Enforcer(session, pipeline=DetectorPipeline(detectors=[detector])).evaluate(
+            agent=agent, identity=None, content="hello", surface="input"
+        )
+    assert result.verdict == "block"
+    assert "pipeline.judge_outage" in _fired(result)

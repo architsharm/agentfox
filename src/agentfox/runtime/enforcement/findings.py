@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from agentfox.core.ids import detector_run_id
 from agentfox.core.models import Agent, DetectionFinding, DetectorRun
 from agentfox.platform.ledger.findings import raise_finding, record_detector_health
 
@@ -96,6 +97,47 @@ def _detection_title(
     return f"{verb} {where}: {what} (watching)"
 
 
+def persist_detector_runs(
+    session, pipeline_result, trace_id: str | None, surface: str
+) -> list[str]:
+    """One row per detector run and one per detection. Ids are assigned here, so the
+    rows go to the database with the rest of the request's writes in one flush
+    instead of a round trip each (a check runs about ten detectors)."""
+    ids: list[str] = []
+    for run in pipeline_result.results:
+        run_id = detector_run_id()
+        session.add(
+            DetectorRun(
+                id=run_id,
+                trace_id=trace_id,
+                detector_key=run.detector_key,
+                detector_version=run.version,
+                surface=surface,
+                duration_ms=run.duration_ms,
+                status=run.status,
+                score=run.score,
+                raw_json=run.raw,
+            )
+        )
+        ids.append(run_id)
+        for detection in run.detections:
+            session.add(
+                DetectionFinding(
+                    detector_run_id=run_id,
+                    trace_id=trace_id,
+                    entity_type=detection.entity_type,
+                    score=detection.score,
+                    start=detection.start,
+                    end=detection.end,
+                    # Already redacted by the detector — see redact_sample().
+                    sample=detection.sample[:200],
+                    owasp_id=detection.owasp_id,
+                    atlas_id=detection.atlas_id,
+                )
+            )
+    return ids
+
+
 class _FindingsMixin:
     """Enforcer's detector persistence. Mixed into :class:`Enforcer`, never used alone."""
 
@@ -179,34 +221,4 @@ class _FindingsMixin:
         )
 
     def _persist_detectors(self, pipeline_result, trace_id: str | None, surface: str) -> list[str]:
-        ids: list[str] = []
-        for run in pipeline_result.results:
-            row = DetectorRun(
-                trace_id=trace_id,
-                detector_key=run.detector_key,
-                detector_version=run.version,
-                surface=surface,
-                duration_ms=run.duration_ms,
-                status=run.status,
-                score=run.score,
-                raw_json=run.raw,
-            )
-            self.session.add(row)
-            self.session.flush()
-            ids.append(row.id)
-            for detection in run.detections:
-                self.session.add(
-                    DetectionFinding(
-                        detector_run_id=row.id,
-                        trace_id=trace_id,
-                        entity_type=detection.entity_type,
-                        score=detection.score,
-                        start=detection.start,
-                        end=detection.end,
-                        # Already redacted by the detector — see redact_sample().
-                        sample=detection.sample[:200],
-                        owasp_id=detection.owasp_id,
-                        atlas_id=detection.atlas_id,
-                    )
-                )
-        return ids
+        return persist_detector_runs(self.session, pipeline_result, trace_id, surface)

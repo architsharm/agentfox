@@ -270,6 +270,15 @@ class Settings(BaseSettings):
     # through and which is not a model name anywhere, so this sends "" instead
     # when unset rather than letting that reach the API.
     judgment_llm_model: str = ""
+    # How long one LLM judge call may take before it is abandoned (seconds). The
+    # judge answers in about a second; one still waiting is holding a request.
+    judgment_llm_timeout_s: float = 4.0
+    # When the LLM judges run on the request path. "when_relied": only when an
+    # enforcing rule on that surface could act on what the judge finds; otherwise
+    # the judge runs after the response and its findings are recorded the same way
+    # (the 2026-10-27 latency study: about 1 s per check inline, for findings no
+    # rule would have acted on). "always": inline on every check, as before.
+    judgment_inline: str = "when_relied"
 
     # --- Enforcement (Pillar 3) -----------------------------------------
     # Hard budget for the whole pre-flight pipeline, and per detector.
