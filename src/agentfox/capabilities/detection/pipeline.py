@@ -224,10 +224,11 @@ class DetectorPipeline:
         already been evaluated. Without it, a stack that respects 100 ms per call can
         still spend half a second on one request."""
         effective_budget = self.budget_ms if budget_ms is None else float(budget_ms)
+        deferred = (context.extra or {}).get("deferred_detectors") or ()
         detectors = [
             d
             for d in self.select(context.surface, context.enabled_detectors)
-            if _applies(d, context)
+            if _applies(d, context) and d.key not in deferred
         ]
         # A detector that cannot physically finish inside the default budget —
         # currently only the judgment tiers, which make a network round trip

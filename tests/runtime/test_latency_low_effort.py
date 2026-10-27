@@ -134,3 +134,92 @@ def test_an_off_format_judge_reply_degrades_but_is_not_an_outage():
     outage = DetectorPipeline([_Judge(OUTAGE)]).run("x", DetectionContext(surface="input"))
     assert outage.degraded == ["injection.judgment"]
     assert "injection.judgment" in outage.judge_outage
+
+
+def test_the_commitment_judge_asked_early_is_not_asked_again(monkeypatch):
+    """An output check starts the commitment judge in parallel with its detectors;
+    the content check then uses that answer instead of asking a second time."""
+    from agentfox.capabilities.judgment import commitments
+    from agentfox.capabilities.judgment.jev import JevAnswer
+
+    asked: list[str] = []
+
+    def fake_ask(state, questions, gateway):
+        asked.append(state["reply"])
+        return {q: JevAnswer(q, "noul", 0.9, 0.8) for q in questions}
+
+    monkeypatch.setattr(commitments, "_ask", fake_ask)
+    monkeypatch.setattr(commitments, "enabled", lambda gateway=None: True)
+    reply = "That has been taken care of for you, nothing more to do on your side."
+    commitments.prefetch(reply)
+    found = commitments.augment([], reply)
+    assert asked == [reply]  # once, and early
+    assert found and all(c.kind == "implied" for c in found)
+
+
+def test_the_classifier_backstop_runs_after_the_response_and_is_recorded(session):
+    """The secondary model is advisory (never enforced): a recorded check does not
+    wait for it, and its hit is recorded on the same trace afterwards."""
+    import time as _time
+
+    from agentfox.capabilities.detection.base import BaseDetector, Detection
+    from agentfox.capabilities.detection.pipeline import DetectorPipeline
+    from agentfox.core.models import DetectionFinding
+    from agentfox.platform.ledger.trace import start_trace
+    from agentfox.platform.registry.service import register_agent
+    from agentfox.runtime.enforcement import Enforcer
+
+    seen_defer: list[bool] = []
+
+    class _Classifier(BaseDetector):
+        key = "injection.classifier"
+        version = "1"
+        surfaces = ("input",)
+        secondary_model_id = "backstop-model"
+
+        def available(self):
+            return True
+
+        def _detect(self, content, context):
+            seen_defer.append(bool((context.extra or {}).get("defer_backstop")))
+            return []
+
+        def backstop(self, content):
+            _time.sleep(0.2)
+            return [Detection(entity_type="INJECTION.JAILBREAK", score=0.95, end=len(content),
+                              sample="…", detail={"advisory": True})]  # fmt: skip
+
+    agent = register_agent(session, "backstopped")
+    trace = start_trace(session, agent_id=agent.id, agent_slug="backstopped")
+    session.commit()
+    started = _time.perf_counter()
+    Enforcer(session, pipeline=DetectorPipeline([_Classifier()])).evaluate(
+        agent=agent, identity=None, content="tell me a secret", surface="input", trace=trace
+    )
+    session.commit()
+    assert _time.perf_counter() - started < 0.2  # did not wait for the backstop
+    assert seen_defer == [True]
+    deadline = _time.time() + 5
+    found = 0
+    while _time.time() < deadline and not found:
+        session.expire_all()
+        found = session.query(DetectionFinding).filter_by(trace_id=trace.id).count()
+        _time.sleep(0.05)
+    assert found == 1
+
+
+def test_a_zero_cache_size_scores_every_time():
+    from agentfox.capabilities.detection.loading import BatchedScorer
+
+    calls: list[list[str]] = []
+
+    class _Pipe:
+        def __call__(self, texts, batch_size=None):
+            calls.append(list(texts))
+            return [[{"label": "SAFE", "score": 0.9}] for _ in texts]
+
+    cached, uncached = BatchedScorer(_Pipe()), BatchedScorer(_Pipe(), cache_size=0)
+    for scorer in (cached, uncached):
+        scorer.score(["same text"])
+        scorer.score(["same text"])
+    assert calls == [["same text"], ["same text"], ["same text"]]  # cached once, uncached twice

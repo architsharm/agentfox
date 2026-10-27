@@ -174,6 +174,15 @@ class _Evaluation:
     suppressed: Any = None
     detections: list[dict[str, Any]] = field(default_factory=list)
     detector_run_ids: list[str] = field(default_factory=list)
+    #: The policies in force (doc, version, binding), read once: before the detectors,
+    #: to decide which judges must run inline, and again when policy is evaluated.
+    bound: list | None = None
+    unloadable: list = field(default_factory=list)
+    #: LLM judges no enforcing rule could act on here: run after the response.
+    deferred: list = field(default_factory=list)
+    deferred_context: Any = None
+    #: The classifier's advisory backstop runs after the response for this check.
+    defer_backstop: bool = False
     # _check_capability, _run_content_checks, ladders, _analyse_action, budgets
     capability: dict[str, Any] = field(default_factory=dict)
     evidence: dict[str, Any] = field(default_factory=dict)
@@ -238,6 +247,23 @@ class Enforcer(
     assemble_context = staticmethod(assemble_context)
 
     def resolve(
+        self,
+        agent_slug: str | None,
+        credential: str | None = None,
+        environment: str = "production",
+        model: str | None = None,
+        framework: str | None = None,
+    ) -> tuple[Agent | None, Identity | None, bool]:
+        """The agent and identity a call is governed as. Remembered for this enforcer
+        (one request or one in-process call): a guard route and the check it runs
+        both resolve the same agent, and each resolve is several queries."""
+        key = (agent_slug, credential, environment, model, framework)
+        cache = self.__dict__.setdefault("_resolved", {})
+        if key not in cache:
+            cache[key] = self._resolve(agent_slug, credential, environment, model, framework)
+        return cache[key]
+
+    def _resolve(
         self,
         agent_slug: str | None,
         credential: str | None = None,
@@ -376,6 +402,14 @@ class Enforcer(
             principal=principal,
         )
         self._resolve_tool(call)
+        if call.surface == "output" and call.content:
+            # The commitment judge (a content check after the detectors) starts now,
+            # in parallel with them: the same question, asked earlier.
+            from agentfox.capabilities.judgment import commitments
+
+            commitments.prefetch(
+                call.content, authorised=bool((self.evidence or {}).get("authorised"))
+            )
         self._run_detectors(call)
         self._check_capability(call)
         self._run_content_checks(call)
@@ -399,6 +433,10 @@ class Enforcer(
         if not persist:
             return result
         self._persist_decision(call, result)
+        if call.deferred:
+            self._judge_later(call)
+        if call.defer_backstop:
+            self._backstop_later(call)
         # The whole check, persistence included: `latency_ms` stops when the verdict
         # is built, before the decision, audit and finding rows are written, which is
         # more than half of a fast check.
@@ -425,6 +463,140 @@ class Enforcer(
         # as its own fact instead, for policy to decide on.
         call.tool_impact = tool.impact if tool else "read"
         call.tool_known = tool is not None if tool_key else True
+
+    def _in_force(self, call: _Evaluation) -> tuple[list, list]:
+        """The packs in force for this call and those that would not load, read once."""
+        if call.bound is None:
+            agent = call.agent
+            unloadable: list[UnloadablePolicyVersion] = []
+            call.bound = policies_in_force(
+                self.session,
+                call.agent_slug,
+                call.environment,
+                # "" rather than None: the agent is known and has no team, so there is
+                # nothing to look up.
+                team=(agent.owner_team or "") if agent else None,
+                skipped=unloadable,
+            )
+            call.unloadable = unloadable
+        return list(call.bound), list(call.unloadable)
+
+    def _defer_judges(self, call: _Evaluation, context: DetectionContext) -> None:
+        """Leave out of this check the LLM judges no enforcing rule here could act on.
+
+        A judge costs about a second. When no enforcing pack on this surface has a
+        rule its findings would satisfy, waiting for it changes no verdict: it runs
+        after the response instead (`_judge_later`) and its findings are recorded the
+        same way. `judgment_inline = "always"` keeps every judge inline."""
+        if getattr(self.settings, "judgment_inline", "always") != "when_relied":
+            return
+        if not call.persist:
+            # A dry run (the attack test, a simulation) records nothing afterwards, so a
+            # judge left out here would never run at all: it stays inline.
+            return
+        from agentfox.capabilities.detection.pipeline import _is_judge, judge_entities
+
+        judges = [
+            d for d in self.pipeline.select(call.surface, context.enabled_detectors) if _is_judge(d)
+        ]
+        if not judges:
+            return
+        bound, unloadable = self._in_force(call)
+        if unloadable:
+            return  # something configured did not load: keep every check inline
+        enforcing = [doc for doc, _version, _b in bound if doc.mode == "enforce"]
+        for judge in judges:
+            entities = list(judge_entities(judge, context))
+            if any(_relies_on_entities(doc, call.surface, entities) for doc in enforcing):
+                continue
+            call.deferred.append(judge)
+        if call.deferred:
+            context.extra["deferred_detectors"] = frozenset(d.key for d in call.deferred)
+            call.deferred_context = context
+
+    def _judge_later(self, call: _Evaluation) -> None:
+        """Run the deferred judges after the response, in this workspace, and record
+        what they find against the same trace, as an inline run would have."""
+        import logging
+        import threading
+
+        from agentfox.capabilities.detection.pipeline import DetectorPipeline
+        from agentfox.core.db import session_scope
+        from agentfox.core.tenancy import session_org, tenant
+        from agentfox.runtime.enforcement.findings import persist_detector_runs
+
+        org = session_org(self.session)
+        judges, content, surface, trace_id = (
+            call.deferred,
+            call.content,
+            call.surface,
+            call.trace_id,
+        )
+        context = call.deferred_context
+        context.extra = {k: v for k, v in context.extra.items() if k != "deferred_detectors"}
+
+        def run() -> None:
+            try:
+                result = DetectorPipeline(judges).run(content, context, budget_ms=10_000)
+                with tenant(org), session_scope() as session:
+                    persist_detector_runs(session, result, trace_id, surface)
+            except Exception:  # pragma: no cover - after the response; never raises
+                logging.getLogger(__name__).warning("deferred judge run failed", exc_info=True)
+
+        threading.Thread(target=run, name="agentfox-deferred-judge", daemon=True).start()
+
+    def _backstop_later(self, call: _Evaluation) -> None:
+        """The injection classifier's advisory backstop, after the response: only
+        where the primary model ran and found nothing, as inline. A hit is recorded
+        as a detection on the same trace."""
+        import logging
+        import threading
+
+        from agentfox.capabilities.detection.base import DetectorResult
+        from agentfox.capabilities.detection.pipeline import PipelineResult
+        from agentfox.core.db import session_scope
+        from agentfox.core.tenancy import session_org, tenant
+        from agentfox.runtime.enforcement.findings import persist_detector_runs
+
+        ran = next(
+            (
+                r
+                for r in call.pipeline_result.results
+                if r.detector_key == "injection.classifier" and r.status == "ok"
+            ),
+            None,
+        )
+        detector = next(
+            (d for d in self.pipeline.select(call.surface) if d.key == "injection.classifier"),
+            None,
+        )
+        if ran is None or ran.detections or not getattr(detector, "secondary_model_id", None):
+            return
+        org = session_org(self.session)
+        content, surface, trace_id = call.content, call.surface, call.trace_id
+
+        def run() -> None:
+            try:
+                started = time.perf_counter()
+                found = detector.backstop(content)
+                if not found:
+                    return
+                result = PipelineResult()
+                result.results.append(
+                    DetectorResult(
+                        detector_key="injection.classifier",
+                        version=detector.version,
+                        detections=found,
+                        duration_ms=(time.perf_counter() - started) * 1000,
+                        raw={"role": "ensemble_secondary_backstop", "after_response": True},
+                    )
+                )
+                with tenant(org), session_scope() as session:
+                    persist_detector_runs(session, result, trace_id, surface)
+            except Exception:  # pragma: no cover - after the response; never raises
+                logging.getLogger(__name__).warning("deferred backstop failed", exc_info=True)
+
+        threading.Thread(target=run, name="agentfox-backstop", daemon=True).start()
 
     def _run_detectors(self, call: _Evaluation) -> None:
         """The detector pipeline (budgeted, concurrent), then suppressions."""
@@ -458,6 +630,12 @@ class Enforcer(
             },
             enabled_detectors=self._enabled_detectors(call.agent_slug),
         )
+        self._defer_judges(call, context)
+        if call.persist and not getattr(
+            self.settings, "prompt_injection_classifier_secondary_inline", True
+        ):
+            context.extra["defer_backstop"] = True
+            call.defer_backstop = True
         ledger = self.ledger()
         pipeline_result = self.pipeline.run(
             call.content, context, budget_ms=ledger.allowance_ms(self.pipeline.budget_ms)
@@ -679,16 +857,7 @@ class Enforcer(
         # that now reads it) is collected rather than raised: the other packs are
         # still evaluated, and the gap is handled below under the fail mode, the
         # way a degraded detector pipeline is.
-        unloadable: list[UnloadablePolicyVersion] = []
-        bound = policies_in_force(
-            self.session,
-            agent_slug,
-            environment,
-            # "" rather than None: the agent is known and has no team, so there is
-            # nothing to look up.
-            team=(agent.owner_team or "") if agent else None,
-            skipped=unloadable,
-        )
+        bound, unloadable = self._in_force(call)
         # Nothing bound is not the same as nothing to check.
         #
         # A database that has never been initialised holds no policies, so without

@@ -30,6 +30,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass, field
+from importlib import util as importlib_util
 from typing import Any
 
 from agentfox.capabilities.detection.normalize import normalize
@@ -38,15 +39,29 @@ from agentfox.core.finding import RiskFinding
 
 log = logging.getLogger(__name__)
 
-try:  # sqlglot is an optional extra so `pip install agentfox` stays offline-light
-    import sqlglot
-    from sqlglot import exp
 
-    SQLGLOT_AVAILABLE = True
-except Exception:  # pragma: no cover - exercised only where sqlglot is absent
-    sqlglot = None  # type: ignore[assignment]
-    exp = None  # type: ignore[assignment]
-    SQLGLOT_AVAILABLE = False
+class _Lazy:
+    """A module imported on first use. sqlglot costs ~90 ms to import and is needed
+    only when a tool call carries SQL; importing it with this module put that on every
+    gateway cold start (the latency study's 7 s first request)."""
+
+    def __init__(self, name: str) -> None:
+        self._name = name
+        self._module: Any = None
+
+    def __getattr__(self, attr: str) -> Any:
+        if self._module is None:
+            import importlib
+
+            self._module = importlib.import_module(self._name)
+        return getattr(self._module, attr)
+
+
+# sqlglot is an optional extra so `pip install agentfox` stays offline-light; whether it
+# is installed is known without importing it.
+SQLGLOT_AVAILABLE = importlib_util.find_spec("sqlglot") is not None
+sqlglot: Any = _Lazy("sqlglot") if SQLGLOT_AVAILABLE else None
+exp: Any = _Lazy("sqlglot.expressions") if SQLGLOT_AVAILABLE else None
 
 
 # Operation classes, ordered by how hard the damage is to undo.

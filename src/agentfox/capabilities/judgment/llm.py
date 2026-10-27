@@ -63,7 +63,7 @@ explanation. Every id must appear exactly once."""
 class LlmJudge:
     """Answers judgment questions with any registered model provider."""
 
-    def __init__(self, provider_key: str | None = None, *, timeout_s: float = 4.0) -> None:
+    def __init__(self, provider_key: str | None = None, *, timeout_s: float | None = None) -> None:
         self._key = provider_key
         self._timeout = timeout_s
 
@@ -131,7 +131,8 @@ class LlmJudge:
                     # The judge answers in about a second; one that takes longer is
                     # holding a request (and a worker) for nothing. Was the HTTP
                     # client's 60 s, with this timeout stored and never used.
-                    timeout_s=self._timeout,
+                    timeout_s=self._timeout
+                    or float(getattr(self._settings(), "judgment_llm_timeout_s", 4.0)),
                 )
             )
         except Exception as exc:  # noqa: BLE001 - network, auth, quota

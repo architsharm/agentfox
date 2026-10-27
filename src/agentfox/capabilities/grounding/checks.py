@@ -33,6 +33,7 @@ from agentfox.capabilities.grounding.integrity import assess_integrity
 from agentfox.capabilities.grounding.provenance import assess_provenance
 from agentfox.capabilities.grounding.register import check_register
 from agentfox.capabilities.grounding.sycophancy import check_premises
+from agentfox.capabilities.judgment.commitments import SCAN_CHARS as _COMMITMENT_SCAN_CHARS
 from agentfox.platform.checks import CheckContext, check
 
 #: The commitment and context-integrity post-flight checks are linear in the content
@@ -43,7 +44,7 @@ from agentfox.platform.checks import CheckContext, check
 #: prefix bounds the work at ~13ms. A promise or a corruption that appears only after
 #: 32KB of text is a case this check honestly does not cover, which is a better failure
 #: than a blown budget on the request path.
-_SCAN_CHARS = 32_000
+_SCAN_CHARS = _COMMITMENT_SCAN_CHARS
 
 
 _SCAN_CHUNKS = 50

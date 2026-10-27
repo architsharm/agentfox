@@ -193,6 +193,92 @@ The new design stays. These are the UI fixes the review found. They come after t
 - [ ] Rule "Checked by": use the backend's surface-aware `checks` list instead of the client-side join.
 - [ ] Map "To / From the LLM" lines are a view: don't add their counts to other lines.
 
+## 7. Post-merge audit (2026-10-27): features missed or weakened by recent merges
+
+Scope:
+- Main before #122 (`3da75bf6`) compared with main after #129, #130 and #131.
+- Nothing was deleted: no route, CLI command, table or test. 252 → 286 API operations, none removed, no auth loosened on existing routes.
+- On main: 5,048 tests pass (`tests` + `ee/ee_tests`, parallel). Every dashboard proxy targets a route that exists; tsc is clean; 150 vitest tests pass.
+- The damage is weakened guarantees in the new write paths, plus duplicate "doors" that drift apart.
+
+**Rule:** UI items here are records only. Backend items are fixes the owner can pick.
+
+### Fixed in this pass (in #130)
+- [x] **The judge was switched off silently.** An off-format judge reply (`MALFORMED`, from #131) reached neither `degraded` nor `judge_outage`, so an input crafted to make the judge answer unparseably turned it off unseen. It now degrades. It still triggers no `fail_closed` block, because the judge itself is healthy.
+- [x] **The LLM-app fallback reached discovery submissions.** It ran for every `repo.scan()`, so `check --submit` could propose draft agents on model calls alone. It is now opt-in: only `agentfox init` asks for it.
+- [x] **A crescendo timing test stopped measuring its cap.** It compared a 250 KB turn with an ordinary one, and the ratio rose from 7x to 12x when #131 made ordinary turns cheaper (3.5 → 2.0 ms) while the large turn stayed the same (25 → 24 ms). It now checks the cap by doubling the turn: a capped read costs the same at 500 KB as at 250 KB.
+
+### Backend: weakened or broken (ranked)
+- [ ] **Authorization gap (broken).** `DELETE /api/projects/{p}` needs only `registry`, which developers have, yet it publishes empty agent layers and sets enforcing copies to observe. The direct mode change needs `policy_production`.
+  - Verified: a developer got 403 on the mode change, then 200 on DELETE.
+  - Fix: require `policy_production`, or refuse when any agent layer enforces and `may_enforce` is false.
+- [ ] **Disconnecting removes default-deny.**
+  - `revoke_capability` deletes the grant rows, so `holds_any_grant()` turns false and `auto()` exempts capability refusals.
+  - The agent's keys and identity stay active, and nothing refuses traffic from `removed` agents.
+  - Fix: suspend the identity or revoke the keys on disconnect, and refuse `removed` agents at runtime.
+- [ ] **Library and basic-guardrail writes are not audited.** `apply_library`, `update_outdated`, `remove_starter` and `basic_guardrails`, including its `set_mode(enforce)`, write no audit chain entry and are not in `operator_log.PRIVILEGED`.
+- [ ] **No simulation gate on new versions of enforcing copies.** `publish_in_current_mode` records a simulation but never gates on it. New callers (`update_outdated`, basic guardrails on an enforcing layer, restore) let a `policy`-role user push blocking rules live. Fix: gate on `may_enforce`, or publish in observe and promote.
+- [ ] **`judgment_fail_closed` default flipped True → False with no data migration.**
+  - The old `posture.save()` wrote True into every posture row, so tenants differ by history.
+  - A posture PUT that omits `fail_closed` now turns it off.
+  - Production pins `AGENTFOX_JUDGMENT_FAIL_CLOSED=true` and the judge deadline is now 4 s, so a judge slower than 4 s becomes a block.
+  - Fix: decide what existing rows should be; make the judge deadline a setting; watch the `pipeline.judge_outage` rate.
+- [ ] **Budget skips cheap deterministic detectors, which fails open.** This explains the three CI flakes: showcase `injection.encoded`, the async autoguard stream, and autoguard detections not recorded.
+  - `detector_timeout_ms=40` is wall-clock, and the request budget is shared, so under CPU load `secrets.native` (0 ms) or `injection.heuristic` (1 ms) can miss their slot. With `fail_mode=open` the request then passes.
+  - This predates the recent merges.
+  - Fix: run detectors with no declared `timeout_ms` inline or outside the budget; budget only the model-backed ones.
+- [ ] **The setup key is not bound to the run's project.** Within a tenant, any key can post results into another project's running test (`runner_guard`/`runner_results`).
+- [ ] **Postgres risk in migration `b9e4c2a7d153` `_move_runs`.** The id is truncated only on insert, and `project`/`phase`/`status` are not truncated at all. Unverified on Postgres; the exposure is legacy branch data only.
+- [ ] **The background probe refresh may freeze on Vercel.** `check_services(block=False)` refreshes from a daemon thread, which Vercel may suspend after the response. Unverified. Fix: refresh inline when the cached entry is far past its TTL.
+- [ ] **Discovery confidence.** Medium- and low-confidence agents from #130 reach `propose_from_scan` without their confidence. Carrying it needs a `SubmittedAgent` field, and the payload tests pin the fields that cross the wire.
+
+### Backend: duplicates that replaced instead of extending (owner decisions)
+- [ ] **Two registration paths.**
+  - `check --submit` → `propose_from_scan`, and `init --key` → `register_structure`.
+  - They differ in slugs, ScanRun, trifecta risk tier, edge pruning and scan-proposed policies.
+  - Fix: make `register_structure` a mode of `propose_from_scan`.
+- [ ] **The attack test reads its own copy of the map.** The map lives as JSON in `OnboardingSession`/`OnboardingProject`, and `PUT /api/onboarding/structure` edits only that JSON, so the tested map and the registry drift.
+- [ ] **Four delegation-graph walks.** They disagree about removed agents (`scope.delegates` doesn't filter them), so "apply to sub-agents" can write layers to removed agents. Fix: one graph helper.
+- [ ] **Basic guardrails duplicate the `baseline` pack.** They are a hard-coded Python pack with different rule ids and thresholds, and two apply routes behave differently. Fix: make it a pack file and keep one route.
+- [ ] **The attack test has its own corpus and storage** (`OnboardingRun`) instead of `RedTeamCampaign`/`Finding`, so it produces no findings, control evidence or posture history.
+- [ ] **Wizard-only state.** `GET/POST /api/onboarding/guardrails` are display-only toggles, `/api/onboarding/state` duplicates the checklist, and `OnboardingSession.runs` is unused. Remove them with the wizard.
+
+### Tests and docs
+- [ ] `test_attack_frameworks.py` always skips in CI: it needs the langchain and agents SDK extras. Fix: a CI or nightly job with those extras.
+- [ ] **Stale docs.**
+  - No CHANGELOG for #131 (4 s judge deadline, `MALFORMED`, classifier windows, `total_ms`, non-blocking probe).
+  - The TypeScript SDK types lack `total_ms`/`would_be_content`.
+  - `plugins/shared/reference/cli.md` lacks `init --key/--server`.
+  - `http-api.md` lacks projects, libraries, onboarding and `include_removed`.
+  - `onboarding_key_ttl_days` is undocumented.
+- [ ] Re-run the injection, generalization and head-to-head benchmarks. The published classifier claims predate #131's windowing; the A/B on four held-out sets showed no change, but the published files are not regenerated.
+
+### Dashboard (UI change, recorded only, not to be done without the owner)
+**Broken**
+- [ ] **"Add basic guardrails and test again" shows no improvement.** The guardrails are added in watching mode, and since #126 watching rules don't count as stopping attacks. So before and after show the same N/N got through.
+  - The panel ignores `mode`, `wouldStop`, `stoppedBy.waitingFor` and `basicEnforcing`.
+  - The prompt then disappears, and nothing points to Simulate / Start blocking.
+- [ ] **The custom-rule tool picker is always empty.** `ConditionFields.tsx` calls `/api/tools`, but no `dashboard/app/api/tools` proxy exists, and the 404 becomes an empty list. Pre-existing since 1e862bae; the fix would be a one-line proxy route.
+- [ ] **Redirect loop between `/app/map` and `/app/onboarding`** when a project's map fails or has no agents (§6, still open).
+
+**Unreachable**
+- [ ] **No inbound link and not in search:** Tools, Models, Events and Sessions pages; Policies "All rules" (`tab=rules`) and "Code" (`tab=code`).
+  - `links.test.ts` was widened in #122 to accept hidden tabs, so tests can't flag these.
+- [ ] **The per-attack results list** ("which attacks got through, and what stopped each") exists only in the orphaned onboarding wizard.
+- [ ] **Search only:** Reports, Compliance and Coverage. Workspace Features is linked only from an agent's Features view.
+
+**Drift**
+- [ ] **Backend fields the UI ignores:**
+  - `stoppedBy.waitingFor`, `wouldStop` and `stopped/resisted/errored/notRun/clean`;
+  - `rule.checks`/`checksOff`;
+  - `/api/projects` `name/repos/members`;
+  - `restorable` and restore-guardrails (the disconnect dialog says "bring it back as new");
+  - `total_ms`;
+  - agent `confidence`/`evidence` from `agentfox init`.
+- [ ] **Two severity components disagree:** `kit/SeverityPill` shows high as amber and `ui/Severity` (in the bell) shows it red. The bell's "more on Overview →" points at a page that no longer exists.
+- [ ] **Two "attack test" features don't link to each other:** the map's onboarding test and Testing → red-team campaigns.
+- [ ] **Status of §6:** most items are still open. Fixed: Projects/Add all (#126), mobile (#124), wording. Changed: Monitoring is now reachable from the Traces tabs; Advanced/judge settings are three clicks deep (map → Checks → All judge settings).
+
 ## Housekeeping
 
 - [x] ~~`agentfox init --path <repo>` writes `agentfox.toml`~~: not a bug; with `--key` init only maps and connects.
