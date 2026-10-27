@@ -117,7 +117,8 @@ class BatchedScorer:
             with self._cache_lock:
                 for i, row in zip(missing, rows, strict=True):
                     out[i] = row
-                    self._cache[self._key(texts[i])] = row
+                    if self.cache_size:
+                        self._cache[self._key(texts[i])] = row
                 while len(self._cache) > self.cache_size:
                     self._cache.popitem(last=False)
         return [row or [] for row in out]
@@ -159,7 +160,10 @@ def batched(pipe: Any) -> BatchedScorer:
         with _load_lock:
             scorer = getattr(pipe, "_agentfox_batched", None)
             if scorer is None:
-                scorer = BatchedScorer(pipe)
+                from agentfox.core.config import get_settings
+
+                size = int(getattr(get_settings(), "classifier_cache_size", 4096))
+                scorer = BatchedScorer(pipe, cache_size=size)
                 pipe._agentfox_batched = scorer
     return scorer
 

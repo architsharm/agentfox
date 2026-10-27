@@ -284,6 +284,9 @@ class Settings(BaseSettings):
     # against the same trace. True runs it inline, as before (it then also feeds the
     # would-be verdict of watching policies on that check).
     prompt_injection_classifier_secondary_inline: bool = False
+    # Classifier scores kept per model, by a hash of the text (system prompts, tool
+    # descriptions and retrieved chunks repeat). 0 turns the cache off.
+    classifier_cache_size: int = 4096
 
     # --- Enforcement (Pillar 3) -----------------------------------------
     # Hard budget for the whole pre-flight pipeline, and per detector.

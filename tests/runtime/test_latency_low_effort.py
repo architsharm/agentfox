@@ -206,3 +206,20 @@ def test_the_classifier_backstop_runs_after_the_response_and_is_recorded(session
         found = session.query(DetectionFinding).filter_by(trace_id=trace.id).count()
         _time.sleep(0.05)
     assert found == 1
+
+
+def test_a_zero_cache_size_scores_every_time():
+    from agentfox.capabilities.detection.loading import BatchedScorer
+
+    calls: list[list[str]] = []
+
+    class _Pipe:
+        def __call__(self, texts, batch_size=None):
+            calls.append(list(texts))
+            return [[{"label": "SAFE", "score": 0.9}] for _ in texts]
+
+    cached, uncached = BatchedScorer(_Pipe()), BatchedScorer(_Pipe(), cache_size=0)
+    for scorer in (cached, uncached):
+        scorer.score(["same text"])
+        scorer.score(["same text"])
+    assert calls == [["same text"], ["same text"], ["same text"]]  # cached once, uncached twice
