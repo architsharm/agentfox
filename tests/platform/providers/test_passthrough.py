@@ -9,8 +9,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
-
 from agentfox.platform.providers.base import CompletionRequest
 from agentfox.platform.providers.remote import AnthropicProvider, OpenAIProvider
 from agentfox.runtime.enforcement.streaming import _merge_tool_calls
@@ -42,7 +40,11 @@ def _capture(monkeypatch, reply: dict[str, Any]) -> dict[str, Any]:
         sent.update(json)
         return _Response(reply)
 
-    monkeypatch.setattr(httpx, "post", post)
+    from types import SimpleNamespace
+
+    from agentfox.platform.providers import remote
+
+    monkeypatch.setattr(remote, "http", lambda: SimpleNamespace(post=post))
     return sent
 
 

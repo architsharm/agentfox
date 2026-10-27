@@ -16,13 +16,12 @@ import os
 from collections.abc import Iterator
 from typing import Any
 
-import httpx
-
 from agentfox.core.config import get_settings
 from agentfox.platform.providers.base import (
     CompletionRequest,
     CompletionResponse,
     StreamChunk,
+    http,
     register_provider,
 )
 
@@ -158,7 +157,7 @@ class OpenAIProvider(_HttpProvider):
         settings = self._settings()
         body = self._body(request)
 
-        r = httpx.post(
+        r = http().post(
             f"{settings.openai_base_url}/v1/chat/completions",
             json=body,
             headers={"Authorization": f"Bearer {self._api_key()}"},
@@ -186,7 +185,7 @@ class OpenAIProvider(_HttpProvider):
         settings = self._settings()
         body = {**self._body(request), "stream": True, "stream_options": {"include_usage": True}}
 
-        with httpx.stream(
+        with http().stream(
             "POST",
             f"{settings.openai_base_url}/v1/chat/completions",
             json=body,
@@ -259,7 +258,7 @@ class AnthropicProvider(_HttpProvider):
         settings = self._settings()
         body = self._body(request)
 
-        r = httpx.post(
+        r = http().post(
             f"{settings.anthropic_base_url}/v1/messages",
             json=body,
             headers={
@@ -299,7 +298,7 @@ class AnthropicProvider(_HttpProvider):
         settings = self._settings()
         body = {**self._body(request), "stream": True}
 
-        with httpx.stream(
+        with http().stream(
             "POST",
             f"{settings.anthropic_base_url}/v1/messages",
             json=body,
