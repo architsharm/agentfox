@@ -32,12 +32,11 @@ import logging
 from collections.abc import Iterator
 from typing import Any
 
-import httpx
-
 from agentfox.platform.providers.base import (
     CompletionRequest,
     CompletionResponse,
     StreamChunk,
+    http,
     is_local_endpoint,
     register_provider,
 )
@@ -90,7 +89,7 @@ class AzureOpenAIProvider(OpenAIProvider):
         if request.tools:
             body["tools"] = request.tools
 
-        r = httpx.post(
+        r = http().post(
             self._url(deployment),
             json=body,
             headers={"api-key": self._api_key() or ""},
@@ -126,7 +125,7 @@ class AzureOpenAIProvider(OpenAIProvider):
         }
         if request.max_tokens:
             body["max_tokens"] = request.max_tokens
-        with httpx.stream(
+        with http().stream(
             "POST",
             self._url(deployment),
             json=body,
@@ -186,7 +185,7 @@ class LiteLLMProvider(OpenAIProvider):
         headers = {}
         if self._api_key():
             headers["Authorization"] = f"Bearer {self._api_key()}"
-        r = httpx.post(
+        r = http().post(
             f"{settings.litellm_base_url.rstrip('/')}/v1/chat/completions",
             json=body,
             headers=headers,
@@ -346,7 +345,7 @@ class VertexProvider(_HttpProvider):
             f"{settings.vertex_project}/locations/{settings.vertex_location}/publishers/google/"
             f"models/{model}:generateContent"
         )
-        r = httpx.post(
+        r = http().post(
             url,
             json=body,
             headers={"Authorization": f"Bearer {self._token()}"},
