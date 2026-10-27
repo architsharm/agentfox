@@ -391,7 +391,10 @@ def test_pipeline_records_detector_error_without_failing_request():
 
     result = DetectorPipeline(detectors=[BrokenDetector()]).run("x", DetectionContext())
     assert "broken.test" in result.errored
+    # An error is reduced coverage like a timeout: degraded, so `fail_mode` decides it.
+    assert "broken.test" in result.degraded
     assert result.results[0].status == "error"
+    assert result.degradation() == {"broken.test": "error: boom"}
 
 
 def test_pipeline_selects_by_surface():

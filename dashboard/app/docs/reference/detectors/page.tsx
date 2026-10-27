@@ -311,9 +311,11 @@ print([(d["key"], d["status"], d["matched"]) for d in r["explanation"]["detector
       </ul>
       <p>
         Each call has the model&apos;s own timeout (50 to 2000 ms). If the model is down,
-        times out or answers nonsense, the run is recorded as <code>error</code> and
-        traffic flows; choose <em>Treat as a hit</em> to make an outage count as a
-        detection instead. A public endpoint is only called where egress is allowed
+        times out or answers nonsense, the run is recorded as <code>error</code> and the
+        check is degraded, so <code>fail_mode</code> decides it like any detector that
+        errors or times out: with <code>open</code> (the default) traffic flows and the gap
+        is recorded. Choose <em>Treat as a hit</em> to make an outage count as a detection
+        as well, which your rules act on even when <code>fail_mode</code> is open. A public endpoint is only called where egress is allowed
         (<code>AGENTFOX_ALLOW_EGRESS</code>); one on your own network needs{" "}
         <code>outbound_allow_private_hosts</code>; link-local addresses never. An optional
         auth header value is stored encrypted and never returned. API:{" "}
@@ -385,7 +387,7 @@ input       block    SAFETY.ILLICIT`}</Output>
           <tr><td><code>enforcement_budget_ms</code></td><td>300</td><td>The whole detector pipeline for one check.</td></tr>
           <tr><td><code>detector_timeout_ms</code></td><td>40</td><td>Per detector, unless the detector declares its own (the classifier 250, similarity 150, judgment 2000).</td></tr>
           <tr><td><code>request_budget_ms</code></td><td>350</td><td>Every check one governed call makes, together.</td></tr>
-          <tr><td><code>fail_mode</code></td><td><code>open</code></td><td>What a degraded check does: <code>open</code> lets it through and records the gap; <code>closed</code> blocks it as <code>pipeline.fail_closed</code> when the decision is enforcing. A pack&apos;s own <code>fail_mode: closed</code> also applies (below). An LLM judge that does not answer is degraded the same way, and the judgment posture can also block it as <code>pipeline.judge_outage</code>.</td></tr>
+          <tr><td><code>fail_mode</code></td><td><code>open</code></td><td>What a degraded check does: <code>open</code> lets it through and records the gap; <code>closed</code> blocks it as <code>pipeline.fail_closed</code> when the decision is enforcing. A pack&apos;s own <code>fail_mode: closed</code> also applies (below). A detector that errors (raises, or reports an error) is degraded exactly like one that times out, and the block&apos;s reason names the error. An LLM judge that does not answer is degraded the same way, and the judgment posture can also block it as <code>pipeline.judge_outage</code>.</td></tr>
         </tbody>
       </table>
       <p>
