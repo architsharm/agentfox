@@ -24,6 +24,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from agentfox.capabilities.containment.escalation import escalation_report
+from agentfox.capabilities.detection.loading import scheduler
 from agentfox.core.models import (
     Decision,
     DetectorRun,
@@ -33,6 +34,7 @@ from agentfox.core.models import (
     Trace,
     utcnow,
 )
+from agentfox.runtime.availability import get_check_meter
 from agentfox.runtime.reliability import BREAKER
 
 
@@ -137,6 +139,58 @@ def render_metrics(session: Session, *, window_hours: int = 24) -> str:
         "A control that quietly stops running while reporting effective is the failure "
         "mode that makes compliance products worthless.",
         [({}, float(degraded or 0))],
+    )
+
+    # --- Checks answered without a detector (this process) ----------------
+    # The per-check share, counted in memory on the request path. The DB-derived
+    # total above counts detector runs over 24 h; this says what share of checks
+    # right now went without one, which is what saturation looks like.
+    checks = get_check_meter().snapshot()
+    registry.add(
+        "agentfox_checks_total",
+        "counter",
+        "Detector pipeline checks run by this process.",
+        [({}, float(checks["checks_total"]))],
+    )
+    registry.add(
+        "agentfox_checks_degraded_total",
+        "counter",
+        "Checks answered without a detector, by detector and cause (timeout, "
+        "skipped_budget, error, unavailable). Under fail_mode=open they were answered on "
+        "the other detectors' findings; under fail_mode=closed they were blocked.",
+        [
+            ({"detector": row["detector"], "cause": row["cause"]}, float(row["count"]))
+            for row in checks["by_detector"]
+        ]
+        or [({}, 0.0)],
+    )
+    registry.add(
+        "agentfox_checks_degraded_ratio",
+        "gauge",
+        f"Share of checks in the last {checks['window_seconds']:g}s answered without at "
+        "least one selected detector.",
+        [({}, float(checks["window_ratio"]))],
+    )
+    registry.add(
+        "agentfox_classifier_backstop_shed_total",
+        "counter",
+        "Advisory classifier backstop runs (after the response, never enforced) dropped "
+        "because their backlog was full.",
+        [({}, float(checks["backstop_shed_total"]))],
+    )
+    inference = scheduler().stats
+    registry.add(
+        "agentfox_inference_abandoned_total",
+        "counter",
+        "Texts queued for a model whose check stopped waiting first; dropped unscored "
+        "(that check is counted as degraded).",
+        [({}, float(inference["abandoned"]))],
+    )
+    registry.add(
+        "agentfox_inference_passes_total",
+        "counter",
+        "Batched forward passes run by the in-process inference scheduler.",
+        [({}, float(inference["passes"]))],
     )
 
     # --- Findings --------------------------------------------------------

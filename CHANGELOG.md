@@ -13,6 +13,24 @@ the file it came from.
 
 ### Fixed
 
+- **The injection classifier keeps up under concurrency instead of being skipped.**
+  With the default detectors (classifier on, score cache off), 16 concurrent clients
+  against one gateway process had most checks answered without the classifier: it ran
+  past its 250 ms allowance, so the check was degraded, and under the default
+  `fail_mode = "open"` it was allowed on the other detectors' findings. Three causes,
+  each fixed without raising the allowance. The heavy detector pool (8 threads, each
+  blocked while its text waited for the batcher) was the concurrency limit, so half the
+  checks queued for a thread first; it is now 4x the light pool. The advisory backstop
+  model, which runs after the response, ran its forward passes on the same device in
+  turn with the request-path classifier's and slowed them several-fold; one in-process
+  inference scheduler now runs every batched pass, request-path work first, the backstop
+  only when nothing a request waits on is queued, and backstop runs are bounded (256
+  waiting; past that they are dropped and counted). Texts whose check had already timed
+  out were still scored, delaying the next checks; a pipeline that stops waiting now
+  drops its queued texts unscored and releases the thread. A degraded check is still
+  degraded: listed in the response's `degraded`, blocked under `fail_mode = "closed"`.
+  Measured before/after numbers are in the pull request.
+
 - **A detector that errors now follows `fail_mode`, exactly as one that times out.**
   A detector that raised, or reported `status="error"` (a custom model whose endpoint
   was down, for one), was recorded as `errored` and the call was allowed whatever
@@ -102,6 +120,17 @@ the file it came from.
   require it for every workspace.
 
 ### Added
+
+- **The share of checks answered without a detector is visible.** Counted per process
+  on the request path: `/metrics` has `agentfox_checks_total`,
+  `agentfox_checks_degraded_total{detector,cause}`, `agentfox_checks_degraded_ratio`
+  (over `degraded_window_seconds`, 60 by default),
+  `agentfox_classifier_backstop_shed_total` and `agentfox_inference_abandoned_total`;
+  `/api/health` reports them under `degradation.checks` and turns
+  `governance_healthy` false while the share is above `degraded_warn_ratio` (5%, with at
+  least `degraded_warn_min_checks` checks in the window), and the gateway logs a warning
+  once per window saying what `fail_mode` did with those checks (`open` answered them on
+  the other detectors' findings; `closed` blocked them).
 
 - **`scan --json` says more about each agent**: its `model` (read from a literal, a
   module constant, an f-string of constants, an `os.getenv` default or a chat-model

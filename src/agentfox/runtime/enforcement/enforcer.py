@@ -7,6 +7,7 @@ where they become one object.
 from __future__ import annotations
 
 import datetime as dt
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -69,6 +70,7 @@ from agentfox.platform.policy import (
 )
 from agentfox.platform.policy.taint_view import policy_taint
 from agentfox.platform.registry.service import observe_agent
+from agentfox.runtime.availability import observe_check
 from agentfox.runtime.checks import checks_for
 from agentfox.runtime.enforcement.approvals import held_call
 from agentfox.runtime.enforcement.completion import _CompletionMixin
@@ -91,6 +93,55 @@ from agentfox.runtime.enforcement.rules import (
 from agentfox.runtime.enforcement.streaming import _StreamingMixin
 from agentfox.runtime.enforcement.surfaces import _SurfacesMixin
 from agentfox.runtime.enforcement.tool_calls import _ToolCallMixin
+
+#: Advisory backstop runs (after the response) at most in flight or waiting. They
+#: used to start a thread each, unbounded: under sustained load they piled up behind
+#: the request-path classifier and competed with it for the model device. Past this,
+#: a run is dropped and counted (`backstop_shed_total` on `/metrics` and health);
+#: the backstop is never enforced, so no verdict changes.
+BACKSTOP_MAX_PENDING = 256
+#: A few daemon threads (as the per-run threads were, so shutdown never waits on
+#: advisory work): each waits on a background inference job, and the scheduler
+#: batches what they hand it.
+BACKSTOP_WORKERS = 4
+_backstop_lock = threading.Lock()
+_backstop_queue: Any = None
+_backstop_pending = 0
+
+
+def _backstop_worker() -> None:
+    global _backstop_pending
+    while True:
+        run = _backstop_queue.get()
+        try:
+            run()
+        except Exception:  # pragma: no cover - `run` already logs its own failures
+            pass
+        finally:
+            with _backstop_lock:
+                _backstop_pending -= 1
+
+
+def _submit_backstop(run: Any) -> bool:
+    """Queue one deferred backstop run; False (and counted) when the backlog is full."""
+    global _backstop_queue, _backstop_pending
+    import queue
+
+    from agentfox.runtime.availability import get_check_meter
+
+    with _backstop_lock:
+        if _backstop_pending >= BACKSTOP_MAX_PENDING:
+            get_check_meter().shed_backstop()
+            return False
+        _backstop_pending += 1
+        if _backstop_queue is None:
+            _backstop_queue = queue.SimpleQueue()
+            for i in range(BACKSTOP_WORKERS):
+                threading.Thread(
+                    target=_backstop_worker, name=f"agentfox-backstop-{i}", daemon=True
+                ).start()
+    _backstop_queue.put(run)
+    return True
 
 
 def _degradation_text(pipeline_result: Any) -> str:
@@ -559,7 +610,6 @@ class Enforcer(
         where the primary model ran and found nothing, as inline. A hit is recorded
         as a detection on the same trace."""
         import logging
-        import threading
 
         from agentfox.capabilities.detection.base import DetectorResult
         from agentfox.capabilities.detection.pipeline import PipelineResult
@@ -585,9 +635,14 @@ class Enforcer(
         content, surface, trace_id = call.content, call.surface, call.trace_id
 
         def run() -> None:
+            from agentfox.capabilities.detection.loading import InferenceShed, background_inference
+            from agentfox.runtime.availability import get_check_meter
+
             try:
                 started = time.perf_counter()
-                found = detector.backstop(content)
+                # Behind every request-path forward pass: advisory, after the response.
+                with background_inference():
+                    found = detector.backstop(content)
                 if not found:
                     return
                 result = PipelineResult()
@@ -602,10 +657,12 @@ class Enforcer(
                 )
                 with tenant(org), session_scope() as session:
                     persist_detector_runs(session, result, trace_id, surface)
+            except InferenceShed:
+                get_check_meter().shed_backstop()
             except Exception:  # pragma: no cover - after the response; never raises
                 logging.getLogger(__name__).warning("deferred backstop failed", exc_info=True)
 
-        threading.Thread(target=run, name="agentfox-backstop", daemon=True).start()
+        _submit_backstop(run)
 
     def _run_detectors(self, call: _Evaluation) -> None:
         """The detector pipeline (budgeted, concurrent), then suppressions."""
@@ -650,6 +707,9 @@ class Enforcer(
             call.content, context, budget_ms=ledger.allowance_ms(self.pipeline.budget_ms)
         )
         ledger.charge(pipeline_result, call.surface)
+        # Counted per check, so a share of checks answered without a detector (under
+        # load, say) shows on /metrics and /api/health, and is logged above threshold.
+        observe_check(pipeline_result)
         call.ledger = ledger
         call.pipeline_result = pipeline_result
 

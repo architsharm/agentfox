@@ -726,10 +726,11 @@ def service_health(*, now: dt.datetime | None = None, probe: bool = True) -> dic
             mode = get_settings().fail_mode
         except Exception:
             mode = "unknown"
+        checks = get_check_meter().snapshot()
         return {
             **status,
             # Down *now*, from a fresh probe.
-            "healthy": bool(status.get("healthy")) and not errors,
+            "healthy": bool(status.get("healthy")) and not errors and not checks["above_threshold"],
             "fail_mode": mode,
             "services": sorted(SERVICES),
             "unavailable": {
@@ -747,7 +748,170 @@ def service_health(*, now: dt.datetime | None = None, probe: bool = True) -> dic
                 for service in SERVICES
                 if (events := ledger.history(service))
             },
+            # Checks answered without at least one selected detector (a timeout, an
+            # error, a budget skip), in this process. Above its threshold over the
+            # window, `healthy` is false: those checks were not fully checked.
+            "checks": checks,
         }
     except Exception:  # pragma: no cover - a status view must not 500
         log.warning("could not build service health", exc_info=True)
         return {"healthy": None, "degraded_controls": {}, "error": "health unavailable"}
+
+
+# --- Checks answered without a detector -------------------------------------
+#
+# The per-check view of degradation. A detector that timed out, errored or was shed
+# for budget on one check left that check's content unread by it: under the default
+# `fail_mode = "open"` the check is answered on what the other detectors found, and
+# under `fail_mode = "closed"` it is blocked. Each response already lists its
+# `degraded` detectors, but a caller reading one response cannot see that, say, half
+# of all checks in the last minute skipped the classifier because the process was
+# saturated. This meter counts it in-process (no database round-trip on the request
+# path), exposes it on `/metrics` and `/api/health`, and logs a warning while the
+# share over its window is above a threshold.
+
+
+class CheckDegradationMeter:
+    """Checks seen, checks answered without at least one selected detector, why, and
+    the share over a sliding window."""
+
+    def __init__(
+        self,
+        *,
+        window_seconds: float = 60.0,
+        warn_ratio: float = 0.05,
+        min_checks: int = 20,
+        clock: Any = None,
+    ) -> None:
+        import time
+
+        self.window_seconds = float(window_seconds)
+        self.warn_ratio = float(warn_ratio)
+        self.min_checks = int(min_checks)
+        self._clock = clock or time.monotonic
+        self._lock = threading.Lock()
+        self._window: deque[tuple[float, bool]] = deque()
+        self._window_degraded = 0
+        self.checks_total = 0
+        self.degraded_total = 0
+        #: (detector, cause) -> count; the cause is the run's status (timeout,
+        #: skipped_budget, error, unavailable).
+        self.by_detector: dict[tuple[str, str], int] = {}
+        #: Advisory work after the response that was dropped under load.
+        self.backstop_shed_total = 0
+        self._last_warned: float | None = None
+
+    def _expire(self, now: float) -> None:
+        cutoff = now - self.window_seconds
+        while self._window and self._window[0][0] < cutoff:
+            _at, was_degraded = self._window.popleft()
+            self._window_degraded -= was_degraded
+
+    def _ratio(self) -> tuple[int, int, float]:
+        checks = len(self._window)
+        bad = self._window_degraded
+        return bad, checks, (bad / checks if checks else 0.0)
+
+    def observe(self, degraded: dict[str, str]) -> None:
+        """One check; ``degraded`` maps each detector that did not check it to why."""
+        now = self._clock()
+        warn = None
+        with self._lock:
+            self.checks_total += 1
+            if degraded:
+                self.degraded_total += 1
+                for key, cause in degraded.items():
+                    self.by_detector[(key, cause)] = self.by_detector.get((key, cause), 0) + 1
+            self._expire(now)
+            self._window.append((now, bool(degraded)))
+            self._window_degraded += bool(degraded)
+            bad, checks, ratio = self._ratio()
+            due = self._last_warned is None or now - self._last_warned >= self.window_seconds
+            if checks >= self.min_checks and ratio > self.warn_ratio and due:
+                self._last_warned = now
+                warn = (bad, checks, ratio)
+        if warn is not None:
+            self._warn(*warn)
+
+    def _warn(self, bad: int, checks: int, ratio: float) -> None:
+        from agentfox.core.config import get_settings
+
+        try:
+            mode = get_settings().fail_mode
+        except Exception:  # noqa: BLE001
+            mode = "unknown"
+        log.warning(
+            "%d of %d checks (%.1f%%) in the last %.0fs were answered without at least one "
+            "selected detector, above the %.0f%% warning threshold; fail_mode=%s, so %s",
+            bad,
+            checks,
+            ratio * 100,
+            self.window_seconds,
+            self.warn_ratio * 100,
+            mode,
+            "they were blocked"
+            if mode == CLOSED
+            else "they were answered on the other detectors' findings alone "
+            "(fail_mode=closed blocks them instead)",
+        )
+
+    def shed_backstop(self) -> None:
+        with self._lock:
+            self.backstop_shed_total += 1
+
+    def snapshot(self) -> dict[str, Any]:
+        now = self._clock()
+        with self._lock:
+            self._expire(now)
+            bad, checks, ratio = self._ratio()
+            return {
+                "checks_total": self.checks_total,
+                "degraded_total": self.degraded_total,
+                "by_detector": [
+                    {"detector": key, "cause": cause, "count": count}
+                    for (key, cause), count in sorted(self.by_detector.items())
+                ],
+                "window_seconds": self.window_seconds,
+                "window_checks": checks,
+                "window_degraded": bad,
+                "window_ratio": round(ratio, 4),
+                "warn_ratio": self.warn_ratio,
+                "above_threshold": checks >= self.min_checks and ratio > self.warn_ratio,
+                "backstop_shed_total": self.backstop_shed_total,
+            }
+
+
+_METER: CheckDegradationMeter | None = None
+_METER_LOCK = threading.Lock()
+
+
+def get_check_meter() -> CheckDegradationMeter:
+    global _METER
+    if _METER is None:
+        with _METER_LOCK:
+            if _METER is None:
+                from agentfox.core.config import get_settings
+
+                settings = get_settings()
+                _METER = CheckDegradationMeter(
+                    window_seconds=float(getattr(settings, "degraded_window_seconds", 60)),
+                    warn_ratio=float(getattr(settings, "degraded_warn_ratio", 0.05)),
+                    min_checks=int(getattr(settings, "degraded_warn_min_checks", 20)),
+                )
+    return _METER
+
+
+def reset_check_meter() -> None:
+    """Test-only: start counting from zero with the current settings."""
+    global _METER
+    _METER = None
+
+
+def observe_check(result: Any) -> None:
+    """Count one detector pipeline run (a `PipelineResult`). Never raises."""
+    try:
+        status = {r.detector_key: r.status for r in getattr(result, "results", [])}
+        degraded = {key: status.get(key, "degraded") for key in getattr(result, "degraded", [])}
+        get_check_meter().observe(degraded)
+    except Exception:  # pragma: no cover - counting must never break a request
+        log.warning("could not count the check against the degradation meter", exc_info=True)

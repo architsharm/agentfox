@@ -104,17 +104,20 @@ def isolated_db(tmp_path, monkeypatch, schema_template) -> Iterator[None]:
 
     from agentfox.core import db
     from agentfox.core.config import get_settings, reset_settings_cache
-    from agentfox.runtime.availability import reset_admission_controller
+    from agentfox.runtime.availability import reset_admission_controller, reset_check_meter
 
     reset_settings_cache()
     db.reset_engine()
     get_settings()
     db.init_db()
     reset_admission_controller()
+    # One test's timed-out checks must not count against the next one's health.
+    reset_check_meter()
     yield
     db.reset_engine()
     reset_settings_cache()
     reset_admission_controller()
+    reset_check_meter()
 
 
 @pytest.fixture

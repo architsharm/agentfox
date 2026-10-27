@@ -33,6 +33,7 @@ from agentfox.capabilities.detection.base import (
     DetectorResult,
     all_detectors,
 )
+from agentfox.capabilities.detection.loading import CallScope, enter_scope
 from agentfox.capabilities.judgment.jev import MALFORMED, OUTAGE
 from agentfox.core.config import get_settings
 
@@ -55,6 +56,16 @@ log = logging.getLogger(__name__)
 _shared_pool_lock = threading.Lock()
 _shared_pools: dict[int, tuple[ThreadPoolExecutor, ThreadPoolExecutor]] = {}
 
+#: The heavy pool's size, as a multiple of ``max_workers``. Its threads mostly wait:
+#: a model-backed detector hands its texts to the process's inference scheduler and
+#: blocks until its batch is scored. Sized like the light pool, it became the
+#: concurrency limit instead of the model: at 16 concurrent checks, half of them
+#: queued for a thread (measured p90 200 ms of a 250 ms allowance) before their text
+#: even reached the batcher, and the batches it did form stayed small. A waiting
+#: thread whose call is abandoned is released at once (`CallScope.abandon`), so the
+#: larger pool does not accumulate stragglers.
+HEAVY_POOL_FACTOR = 4
+
 
 def _get_shared_pools(max_workers: int) -> tuple[ThreadPoolExecutor, ThreadPoolExecutor]:
     with _shared_pool_lock:
@@ -62,7 +73,7 @@ def _get_shared_pools(max_workers: int) -> tuple[ThreadPoolExecutor, ThreadPoolE
         if pools is None:
             pool = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="nom-detect")
             heavy_pool = ThreadPoolExecutor(
-                max_workers=max_workers, thread_name_prefix="nom-detect-heavy"
+                max_workers=max_workers * HEAVY_POOL_FACTOR, thread_name_prefix="nom-detect-heavy"
             )
             pools = (pool, heavy_pool)
             _shared_pools[max_workers] = pools
@@ -289,12 +300,18 @@ class DetectorPipeline:
         # so they run while these do, and stay under the budget.
         inline = [d for d in detectors if _runs_inline(d)]
         pooled = [d for d in detectors if not _runs_inline(d)]
-        futures = {
-            self._pool_for(d).submit(
-                contextvars.copy_context().run, self._run_one, d, content, context
-            ): d
-            for d in pooled
-        }
+        # Each pooled call carries its bounds: no wait below can outlast the whole
+        # budget, and `abandon()` (on a timeout or a budget skip) drops whatever it
+        # still has queued for a model, so work nobody waits for does not delay the
+        # next request's detectors.
+        deadline = started + effective_budget / 1000
+        futures: dict = {}
+        scopes: dict[str, CallScope] = {}
+        for d in pooled:
+            scope = scopes[d.key] = CallScope(deadline)
+            ctx = contextvars.copy_context()
+            ctx.run(enter_scope, scope)
+            futures[self._pool_for(d).submit(ctx.run, self._run_one, d, content, context)] = d
         for detector in inline:
             try:
                 finished = self._run_one(detector, content, context)
@@ -334,6 +351,7 @@ class DetectorPipeline:
                 result.degraded.append(detector.key)
                 _judge_out(result, detector, context)
                 future.cancel()
+                scopes[detector.key].abandon()
                 continue
 
             try:
@@ -371,6 +389,9 @@ class DetectorPipeline:
                 # Still queued (not started): drop it. Left in the pool it runs anyway
                 # after the request has moved on, delaying the next request's detectors.
                 future.cancel()
+                # Started and waiting on a model: drop its texts from the inference
+                # queue and release the thread.
+                scopes[detector.key].abandon()
             except Exception as exc:  # a detector must never take the request down
                 log.warning("detector %s failed: %s", detector.key, exc)
                 result.results.append(
