@@ -181,6 +181,8 @@ class _Evaluation:
     #: LLM judges no enforcing rule could act on here: run after the response.
     deferred: list = field(default_factory=list)
     deferred_context: Any = None
+    #: The classifier's advisory backstop runs after the response for this check.
+    defer_backstop: bool = False
     # _check_capability, _run_content_checks, ladders, _analyse_action, budgets
     capability: dict[str, Any] = field(default_factory=dict)
     evidence: dict[str, Any] = field(default_factory=dict)
@@ -433,6 +435,8 @@ class Enforcer(
         self._persist_decision(call, result)
         if call.deferred:
             self._judge_later(call)
+        if call.defer_backstop:
+            self._backstop_later(call)
         # The whole check, persistence included: `latency_ms` stops when the verdict
         # is built, before the decision, audit and finding rows are written, which is
         # more than half of a fast check.
@@ -541,6 +545,59 @@ class Enforcer(
 
         threading.Thread(target=run, name="agentfox-deferred-judge", daemon=True).start()
 
+    def _backstop_later(self, call: _Evaluation) -> None:
+        """The injection classifier's advisory backstop, after the response: only
+        where the primary model ran and found nothing, as inline. A hit is recorded
+        as a detection on the same trace."""
+        import logging
+        import threading
+
+        from agentfox.capabilities.detection.base import DetectorResult
+        from agentfox.capabilities.detection.pipeline import PipelineResult
+        from agentfox.core.db import session_scope
+        from agentfox.core.tenancy import session_org, tenant
+        from agentfox.runtime.enforcement.findings import persist_detector_runs
+
+        ran = next(
+            (
+                r
+                for r in call.pipeline_result.results
+                if r.detector_key == "injection.classifier" and r.status == "ok"
+            ),
+            None,
+        )
+        detector = next(
+            (d for d in self.pipeline.select(call.surface) if d.key == "injection.classifier"),
+            None,
+        )
+        if ran is None or ran.detections or not getattr(detector, "secondary_model_id", None):
+            return
+        org = session_org(self.session)
+        content, surface, trace_id = call.content, call.surface, call.trace_id
+
+        def run() -> None:
+            try:
+                started = time.perf_counter()
+                found = detector.backstop(content)
+                if not found:
+                    return
+                result = PipelineResult()
+                result.results.append(
+                    DetectorResult(
+                        detector_key="injection.classifier",
+                        version=detector.version,
+                        detections=found,
+                        duration_ms=(time.perf_counter() - started) * 1000,
+                        raw={"role": "ensemble_secondary_backstop", "after_response": True},
+                    )
+                )
+                with tenant(org), session_scope() as session:
+                    persist_detector_runs(session, result, trace_id, surface)
+            except Exception:  # pragma: no cover - after the response; never raises
+                logging.getLogger(__name__).warning("deferred backstop failed", exc_info=True)
+
+        threading.Thread(target=run, name="agentfox-backstop", daemon=True).start()
+
     def _run_detectors(self, call: _Evaluation) -> None:
         """The detector pipeline (budgeted, concurrent), then suppressions."""
         # --- 4. detector pipeline (budgeted, concurrent) -----------------
@@ -574,6 +631,11 @@ class Enforcer(
             enabled_detectors=self._enabled_detectors(call.agent_slug),
         )
         self._defer_judges(call, context)
+        if call.persist and not getattr(
+            self.settings, "prompt_injection_classifier_secondary_inline", True
+        ):
+            context.extra["defer_backstop"] = True
+            call.defer_backstop = True
         ledger = self.ledger()
         pipeline_result = self.pipeline.run(
             call.content, context, budget_ms=ledger.allowance_ms(self.pipeline.budget_ms)

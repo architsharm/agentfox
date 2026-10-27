@@ -279,6 +279,11 @@ class Settings(BaseSettings):
     # (the 2026-10-27 latency study: about 1 s per check inline, for findings no
     # rule would have acted on). "always": inline on every check, as before.
     judgment_inline: str = "when_relied"
+    # The injection classifier's secondary model (an advisory backstop, never
+    # enforced) runs after the response on recorded checks, and its hit is recorded
+    # against the same trace. True runs it inline, as before (it then also feeds the
+    # would-be verdict of watching policies on that check).
+    prompt_injection_classifier_secondary_inline: bool = False
 
     # --- Enforcement (Pillar 3) -----------------------------------------
     # Hard budget for the whole pre-flight pipeline, and per detector.

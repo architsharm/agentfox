@@ -261,9 +261,17 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
         primary = super()._detect(content, context)
         if primary or not self.secondary_model_id:
             return primary
+        if (context.extra or {}).get("defer_backstop"):
+            # The enforcer runs it after the response (`backstop`): advisory only,
+            # so no verdict waits for it.
+            return primary
+        return self.backstop(content)
+
+    def backstop(self, content: str) -> list[Detection]:
+        """The secondary model's advisory hit on ``content``, if any."""
         pipe = self._secondary_pipeline
         if pipe is None or not content:
-            return primary
+            return []
         rows = _scored(pipe, content)
         for row in rows or []:
             label = str(row.get("label", ""))
