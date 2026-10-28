@@ -54,3 +54,12 @@ def test_the_threshold_is_a_setting(monkeypatch):
     context = DetectionContext(surface="input", extra={"content_chars": 900})
     assert detector.budget_for(context) == 0
     assert detector.timeout_for(context) == detector.timeout_ms
+
+
+def test_a_reused_context_gets_each_texts_own_length(monkeypatch):
+    """The trajectory check scores every turn of a window with one context."""
+    monkeypatch.setattr(get_settings(), "long_text_budget_ms", 1000)
+    pipeline = DetectorPipeline([_slow_classifier(0.0)], budget_ms=300)
+    context = DetectionContext(surface="input")
+    assert pipeline.run("x" * 900, context).budget_ms == 1000
+    assert pipeline.run("short", context).budget_ms == 300

@@ -290,7 +290,9 @@ class DetectorPipeline:
         # keeps the default budget.
         # How much text this check reads: a model's cost grows with it (see
         # `_TransformersClassifier.budget_for`).
-        context.extra.setdefault("content_chars", len(content or ""))
+        # Set on every run: a caller may reuse one context for several texts (the
+        # trajectory check scores each turn of a window with the same one).
+        context.extra["content_chars"] = len(content or "")
         required = max((_required_budget(d, context) for d in detectors), default=0)
         if required and required > effective_budget:
             effective_budget = float(required)
@@ -318,8 +320,7 @@ class DetectorPipeline:
         for d in pooled:
             if getattr(d, "shares_judge_call", False):
                 party[d.kind.value] = party.get(d.kind.value, 0) + 1
-        if party:
-            context.extra["judge_party"] = party
+        context.extra["judge_party"] = party  # this run's, never a reused context's last
         # Each pooled call carries its bounds: no wait below can outlast the whole
         # budget, and `abandon()` (on a timeout or a budget skip) drops whatever it
         # still has queued for a model, so work nobody waits for does not delay the
