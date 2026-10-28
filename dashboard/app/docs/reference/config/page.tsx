@@ -202,13 +202,19 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "key": "accept_restricted_model_licenses",
         "env": "AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES",
         "def": "false",
-        "what": "Required (1/true) before safety.restricted (Llama Guard, non-OSI licence) will load."
+        "what": "Required (1/true) before a Meta model loads: safety.restricted (Llama Guard) or Prompt Guard 2 as injection.classifier. Their licences are not OSI-approved."
       },
       {
         "key": "prompt_injection_classifier_model",
         "env": "AGENTFOX_PROMPT_INJECTION_CLASSIFIER_MODEL",
         "def": "leolee99/PIGuard",
-        "what": "Primary model for injection.classifier."
+        "what": "Primary model for injection.classifier: leolee99/PIGuard, protectai/deberta-v3-base-prompt-injection-v2, or Meta's meta-llama/Llama-Prompt-Guard-2-22M or -86M (gated; needs the licence flag above). Each is read with its own labels, threshold and window."
+      },
+      {
+        "key": "prompt_injection_classifier_threshold",
+        "env": "AGENTFOX_PROMPT_INJECTION_CLASSIFIER_THRESHOLD",
+        "def": "(the model's own)",
+        "what": "Score a label must reach. Unset uses the model's published default: 0.5 for PIGuard and protectai, 0.9 for Prompt Guard 2 (LlamaFirewall's)."
       },
       {
         "key": "prompt_injection_classifier_secondary_model",
@@ -245,6 +251,12 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "env": "AGENTFOX_GRANITE_GUARDIAN_MODEL",
         "def": "ibm-granite/granite-guardian-3.0-2b",
         "what": "Model for safety.granite."
+      },
+      {
+        "key": "llama_guard_model",
+        "env": "AGENTFOX_LLAMA_GUARD_MODEL",
+        "def": "meta-llama/Llama-Guard-3-8B",
+        "what": "Model for safety.restricted: meta-llama/Llama-Guard-3-8B or -1B (gated). Llama Guard 4 is not supported yet."
       },
       {
         "key": "nemo_rails_config_path",

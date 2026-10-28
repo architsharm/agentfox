@@ -537,6 +537,9 @@ class Settings(BaseSettings):
     # Restricted-licence model adapters refuse to load without this.
     accept_restricted_model_licenses: bool = False
     granite_guardian_model: str = "ibm-granite/granite-guardian-3.0-2b"
+    # The Llama Guard `safety.restricted` runs: meta-llama/Llama-Guard-3-8B or -1B
+    # (gated on Hugging Face; needs accept_restricted_model_licenses).
+    llama_guard_model: str = "meta-llama/Llama-Guard-3-8B"
     # NLI cross-encoder for the opt-in `grounding.nli` detector (Apache-2.0, ~140M).
     # Read from the local cache only; models needing trust_remote_code are refused.
     grounding_nli_model: str = "cross-encoder/nli-deberta-v3-small"
@@ -550,6 +553,12 @@ class Settings(BaseSettings):
     # PromptInjectionClassifierDetector's docstring for the benchmarked reason
     # (better recall AND far fewer false positives).
     prompt_injection_classifier_model: str = "leolee99/PIGuard"
+    # Also supported: protectai/deberta-v3-base-prompt-injection-v2 and Meta's
+    # meta-llama/Llama-Prompt-Guard-2-86M or -22M (gated on Hugging Face, Llama
+    # licence: set accept_restricted_model_licenses). Each model's labels, threshold
+    # and window come from `INJECTION_MODELS` in detection/adapters/classifiers.py.
+    # The score a label must reach; None uses the model's own published default.
+    prompt_injection_classifier_threshold: float | None = None
     # MIT, ~86M params. High-bar ensemble backstop for the primary classifier
     # above — see PromptInjectionClassifierDetector's docstring for why a second
     # model, and why this specific one (it's the model this project moved away

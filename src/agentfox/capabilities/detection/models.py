@@ -61,11 +61,40 @@ def pull_blocker(detector: Any) -> str | None:
     return None
 
 
+class GatedModel(RuntimeError):
+    """A model whose licence must be accepted on Hugging Face before it downloads."""
+
+
+def gated_message(model_id: str) -> str:
+    """What to do about a gated model, for the person who asked to download it."""
+    return (
+        f"{model_id} is gated on Hugging Face. Accept its licence at "
+        f"https://huggingface.co/{model_id} with the account whose token this machine "
+        "uses, set HF_TOKEN (or run `huggingface-cli login`), then download again. "
+        "Running it also needs AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1."
+    )
+
+
+def is_gated(exc: BaseException) -> bool:
+    """True when a download failed because access to the model was not granted."""
+    if type(exc).__name__ in ("GatedRepoError", "RepositoryNotFoundError"):
+        return True
+    status = getattr(getattr(exc, "response", None), "status_code", None)
+    return status in (401, 403) or "gated" in str(exc).lower()
+
+
 def pull(detector: Any) -> list[str]:  # pragma: no cover - downloads
-    """Download every model this detector loads into the local cache. Returns the ids."""
+    """Download every model this detector loads into the local cache. Returns the ids.
+
+    Raises `GatedModel` with the steps to take when Hugging Face refuses access."""
     from huggingface_hub import snapshot_download
 
     ids = models_for(detector)
     for model_id in ids:
-        snapshot_download(model_id)
+        try:
+            snapshot_download(model_id, token=os.environ.get("HF_TOKEN") or None)
+        except Exception as exc:
+            if is_gated(exc):
+                raise GatedModel(gated_message(model_id)) from exc
+            raise
     return ids

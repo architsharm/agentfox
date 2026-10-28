@@ -81,7 +81,7 @@
       "required": false,
       "multiple": false,
       "default": null,
-      "help": "Components to include, comma-separated: coding-agents, python-app, gateway, tools, mcp, scan-report, ci, monitoring, compliance, ai-client, view."
+      "help": "Components to include, comma-separated: coding-agents, python-app, gateway, tools, mcp, models, scan-report, ci, monitoring, compliance, ai-client, view."
      },
      {
       "kind": "option",
