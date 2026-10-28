@@ -116,6 +116,11 @@ print('permissive-tier weights cached')"
 # sends `Authorization: Bearer ` and httpx rejects it as an illegal header value,
 # so the build died on a confusing protocol error rather than a missing credential.
 # `safety.restricted` then loads its weights at runtime, or stays unavailable.
+# GATED_MODELS picks which gated models to bake, space-separated. Add Meta Prompt
+# Guard 2 (`meta-llama/Llama-Prompt-Guard-2-22M` or `-86M`, also gated) to run it as
+# `injection.classifier` with AGENTFOX_PROMPT_INJECTION_CLASSIFIER_MODEL, or swap in
+# `meta-llama/Llama-Guard-3-1B` with AGENTFOX_LLAMA_GUARD_MODEL.
+ARG GATED_MODELS="meta-llama/Llama-Guard-3-8B"
 RUN --mount=type=secret,id=hf_token,uid=10001 \
     sh -eu -c 'HF_TOKEN="$(cat /run/secrets/hf_token 2>/dev/null || true)"; \
     if [ -z "$HF_TOKEN" ]; then \
@@ -123,7 +128,10 @@ RUN --mount=type=secret,id=hf_token,uid=10001 \
       exit 0; \
     fi; \
     export HF_TOKEN; \
-    python -c "import os; from huggingface_hub import login; login(token=os.environ[\"HF_TOKEN\"]); from transformers import AutoModelForCausalLM, AutoTokenizer; AutoTokenizer.from_pretrained(\"meta-llama/Llama-Guard-3-8B\"); AutoModelForCausalLM.from_pretrained(\"meta-llama/Llama-Guard-3-8B\"); print(\"restricted-tier weights cached\")"'
+    for model in $GATED_MODELS; do \
+      python -c "import os, sys; from huggingface_hub import snapshot_download; snapshot_download(sys.argv[1], token=os.environ[\"HF_TOKEN\"])" "$model"; \
+      echo "restricted-tier weights cached: $model"; \
+    done'
 
 # /var/agentfox/evidence, where deploy/docker-compose.yml and render.yaml point
 # AGENTFOX_EVIDENCE_DIR, was created for the runtime user with the weights cache above.

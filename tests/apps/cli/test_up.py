@@ -160,6 +160,88 @@ def test_with_and_without_choose_the_components(project):
     assert "agentfox.auto" not in (project / "main.py").read_text()
 
 
+def test_models_picks_the_default_classifier_and_downloads_it(project, monkeypatch):
+    from agentfox.capabilities.detection import models
+
+    pulled: list[str] = []
+    monkeypatch.setattr(models, "pull", lambda detector: pulled.append(detector.model_id) or [])
+    result = _up(str(project), "--yes", "--with", "models")
+    assert result.exit_code == 0, result.output
+    env = (project / ".agentfox" / "agentfox.env").read_text()
+    assert "AGENTFOX_PROMPT_INJECTION_CLASSIFIER_MODEL=leolee99/PIGuard" in env
+    assert "ACCEPT_RESTRICTED" not in env  # nothing gated was chosen
+    assert pulled == ["leolee99/PIGuard"]
+
+
+def test_a_gated_model_without_the_licence_falls_back_to_piguard(monkeypatch):
+    from agentfox.apps.cli.wizard import components
+    from agentfox.capabilities.detection import models
+
+    monkeypatch.setattr(models, "pull", lambda detector: [])
+    seen: list[tuple[str, str]] = []
+
+    class _Target:
+        remote = False
+
+    run = type(
+        "R",
+        (),
+        {
+            "answers": {
+                "models": {
+                    "injection": "meta-llama/Llama-Prompt-Guard-2-22M",
+                    "guard": "meta-llama/Llama-Guard-3-1B",
+                    "accepted": False,
+                }
+            },
+            "env": {},
+            "target": _Target(),
+            "next_steps": [],
+            "done": lambda self, c, d: seen.append(("done", d)),
+            "failed": lambda self, c, d: seen.append(("failed", d)),
+            "skipped": lambda self, c, d: seen.append(("skipped", d)),
+        },
+    )()
+    components._models_apply(run)
+    assert run.env["AGENTFOX_PROMPT_INJECTION_CLASSIFIER_MODEL"] == "leolee99/PIGuard"
+    assert "AGENTFOX_LLAMA_GUARD_MODEL" not in run.env
+    assert seen[0][0] == "skipped" and "licence" in seen[0][1]
+
+
+def test_accepted_gated_models_are_enabled_with_the_licence_flag(monkeypatch):
+    from agentfox.apps.cli.wizard import components
+    from agentfox.capabilities.detection import models
+
+    monkeypatch.setattr(models, "pull", lambda detector: [])
+
+    class _Target:
+        remote = False
+
+    run = type(
+        "R",
+        (),
+        {
+            "answers": {
+                "models": {
+                    "injection": "meta-llama/Llama-Prompt-Guard-2-22M",
+                    "guard": "meta-llama/Llama-Guard-3-1B",
+                    "accepted": True,
+                }
+            },
+            "env": {},
+            "target": _Target(),
+            "next_steps": [],
+            "done": lambda self, c, d: None,
+            "failed": lambda self, c, d: None,
+            "skipped": lambda self, c, d: None,
+        },
+    )()
+    components._models_apply(run)
+    assert run.env["AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES"] == "1"
+    assert run.env["AGENTFOX_LLAMA_GUARD_MODEL"] == "meta-llama/Llama-Guard-3-1B"
+    assert "safety.restricted" in json.loads(run.env["AGENTFOX_ENABLED_DETECTORS"])
+
+
 def test_an_unknown_component_is_refused(project):
     result = _up(str(project), "--yes", "--with", "everything")
     assert result.exit_code == 2

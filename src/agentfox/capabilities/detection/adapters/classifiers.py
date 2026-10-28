@@ -20,6 +20,7 @@ by running ``docker compose up``.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 from agentfox.capabilities.detection.base import (
@@ -53,6 +54,9 @@ class _TransformersClassifier(BaseDetector):
     #: this being silently on for everyone. Only ever set for a specific, named,
     #: reputable model_id (see PromptInjectionClassifierDetector).
     trust_remote_code: bool = False
+    #: The score a label must reach to count, and the tokens per scored window.
+    threshold: float = 0.5
+    window_tokens: int = 256
 
     def available(self) -> bool:
         if self.restricted and not get_settings().restricted_models_allowed:
@@ -131,13 +135,13 @@ class _TransformersClassifier(BaseDetector):
     def _detect(self, content: str, context: DetectionContext) -> list[Detection]:
         if not content:
             return []
-        rows = _scored(self._pipeline, content)
+        rows = _scored(self._pipeline, content, self.window_tokens)
         out: list[Detection] = []
         for row in rows or []:
             label = str(row.get("label", ""))
             score = float(row.get("score", 0.0))
             entity = self.label_map.get(label.lower())
-            if not entity or score < 0.5:
+            if not entity or score < self.threshold:
                 continue
             out.append(
                 Detection(
@@ -190,10 +194,10 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
     # where the primary finds nothing now pays a second sequential forward pass,
     # measured at up to ~153ms end-to-end alongside similarity under load.
     timeout_ms = 250
-    # PIGuard ships its own `modeling_piguard.py` in the model repo rather than
-    # using a stock transformers architecture — trusted because it's the specific,
-    # named, reputable model this class exists to wrap, not a general default.
-    trust_remote_code = True
+    # Which labels count, the threshold, the window, the licence and whether the
+    # model repo's own code may run all follow the configured model: see
+    # `INJECTION_MODELS`. PIGuard ships its own `modeling_piguard.py`, so it is the
+    # one supported model loaded with `trust_remote_code`.
 
     # --- Ensemble backstop ------------------------------------------------
     # PIGuard's own benchmarking made it the clear primary — better recall AND
@@ -223,6 +227,12 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
     ) -> None:
         settings = get_settings()
         self.model_id = model_id or settings.prompt_injection_classifier_model
+        profile = injection_model(self.model_id)
+        self.label_map = {label: "INJECTION.JAILBREAK" for label in profile.labels}
+        self.threshold = settings.prompt_injection_classifier_threshold or profile.threshold
+        self.window_tokens = profile.window_tokens
+        self.restricted = profile.restricted
+        self.trust_remote_code = profile.remote_code
         # `_UNSET` (not passed) means "use the configured default"; an explicit
         # `None` means "disable the backstop" — the two must stay distinguishable,
         # or a caller trying to turn the ensemble off silently keeps it on.
@@ -237,6 +247,9 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
     def _secondary_pipeline(self):  # pragma: no cover - requires optional dependency
         if not self.secondary_model_id:
             return None
+        second = injection_model(self.secondary_model_id)
+        if second.restricted and not get_settings().restricted_models_allowed:
+            return None  # a licence-gated model runs only once its licence is accepted
         import torch
         from transformers import pipeline
 
@@ -246,6 +259,7 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
             "text-classification",
             model=self.secondary_model_id,
             top_k=None,
+            trust_remote_code=second.remote_code,
             local_files_only=True,
             device=model_device(),
         )
@@ -273,11 +287,12 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
         pipe = self._secondary_pipeline
         if pipe is None or not content:
             return []
-        rows = _scored(pipe, content)
+        second = injection_model(self.secondary_model_id or "")
+        rows = _scored(pipe, content, second.window_tokens)
         for row in rows or []:
             label = str(row.get("label", ""))
             score = float(row.get("score", 0.0))
-            if label.lower() != "injection" or score < self.secondary_threshold:
+            if label.lower() not in second.labels or score < self.secondary_threshold:
                 continue
             return [
                 Detection(
@@ -311,6 +326,46 @@ WINDOW_TOKENS = 256
 WINDOW_OVERLAP = 32
 
 
+@dataclass(frozen=True)
+class InjectionModel:
+    """How a supported prompt-injection model labels its output, and how to read it."""
+
+    #: Labels (lower case) that mean "injection".
+    labels: tuple[str, ...]
+    #: The score a label must reach. Each is the model's own published default.
+    threshold: float
+    window_tokens: int = WINDOW_TOKENS
+    #: Under a licence the operator must accept (`accept_restricted_model_licenses`).
+    restricted: bool = False
+    #: The model repo ships its own modeling code, which must run to load it.
+    remote_code: bool = False
+
+
+#: The models `injection.classifier` supports, by Hugging Face id. Any other id is read
+#: as a model that labels injections `injection`, at 0.5.
+INJECTION_MODELS: dict[str, InjectionModel] = {
+    # The default. Custom modeling code; scored at the classifier's 0.5.
+    "leolee99/PIGuard": InjectionModel(("injection",), 0.5, remote_code=True),
+    "protectai/deberta-v3-base-prompt-injection-v2": InjectionModel(("injection",), 0.5),
+    # Meta Prompt Guard 2, under the Llama 4 Community License (gated on Hugging Face).
+    # LABEL_1 is "malicious"; 0.9 is LlamaFirewall's own `PromptGuardScanner` block
+    # threshold, and 512-token segments are what the model card recommends for long
+    # inputs (benchmarks/head_to_head/scan_bridge.py scores it the same way).
+    "meta-llama/Llama-Prompt-Guard-2-86M": InjectionModel(
+        ("label_1", "malicious"), 0.9, window_tokens=510, restricted=True
+    ),
+    "meta-llama/Llama-Prompt-Guard-2-22M": InjectionModel(
+        ("label_1", "malicious"), 0.9, window_tokens=510, restricted=True
+    ),
+}
+_OTHER_MODEL = InjectionModel(("injection",), 0.5)
+
+
+def injection_model(model_id: str) -> InjectionModel:
+    """How to read ``model_id``'s output (see `INJECTION_MODELS`)."""
+    return INJECTION_MODELS.get(model_id, _OTHER_MODEL)
+
+
 def _score_windows(pipe: Any, windows: list[str]) -> list[list[dict[str, Any]]]:
     """Rows per window: through the model's batching scorer (and its cache) when the
     pipe is a loaded model, directly for anything else (a test double)."""
@@ -323,8 +378,10 @@ def _score_windows(pipe: Any, windows: list[str]) -> list[list[dict[str, Any]]]:
     return [r if isinstance(r, list) else [r] for r in scored]
 
 
-def _scored(pipe: Any, content: str) -> list[dict[str, Any]]:
-    """Label scores for ``content``: the highest per label across its windows."""
+def _scored(pipe: Any, content: str, window: int | None = None) -> list[dict[str, Any]]:
+    """Label scores for ``content``: the highest per label across its windows of
+    ``window`` tokens (`WINDOW_TOKENS` when not given)."""
+    window = window or WINDOW_TOKENS
     text = content[:4000]
     windows = [text]
     tokenizer = getattr(pipe, "tokenizer", None)
@@ -333,12 +390,12 @@ def _scored(pipe: Any, content: str) -> list[dict[str, Any]]:
             ids = tokenizer(text, add_special_tokens=False)["input_ids"]
         except Exception:  # pragma: no cover - a tokenizer that cannot count: score whole
             ids = []
-        if len(ids) > WINDOW_TOKENS:
+        if len(ids) > window:
             # Overlapping windows over the whole text, so an injection in the middle of
             # a long document is read too, each within the length the model handles.
-            step = WINDOW_TOKENS - WINDOW_OVERLAP
+            step = window - WINDOW_OVERLAP
             starts = list(range(0, len(ids) - WINDOW_OVERLAP, step))
-            windows = [tokenizer.decode(ids[i : i + WINDOW_TOKENS]) for i in starts]
+            windows = [tokenizer.decode(ids[i : i + window]) for i in starts]
     scores = _score_windows(pipe, windows)
     if len(windows) == 1:
         return list(scores[0] or [])
@@ -458,7 +515,8 @@ class GraniteGuardianDetector(_TransformersClassifier):
 
 
 class RestrictedClassifierDetector(_TransformersClassifier):
-    """Llama Guard 3-8B. Opt-in, licence-gated.
+    """Llama Guard 3 (8B by default, or 1B via `llama_guard_model`). Opt-in,
+    licence-gated.
 
     Unlike every other detector in this module, Llama Guard is not a
     classification model — it is a causal LM fine-tuned to *generate* the word
@@ -491,8 +549,20 @@ class RestrictedClassifierDetector(_TransformersClassifier):
     _verdict_score = 1.0
     max_new_tokens = 20
 
-    def __init__(self, model_id: str = "meta-llama/Llama-Guard-3-8B") -> None:
-        self.model_id = model_id
+    def __init__(self, model_id: str | None = None) -> None:
+        self.model_id = model_id or get_settings().llama_guard_model
+
+    def available(self) -> bool:
+        return not _llama_guard_4(self.model_id) and super().available()
+
+    @property
+    def unavailable_reason(self) -> str:
+        if _llama_guard_4(self.model_id):
+            return (
+                f"{self.model_id} is a multimodal model this detector cannot load yet; "
+                "set llama_guard_model to meta-llama/Llama-Guard-3-8B or -1B"
+            )
+        return super().unavailable_reason
 
     @load_once
     def _generator(self):  # pragma: no cover - requires optional dependency + gated weights
@@ -564,3 +634,9 @@ class RestrictedClassifierDetector(_TransformersClassifier):
             "Enabled only because AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1. "
             "Legal review required before commercial deployment — see Appendix A.4."
         )
+
+
+def _llama_guard_4(model_id: str) -> bool:
+    """Llama Guard 4 is multimodal (`Llama4ForConditionalGeneration`, a processor and a
+    content-parts chat format): the causal-LM loader above does not load it."""
+    return "llama-guard-4" in model_id.lower()

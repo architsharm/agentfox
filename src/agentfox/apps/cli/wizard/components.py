@@ -814,6 +814,128 @@ def _view_apply(run: Run) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Detection models: which classifier, and Llama Guard, downloaded now
+# ---------------------------------------------------------------------------
+
+#: The prompt-injection models offered, as (Hugging Face id, label, note). The first
+#: is the default and needs no licence; the gated ones are Meta's (Llama licence).
+_INJECTION_CHOICES = (
+    ("leolee99/PIGuard", "PIGuard (default)", "MIT licence, no account needed"),
+    (
+        "meta-llama/Llama-Prompt-Guard-2-22M",
+        "Prompt Guard 2 22M",
+        "Meta, about 3x faster on CPU; gated: accept the Llama licence on Hugging Face",
+    ),
+    (
+        "meta-llama/Llama-Prompt-Guard-2-86M",
+        "Prompt Guard 2 86M",
+        "Meta, multilingual; gated: accept the Llama licence on Hugging Face",
+    ),
+)
+_LLAMA_GUARD_CHOICES = (
+    ("none", "No Llama Guard", "the default checks only"),
+    ("meta-llama/Llama-Guard-3-1B", "Llama Guard 3 1B", "safety categories; gated, CPU is fine"),
+    ("meta-llama/Llama-Guard-3-8B", "Llama Guard 3 8B", "safety categories; gated, wants a GPU"),
+)
+
+
+def _gated(model_id: str) -> bool:
+    return model_id.startswith("meta-llama/")
+
+
+def _models_unavailable(run: Run) -> str:
+    if run.target.remote:
+        return ""  # chosen here, downloaded where the gateway runs (see _models_apply)
+    import importlib.util
+
+    if importlib.util.find_spec("huggingface_hub") is None:
+        return "needs `pip install 'agentfox[classifiers]'`"
+    return ""
+
+
+def _models_note(run: Run) -> str:
+    return "PIGuard, Meta Prompt Guard 2 or Llama Guard, self-hosted"
+
+
+def _models_ask(run: Run) -> None:
+    injection = run.prompter.select(
+        "Which prompt-injection classifier?",
+        [Choice(i, label, note) for i, label, note in _INJECTION_CHOICES],
+        run.ctx.saved.get("injection_model") or _INJECTION_CHOICES[0][0],
+    )
+    guard = run.prompter.select(
+        "Add Llama Guard as a safety check?",
+        [Choice(i, label, note) for i, label, note in _LLAMA_GUARD_CHOICES],
+        run.ctx.saved.get("llama_guard") or "none",
+    )
+    accepted = True
+    if _gated(injection) or guard != "none":
+        run.say(
+            "Meta's models are gated: accept the Llama licence on each model's Hugging Face "
+            "page, and give this machine a token with access (HF_TOKEN or `huggingface-cli "
+            "login`). Nothing is sent to Meta; the weights run here."
+        )
+        accepted = run.prompter.confirm("I have accepted the Llama licence for these", False)
+    run.answers["models"] = {"injection": injection, "guard": guard, "accepted": accepted}
+
+
+def _models_apply(run: Run) -> None:
+    from agentfox.core.config import get_settings
+
+    answer = run.answers.get("models") or {"injection": _INJECTION_CHOICES[0][0], "guard": "none"}
+    injection, guard = answer["injection"], answer["guard"]
+    gated = _gated(injection) or guard != "none"
+    if gated and not answer.get("accepted"):
+        run.skipped("models", "kept PIGuard: Meta's licence was not accepted")
+        injection, guard, gated = _INJECTION_CHOICES[0][0], "none", False
+    env = {"AGENTFOX_PROMPT_INJECTION_CLASSIFIER_MODEL": injection}
+    detectors = list(get_settings().enabled_detectors)
+    if guard != "none":
+        env["AGENTFOX_LLAMA_GUARD_MODEL"] = guard
+        if "safety.restricted" not in detectors:
+            detectors.append("safety.restricted")
+        env["AGENTFOX_ENABLED_DETECTORS"] = json.dumps(detectors)
+    if gated:
+        env["AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES"] = "1"
+    run.env.update(env)
+    keys = ["injection.classifier"] + (["safety.restricted"] if guard != "none" else [])
+    if run.target.remote:
+        for key in keys:
+            run.next_steps.append(
+                (f"agentfox admin detectors pull {key}", "on the host the gateway runs on")
+            )
+        run.done("models", f"{injection} chosen; set the same variables on your gateway")
+        return
+    from agentfox.capabilities.detection.adapters.classifiers import (
+        PromptInjectionClassifierDetector,
+        RestrictedClassifierDetector,
+    )
+
+    chosen = [(injection, PromptInjectionClassifierDetector(model_id=injection))]
+    if guard != "none":
+        chosen.append((guard, RestrictedClassifierDetector(model_id=guard)))
+    for model, detector in chosen:
+        failure = _pull_model(detector)
+        if failure:
+            run.failed("models", f"{model}: {failure}")
+        else:
+            run.done("models", f"[bold]{model}[/] downloaded and selected")
+
+
+def _pull_model(detector: Any) -> str:
+    """Download ``detector``'s models; the reason it failed, or ''."""
+    from agentfox.capabilities.detection.models import GatedModel, pull
+
+    try:
+        pull(detector)
+        return ""
+    except GatedModel as exc:
+        return str(exc)
+    except Exception as exc:  # a download error is reported, never fatal to `up`
+        return f"{type(exc).__name__}: {exc}"
+
+
+# ---------------------------------------------------------------------------
 # The catalogue
 # ---------------------------------------------------------------------------
 
@@ -860,6 +982,15 @@ CATALOGUE: tuple[Component, ...] = (
         _mcp_unavailable,
         lambda r: True,
         _mcp_apply,
+    ),
+    Component(
+        "models",
+        "Detection models — choose and download (PIGuard, Prompt Guard 2, Llama Guard)",
+        _models_note,
+        _models_unavailable,
+        lambda r: False,
+        _models_apply,
+        _models_ask,
     ),
     Component(
         "scan-report",

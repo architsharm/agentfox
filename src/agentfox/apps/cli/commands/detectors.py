@@ -39,7 +39,7 @@ def detectors_list() -> None:
 def detectors_pull(key: str) -> None:
     """Download the model weights a detector loads, so it can run without a network."""
     from agentfox.capabilities.detection import all_detectors
-    from agentfox.capabilities.detection.models import models_for, pull
+    from agentfox.capabilities.detection.models import GatedModel, models_for, pull
 
     detector = all_detectors().get(key)
     if detector is None and key.startswith("validator."):
@@ -63,6 +63,9 @@ def detectors_pull(key: str) -> None:
             f"[red]{exc}[/] — install the extra that provides it, e.g. "
             "`pip install 'agentfox[classifiers]'`."
         )
+        raise typer.Exit(1) from exc
+    except GatedModel as exc:
+        console.print(f"[red]{exc}[/]")
         raise typer.Exit(1) from exc
     console.print(f"[green]downloaded[/] {', '.join(ids)}")
     console.print("Restart the gateway, then switch it on in Policies → Checks.")

@@ -189,10 +189,18 @@ export const RESOURCES: NavGroup = {
           sitemap: { changeFrequency: "weekly", priority: 0.8 },
         },
         {
-          label: "Benchmarks",
+          label: "Security benchmarks",
           href: "/benchmark",
           note: "Results, including the losses",
           summary: "The published results, including the losses.",
+          sitemap: { changeFrequency: "monthly", priority: 0.7 },
+        },
+        {
+          label: "Latency benchmark",
+          href: "/benchmark/latency",
+          note: "109 real agent repositories",
+          summary:
+            "What a guard check adds to an agent, measured on traffic from 109 real agent repositories, and how it compares with other guards on the same machine.",
           sitemap: { changeFrequency: "monthly", priority: 0.7 },
         },
         {

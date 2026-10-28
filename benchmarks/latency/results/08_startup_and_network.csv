@@ -1,19 +1,19 @@
 layer,measure,value
-L1 Deterministic,gateway startup to healthy (s),4.5
-L1 Deterministic,first guard call after startup (ms),56.6
-L1 Deterministic,wall time for the layer's run (min),1.7
-L2 Default (+ML classifier),gateway startup to healthy (s),9.0
-L2 Default (+ML classifier),first guard call after startup (ms),141.4
-L2 Default (+ML classifier),wall time for the layer's run (min),7.6
-L2n Default (cache off),gateway startup to healthy (s),8.4
-L2n Default (cache off),first guard call after startup (ms),130.7
-L2n Default (cache off),wall time for the layer's run (min),10.6
-L3 Extended (+similarity),gateway startup to healthy (s),9.6
-L3 Extended (+similarity),first guard call after startup (ms),159.5
-L3 Extended (+similarity),wall time for the layer's run (min),9.3
-L4 Full (+LLM judge),gateway startup to healthy (s),9.4
-L4 Full (+LLM judge),first guard call after startup (ms),258.3
-L4 Full (+LLM judge),wall time for the layer's run (min),4.1
+L1 Deterministic,gateway startup to healthy (s),8.7
+L1 Deterministic,first guard call after startup (ms),61.7
+L1 Deterministic,wall time for the layer's run (min),1.5
+L2 Default (+ML classifier),gateway startup to healthy (s),11.9
+L2 Default (+ML classifier),first guard call after startup (ms),121.8
+L2 Default (+ML classifier),wall time for the layer's run (min),8.8
+L2n Default (cache off),gateway startup to healthy (s),10.3
+L2n Default (cache off),first guard call after startup (ms),116.2
+L2n Default (cache off),wall time for the layer's run (min),13.4
+L3 Extended (+similarity),gateway startup to healthy (s),10.6
+L3 Extended (+similarity),first guard call after startup (ms),118.4
+L3 Extended (+similarity),wall time for the layer's run (min),9.8
+L4 Full (+LLM judge),gateway startup to healthy (s),10.4
+L4 Full (+LLM judge),first guard call after startup (ms),120.9
+L4 Full (+LLM judge),wall time for the layer's run (min),3.5
 "production gateway (Vercel, function in iad1)",first request: serverless cold start (ms),7373
 "production gateway (Vercel, function in iad1)",warm /health round trip from Bengaluru p50 (ms),310.0
 "production gateway (Vercel, function in iad1)",warm /health round trip from Bengaluru p95 (ms),484.7
