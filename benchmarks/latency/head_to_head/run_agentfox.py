@@ -19,6 +19,14 @@ SYSTEMS = {
     "agentfox-L1": ({**LAYERS["L1 Deterministic"], **CPU}, None),
     "agentfox-L2": ({**LAYERS["L2n Default (cache off)"], **CPU}, None),
     "agentfox-L2-cache-on": ({**LAYERS["L2 Default (+ML classifier)"], **CPU}, None),
+    "agentfox-L3": (
+        {**LAYERS["L3 Extended (+similarity)"], "AGENTFOX_CLASSIFIER_CACHE_SIZE": "0", **CPU},
+        None,
+    ),
+    "agentfox-L4": (
+        {**LAYERS["L4 Full (+LLM judge)"], "AGENTFOX_CLASSIFIER_CACHE_SIZE": "0", **CPU},
+        300,
+    ),
     "agentfox-L4-judge-inline": (
         {**LAYERS["L4b Full (judge always inline)"], "AGENTFOX_CLASSIFIER_CACHE_SIZE": "0", **CPU},
         300,

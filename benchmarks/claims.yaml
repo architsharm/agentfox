@@ -736,6 +736,7 @@ claims:
     source: benchmarks/latency/head_to_head/results/summary.json
     render: fields
     fields:
+      det: [systems, agentfox_deterministic, short, p50]
       af: [systems, agentfox_default, short, p50]
       lg: [systems, llm_guard_injection, short, p50]
       pg86: [systems, prompt_guard_2_86m, short, p50]
@@ -747,16 +748,21 @@ claims:
       afj: {path: [systems, agentfox_judge, short, p50], format: ",.0f"}
     quoted_in:
       - {file: benchmarks/latency/head_to_head/README.md, text: "AgentFox's default checks take {af} ms at the median. LLM Guard's prompt-injection scanner takes {lg} ms"}
+      - {file: benchmarks/latency/head_to_head/README.md, text: "With only its deterministic checks, AgentFox takes {det} ms"}
       - {file: benchmarks/latency/README.md, text: "took {af} ms at the median there, against {lg} ms"}
+      - {file: benchmarks/latency/README.md, text: "its deterministic checks alone {det} ms"}
       - {file: benchmarks/README.md, text: "{af} ms against LLM Guard's injection scanner at {lg} ms"}
       - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: 'figure: "{af}",'}
       - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: "against {lg} ms for LLM Guard's prompt-injection scanner"}
-      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "took <strong>{af} ms</strong> at the"}
-      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "took <strong>{lg} ms</strong>, Prompt Guard 2 86M {pg86} ms, Prompt Guard 2 22M {pg22} ms"}
+      - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: "its deterministic checks, {det} ms on their own"}
+      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "its deterministic checks took {det} ms"}
+      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "its default checks took <strong>{af} ms</strong>"}
+      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "prompt-injection scanner took <strong>{lg} ms</strong>, Prompt Guard 2 86M {pg86} ms, Prompt Guard 2 22M {pg22} ms"}
       - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "validator {gai} ms"}
       - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "together took {lgd} ms"}
+      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "moderation API {oai} ms"}
       - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "took {nemo} ms at the median on the same messages"}
-      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "judge on every check took {afj} ms"}
+      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "judges on every check took {afj} ms"}
 
 retired:
   - id: agentdojo.label_assigned_benign_utility

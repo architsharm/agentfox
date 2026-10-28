@@ -201,7 +201,7 @@ The benchmark ran production defaults. These settings trade latency against cove
 
 ## Compared with published figures
 
-We also ran LLM Guard, Prompt Guard 2, Guardrails AI, NeMo Guardrails and OpenAI moderation ourselves, on the same messages and machine: see [`head_to_head/`](head_to_head/README.md). On short messages AgentFox's default checks took 58.4 ms at the median there, against 51.1 ms for LLM Guard's prompt-injection scanner.
+We also ran LLM Guard, Prompt Guard 2, Guardrails AI, NeMo Guardrails and OpenAI moderation ourselves, on the same messages and machine: see [`head_to_head/`](head_to_head/README.md). On short messages AgentFox's default checks took 58.8 ms at the median there, against 52.2 ms for LLM Guard's prompt-injection scanner, and its deterministic checks alone 6.9 ms.
 
 Few vendors publish latency, and almost none publish the conditions behind it. The fair comparisons are in-process measurements like ours. Hosted APIs add a network round trip, and most vendors report an average rather than a tail. The table below lists figures from pages we opened on 2026-10-27; every one of them is self-reported by its vendor or authors.
 

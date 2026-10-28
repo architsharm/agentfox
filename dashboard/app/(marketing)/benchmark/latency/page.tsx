@@ -48,10 +48,10 @@ const CLAIMS: { question: string; figure: string; unit?: string; detail: string;
   },
   {
     question: "Against LLM Guard?",
-    figure: "58.4",
+    figure: "58.8",
     unit: " ms",
     detail:
-      "median for AgentFox's default checks on short messages, against 51.1 ms for LLM Guard's prompt-injection scanner on the same messages and machine.",
+      "median for AgentFox's default checks on short messages, against 52.2 ms for LLM Guard's prompt-injection scanner on the same messages and machine.",
     limit:
       "LLM Guard's scanner detects injection only; AgentFox also runs PII, secrets and the rest, over HTTP. Speed only, not accuracy.",
   },
@@ -74,15 +74,19 @@ const LAYERS: [string, string, string, string][] = [
 ];
 
 const HEAD_TO_HEAD: [string, string, string, string][] = [
-  ["AgentFox default", "Injection, jailbreaks, PII, secrets, unsafe content, schema, unicode, insecure code", "58.4 / 64.6", "99.8 / 273"],
-  ["LLM Guard, prompt-injection scanner", "Prompt injection", "51.1 / 56.3", "83.3 / 194"],
-  ["Meta Prompt Guard 2 86M", "Prompt injection and jailbreaks", "49.7 / 55.6", "81.6 / 191"],
-  ["Meta Prompt Guard 2 22M", "Prompt injection and jailbreaks", "21.7 / 24.6", "44.5 / 99.3"],
+  ["AgentFox deterministic", "PII, secrets, injection patterns, unsafe content, schema, unicode, insecure code", "6.9 / 9.7", "10.1 / 15.7"],
+  ["AgentFox default", "The above, plus injection and jailbreaks by classifier", "58.8 / 72.1", "107 / 275"],
+  ["AgentFox default, cache on", "Same", "55.3 / 61.9", "103 / 273"],
+  ["AgentFox extended", "The above, plus similarity to known attacks", "59.4 / 70.5", "111 / 274"],
+  ["AgentFox with LLM judges, default mode", "The above, plus injection and PII judged by gpt-4.1-mini when a rule relies on it", "64.9 / 94.9", "114 / 274"],
+  ["AgentFox with LLM judges always inline", "Same, judged on every check", "838 / 1,057", "846 / 1,122"],
+  ["LLM Guard, prompt-injection scanner", "Prompt injection", "52.2 / 59.7", "87.2 / 199"],
+  ["Meta Prompt Guard 2 86M", "Prompt injection and jailbreaks", "51.7 / 60.5", "85.9 / 213"],
+  ["Meta Prompt Guard 2 22M", "Prompt injection and jailbreaks", "23.9 / 30.2", "45.9 / 102"],
   ["Guardrails AI, DetectJailbreak", "Jailbreaks", "99.4 / 107", "149 / 325"],
   ["LLM Guard, nine default scanners", "Injection, PII, secrets, toxicity and five more", "249 / 316", "348 / 650"],
-  ["OpenAI omni-moderation (hosted)", "Harm categories, not injection", "411 / 548", "446 / 552"],
-  ["NeMo Guardrails, self-check (gpt-4.1-mini)", "One LLM policy check", "871 / 1,288", "838 / 1,311"],
-  ["AgentFox with the LLM judge (gpt-4.1-mini)", "The default checks, plus injection and PII judged by an LLM", "1,025 / 1,436", "1,070 / 1,777"],
+  ["OpenAI omni-moderation (hosted)", "Harm categories, not injection", "410 / 547", "413 / 521"],
+  ["NeMo Guardrails, self-check (gpt-4.1-mini)", "One LLM policy check", "738 / 908", "735 / 908"],
 ];
 
 const PUBLISHED: [string, string, string, string][] = [
@@ -182,9 +186,10 @@ export default function LatencyBenchmarkPage() {
               <h2 id="head-to-head">2. Head to head on one machine</h2>
               <p>
                 Every system ran on the same 880 messages, on the same machine, on CPU, under the same
-                Python, one request at a time. Base-size models (AgentFox&apos;s classifier, the one in
-                LLM Guard&apos;s scanner, Prompt Guard 2 86M) all take about 50 ms; AgentFox adds an HTTP
-                round trip and its other checks.
+                Python, one request at a time, with AgentFox at each of its levels. Base-size models
+                (AgentFox&apos;s classifier, the one in LLM Guard&apos;s scanner, Prompt Guard 2 86M)
+                all take about 50 ms; AgentFox adds an HTTP round trip and its deterministic checks,
+                6.9 ms on their own.
               </p>
               <table>
                 <thead>
@@ -208,9 +213,10 @@ export default function LatencyBenchmarkPage() {
               </table>
               <p>
                 On long messages AgentFox reads the first 4,000 characters, where the others stop at 512
-                tokens, so it does more work: on CPU 51 of 150 long inputs ran past the 300 ms check budget
-                before the classifier finished. With an LLM judge it is about 150 ms slower than NeMo&apos;s
-                single self-check, mostly because its judge answers three questions where NeMo asks one.
+                tokens, so it does more work: on CPU 55 of 150 long inputs ran past the 300 ms check budget
+                before the classifier finished. In its default mode a judge waits only when a rule relies
+                on it; with every judge inline, AgentFox is about 100 ms slower than NeMo&apos;s single
+                self-check, mostly because its judge answers three questions where NeMo asks one.
               </p>
               <Source>
                 <code className="mono">benchmarks/latency/head_to_head/results/summary.json</code>
