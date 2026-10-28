@@ -711,10 +711,38 @@ def test_traffic_runs_due_jobs_at_most_every_few_minutes(client, monkeypatch):
     monkeypatch.setattr(get_settings(), "jobs_on_traffic", True)
     monkeypatch.setattr(app_mod, "_last_jobs_kick", None)
     passes = []
-    monkeypatch.setattr(app_mod, "_run_due_jobs", lambda then=None: passes.append(1))
+    monkeypatch.setattr(app_mod, "_run_due_jobs", lambda: passes.append(1))
     client.get("/health")
     client.get("/health")
     assert passes == [1], "one pass per interval, after the response"
+
+
+def test_the_traffic_job_pass_runs_after_its_request_has_committed(client, monkeypatch):
+    """A pass that starts while its own request still holds a connection waits on that
+    request's COMMIT, which (Starlette 1.10's BaseHTTPMiddleware) waited on the pass:
+    on SQLite, 30 s and then "database is locked" for the pass and every request
+    queued behind it."""
+    import agentfox.apps.gateway.app as app_mod
+    from agentfox.core.config import get_settings
+    from agentfox.core.db import get_engine, session_scope
+    from agentfox.core.models import JobSchedule
+    from agentfox.core.tenancy import system_scope
+
+    monkeypatch.setattr(get_settings(), "jobs_on_traffic", True)
+    monkeypatch.setattr(app_mod, "_last_jobs_kick", None)
+    held = []
+    real_pass = app_mod._run_due_jobs
+
+    def recording_pass():
+        held.append(get_engine().pool.checkedout())
+        real_pass()
+
+    monkeypatch.setattr(app_mod, "_run_due_jobs", recording_pass)
+    response = client.post("/v1/guard/input", json={"agent": "nobody", "content": "hi"})
+    assert response.status_code == 200, response.text
+    assert held == [0], "the request's connection is back in the pool before the pass"
+    with session_scope() as s, system_scope("test: reading the pass's schedules"):
+        assert s.scalars(select(JobSchedule)).first() is not None, "the pass wrote"
 
 
 def test_a_freshly_booted_instance_runs_its_first_job_pass(client, monkeypatch):
@@ -726,6 +754,6 @@ def test_a_freshly_booted_instance_runs_its_first_job_pass(client, monkeypatch):
     monkeypatch.setattr(app_mod, "_last_jobs_kick", None)
     monkeypatch.setattr("time.monotonic", lambda: 5.0)  # booted five seconds ago
     passes = []
-    monkeypatch.setattr(app_mod, "_run_due_jobs", lambda then=None: passes.append(1))
+    monkeypatch.setattr(app_mod, "_run_due_jobs", lambda: passes.append(1))
     client.get("/health")
     assert passes == [1]

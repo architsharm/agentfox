@@ -201,14 +201,14 @@ JOBS_KICK_INTERVAL_SECONDS = 600
 _last_jobs_kick: float | None = None
 
 
-def _jobs_kick_due(request: Request) -> bool:
+def _jobs_kick_due(path: str) -> bool:
     global _last_jobs_kick
     import time
 
     settings = get_settings()
     if not (settings.scheduler_enabled and settings.jobs_on_traffic):
         return False
-    if request.url.path.startswith("/api/internal/jobs"):
+    if path.startswith("/api/internal/jobs"):
         return False
     now = time.monotonic()
     if _last_jobs_kick is not None and now - _last_jobs_kick < JOBS_KICK_INTERVAL_SECONDS:
@@ -217,9 +217,8 @@ def _jobs_kick_due(request: Request) -> bool:
     return True
 
 
-def _run_due_jobs(then: Any = None) -> None:
-    """One scheduling and job pass, quietly; then whatever background the response
-    already carried."""
+def _run_due_jobs() -> None:
+    """One scheduling and job pass, quietly."""
     try:
         from agentfox.core.db import session_scope
         from agentfox.platform.jobs import scheduler
@@ -228,12 +227,36 @@ def _run_due_jobs(then: Any = None) -> None:
             scheduler.run_due(session, limit=10)
     except Exception:  # noqa: BLE001 - housekeeping must never surface to a caller
         logging.getLogger(__name__).warning("traffic-triggered job pass failed", exc_info=True)
-    if then is not None:
-        import asyncio
 
-        result = then()
-        if asyncio.iscoroutine(result):
-            asyncio.run(result)
+
+class RunDueJobsOnTraffic:
+    """Run due background jobs off ordinary traffic, after the request has finished.
+
+    Scheduled jobs are driven by the cron route, and the hosted gateway's plan allows
+    one cron a day: every job meant to run hourly (escalation scan, repo monitors,
+    probes) ran daily. While the gateway serves traffic, an instance now also runs
+    whatever is due at most every few minutes. Jobs are claimed atomically
+    (jobs.store._run_one), so this and the cron never run one twice.
+
+    Plain ASGI rather than a `BaseHTTPMiddleware` attaching `response.background`, and
+    the difference is a deadlock. Starlette's `BaseHTTPMiddleware` (1.10; not 1.6) holds the
+    wrapped app's final `send` until its own response, background included, has been
+    sent, so the request's `get_session` teardown — its COMMIT — waited for the job
+    pass, and the job pass's first write waited for that COMMIT. On SQLite both sat
+    out the 30 s busy timeout, every request behind them failed "database is locked",
+    and the connection pool filled with requests waiting their turn. Here the pass
+    starts only once the wrapped app has returned, so the request has committed and
+    released its connection; and the ASGI call stays open until the pass is done, so a
+    serverless host still keeps the instance alive for it.
+    """
+
+    def __init__(self, app: Any) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        await self.app(scope, receive, send)
+        if scope["type"] == "http" and _jobs_kick_due(scope.get("path", "")):
+            await run_in_threadpool(_run_due_jobs)
 
 
 def create_app() -> FastAPI:
@@ -282,23 +305,8 @@ def create_app() -> FastAPI:
         ],
     )
 
-    @app.middleware("http")
-    async def run_due_jobs_on_traffic(request: Request, call_next):
-        """Run due background jobs off ordinary traffic, after the response.
-
-        Scheduled jobs are driven by the cron route, and the hosted gateway's plan
-        allows one cron a day: every job meant to run hourly (escalation scan, repo
-        monitors, probes) ran daily. While the gateway serves traffic, an instance
-        now also runs whatever is due at most every few minutes. Jobs are claimed
-        atomically (jobs.store._run_one), so this and the cron never run one twice.
-        """
-        response = await call_next(request)
-        if _jobs_kick_due(request):
-            from starlette.background import BackgroundTask
-
-            existing = response.background
-            response.background = BackgroundTask(_run_due_jobs, existing)
-        return response
+    # Between CORS and the two gates below, where the `@app.middleware` version sat.
+    app.add_middleware(RunDueJobsOnTraffic)
 
     @app.middleware("http")
     async def degradation_gate(request: Request, call_next):
