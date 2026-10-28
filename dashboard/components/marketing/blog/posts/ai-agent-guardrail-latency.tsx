@@ -20,7 +20,7 @@ export const faq: FaqItem[] = [
   },
   {
     q: "Is AgentFox slower than LLM Guard or Prompt Guard?",
-    a: "On short messages on the same machine, AgentFox's default checks took 58.4 ms at the median against 51.1 ms for LLM Guard's prompt-injection scanner and 49.7 ms for Prompt Guard 2 86M. The models are the same size; AgentFox adds an HTTP round trip and its PII, secrets and other checks. Prompt Guard 2 22M is faster, at 21.7 ms.",
+    a: "On short messages on the same machine, AgentFox's default checks took 58.8 ms at the median against 52.2 ms for LLM Guard's prompt-injection scanner and 51.7 ms for Prompt Guard 2 86M. The models are the same size; AgentFox adds an HTTP round trip and its PII, secrets and other checks. Prompt Guard 2 22M is faster, at 23.9 ms. AgentFox's deterministic checks alone took 6.9 ms.",
   },
   {
     q: "Does guardrail latency grow over a long conversation?",
@@ -139,11 +139,12 @@ export function Body() {
         others ourselves, on the same 880 messages, the same machine and the same Python.
       </p>
       <p>
-        On short messages, AgentFox&apos;s default checks took <strong>58.4 ms</strong> at the
-        median. LLM Guard&apos;s prompt-injection scanner took <strong>51.1 ms</strong>, Prompt
-        Guard 2 86M 49.7 ms, Prompt Guard 2 22M 21.7 ms, and the Guardrails AI jailbreak
-        validator 99.4 ms. LLM Guard&apos;s nine default scanners together took 249 ms, and
-        OpenAI&apos;s hosted moderation API 411 ms, about 260 ms of it the network.
+        We ran AgentFox at every level. On short messages, its deterministic checks took 6.9 ms
+        at the median and its default checks took <strong>58.8 ms</strong>. LLM Guard&apos;s
+        prompt-injection scanner took <strong>52.2 ms</strong>, Prompt Guard 2 86M 51.7 ms, Prompt
+        Guard 2 22M 23.9 ms, and the Guardrails AI jailbreak validator 99.4 ms. LLM Guard&apos;s
+        nine default scanners together took 249 ms, and OpenAI&apos;s hosted moderation API 410
+        ms, about 260 ms of it the network.
       </p>
       <p>
         The base-size models are the same speed: AgentFox&apos;s classifier, the one inside LLM
@@ -162,8 +163,8 @@ export function Body() {
       <h2 id="judge">When an LLM judge is in the loop</h2>
       <p>
         An LLM judge is a different order of cost. NVIDIA NeMo Guardrails&apos; self-check rail,
-        one gpt-4.1-mini call, took 871 ms at the median on the same messages; AgentFox with its
-        judge on every check took 1,025 ms. About 90 ms of that gap is the answer: our judge scores
+        one gpt-4.1-mini call, took 738 ms at the median on the same messages; AgentFox with its
+        judges on every check took 838 ms. Most of that gap is the answer: our judge scores
         three things (an instruction override, data exfiltration, personal data) where NeMo&apos;s
         asks one yes-or-no question.
       </p>

@@ -1,59 +1,135 @@
 {
  "date": "2026-10-28",
  "machine": "Apple M1 Pro, 8 cores, 16 GB, CPU only",
- "python": "3.12.13 (uv-managed) for every system",
+ "python": "3.12.13 (uv-managed) for every system; AgentFox with the locked dependencies from uv.lock",
  "messages": "880 (730 short attack and benign messages from the 109-repo suites, 150 long synthetic ticket histories); 300-message fixed subsample for the LLM-based, hosted and nine-scanner systems",
+ "same_session": "Every system except LLM Guard's nine scanners and Guardrails AI was measured in one session, back to back; those two ran earlier the same day on the same machine and Python.",
  "systems": {
-  "agentfox_default": {
-   "name": "AgentFox default (deterministic checks + ML classifier, cache off)",
-   "detects": "Prompt injection, jailbreaks, PII, secrets, unsafe content, schema, unicode, insecure code",
+  "agentfox_deterministic": {
+   "name": "AgentFox deterministic (no model)",
+   "detects": "PII, secrets, injection patterns, unsafe content, schema, unicode, insecure code",
    "calls": 880,
-   "p50": 58.6,
-   "p95": 267,
+   "p50": 7.1,
+   "p95": 12.7,
    "short": {
     "calls": 730,
-    "p50": 58.4,
-    "p95": 64.6
+    "p50": 6.9,
+    "p95": 9.7
    },
    "long": {
     "calls": 150,
-    "p50": 99.8,
-    "p95": 273
-   }
+    "p50": 10.1,
+    "p95": 15.7
+   },
+   "degraded": 0
   },
-  "agentfox_judge": {
-   "name": "AgentFox with the LLM judge inline (gpt-4.1-mini)",
-   "detects": "Everything above plus injection and PII judged by an LLM",
+  "agentfox_default": {
+   "name": "AgentFox default (deterministic + ML classifier, cache off)",
+   "detects": "Prompt injection, jailbreaks, PII, secrets, unsafe content, schema, unicode, insecure code",
+   "calls": 880,
+   "p50": 59.5,
+   "p95": 268,
+   "short": {
+    "calls": 730,
+    "p50": 58.8,
+    "p95": 72.1
+   },
+   "long": {
+    "calls": 150,
+    "p50": 107,
+    "p95": 275
+   },
+   "degraded": 55
+  },
+  "agentfox_default_cached": {
+   "name": "AgentFox default, score cache on",
+   "detects": "Prompt injection, jailbreaks, PII, secrets, unsafe content, schema, unicode, insecure code",
+   "calls": 880,
+   "p50": 55.7,
+   "p95": 259,
+   "short": {
+    "calls": 730,
+    "p50": 55.3,
+    "p95": 61.9
+   },
+   "long": {
+    "calls": 150,
+    "p50": 103,
+    "p95": 273
+   },
+   "degraded": 41
+  },
+  "agentfox_extended": {
+   "name": "AgentFox extended (default + similarity search, cache off)",
+   "detects": "Prompt injection, jailbreaks, PII, secrets, unsafe content, schema, unicode, insecure code, similarity to known attacks",
+   "calls": 880,
+   "p50": 60.4,
+   "p95": 266,
+   "short": {
+    "calls": 730,
+    "p50": 59.4,
+    "p95": 70.5
+   },
+   "long": {
+    "calls": 150,
+    "p50": 111,
+    "p95": 274
+   },
+   "degraded": 46
+  },
+  "agentfox_judge_default": {
+   "name": "AgentFox with LLM judges, default mode (inline only when a rule relies on them)",
+   "detects": "Prompt injection, jailbreaks, PII, secrets, unsafe content, schema, unicode, insecure code, plus injection and PII judged by gpt-4.1-mini",
    "calls": 300,
-   "p50": 1031,
-   "p95": 1523,
+   "p50": 66.6,
+   "p95": 270,
    "short": {
     "calls": 240,
-    "p50": 1025,
-    "p95": 1436
+    "p50": 64.9,
+    "p95": 94.9
    },
    "long": {
     "calls": 60,
-    "p50": 1070,
-    "p95": 1777
-   }
+    "p50": 114,
+    "p95": 274
+   },
+   "degraded": 20
+  },
+  "agentfox_judge": {
+   "name": "AgentFox with LLM judges always inline (gpt-4.1-mini)",
+   "detects": "Prompt injection, jailbreaks, PII, secrets, unsafe content, schema, unicode, insecure code, plus injection and PII judged by gpt-4.1-mini",
+   "calls": 300,
+   "p50": 839,
+   "p95": 1084,
+   "short": {
+    "calls": 240,
+    "p50": 838,
+    "p95": 1057
+   },
+   "long": {
+    "calls": 60,
+    "p50": 846,
+    "p95": 1122
+   },
+   "degraded": 22
   },
   "llm_guard_injection": {
    "name": "LLM Guard, prompt-injection scanner",
    "detects": "Prompt injection",
    "calls": 880,
-   "p50": 51.4,
-   "p95": 122,
+   "p50": 53.0,
+   "p95": 125,
    "short": {
     "calls": 730,
-    "p50": 51.1,
-    "p95": 56.3
+    "p50": 52.2,
+    "p95": 59.7
    },
    "long": {
     "calls": 150,
-    "p50": 83.3,
-    "p95": 194
-   }
+    "p50": 87.2,
+    "p95": 199
+   },
+   "degraded": 0
   },
   "llm_guard_default": {
    "name": "LLM Guard, nine default input scanners",
@@ -70,41 +146,44 @@
     "calls": 60,
     "p50": 348,
     "p95": 650
-   }
+   },
+   "degraded": 0
   },
   "prompt_guard_2_22m": {
    "name": "Meta Prompt Guard 2 22M",
    "detects": "Prompt injection and jailbreaks",
    "calls": 880,
-   "p50": 21.9,
-   "p95": 65.7,
+   "p50": 24.4,
+   "p95": 68.8,
    "short": {
     "calls": 730,
-    "p50": 21.7,
-    "p95": 24.6
+    "p50": 23.9,
+    "p95": 30.2
    },
    "long": {
     "calls": 150,
-    "p50": 44.5,
-    "p95": 99.3
-   }
+    "p50": 45.9,
+    "p95": 102
+   },
+   "degraded": 0
   },
   "prompt_guard_2_86m": {
    "name": "Meta Prompt Guard 2 86M",
    "detects": "Prompt injection and jailbreaks",
    "calls": 880,
-   "p50": 49.9,
-   "p95": 119,
+   "p50": 52.4,
+   "p95": 132,
    "short": {
     "calls": 730,
-    "p50": 49.7,
-    "p95": 55.6
+    "p50": 51.7,
+    "p95": 60.5
    },
    "long": {
     "calls": 150,
-    "p50": 81.6,
-    "p95": 191
-   }
+    "p50": 85.9,
+    "p95": 213
+   },
+   "degraded": 0
   },
   "guardrails_ai_jailbreak": {
    "name": "Guardrails AI, DetectJailbreak validator",
@@ -121,41 +200,44 @@
     "calls": 150,
     "p50": 149,
     "p95": 325
-   }
+   },
+   "degraded": 0
   },
   "nemo_self_check": {
    "name": "NVIDIA NeMo Guardrails, self-check input rail (gpt-4.1-mini)",
    "detects": "One LLM policy check",
    "calls": 300,
-   "p50": 868,
-   "p95": 1296,
+   "p50": 737,
+   "p95": 908,
    "short": {
     "calls": 240,
-    "p50": 871,
-    "p95": 1288
+    "p50": 738,
+    "p95": 908
    },
    "long": {
     "calls": 60,
-    "p50": 838,
-    "p95": 1311
-   }
+    "p50": 735,
+    "p95": 908
+   },
+   "degraded": 0
   },
   "openai_moderation": {
    "name": "OpenAI omni-moderation (hosted API, network included)",
    "detects": "Harm categories (not injection)",
    "calls": 300,
-   "p50": 415,
-   "p95": 552,
+   "p50": 412,
+   "p95": 547,
    "short": {
     "calls": 240,
-    "p50": 411,
-    "p95": 548
+    "p50": 410,
+    "p95": 547
    },
    "long": {
     "calls": 60,
-    "p50": 446,
-    "p95": 552
-   }
+    "p50": 413,
+    "p95": 521
+   },
+   "degraded": 0
   }
  }
 }
