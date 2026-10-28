@@ -682,7 +682,7 @@ claims:
       xp50: [per_check, extended, p50]
       xp95: [per_check, extended, p95]
       jp50: [per_check, judge, p50]
-      jp95: [per_check, judge, p95]
+      jp95: {path: [per_check, judge, p95], format: ",.0f"}
     quoted_in:
       - {file: benchmarks/latency/README.md, text: "adds {dp50} ms at the median and {dp95} ms at p95. With only the deterministic checks it adds {tp50} ms"}
       - {file: benchmarks/latency/README.md, text: "| All steps | {tp50} / {tp95} | {dp50} / {dp95} | {xp50} / {xp95} | {jp50} / {jp95} |"}
@@ -763,6 +763,23 @@ claims:
       - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "moderation API {oai} ms"}
       - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "took {nemo} ms at the median on the same messages"}
       - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "judges on every check took {afj} ms"}
+
+  # Which prompt-injection model (benchmarks/injection/model_choice): PIGuard against Prompt Guard 2.
+  - id: injection.model_choice
+    source: benchmarks/injection/model_choice/results/summary.json
+    render: fields
+    fields:
+      pig: [models, piguard, held_out_recall_pct]
+      pigp: {path: [models, piguard, held_out_precision_pct], format: ".0f"}
+      p86: [models, prompt_guard_2_86m, held_out_recall_pct]
+      p22: [models, prompt_guard_2_22m, held_out_recall_pct]
+      fpig: [models, piguard, notinject_fp_pct]
+      f86: [models, prompt_guard_2_86m, notinject_fp_pct]
+    quoted_in:
+      - {file: benchmarks/injection/model_choice/README.md, text: "{pig}% held-out recall at {pigp}% precision, against {p86}% for Prompt Guard 2 86M and {p22}% for Prompt Guard 2 22M"}
+      - {file: benchmarks/injection/model_choice/README.md, text: "{f86}% and 0% of NotInject, against PIGuard's {fpig}%"}
+      - {file: "dashboard/app/(marketing)/benchmark/page.tsx", text: "{pig}% of held-out injections at {pigp}% precision against {p86}% for Prompt Guard 2 86M and {p22}% for 22M"}
+      - {file: "dashboard/app/(marketing)/benchmark/page.tsx", text: "{f86}% and 0% of NotInject, against PIGuard&apos;s {fpig}%"}
 
 retired:
   - id: agentdojo.label_assigned_benign_utility

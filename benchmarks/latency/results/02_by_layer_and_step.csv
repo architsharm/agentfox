@@ -1,41 +1,41 @@
 layer,step,engine_calls,engine_p50_ms,engine_p90_ms,engine_p95_ms,engine_p99_ms,engine_mean_ms,http_local_p50_ms,http_local_p95_ms,degraded_pct
-L1 Deterministic,ALL,10238,2.1,5.0,6.0,7.1,2.6,6.7,10.7,0.0
-L1 Deterministic,final_output,164,2.9,6.7,6.9,7.8,3.9,7.3,11.8,0.0
-L1 Deterministic,handback,164,2.6,5.3,5.5,6.3,3.2,8.0,11.3,0.0
-L1 Deterministic,handoff,164,1.8,2.1,2.2,2.4,1.8,6.7,7.5,0.0
-L1 Deterministic,input,2889,1.8,2.1,2.2,2.6,2.0,6.2,8.5,0.0
-L1 Deterministic,output,2889,2.1,6.3,6.8,7.5,3.0,6.2,11.4,0.0
-L1 Deterministic,tool_call,1984,2.2,2.6,2.8,3.2,2.4,7.6,9.4,0.0
-L1 Deterministic,tool_result,1984,2.2,5.5,6.0,6.7,3.1,6.5,10.4,0.0
-L2 Default (+ML classifier),ALL,10224,2.7,153.6,257.9,268.2,43.5,9.2,264.1,4.1
-L2 Default (+ML classifier),final_output,164,3.7,8.6,9.1,10.5,5.9,9.1,15.0,0.0
-L2 Default (+ML classifier),handback,164,3.5,125.2,156.6,217.9,34.7,10.3,163.9,1.2
-L2 Default (+ML classifier),handoff,164,49.3,54.0,54.9,56.4,46.8,55.5,61.6,0.0
-L2 Default (+ML classifier),input,2889,2.8,54.5,56.6,100.6,25.1,9.8,64.3,0.0
-L2 Default (+ML classifier),output,2889,2.9,260.3,267.8,269.0,63.7,7.7,275.6,9.8
-L2 Default (+ML classifier),tool_call,1977,2.4,2.8,3.0,3.6,2.6,8.9,11.7,0.0
-L2 Default (+ML classifier),tool_result,1977,51.7,256.9,264.7,267.6,85.2,57.3,271.0,6.8
-L2n Default (cache off),ALL,10228,49.6,185.4,259.6,268.3,67.9,55.3,265.7,4.9
-L2n Default (cache off),final_output,164,94.6,267.6,268.4,269.1,140.0,99.7,275.4,22.0
-L2n Default (cache off),handback,164,94.0,266.8,267.2,267.6,139.7,100.0,275.5,22.6
-L2n Default (cache off),handoff,164,49.1,54.3,54.7,145.7,52.6,55.1,60.7,0.0
-L2n Default (cache off),input,2889,49.3,55.4,67.6,114.2,52.3,54.9,75.2,0.0
-L2n Default (cache off),output,2889,52.0,260.4,267.8,269.0,93.6,57.0,274.0,10.1
-L2n Default (cache off),tool_call,1979,2.4,2.8,2.9,3.4,2.6,8.2,10.0,0.0
-L2n Default (cache off),tool_result,1979,58.9,255.8,263.1,267.5,107.8,63.8,268.9,6.8
-L3 Extended (+similarity),ALL,10228,9.4,149.7,262.3,268.7,48.2,14.9,268.5,5.3
-L3 Extended (+similarity),final_output,164,17.2,51.6,53.3,69.4,26.2,22.8,59.4,0.0
-L3 Extended (+similarity),handback,164,16.9,170.6,209.0,267.8,49.9,23.4,216.2,4.3
-L3 Extended (+similarity),handoff,164,51.7,56.8,57.0,116.3,53.1,58.0,63.5,0.0
-L3 Extended (+similarity),input,2889,9.3,56.5,64.2,117.0,30.4,16.6,72.8,0.0
-L3 Extended (+similarity),output,2889,10.7,263.1,268.2,269.3,68.8,15.8,275.0,11.5
-L3 Extended (+similarity),tool_call,1979,2.6,3.0,3.1,3.5,2.7,8.7,10.9,0.0
-L3 Extended (+similarity),tool_result,1979,54.0,262.1,267.3,268.0,90.8,59.5,273.2,10.5
-L4 Full (+LLM judge),ALL,622,68.7,878.2,949.4,1134.8,310.7,78.9,960.4,9.5
-L4 Full (+LLM judge),final_output,16,847.3,953.7,971.1,992.3,850.0,861.8,984.6,0.0
-L4 Full (+LLM judge),handback,16,26.5,51.8,52.9,55.0,32.6,38.7,64.4,0.0
-L4 Full (+LLM judge),handoff,16,52.4,56.8,57.9,60.2,53.5,59.5,65.4,0.0
-L4 Full (+LLM judge),input,176,64.0,75.7,78.9,83.0,54.9,74.3,92.6,0.6
-L4 Full (+LLM judge),output,176,837.5,997.5,1109.5,1373.3,866.1,849.6,1117.8,23.3
-L4 Full (+LLM judge),tool_call,111,2.7,3.2,3.3,3.7,4.6,9.6,11.9,0.0
-L4 Full (+LLM judge),tool_result,111,98.2,264.9,267.7,268.2,141.4,104.7,275.4,15.3
+L1 Deterministic,ALL,10226,2.3,5.2,6.4,7.6,2.8,7.3,11.9,0.0
+L1 Deterministic,final_output,164,3.0,7.0,7.3,8.1,4.0,7.9,12.5,0.0
+L1 Deterministic,handback,164,2.6,5.8,6.0,7.4,3.4,8.7,13.6,0.0
+L1 Deterministic,handoff,164,2.0,2.3,2.4,3.0,2.0,7.2,11.2,0.0
+L1 Deterministic,input,2889,2.0,2.3,2.4,2.9,2.1,6.8,10.0,0.0
+L1 Deterministic,output,2889,2.3,6.7,7.2,8.0,3.2,6.8,12.5,0.0
+L1 Deterministic,tool_call,1978,2.6,3.0,3.2,3.8,2.8,8.4,11.1,0.0
+L1 Deterministic,tool_result,1978,2.3,5.8,6.3,7.3,3.2,7.0,11.4,0.0
+L2 Default (+ML classifier),ALL,10224,3.0,166.2,264.3,309.3,45.5,9.2,270.2,0.0
+L2 Default (+ML classifier),final_output,164,4.1,8.9,9.3,9.7,5.4,9.6,15.1,0.0
+L2 Default (+ML classifier),handback,164,3.8,7.5,8.1,9.1,4.8,10.3,15.5,0.0
+L2 Default (+ML classifier),handoff,164,50.9,55.7,56.8,57.5,48.2,57.1,63.5,0.0
+L2 Default (+ML classifier),input,2889,3.0,53.5,56.1,59.8,24.9,10.2,63.2,0.0
+L2 Default (+ML classifier),output,2889,3.3,271.3,295.7,320.2,69.2,8.3,301.5,0.0
+L2 Default (+ML classifier),tool_call,1977,2.7,3.2,3.4,4.1,3.0,8.8,11.4,0.0
+L2 Default (+ML classifier),tool_result,1977,53.4,263.2,286.8,312.1,89.9,59.0,292.5,0.0
+L2n Default (cache off),ALL,10224,57.4,247.3,302.2,382.0,81.7,64.1,309.0,0.2
+L2n Default (cache off),final_output,164,107.5,335.8,392.2,448.5,168.3,114.7,399.6,0.0
+L2n Default (cache off),handback,164,108.5,331.2,373.1,445.8,167.9,115.7,380.9,0.6
+L2n Default (cache off),handoff,164,56.3,69.0,81.6,109.6,59.5,63.3,95.3,0.0
+L2n Default (cache off),input,2889,56.0,71.6,80.7,124.6,60.0,63.4,99.3,0.3
+L2n Default (cache off),output,2889,64.0,299.6,331.3,430.3,115.5,70.1,338.7,0.3
+L2n Default (cache off),tool_call,1977,3.1,4.0,4.6,6.2,3.4,10.2,15.9,0.0
+L2n Default (cache off),tool_result,1977,72.3,297.9,330.9,420.6,129.9,79.3,340.5,0.1
+L3 Extended (+similarity),ALL,10224,9.9,114.0,276.3,328.1,50.7,15.8,283.0,0.0
+L3 Extended (+similarity),final_output,164,17.8,51.3,54.1,58.8,26.7,23.7,60.7,0.0
+L3 Extended (+similarity),handback,164,18.1,50.1,53.3,58.3,26.2,25.0,60.0,0.0
+L3 Extended (+similarity),handoff,164,53.6,59.4,60.9,63.8,52.7,60.4,68.2,0.0
+L3 Extended (+similarity),input,2889,9.9,57.8,59.9,66.3,30.4,17.8,68.3,0.0
+L3 Extended (+similarity),output,2889,11.0,284.7,312.9,353.3,75.3,16.9,319.3,0.0
+L3 Extended (+similarity),tool_call,1977,2.8,3.4,3.5,4.4,3.1,9.2,11.9,0.0
+L3 Extended (+similarity),tool_result,1977,55.4,275.0,299.8,344.0,95.8,61.0,306.2,0.2
+L4 Full (+LLM judge),ALL,622,76.5,927.4,1009.0,1206.4,330.3,88.2,1020.1,0.0
+L4 Full (+LLM judge),final_output,16,870.0,1012.9,1062.4,1143.1,876.1,881.5,1076.4,0.0
+L4 Full (+LLM judge),handback,16,37.6,58.6,59.3,60.9,38.6,50.1,73.4,0.0
+L4 Full (+LLM judge),handoff,16,52.4,57.0,57.2,57.6,53.6,60.3,64.4,0.0
+L4 Full (+LLM judge),input,176,65.9,127.2,146.9,165.2,64.8,76.8,159.1,0.0
+L4 Full (+LLM judge),output,176,878.1,1072.2,1146.3,1693.3,917.3,889.5,1159.8,0.0
+L4 Full (+LLM judge),tool_call,111,2.9,3.7,4.3,5.1,5.1,9.7,13.6,0.0
+L4 Full (+LLM judge),tool_result,111,105.1,296.2,309.4,335.9,149.0,111.5,317.0,0.0
