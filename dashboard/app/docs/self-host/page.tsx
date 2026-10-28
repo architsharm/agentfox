@@ -266,6 +266,22 @@ docker compose -f deploy/docker-compose.yml up -d`}</Code>
         <li>set <code>AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES</code> to <code>&quot;1&quot;</code>.</li>
       </ol>
       <p>Without the token the build skips that tier and everything else still builds.</p>
+      <h3>Meta Prompt Guard 2 and the smaller Llama Guard</h3>
+      <p>
+        The same gated tier can bake Meta&apos;s Prompt Guard 2 for{" "}
+        <code>injection.classifier</code>, or Llama Guard 3-1B, which runs on a CPU. Accept each
+        model&apos;s licence on Hugging Face, then choose the models at build time:
+      </p>
+      <pre>{`docker compose -f deploy/docker-compose.yml build gateway \
+  --build-arg GATED_MODELS="meta-llama/Llama-Prompt-Guard-2-22M meta-llama/Llama-Guard-3-1B"`}</pre>
+      <p>
+        Then set <code>AGENTFOX_PROMPT_INJECTION_CLASSIFIER_MODEL</code> to the Prompt Guard 2
+        model, <code>AGENTFOX_LLAMA_GUARD_MODEL</code> to the Llama Guard you baked, and{" "}
+        <code>AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES</code> to <code>&quot;1&quot;</code>.
+        Outside Docker, <code>agentfox up</code> offers the same choice and downloads them, and{" "}
+        <code>agentfox admin detectors pull injection.classifier</code> fetches whichever model is
+        configured.
+      </p>
 
       <h2 id="render">Render</h2>
       <p>
