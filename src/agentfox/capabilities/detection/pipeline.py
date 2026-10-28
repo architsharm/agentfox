@@ -208,6 +208,15 @@ def _required_budget(detector: Detector, context: DetectionContext) -> int:
     return int(getattr(detector, "requires_budget_ms", 0) or 0)
 
 
+def _own_timeout(detector: Detector, context: DetectionContext) -> int | None:
+    """A detector's ceiling for this request: its `timeout_for(context)` when that
+    depends on the request (a model reading long text), else its fixed `timeout_ms`."""
+    timeout_for = getattr(detector, "timeout_for", None)
+    if callable(timeout_for):
+        return int(timeout_for(context) or 0) or None
+    return getattr(detector, "timeout_ms", None)
+
+
 class DetectorPipeline:
     def __init__(
         self,
@@ -279,6 +288,9 @@ class DetectorPipeline:
         # and `PipelineResult.budget_ms` reports what was actually granted.
         # Detectors nobody opted into cannot trigger this, so the default install
         # keeps the default budget.
+        # How much text this check reads: a model's cost grows with it (see
+        # `_TransformersClassifier.budget_for`).
+        context.extra.setdefault("content_chars", len(content or ""))
         required = max((_required_budget(d, context) for d in detectors), default=0)
         if required and required > effective_budget:
             effective_budget = float(required)
@@ -345,7 +357,7 @@ class DetectorPipeline:
             # detector's own declared ceiling if it has one, else the pipeline
             # default — and never more than what is left of the whole-pipeline
             # budget.
-            own_timeout_ms = getattr(detector, "timeout_ms", None) or self.detector_timeout_ms
+            own_timeout_ms = _own_timeout(detector, context) or self.detector_timeout_ms
             allowance = min(own_timeout_ms, max(remaining_ms, 0.0))
 
             if allowance <= 0:

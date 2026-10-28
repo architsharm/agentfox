@@ -312,6 +312,13 @@ class Settings(BaseSettings):
     # `enforcement_budget_ms` so a single surface's budget can never exceed the
     # whole request's.
     request_budget_ms: int = 350
+    # Long text gets longer. On a CPU the injection classifier reads 200 to 600
+    # characters in about 166 ms at the median, and 22% of such checks ran out of the
+    # 300 ms budget and returned without its verdict (benchmarks/latency, 2026-10-28).
+    # Past `long_text_chars`, its check may take up to `long_text_budget_ms`; short
+    # messages keep the budget above. A ceiling, not a wait: a GPU finishes far sooner.
+    long_text_chars: int = 200
+    long_text_budget_ms: int = 1000
     # Observe-by-default. Enforcement is something a customer turns on
     # deliberately, after simulating it.
     default_policy_mode: str = "observe"  # observe | enforce
