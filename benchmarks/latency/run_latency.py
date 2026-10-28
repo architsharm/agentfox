@@ -34,6 +34,24 @@ def classify(structure: dict) -> str:
     return "single agent" if len(agents) == 1 else "independent agents"
 
 
+def _with_read_tool(structure: dict) -> dict:
+    """``structure`` with one generic read tool on each agent, to write messages from."""
+    tools = [
+        {
+            "id": f"t-{a['id']}-lookup_record",
+            "name": "lookup_record",
+            "agentId": a["id"],
+            "risk": "read_only",
+            "impact": "read",
+            "capabilities": ["private_data"],
+            "whatItDoes": "Look up a customer record by its ID.",
+            "args": ["record_id"],
+        }
+        for a in structure.get("agents", [])
+    ]
+    return {**structure, "tools": tools}
+
+
 class Repo:
     def __init__(self, name: str, mapped: dict):
         self.name, self.s = name, mapped["structure"]
@@ -44,9 +62,15 @@ class Repo:
             self.tools.setdefault(t.get("agentId"), []).append(t)
         full = build_suite(self.s)
         runnable = [a for a in full if not a.skip]
-        self.suite = runnable or [
-            a for a in full if a.type in ("jailbreak", "prompt_injection", "data_leak")
-        ]
+        if not runnable:
+            # No agent here has a tool, so every attack is skipped with an empty message,
+            # and replaying those would time a check of nothing. Their users still send
+            # attacks and ordinary requests: write the suite as if each agent had one
+            # read tool, and keep the tool steps out (`turn` finds no tool of its own).
+            runnable = [a for a in build_suite(_with_read_tool(self.s)) if not a.skip]
+            for a in runnable:
+                a.forbidden = []
+        self.suite = runnable
         self.by_agent: dict[str, list] = {}
         for a in self.suite:
             self.by_agent.setdefault(a.agent_id, []).append(a)

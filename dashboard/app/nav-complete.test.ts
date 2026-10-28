@@ -65,6 +65,24 @@ function publicPageRoutes(dir: string = APP): string[] {
   return found.sort();
 }
 
+/** Every page route on disk at any depth, for checking that a nav link lands somewhere. */
+function allPageRoutes(dir: string = APP, prefix = ""): string[] {
+  const found: string[] = [];
+  for (const entry of readdirSync(dir)) {
+    const sub = join(dir, entry);
+    if (!statSync(sub).isDirectory()) continue;
+    if (isRouteGroup(entry)) {
+      found.push(...allPageRoutes(sub, prefix));
+      continue;
+    }
+    if (!isRouteDir(entry) || entry.startsWith("[")) continue;
+    const route = `${prefix}/${entry}`;
+    if (readdirSync(sub).some((f) => f === "page.tsx" || f === "page.ts")) found.push(route);
+    found.push(...allPageRoutes(sub, route));
+  }
+  return found;
+}
+
 describe("the information architecture", () => {
   it("names every public page that exists on disk", () => {
     const known = new Set(ALL_PATHS);
@@ -77,7 +95,8 @@ describe("the information architecture", () => {
   });
 
   it("does not name a page that does not exist", () => {
-    const onDisk = new Set([...publicPageRoutes(), "/"]);
+    // A nested page (/benchmark/latency) is a real destination too.
+    const onDisk = new Set([...allPageRoutes(), "/"]);
     const phantom = ALL_PATHS.filter((p) => !onDisk.has(p));
     expect(phantom, `lib/marketing/nav.ts links to pages with no route: ${phantom.join(", ")}`).toEqual(
       [],

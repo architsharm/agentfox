@@ -670,6 +670,94 @@ claims:
       - {file: benchmarks/README.md, text: "{uoff} unsafe actions contained with detectors off, {bon} benign actions executed with detectors on"}
       - {file: docs/design/architecture-differentiation.md, text: "{uoff} of the unsafe scenarios contained with every detector off"}
 
+  # Latency: the 109-repository study (laptop CPU, Python 3.12, locked dependencies).
+  - id: latency.per_check
+    source: benchmarks/latency/results/headline.json
+    render: fields
+    fields:
+      dp50: [per_check, default, p50]
+      dp95: [per_check, default, p95]
+      tp50: [per_check, deterministic, p50]
+      tp95: [per_check, deterministic, p95]
+      xp50: [per_check, extended, p50]
+      xp95: [per_check, extended, p95]
+      jp50: [per_check, judge, p50]
+      jp95: [per_check, judge, p95]
+    quoted_in:
+      - {file: benchmarks/latency/README.md, text: "adds {dp50} ms at the median and {dp95} ms at p95. With only the deterministic checks it adds {tp50} ms"}
+      - {file: benchmarks/latency/README.md, text: "| All steps | {tp50} / {tp95} | {dp50} / {dp95} | {xp50} / {xp95} | {jp50} / {jp95} |"}
+      - {file: benchmarks/README.md, text: "Default detectors {dp50} ms p50 / {dp95} ms p95 per check"}
+      - {file: benchmarks/README.md, text: "deterministic only {tp50} ms / {tp95} ms"}
+      - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: 'figure: "{dp50}",'}
+      - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: "the ML prompt-injection classifier included; {dp95} ms at p95."}
+      - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: 'figure: "{tp50}",'}
+      - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: '"{tp50} / {tp95}"'}
+      - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: '"{dp50} / {dp95}"'}
+      - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: '"{xp50} / {xp95}"'}
+      - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: '"{jp50} / {jp95}"'}
+      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "adds {dp50} ms at the median and {dp95} ms at p95, on a laptop CPU"}
+      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "<strong>{dp50} ms at the median and {dp95} ms at p95</strong>"}
+      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "checks, it adds <strong>{tp50} ms</strong>"}
+      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "insecure code): {tp50} / {tp95} ms."}
+      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "ML prompt-injection classifier): {dp50} / {dp95} ms."}
+      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "against known attacks): {xp50} / {xp95} ms"}
+      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "rule relies on it: {jp50} / {jp95} ms."}
+      - {file: dashboard/lib/marketing/blog.ts, text: "A guard check adds {dp50} ms at the median"}
+
+  - id: latency.study_size_and_turns
+    source: benchmarks/latency/results/headline.json
+    render: fields
+    fields:
+      calls: {path: [calls], format: ",.0f"}
+      repos: [repos_tested]
+      examined: [repos_examined]
+      dturn: [per_turn, default, single_turn, p50]
+      tturn: [per_turn, deterministic, single_turn, p50]
+      xturn: [per_turn, extended, single_turn, p50]
+      jturn: {path: [per_turn, judge, single_turn, p50], format: ",.0f"}
+      tool: [tool_call, default, p50]
+    quoted_in:
+      - {file: benchmarks/latency/README.md, text: "over {calls} recorded guard calls, replayed from {repos} agent repositories"}
+      - {file: benchmarks/latency/README.md, text: "We examined {examined} agent repositories. {repos} produced an agent map"}
+      - {file: benchmarks/README.md, text: "{repos} repositories, {calls} recorded calls"}
+      - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: "Measured on {calls} guard calls replayed from {repos} real agent repositories"}
+      - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: '"{tturn}"],'}
+      - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: '"{dturn}"],'}
+      - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: '"{xturn}"],'}
+      - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: '"{jturn}"],'}
+      - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: "{tool} ms at the median with the default detectors"}
+      - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: "{examined} agent repositories were examined; {repos} produced an agent map"}
+      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "{calls} guard calls replayed from {repos} open agent repositories"}
+      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "four guard calls, adds {dturn} ms at the median"}
+      - {file: dashboard/lib/marketing/blog.ts, text: "We measured {repos} agent repositories"}
+
+  # Latency, head to head on one machine (benchmarks/latency/head_to_head).
+  - id: latency.head_to_head
+    source: benchmarks/latency/head_to_head/results/summary.json
+    render: fields
+    fields:
+      af: [systems, agentfox_default, short, p50]
+      lg: [systems, llm_guard_injection, short, p50]
+      pg86: [systems, prompt_guard_2_86m, short, p50]
+      pg22: [systems, prompt_guard_2_22m, short, p50]
+      gai: [systems, guardrails_ai_jailbreak, short, p50]
+      lgd: [systems, llm_guard_default, short, p50]
+      oai: [systems, openai_moderation, short, p50]
+      nemo: [systems, nemo_self_check, short, p50]
+      afj: {path: [systems, agentfox_judge, short, p50], format: ",.0f"}
+    quoted_in:
+      - {file: benchmarks/latency/head_to_head/README.md, text: "AgentFox's default checks take {af} ms at the median. LLM Guard's prompt-injection scanner takes {lg} ms"}
+      - {file: benchmarks/latency/README.md, text: "took {af} ms at the median there, against {lg} ms"}
+      - {file: benchmarks/README.md, text: "{af} ms against LLM Guard's injection scanner at {lg} ms"}
+      - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: 'figure: "{af}",'}
+      - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: "against {lg} ms for LLM Guard's prompt-injection scanner"}
+      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "took <strong>{af} ms</strong> at the"}
+      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "took <strong>{lg} ms</strong>, Prompt Guard 2 86M {pg86} ms, Prompt Guard 2 22M {pg22} ms"}
+      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "validator {gai} ms"}
+      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "together took {lgd} ms"}
+      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "took {nemo} ms at the median on the same messages"}
+      - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "judge on every check took {afj} ms"}
+
 retired:
   - id: agentdojo.label_assigned_benign_utility
     text: "552/552 legitimate"
@@ -749,3 +837,7 @@ retired:
     text: "Held-out injection recall is 66.7%"
     reason: "66.7% needs the opt-in classifier ensemble; the default heuristic is 26.7% (benchmarks/REPORT.md)"
     files: [README.md, "dashboard/app/**/*.tsx", "dashboard/components/**/*.tsx", "dashboard/app/**/route.ts"]
+  - id: latency.gpu_miniconda_default
+    text: "37 ms at the median"
+    reason: "first latency study measured the classifier on the Mac GPU under a Miniconda Python that runs it ~45% slower; replaced by the laptop-CPU, Python 3.12 rerun"
+    files: [benchmarks/README.md, benchmarks/latency/README.md, "dashboard/app/**/*.tsx", "dashboard/components/**/*.tsx"]
