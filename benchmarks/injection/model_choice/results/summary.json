@@ -1,0 +1,58 @@
+{
+ "setup": "injection.heuristic + injection.classifier, secondary backstop off, each model at its published default threshold (PIGuard 0.5, Prompt Guard 2 0.9)",
+ "models": {
+  "piguard": {
+   "model": "leolee99/PIGuard",
+   "held_out_recall_pct": 68.3,
+   "held_out_precision_pct": 100.0,
+   "held_out_tp": 41,
+   "held_out_n_positive": 60,
+   "spml_recall_pct": 29.6,
+   "yanismiraoui_recall_pct": 76.0,
+   "notinject_fp": 39,
+   "notinject_n": 339,
+   "notinject_fp_pct": 11.5,
+   "trustairlab_recall_pct": 89.2,
+   "trustairlab_precision_pct": 76.4,
+   "trustairlab_degraded_pct": 4.8
+  },
+  "prompt_guard_2_22m": {
+   "model": "meta-llama/Llama-Prompt-Guard-2-22M",
+   "held_out_recall_pct": 16.7,
+   "held_out_precision_pct": 100.0,
+   "held_out_tp": 10,
+   "held_out_n_positive": 60,
+   "spml_recall_pct": 11.2,
+   "yanismiraoui_recall_pct": 7.4,
+   "notinject_fp": 0,
+   "notinject_n": 339,
+   "notinject_fp_pct": 0.0,
+   "trustairlab_recall_pct": 45.5,
+   "trustairlab_precision_pct": 78.5,
+   "trustairlab_degraded_pct": 1.3
+  },
+  "prompt_guard_2_86m": {
+   "model": "meta-llama/Llama-Prompt-Guard-2-86M",
+   "held_out_recall_pct": 20.0,
+   "held_out_precision_pct": 100.0,
+   "held_out_tp": 12,
+   "held_out_n_positive": 60,
+   "spml_recall_pct": 38.4,
+   "yanismiraoui_recall_pct": 44.7,
+   "notinject_fp": 12,
+   "notinject_n": 339,
+   "notinject_fp_pct": 3.5,
+   "trustairlab_recall_pct": 70.8,
+   "trustairlab_precision_pct": 67.4,
+   "trustairlab_degraded_pct": 21.8
+  }
+ },
+ "heuristic_only": {
+  "held_out_recall_pct": 16.7,
+  "spml_recall_pct": 9.6,
+  "yanismiraoui_recall_pct": 0.9,
+  "notinject_fp": 0,
+  "trustairlab_recall_pct": 24.1,
+  "trustairlab_precision_pct": 74.0
+ }
+}

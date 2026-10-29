@@ -1,24 +1,24 @@
 # Guard latency, head to head on one machine
 
-On short messages, AgentFox's default checks take **58.8 ms at the median**. LLM Guard's prompt-injection scanner takes **52.2 ms** on the same messages, measured in the same session. With only its deterministic checks, AgentFox takes 6.9 ms. Prompt Guard 2 22M is the fastest model here at 23.9 ms.
+On short messages, AgentFox's default checks take **63.1 ms at the median**. LLM Guard's prompt-injection scanner takes **56.1 ms** on the same messages, measured in the same session. With only its deterministic checks, AgentFox takes 7.4 ms. Prompt Guard 2 22M is the fastest model here at 25.5 ms.
 
 Every system ran on the same 880 messages, on the same machine, on CPU, under the same Python, one request at a time. AgentFox appears at each of its levels.
 
 | System | Detects | Short messages, p50 / p95 (ms) | Long messages, p50 / p95 (ms) |
 |---|---|---|---|
-| **AgentFox deterministic** (no model) | PII, secrets, injection patterns, unsafe content, schema, unicode, insecure code | 6.9 / 9.7 | 10.1 / 15.7 |
-| **AgentFox default** (deterministic + ML classifier, cache off) | The above, plus prompt injection and jailbreaks by classifier | 58.8 / 72.1 | 107 / 275 |
-| **AgentFox default, score cache on** | Same | 55.3 / 61.9 | 103 / 273 |
-| **AgentFox extended** (default + similarity search, cache off) | The above, plus similarity to known attacks | 59.4 / 70.5 | 111 / 274 |
-| **AgentFox with LLM judges, default mode** (gpt-4.1-mini, inline only when a rule relies on them) | The above, plus injection and PII judged by an LLM | 64.9 / 94.9 | 114 / 274 |
-| **AgentFox with LLM judges always inline** (gpt-4.1-mini) | Same | 838 / 1,057 | 846 / 1,122 |
-| LLM Guard, prompt-injection scanner | Prompt injection | 52.2 / 59.7 | 87.2 / 199 |
-| Meta Prompt Guard 2 86M | Prompt injection and jailbreaks | 51.7 / 60.5 | 85.9 / 213 |
-| Meta Prompt Guard 2 22M | Prompt injection and jailbreaks | 23.9 / 30.2 | 45.9 / 102 |
+| **AgentFox deterministic** (no model) | PII, secrets, injection patterns, unsafe content, schema, unicode, insecure code | 7.4 / 9.1 | 11.7 / 38.9 |
+| **AgentFox default** (deterministic + ML classifier, cache off) | The above, plus prompt injection and jailbreaks by classifier | 63.1 / 77.6 | 117 / 412 |
+| **AgentFox default, score cache on** | Same | 60.1 / 67.2 | 104 / 401 |
+| **AgentFox extended** (default + similarity search, cache off) | The above, plus similarity to known attacks | 71.0 / 89.0 | 126 / 464 |
+| **AgentFox with LLM judges, default mode** (gpt-4.1-mini, inline only when a rule relies on them) | The above, plus injection and PII judged by an LLM | 74.1 / 98.5 | 122 / 356 |
+| **AgentFox with LLM judges always inline** (gpt-4.1-mini) | Same | 865 / 1,093 | 879 / 1,448 |
+| LLM Guard, prompt-injection scanner | Prompt injection | 56.1 / 66.2 | 90.7 / 218 |
+| Meta Prompt Guard 2 86M | Prompt injection and jailbreaks | 54.4 / 62.6 | 86.8 / 209 |
+| Meta Prompt Guard 2 22M | Prompt injection and jailbreaks | 25.5 / 29.9 | 48.4 / 106 |
 | Guardrails AI, DetectJailbreak validator | Jailbreaks | 99.4 / 107 | 149 / 325 |
 | LLM Guard, nine default input scanners | Injection, PII, secrets, toxicity, gibberish, language, invisible text, token limit, regex | 249 / 316 | 348 / 650 |
-| OpenAI omni-moderation (hosted, network included) | Harm categories, not injection | 410 / 547 | 413 / 521 |
-| NVIDIA NeMo Guardrails, self-check input rail (gpt-4.1-mini) | One LLM policy check | 738 / 908 | 735 / 908 |
+| OpenAI omni-moderation (hosted, network included) | Harm categories, not injection | 387 / 484 | 395 / 509 |
+| NVIDIA NeMo Guardrails, self-check input rail (gpt-4.1-mini) | One LLM policy check | 758 / 1,049 | 787 / 1,201 |
 
 Source: [`results/summary.json`](results/summary.json); per-call rows are in `results/<system>.csv`. LLM Guard's nine scanners and Guardrails AI ran earlier the same day, on the same machine and Python. Every other row was measured in one session, back to back.
 
@@ -26,12 +26,12 @@ Source: [`results/summary.json`](results/summary.json); per-call rows are in `re
 
 **Same model size, same speed.**
 - **The model:** AgentFox's classifier (PIGuard), the model inside LLM Guard's scanner (ProtectAI deberta-v3-base v2) and Prompt Guard 2 86M are all base-size DeBERTa models. Each takes about 50 ms here.
-- **The other ~7 ms:** AgentFox goes over HTTP to a local gateway, which adds about 5 ms. It also runs its PII, secrets and other checks on every call; together those take 6.9 ms at the median.
+- **The other ~7 ms:** AgentFox goes over HTTP to a local gateway, which adds about 5 ms. It also runs its PII, secrets and other checks on every call; together those take 7.4 ms at the median.
 - **Why 22M is faster:** Prompt Guard 2 22M is about a quarter the size of the others.
 
 **Long messages.**
 - **Reading length:** AgentFox reads the first 4,000 characters in overlapping 256-token windows. LLM Guard and Prompt Guard stop at 512 tokens.
-- **The cost:** that is more work per long input, and on CPU 55 of the 150 long inputs exceeded the 300 ms check budget before the classifier finished. Those checks returned without the classifier's result and said so.
+- **The cost:** that is more work per long input. Text over 200 characters gets a 1,000 ms check budget, so every long input here was read to the end (none ran out of time), at a long-message p95 of 412 ms.
 - **The gain:** in exchange, an injection placed beyond the first 512 tokens of a long document is read at all.
 
 **With an LLM judge.**

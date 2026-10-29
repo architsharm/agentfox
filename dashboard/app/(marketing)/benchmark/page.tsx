@@ -826,6 +826,52 @@ export default function BenchmarkPage() {
       </Source>
       </Method>
 
+      <h3 id="model-choice">Choosing the model: PIGuard or Meta Prompt Guard 2</h3>
+      <p>
+        <code className="mono">agentfox up</code> offers Meta&apos;s Prompt Guard 2 in place of PIGuard.
+        We scored all three on the same sets, each beside the pattern checks with no backstop, at its
+        own published threshold. PIGuard catches the most, 68.3% of held-out injections at 100%
+        precision against 20.0% for Prompt Guard 2 86M and 16.7% for 22M. Prompt Guard 2 flags far
+        less benign text: 3.5% and 0% of NotInject, against PIGuard&apos;s 11.5%. PIGuard stays the
+        default.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Held-out recall</th>
+            <th>SPML</th>
+            <th>Multilingual</th>
+            <th>NotInject false positives</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[
+            ["PIGuard (default)", "68.3%", "29.6%", "76.0%", "11.5%"],
+            ["Prompt Guard 2 86M", "20.0%", "38.4%", "44.7%", "3.5%"],
+            ["Prompt Guard 2 22M", "16.7%", "11.2%", "7.4%", "0%"],
+            ["Pattern checks alone", "16.7%", "9.6%", "0.9%", "0%"],
+          ].map(([model, held, spml, multi, fp]) => (
+            <tr key={model}>
+              <td>{model}</td>
+              <td className="mono">{held}</td>
+              <td className="mono">{spml}</td>
+              <td className="mono">{multi}</td>
+              <td className="mono">{fp}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p>
+        Prompt Guard 2 22M is English-focused and adds nothing over the pattern checks on the
+        held-out set, which includes German injections. The 86M model is multilingual and beats
+        PIGuard on SPML. Thresholds are each model&apos;s own default: tuning them on these sets
+        would fit them to the test.
+      </p>
+      <Source>
+        <code className="mono">benchmarks/injection/model_choice/results/summary.json</code>
+      </Source>
+
       <h2 id="adaptive">
         5. An adaptive attacker that reads our verdict and tries again
       </h2>

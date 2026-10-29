@@ -1,0 +1,223 @@
+{
+ "model": "meta-llama/Llama-Prompt-Guard-2-86M",
+ "configs": {
+  "heuristic": {
+   "held_out": {
+    "n": 116,
+    "tp": 10,
+    "fp": 0,
+    "tn": 56,
+    "fn": 50,
+    "precision": 1.0,
+    "recall": 0.1667,
+    "f1": 0.2857,
+    "accuracy": 0.569,
+    "duration_ms": 25.7,
+    "avg_ms_per_example": 0.221,
+    "degraded_examples": 0,
+    "degraded_rate": 0.0,
+    "degraded_by_detector": {},
+    "errored_by_detector": {}
+   },
+   "train": {
+    "n": 546,
+    "tp": 53,
+    "fp": 2,
+    "tn": 341,
+    "fn": 150,
+    "precision": 0.9636,
+    "recall": 0.2611,
+    "f1": 0.4109,
+    "accuracy": 0.7216,
+    "duration_ms": 104.9,
+    "avg_ms_per_example": 0.192,
+    "degraded_examples": 0,
+    "degraded_rate": 0.0,
+    "degraded_by_detector": {},
+    "errored_by_detector": {}
+   },
+   "combined": {
+    "n": 662,
+    "tp": 63,
+    "fp": 2,
+    "tn": 397,
+    "fn": 200,
+    "precision": 0.9692,
+    "recall": 0.2395,
+    "f1": 0.3841,
+    "accuracy": 0.6949,
+    "duration_ms": 126.5,
+    "avg_ms_per_example": 0.191,
+    "degraded_examples": 0,
+    "degraded_rate": 0.0,
+    "degraded_by_detector": {},
+    "errored_by_detector": {}
+   }
+  },
+  "heuristic_classifier": {
+   "held_out": {
+    "n": 116,
+    "tp": 12,
+    "fp": 0,
+    "tn": 56,
+    "fn": 48,
+    "precision": 1.0,
+    "recall": 0.2,
+    "f1": 0.3333,
+    "accuracy": 0.5862,
+    "duration_ms": 8146.8,
+    "avg_ms_per_example": 70.231,
+    "degraded_examples": 0,
+    "degraded_rate": 0.0,
+    "degraded_by_detector": {},
+    "errored_by_detector": {}
+   },
+   "train": {
+    "n": 546,
+    "tp": 71,
+    "fp": 2,
+    "tn": 341,
+    "fn": 132,
+    "precision": 0.9726,
+    "recall": 0.3498,
+    "f1": 0.5145,
+    "accuracy": 0.7546,
+    "duration_ms": 39476.9,
+    "avg_ms_per_example": 72.302,
+    "degraded_examples": 1,
+    "degraded_rate": 0.0018,
+    "degraded_by_detector": {
+     "injection.classifier": 1
+    },
+    "errored_by_detector": {}
+   },
+   "combined": {
+    "n": 662,
+    "tp": 83,
+    "fp": 2,
+    "tn": 397,
+    "fn": 180,
+    "precision": 0.9765,
+    "recall": 0.3156,
+    "f1": 0.477,
+    "accuracy": 0.7251,
+    "duration_ms": 1297.3,
+    "avg_ms_per_example": 1.96,
+    "degraded_examples": 1,
+    "degraded_rate": 0.0015,
+    "degraded_by_detector": {
+     "injection.classifier": 1
+    },
+    "errored_by_detector": {}
+   }
+  },
+  "heuristic_similarity": {
+   "held_out": {
+    "n": 116,
+    "tp": 10,
+    "fp": 0,
+    "tn": 56,
+    "fn": 50,
+    "precision": 1.0,
+    "recall": 0.1667,
+    "f1": 0.2857,
+    "accuracy": 0.569,
+    "duration_ms": 1562.6,
+    "avg_ms_per_example": 13.471,
+    "degraded_examples": 3,
+    "degraded_rate": 0.0259,
+    "degraded_by_detector": {
+     "injection.similarity": 3
+    },
+    "errored_by_detector": {}
+   },
+   "train": {
+    "n": 546,
+    "tp": 54,
+    "fp": 2,
+    "tn": 341,
+    "fn": 149,
+    "precision": 0.9643,
+    "recall": 0.266,
+    "f1": 0.417,
+    "accuracy": 0.7234,
+    "duration_ms": 4427.5,
+    "avg_ms_per_example": 8.109,
+    "degraded_examples": 0,
+    "degraded_rate": 0.0,
+    "degraded_by_detector": {},
+    "errored_by_detector": {}
+   },
+   "combined": {
+    "n": 662,
+    "tp": 64,
+    "fp": 2,
+    "tn": 397,
+    "fn": 199,
+    "precision": 0.9697,
+    "recall": 0.2433,
+    "f1": 0.3891,
+    "accuracy": 0.6964,
+    "duration_ms": 5302.7,
+    "avg_ms_per_example": 8.01,
+    "degraded_examples": 0,
+    "degraded_rate": 0.0,
+    "degraded_by_detector": {},
+    "errored_by_detector": {}
+   }
+  },
+  "heuristic_classifier_similarity": {
+   "held_out": {
+    "n": 116,
+    "tp": 12,
+    "fp": 0,
+    "tn": 56,
+    "fn": 48,
+    "precision": 1.0,
+    "recall": 0.2,
+    "f1": 0.3333,
+    "accuracy": 0.5862,
+    "duration_ms": 1027.6,
+    "avg_ms_per_example": 8.858,
+    "degraded_examples": 0,
+    "degraded_rate": 0.0,
+    "degraded_by_detector": {},
+    "errored_by_detector": {}
+   },
+   "train": {
+    "n": 546,
+    "tp": 72,
+    "fp": 2,
+    "tn": 341,
+    "fn": 131,
+    "precision": 0.973,
+    "recall": 0.3547,
+    "f1": 0.5199,
+    "accuracy": 0.7564,
+    "duration_ms": 5098.1,
+    "avg_ms_per_example": 9.337,
+    "degraded_examples": 0,
+    "degraded_rate": 0.0,
+    "degraded_by_detector": {},
+    "errored_by_detector": {}
+   },
+   "combined": {
+    "n": 662,
+    "tp": 84,
+    "fp": 2,
+    "tn": 397,
+    "fn": 179,
+    "precision": 0.9767,
+    "recall": 0.3194,
+    "f1": 0.4814,
+    "accuracy": 0.7266,
+    "duration_ms": 5501.3,
+    "avg_ms_per_example": 8.31,
+    "degraded_examples": 0,
+    "degraded_rate": 0.0,
+    "degraded_by_detector": {},
+    "errored_by_detector": {}
+   }
+  }
+ }
+}

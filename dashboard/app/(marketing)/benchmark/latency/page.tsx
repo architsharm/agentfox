@@ -32,26 +32,26 @@ function Source({ children }: { children: React.ReactNode }) {
 const CLAIMS: { question: string; figure: string; unit?: string; detail: string; limit: string }[] = [
   {
     question: "What does a check add?",
-    figure: "49.6",
+    figure: "57.4",
     unit: " ms",
     detail:
-      "median per check with the default detectors, the ML prompt-injection classifier included; 260 ms at p95.",
+      "median per check with the default detectors, the ML prompt-injection classifier included; 302 ms at p95.",
     limit:
-      "Engine time on a laptop CPU with no GPU, network and the agent's own model excluded, cache off. The p95 is the 300 ms check budget, reached on longer text.",
+      "Engine time on a laptop CPU with no GPU, network and the agent's own model excluded, cache off. Long text costs more: 188 ms at the median between 200 and 600 characters.",
   },
   {
     question: "And without the model?",
-    figure: "2.1",
+    figure: "2.3",
     unit: " ms",
     detail: "median per check for the deterministic detectors alone: patterns, PII, secrets, schema, unicode, insecure code.",
     limit: "These catch less on their own; the classifier is what reads an injection phrased in ordinary words.",
   },
   {
     question: "Against LLM Guard?",
-    figure: "58.8",
+    figure: "63.1",
     unit: " ms",
     detail:
-      "median for AgentFox's default checks on short messages, against 52.2 ms for LLM Guard's prompt-injection scanner on the same messages and machine.",
+      "median for AgentFox's default checks on short messages, against 56.1 ms for LLM Guard's prompt-injection scanner on the same messages and machine.",
     limit:
       "LLM Guard's scanner detects injection only; AgentFox also runs PII, secrets and the rest, over HTTP. Speed only, not accuracy.",
   },
@@ -67,26 +67,26 @@ const CONTENTS: { id: string; title: string }[] = [
 ];
 
 const LAYERS: [string, string, string, string][] = [
-  ["Deterministic", "Patterns, PII, secrets, schema, unicode and code checks", "2.1 / 6.0", "8.0"],
-  ["Default", "Deterministic + ML prompt-injection classifier", "49.6 / 260", "156"],
-  ["Extended", "Default + similarity search against known attacks", "9.4 / 262", "73.9"],
-  ["With an LLM judge", "Extended + injection and PII judged by gpt-4.1-mini", "68.7 / 949", "1,017"],
+  ["Deterministic", "Patterns, PII, secrets, schema, unicode and code checks", "2.3 / 6.4", "8.8"],
+  ["Default", "Deterministic + ML prompt-injection classifier", "57.4 / 302", "179"],
+  ["Extended", "Default + similarity search against known attacks", "9.9 / 276", "77.1"],
+  ["With an LLM judge", "Extended + injection and PII judged by gpt-4.1-mini", "76.5 / 1,009", "1,086"],
 ];
 
 const HEAD_TO_HEAD: [string, string, string, string][] = [
-  ["AgentFox deterministic", "PII, secrets, injection patterns, unsafe content, schema, unicode, insecure code", "6.9 / 9.7", "10.1 / 15.7"],
-  ["AgentFox default", "The above, plus injection and jailbreaks by classifier", "58.8 / 72.1", "107 / 275"],
-  ["AgentFox default, cache on", "Same", "55.3 / 61.9", "103 / 273"],
-  ["AgentFox extended", "The above, plus similarity to known attacks", "59.4 / 70.5", "111 / 274"],
-  ["AgentFox with LLM judges, default mode", "The above, plus injection and PII judged by gpt-4.1-mini when a rule relies on it", "64.9 / 94.9", "114 / 274"],
-  ["AgentFox with LLM judges always inline", "Same, judged on every check", "838 / 1,057", "846 / 1,122"],
-  ["LLM Guard, prompt-injection scanner", "Prompt injection", "52.2 / 59.7", "87.2 / 199"],
-  ["Meta Prompt Guard 2 86M", "Prompt injection and jailbreaks", "51.7 / 60.5", "85.9 / 213"],
-  ["Meta Prompt Guard 2 22M", "Prompt injection and jailbreaks", "23.9 / 30.2", "45.9 / 102"],
+  ["AgentFox deterministic", "PII, secrets, injection patterns, unsafe content, schema, unicode, insecure code", "7.4 / 9.1", "11.7 / 38.9"],
+  ["AgentFox default", "The above, plus injection and jailbreaks by classifier", "63.1 / 77.6", "117 / 412"],
+  ["AgentFox default, cache on", "Same", "60.1 / 67.2", "104 / 401"],
+  ["AgentFox extended", "The above, plus similarity to known attacks", "71.0 / 89.0", "126 / 464"],
+  ["AgentFox with LLM judges, default mode", "The above, plus injection and PII judged by gpt-4.1-mini when a rule relies on it", "74.1 / 98.5", "122 / 356"],
+  ["AgentFox with LLM judges always inline", "Same, judged on every check", "865 / 1,093", "879 / 1,448"],
+  ["LLM Guard, prompt-injection scanner", "Prompt injection", "56.1 / 66.2", "90.7 / 218"],
+  ["Meta Prompt Guard 2 86M", "Prompt injection and jailbreaks", "54.4 / 62.6", "86.8 / 209"],
+  ["Meta Prompt Guard 2 22M", "Prompt injection and jailbreaks", "25.5 / 29.9", "48.4 / 106"],
   ["Guardrails AI, DetectJailbreak", "Jailbreaks", "99.4 / 107", "149 / 325"],
   ["LLM Guard, nine default scanners", "Injection, PII, secrets, toxicity and five more", "249 / 316", "348 / 650"],
-  ["OpenAI omni-moderation (hosted)", "Harm categories, not injection", "410 / 547", "413 / 521"],
-  ["NeMo Guardrails, self-check (gpt-4.1-mini)", "One LLM policy check", "738 / 908", "735 / 908"],
+  ["OpenAI omni-moderation (hosted)", "Harm categories, not injection", "387 / 484", "395 / 509"],
+  ["NeMo Guardrails, self-check (gpt-4.1-mini)", "One LLM policy check", "758 / 1,049", "787 / 1,201"],
 ];
 
 const PUBLISHED: [string, string, string, string][] = [
@@ -107,7 +107,7 @@ export default function LatencyBenchmarkPage() {
             <div>
               <h1 className="mk-h1">What a guard check adds to your agent</h1>
               <p className="mk-lede" style={{ marginTop: 18 }}>
-                Measured on 41,540 guard calls replayed from 109 real agent repositories,
+                Measured on 41,520 guard calls replayed from 109 real agent repositories,
                 and against other guards on the same machine.
               </p>
             </div>
@@ -146,7 +146,7 @@ export default function LatencyBenchmarkPage() {
 
               <h2 id="layers">1. Per check and per agent turn</h2>
               <p>
-                Tool calls are the cheapest step in every layer, 2.4 ms at the median with the
+                Tool calls are the cheapest step in every layer, 3.1 ms at the median with the
                 default detectors. Text the classifier must read (inputs, tool results, replies) carries
                 the cost. A turn is every guard call it makes, summed: four for a single turn.
               </p>
@@ -171,12 +171,12 @@ export default function LatencyBenchmarkPage() {
                 </tbody>
               </table>
               <p>
-                Messages under 200 characters take 49.0 ms at the median and 60.3 ms at p95 with the
-                default detectors, and none runs out of time. Between 200 and 600 characters, 22.3%
-                reach the 300 ms check budget before the classifier finishes on a CPU with no GPU;
-                those checks return without its verdict and say so. With judges on, a judge waits
-                inline only when an enforcing rule relies on it, the default, so most checks do not
-                wait for it; replies pay the commitment check, about 0.85 s.
+                Messages under 200 characters take 54.5 ms at the median and 83.5 ms at p95 with the
+                default detectors. Between 200 and 600 characters they take 188 ms and 374 ms: text
+                over 200 characters gets a 1,000 ms check budget, so the classifier finishes reading it
+                rather than returning without a verdict. With judges on, a judge waits inline only when
+                an enforcing rule relies on it, the default, so most checks do not wait for it; replies
+                pay the commitment check, about 0.88 s.
               </p>
               <Source>
                 <code className="mono">benchmarks/latency/results/headline.json</code>, from{" "}
@@ -189,7 +189,7 @@ export default function LatencyBenchmarkPage() {
                 Python, one request at a time, with AgentFox at each of its levels. Base-size models
                 (AgentFox&apos;s classifier, the one in LLM Guard&apos;s scanner, Prompt Guard 2 86M)
                 all take about 50 ms; AgentFox adds an HTTP round trip and its deterministic checks,
-                6.9 ms on their own.
+                7.4 ms on their own.
               </p>
               <table>
                 <thead>
@@ -213,8 +213,8 @@ export default function LatencyBenchmarkPage() {
               </table>
               <p>
                 On long messages AgentFox reads the first 4,000 characters, where the others stop at 512
-                tokens, so it does more work: on CPU 55 of 150 long inputs ran past the 300 ms check budget
-                before the classifier finished. In its default mode a judge waits only when a rule relies
+                tokens, so it does more work, at a long-message p95 of 412 ms, and reads every one to the
+                end. In its default mode a judge waits only when a rule relies
                 on it; with every judge inline, AgentFox is about 100 ms slower than NeMo&apos;s single
                 self-check, mostly because its judge answers three questions where NeMo asks one.
               </p>

@@ -1,16 +1,16 @@
 layer,repo_kind,repos,calls,p50_ms,p90_ms,p95_ms,p99_ms,mean_ms,degraded_pct
-L1 Deterministic,independent agents,42,3500,2.1,4.9,6.0,7.1,2.6,0.0
-L1 Deterministic,multi-agent (handoffs),41,5088,2.1,5.4,6.2,7.1,2.7,0.0
-L1 Deterministic,single agent,26,1650,1.9,2.5,3.0,6.7,2.2,0.0
-L2 Default (+ML classifier),independent agents,42,3500,2.6,148.5,257.1,267.9,41.6,3.8
-L2 Default (+ML classifier),multi-agent (handoffs),41,5074,3.7,242.9,261.1,268.5,53.3,5.1
-L2 Default (+ML classifier),single agent,26,1650,2.4,50.1,94.0,267.0,17.1,1.6
-L2n Default (cache off),independent agents,42,3500,49.5,109.8,256.4,268.2,63.6,4.0
-L2n Default (cache off),multi-agent (handoffs),41,5078,50.3,249.9,263.0,268.6,74.3,6.3
-L2n Default (cache off),single agent,26,1650,49.0,64.9,145.4,267.3,57.5,2.2
-L3 Extended (+similarity),independent agents,42,3500,9.2,115.6,262.0,268.7,45.5,5.3
-L3 Extended (+similarity),multi-agent (handoffs),41,5078,33.6,206.0,264.8,268.9,58.6,6.5
-L3 Extended (+similarity),single agent,26,1650,7.9,51.9,97.9,267.4,22.1,1.8
-L4 Full (+LLM judge),independent agents,13,168,70.3,878.0,953.6,1145.9,309.2,7.7
-L4 Full (+LLM judge),multi-agent (handoffs),16,358,66.9,888.3,949.5,1061.2,282.2,11.7
-L4 Full (+LLM judge),single agent,11,96,90.8,866.8,926.7,1306.6,419.9,4.2
+L1 Deterministic,independent agents,42,3500,2.3,4.1,6.2,7.7,2.8,0.0
+L1 Deterministic,multi-agent (handoffs),41,5076,2.4,5.7,6.6,7.7,3.0,0.0
+L1 Deterministic,single agent,26,1650,2.0,2.8,3.3,7.2,2.4,0.0
+L2 Default (+ML classifier),independent agents,42,3500,2.9,114.1,260.5,302.9,43.7,0.0
+L2 Default (+ML classifier),multi-agent (handoffs),41,5074,4.4,208.5,277.3,311.6,55.2,0.0
+L2 Default (+ML classifier),single agent,26,1650,2.7,53.1,90.3,314.8,19.5,0.0
+L2n Default (cache off),independent agents,42,3500,56.8,182.6,296.1,363.3,76.4,0.0
+L2n Default (cache off),multi-agent (handoffs),41,5074,57.8,275.0,315.9,405.3,89.8,0.2
+L2n Default (cache off),single agent,26,1650,57.2,96.5,161.6,323.4,68.3,0.7
+L3 Extended (+similarity),independent agents,42,3500,9.7,108.2,280.3,336.8,49.2,0.0
+L3 Extended (+similarity),multi-agent (handoffs),41,5074,16.4,223.8,279.9,323.6,60.2,0.0
+L3 Extended (+similarity),single agent,26,1650,8.5,54.6,95.5,332.8,24.6,0.1
+L4 Full (+LLM judge),independent agents,13,168,74.7,899.4,1006.4,1151.5,324.1,0.0
+L4 Full (+LLM judge),multi-agent (handoffs),16,358,70.6,917.3,988.8,1110.9,299.3,0.0
+L4 Full (+LLM judge),single agent,11,96,112.1,960.0,1102.9,1350.1,456.6,0.0

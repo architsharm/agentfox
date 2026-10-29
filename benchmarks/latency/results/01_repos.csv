@@ -24,7 +24,7 @@ agent-squad,https://github.com/2FastLabs/agent-squad.git,729d5f5,public,independ
 agent-starter-pack,https://github.com/GoogleCloudPlatform/agent-starter-pack.git,659f047,public,independent agents,JavaScript,2,2,0,400,
 agentops,https://github.com/AgentOps-AI/agentops.git,f8e907b,public,multi-agent (handoffs),Agno; AutoGen; CrewAI; Google ADK; LangChain; LangGraph; OpenAI Agents SDK; smolagents,69,38,23,535,
 agents,https://github.com/ed-donner/agents.git,6256970,public,multi-agent (handoffs),Agno; AutoGen; CrewAI; Google ADK; LangGraph; Mastra; OpenAI Agents SDK; Pydantic AI; Strands Agents; agent; agent_framework; applicant_agents; autogen_core; browser_use; deepagents; huggingface_hub; local_agents; planner_agent; scanner_agents; smolagents; tools,1805,864,466,512,
-agents-from-scratch,https://github.com/langchain-ai/agents-from-scratch.git,603fc7a,public,multi-agent (handoffs),LangGraph,19,1,13,302,
+agents-from-scratch,https://github.com/langchain-ai/agents-from-scratch.git,603fc7a,public,multi-agent (handoffs),LangGraph,19,1,13,282,
 agents-towards-production,https://github.com/NirDiamant/agents-towards-production.git,5697cac,public,multi-agent (handoffs),CrewAI,2,1,1,535,
 agno,https://github.com/agno-agi/agno.git,ffe4756,public,multi-agent (handoffs),Agno; AutoGen; Claude Agent SDK; CrewAI; Google ADK; LangGraph; OpenAI Agents SDK; Pydantic AI; smolagents,1670,1496,82,535,
 ai-engineering-hub,https://github.com/patchy631/ai-engineering-hub.git,be534ad,public,multi-agent (handoffs),AutoGen; CrewAI; OpenAI Swarm; Vercel AI SDK; agent; livekit; mcp_use; smolagents,125,48,74,512,
