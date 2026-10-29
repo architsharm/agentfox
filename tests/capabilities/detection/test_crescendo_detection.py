@@ -514,13 +514,22 @@ def test_an_oversized_turn_is_capped_not_scanned_whole(enforcer):
 
     _trajectory(enforcer, double)  # warm
     small = _median_ms(lambda: _trajectory(enforcer, ordinary), per_batch=5)
-    large = _median_ms(lambda: _trajectory(enforcer, huge), per_batch=5)
-    larger = _median_ms(lambda: _trajectory(enforcer, double), per_batch=5)
+    # The two sizes alternate batch by batch and are compared per batch: measured one
+    # after the other, a burst of load from a parallel test could land on one size only
+    # (CI once read 37 ms against 58 ms for a read that is capped).
+    pairs = [
+        (_median_ms(lambda: _trajectory(enforcer, huge), batches=1, per_batch=5),
+         _median_ms(lambda: _trajectory(enforcer, double), batches=1, per_batch=5))
+        for _ in range(9)
+    ]  # fmt: skip
+    large = statistics.median(a for a, _ in pairs)
+    larger = statistics.median(b for _, b in pairs)
+    doubling = statistics.median(b / a for a, b in pairs)
 
     assert small > 0, "baseline measured as zero — the timer is not working"
-    assert larger / large < 1.5, (
-        f"doubling a 250KB turn took it from {large:.1f}ms to {larger:.1f}ms: "
-        "it is read whole, not capped."
+    assert doubling < 1.5, (
+        f"doubling a 250KB turn took it from {large:.1f}ms to {larger:.1f}ms "
+        f"({doubling:.2f}x per batch): it is read whole, not capped."
     )
     ratio = large / small
     assert ratio < 60, (

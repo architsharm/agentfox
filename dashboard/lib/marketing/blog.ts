@@ -68,7 +68,7 @@ export const BLOG_POSTS: BlogPost[] = [
     title: "How much latency does a guardrail add to an AI agent? We measured 109 agent repositories",
     seoTitle: "Guardrail latency, measured on 109 agents",
     description:
-      "A guard check adds 49.6 ms at the median on traffic from 109 real agent repositories. What moves it, and how it compares with other guards.",
+      "A guard check adds 57.4 ms at the median on traffic from 109 real agent repositories. What moves it, and how it compares with other guards.",
     tag: "Benchmarks",
     keywords: [
       "AI guardrail latency",

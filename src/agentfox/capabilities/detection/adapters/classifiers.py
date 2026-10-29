@@ -58,6 +58,22 @@ class _TransformersClassifier(BaseDetector):
     threshold: float = 0.5
     window_tokens: int = 256
 
+    def _long_text(self, context: DetectionContext) -> bool:
+        chars = int((context.extra or {}).get("content_chars") or 0)
+        return chars > get_settings().long_text_chars
+
+    def budget_for(self, context: DetectionContext) -> int:
+        """The check budget this request needs: `long_text_budget_ms` for long text,
+        whose windows take longer to read, else nothing beyond the default."""
+        fixed = int(getattr(self, "requires_budget_ms", 0) or 0)
+        return max(fixed, get_settings().long_text_budget_ms if self._long_text(context) else 0)
+
+    def timeout_for(self, context: DetectionContext) -> int | None:
+        """This request's ceiling: the long-text budget for long text, else `timeout_ms`."""
+        if self._long_text(context):
+            return max(get_settings().long_text_budget_ms, getattr(self, "timeout_ms", 0) or 0)
+        return getattr(self, "timeout_ms", None)
+
     def available(self) -> bool:
         if self.restricted and not get_settings().restricted_models_allowed:
             return False

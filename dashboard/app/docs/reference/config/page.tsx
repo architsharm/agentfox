@@ -163,6 +163,18 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "what": "Ceiling across every surface one governed call touches. Kept above enforcement_budget_ms."
       },
       {
+        "key": "long_text_chars",
+        "env": "AGENTFOX_LONG_TEXT_CHARS",
+        "def": "200",
+        "what": "Past this many characters, the injection classifier's check gets long_text_budget_ms instead of the default budget."
+      },
+      {
+        "key": "long_text_budget_ms",
+        "env": "AGENTFOX_LONG_TEXT_BUDGET_MS",
+        "def": "1000",
+        "what": "Budget for the injection classifier on long text, whose windows take longer to read on a CPU. A ceiling, not a wait."
+      },
+      {
         "key": "policy_engine",
         "env": "AGENTFOX_POLICY_ENGINE",
         "def": "native",
