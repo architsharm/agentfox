@@ -198,7 +198,8 @@ def test_doctor_json_exits_nonzero_on_a_bad_check(monkeypatch):
 def test_doctor_json_exits_zero_when_nothing_is_bad():
     result = runner.invoke(app, ["doctor", "--json"])
     assert result.exit_code == 0, result.output
-    assert not any(c["state"] == "bad" for c in _json(result.output))
+    # stdout, not output: the runner mixes in stderr, where torch 2.14 warns on import.
+    assert not any(c["state"] == "bad" for c in _json(result.stdout))
 
 
 # ---------------------------------------------------------------------------

@@ -9,8 +9,8 @@ and `demo`, which gave its place in Start to `up`, still runs unlisted.
 from __future__ import annotations
 
 import json
+from typing import Any
 
-import click
 import pytest
 import typer.main
 from typer.testing import CliRunner
@@ -105,21 +105,21 @@ NEW_PATHS = (
 )
 
 
-def _resolve(path: str) -> click.Command | None:
-    cmd: click.Command = ROOT
+def _resolve(path: str) -> Any:
+    cmd = ROOT
     for word in path.split():
-        if not isinstance(cmd, click.Group):
+        if not layout.is_group(cmd):
             return None
-        cmd = cmd.get_command(click.Context(cmd), word)
+        cmd = layout.subcommand(cmd, word)
         if cmd is None:
             return None
     return cmd
 
 
-def _walk(group: click.Group, prefix: tuple[str, ...] = ()):
+def _walk(group: Any, prefix: tuple[str, ...] = ()):
     for name, cmd in group.commands.items():
         yield prefix + (name,), cmd
-        if isinstance(cmd, click.Group):
+        if layout.is_group(cmd):
             yield from _walk(cmd, prefix + (name,))
 
 
@@ -155,6 +155,36 @@ def test_every_new_path_resolves(path):
     assert _resolve(path) is not None, f"`agentfox {path}` does not resolve"
 
 
+def test_nothing_that_builds_or_walks_the_cli_imports_click():
+    """typer 0.27 runs on its own vendored click. A stock click object mixed into its
+    tree misses silently (`isinstance(cmd, click.Group)` is False for every typer
+    group, so a walk resolves nothing) or crashes (a click.Option parsed against
+    typer's Context). The lock pins a typer that still shares click, so only this
+    catches it in CI; use typer's API or `layout.is_group`/`layout.subcommand`."""
+    import ast
+    from pathlib import Path
+
+    repo = Path(__file__).resolve().parents[3]
+    files = [
+        *(repo / "src" / "agentfox").rglob("*.py"),
+        repo / "scripts" / "gen" / "docs_reference.py",
+        repo / "scripts" / "check" / "plugins.py",
+    ]
+    importers = []
+    for path in files:
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            names = (
+                [a.name for a in node.names]
+                if isinstance(node, ast.Import)
+                else [node.module or ""]
+                if isinstance(node, ast.ImportFrom)
+                else []
+            )
+            if any(n == "click" or n.startswith("click.") for n in names):
+                importers.append(str(path.relative_to(repo)))
+    assert importers == []
+
+
 def test_the_only_hidden_top_level_entries_are_the_protocol_endpoints_and_demo():
     hidden = sorted(name for name, cmd in ROOT.commands.items() if cmd.hidden)
     expected = {path.split()[0] for path in KEPT_PROTOCOL_ENDPOINTS} | layout.HIDDEN_TOP_LEVEL
@@ -167,7 +197,7 @@ def test_demo_still_runs_unlisted():
 
 
 def test_visible_top_level_is_thirteen_or_fewer():
-    listed = ROOT.list_commands(click.Context(ROOT))
+    listed = ROOT.list_commands(ROOT.context_class(ROOT))
     visible = [name for name in listed if not ROOT.commands[name].hidden]
     assert len(visible) <= 13, visible
     assert visible == [name for name, _ in layout.VISIBLE if name in visible]

@@ -28,6 +28,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 REPO = Path(__file__).resolve().parents[2]
 PLUGINS = REPO / "plugins"
@@ -41,9 +42,9 @@ sys.path.insert(0, str(REPO / "src"))
 sys.path.insert(0, str(REPO / "ee" / "src"))
 
 try:
-    import click
     import typer.main
 
+    from agentfox.apps.cli.layout import is_group, subcommand
     from agentfox.apps.cli.main import app
 except Exception as exc:  # pragma: no cover - environment problem, not drift
     print(
@@ -52,7 +53,7 @@ except Exception as exc:  # pragma: no cover - environment problem, not drift
     )
     sys.exit(2)
 
-ROOT_CMD: click.Group = typer.main.get_command(app)  # type: ignore[assignment]
+ROOT_CMD: Any = typer.main.get_command(app)
 errors: list[str] = []
 
 
@@ -79,25 +80,25 @@ NOT_COMMANDS = {
 }
 
 
-def resolve(words: list[str]) -> tuple[click.Command | None, str]:
-    cmd: click.Command = ROOT_CMD
+def resolve(words: list[str]) -> tuple[Any, str]:
+    cmd = ROOT_CMD
     path = ["agentfox"]
     for word in words:
-        if not isinstance(cmd, click.Group):
+        if not is_group(cmd):
             break
         if word.startswith("-") or not re.fullmatch(r"[a-z][a-z-]*", word):
             break
-        sub = cmd.get_command(click.Context(cmd), word)
+        sub = subcommand(cmd, word)
         if sub is None:
             return None, " ".join(path + [word])
         cmd, path = sub, path + [word]
-    if isinstance(cmd, click.Group) and cmd is not ROOT_CMD:
+    if is_group(cmd) and cmd is not ROOT_CMD:
         # a bare group reference ("the `agents` group") is fine
         return cmd, " ".join(path)
     return cmd, " ".join(path)
 
 
-def known_flags(cmd: click.Command) -> set[str]:
+def known_flags(cmd: Any) -> set[str]:
     flags = {"--help"}
     for p in cmd.params:
         flags.update(getattr(p, "opts", []))
@@ -105,7 +106,7 @@ def known_flags(cmd: click.Command) -> set[str]:
     # A default-command group (`scan`, `serve`, `report` — see apps/cli/layout.py) hands
     # unknown words to its default subcommand, and routes some flags to another one
     # (`scan --sessions`), so their flags are the group's too.
-    if isinstance(cmd, click.Group) and getattr(cmd, "default_command", None):
+    if is_group(cmd) and getattr(cmd, "default_command", None):
         targets = [cmd.default_command, *getattr(cmd, "flag_routes", {}).values()]
         flags.update(getattr(cmd, "flag_routes", {}))
         for name in targets:
