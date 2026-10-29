@@ -63,10 +63,14 @@ def _str_or_none(value: Any) -> str | None:
     return value if isinstance(value, str) else None
 
 
-def _param(p: Any) -> dict[str, Any]:
-    import click
+#: typer 0.27's vendored click names these two types differently from click; the
+#: reference keeps click's names so the page does not change with the typer version.
+_TYPE_NAMES = {"str": "text", "int": "integer"}
 
-    is_option = isinstance(p, click.Option)
+
+def _param(p: Any) -> dict[str, Any]:
+    # Not isinstance(p, click.Option): typer 0.27's parameters subclass its vendored click.
+    is_option = p.param_type_name == "option"
     default = p.default
     if callable(default) or default in ((), [], None) or repr(default).startswith("<"):
         default = None
@@ -79,7 +83,9 @@ def _param(p: Any) -> dict[str, Any]:
         "kind": "option" if is_option else "argument",
         "name": p.name,
         "opts": list(getattr(p, "opts", [])) + list(getattr(p, "secondary_opts", [])),
-        "type": "flag" if getattr(p, "is_flag", False) else p.type.name,
+        "type": "flag"
+        if getattr(p, "is_flag", False)
+        else _TYPE_NAMES.get(p.type.name, p.type.name),
         "choices": [str(c) for c in choices],
         "required": bool(p.required),
         "multiple": bool(getattr(p, "multiple", False)),
@@ -88,8 +94,8 @@ def _param(p: Any) -> dict[str, Any]:
     }
 
 
-def _command(cmd: Any, path: list[str], ctx_cls: Any) -> dict[str, Any]:
-    import click
+def _command(cmd: Any, path: list[str]) -> dict[str, Any]:
+    from agentfox.apps.cli.layout import is_group
 
     node: dict[str, Any] = {
         "path": " ".join(path),
@@ -105,24 +111,23 @@ def _command(cmd: Any, path: list[str], ctx_cls: Any) -> dict[str, Any]:
         "default_subcommand": _str_or_none(getattr(cmd, "default_command", None)),
         "commands": [],
     }
-    if isinstance(cmd, click.Group):
-        ctx = ctx_cls(cmd)
+    if is_group(cmd):
+        ctx = cmd.context_class(cmd)
         for name in cmd.list_commands(ctx):
             sub = cmd.get_command(ctx, name)
             if sub is None or getattr(sub, "hidden", False):
                 continue
-            node["commands"].append(_command(sub, [*path, name], ctx_cls))
+            node["commands"].append(_command(sub, [*path, name]))
     return node
 
 
 def build_cli() -> dict[str, Any]:
-    import click
     import typer.main
 
     from agentfox.apps.cli.main import app
 
     root = typer.main.get_command(app)
-    tree = _command(root, [], click.Context)
+    tree = _command(root, [])
     return {
         "generated_by": "scripts/gen/docs_reference.py",
         "root": tree,

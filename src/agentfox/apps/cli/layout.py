@@ -24,7 +24,6 @@ from __future__ import annotations
 import copy
 from typing import Any
 
-import click
 import typer
 from typer.core import TyperGroup, TyperOption
 from typer.main import get_command_name
@@ -86,7 +85,7 @@ def default_group(default: str, routes: dict[str, str] | None = None) -> type[Ty
         default_command = default
         flag_routes = route_map
 
-        def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
+        def parse_args(self, ctx: typer.Context, args: list[str]) -> list[str]:
             args = list(args)
             first = args[0] if args else None
             if first is None or (first not in self.commands and first not in ctx.help_option_names):
@@ -102,12 +101,12 @@ def default_group(default: str, routes: dict[str, str] | None = None) -> type[Ty
     return DefaultGroup
 
 
-def _print_version(ctx: click.Context, _param: click.Parameter, value: bool) -> None:
+def _print_version(ctx: typer.Context, _param: typer.CallbackParam, value: bool) -> None:
     if not value or ctx.resilient_parsing:
         return
     from agentfox import __version__
 
-    click.echo(f"agentfox {__version__}")
+    typer.echo(f"agentfox {__version__}")
     ctx.exit()
 
 
@@ -130,7 +129,7 @@ class RootGroup(TyperGroup):
             ),
         )
 
-    def list_commands(self, ctx: click.Context) -> list[str]:
+    def list_commands(self, ctx: typer.Context) -> list[str]:
         order = {name: i for i, (name, _) in enumerate(VISIBLE)}
         names = super().list_commands(ctx)
         return sorted(names, key=lambda n: order.get(n, len(order)))
@@ -139,6 +138,22 @@ class RootGroup(TyperGroup):
 # ---------------------------------------------------------------------------
 # Lookup helpers — by CLI name, never by Python symbol
 # ---------------------------------------------------------------------------
+
+
+def is_group(cmd: Any) -> bool:
+    """Whether a built command has subcommands.
+
+    Checked against typer's group class, not click's: typer 0.27 runs on its own
+    vendored copy of click, so its groups are no longer `click.Group` instances and
+    an `isinstance(cmd, click.Group)` walk of the tree finds nothing under the root.
+    """
+    return isinstance(cmd, TyperGroup)
+
+
+def subcommand(group: Any, name: str) -> Any:
+    """`group`'s subcommand `name`, or None. The context comes from the group's own
+    class for the same reason as `is_group`."""
+    return group.get_command(group.context_class(group), name)
 
 
 def _command_name(info: CommandInfo) -> str:
