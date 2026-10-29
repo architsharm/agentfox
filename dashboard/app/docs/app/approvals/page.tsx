@@ -159,8 +159,12 @@ arguments: amount 250 · currency USD · to acct_attacker_991`}</Output>
         <strong>Mode</strong> (observe or enforce), and <strong>Conditions</strong> as JSON:{" "}
         <code>explicit_request</code>, <code>repeated_failure</code>,{" "}
         <code>repeated_abstention</code>, <code>turn_depth</code>, <code>sentiment_below</code>,{" "}
-        <code>regulated_topics</code>, <code>confidence_below</code>. Fields you leave out fall
-        back to the platform default. Saving sends <code>PUT /api/escalation/policy</code>.
+        <code>regulated_topics</code>, <code>confidence_below</code>,{" "}
+        <code>urgent_flags</code>. Set a threshold to <code>null</code> to switch it off.{" "}
+        <code>urgent_flags</code> lists which urgent phrases (<code>urgency</code>,{" "}
+        <code>legal_threat</code>, <code>regulatory</code>, <code>discrimination</code>) raise a
+        trigger; <code>self_harm</code> always does, whatever the policy says. Fields you leave
+        out fall back to the platform default. Saving sends <code>PUT /api/escalation/policy</code>.
         This edits the org default; per-agent policies exist in the API (
         <code>?agent=</code>) and the CLI, not here.
       </p>
@@ -171,7 +175,8 @@ arguments: amount 250 · currency USD · to acct_attacker_991`}</Output>
   "turn_depth": 8,
   "sentiment_below": -0.6,
   "regulated_topics": ["legal", "medical", "financial_advice", "complaint", "discrimination"],
-  "confidence_below": 0.35
+  "confidence_below": 0.35,
+  "urgent_flags": ["self_harm", "urgency", "legal_threat", "regulatory", "discrimination"]
 }`}</Code>
 
       <h2>Common tasks</h2>

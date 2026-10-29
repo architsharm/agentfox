@@ -55,7 +55,15 @@ DEFAULT_CONDITIONS: dict[str, Any] = {
     "sentiment_below": -0.6,
     "regulated_topics": ["legal", "medical", "financial_advice", "complaint", "discrimination"],
     "confidence_below": 0.35,
+    # Which urgent flags (see `_URGENT`) raise a trigger. A policy can narrow this
+    # list or set it to None, but `self_harm` always triggers: a policy that could
+    # switch off "I want to hurt myself" is not one this module will apply. A stored
+    # policy without the key (written before it existed) keeps every flag.
+    "urgent_flags": ["self_harm", "urgency", "legal_threat", "regulatory", "discrimination"],
 }
+
+#: Urgent flags no policy can switch off.
+ALWAYS_URGENT = frozenset({"self_harm"})
 
 # --- Signal lexicons -------------------------------------------------------
 # Lexical rather than model-based, and honest about it: these are weak signals feeding
@@ -98,17 +106,36 @@ _URGENT = [
     (r"\b(?:suicide|suicidal|kill myself|hurt myself|self.harm|end my life)\b", "self_harm"),
     (r"\b(?:emergency|urgent|life.threatening|dying)\b", "urgency"),
     (r"\b(?:lawyer|attorney|solicitor|legal action|sue|lawsuit|litigation)\b", "legal_threat"),
-    (r"\b(?:regulator|ombudsman|fca|sec|ftc|data protection authority|ico)\b", "regulatory"),
+    # SEC only as the capitalised acronym: case-insensitively it is "one sec".
+    (
+        r"\b(?:regulator|ombudsman|fca|(?-i:SEC)|securities and exchange commission|ftc|"
+        r"data protection authority|ico)\b",
+        "regulatory",
+    ),
     (r"\b(?:discriminat|racist|sexist|harass)\w*\b", "discrimination"),
 ]
 
 _TOPIC_MARKERS = {
     "legal": [r"\b(?:contract|liability|terms and conditions|breach|indemnit)\w*\b", r"\blegal\b"],
-    "medical": [r"\b(?:diagnos|symptom|prescri|dosage|medication|treatment)\w*\b"],
-    "financial_advice": [r"\b(?:invest|portfolio|which fund|should i buy|financial advice)\w*\b"],
+    # "diagnostic(s)" is excluded: it is a device or system check ("run diagnostics"),
+    # not a medical one.
+    "medical": [
+        r"\bdiagnos(?!tics?\b)\w*\b",
+        r"\b(?:symptom|prescri|dosage|medication|treatment)\w*\b",
+    ],
+    # The forms of "invest" spelled out: a bare `invest\w*` prefix also matches
+    # "investigate" and "investigation", which is what a support agent does all day.
+    "financial_advice": [
+        r"\binvest(?:s|ed|ing|ment|ments|or|ors)?\b",
+        r"\b(?:portfolio|which fund|should i buy|financial advice)\w*\b",
+    ],
     "complaint": [r"\b(?:complain|complaint|escalat|formal grievance)\w*\b"],
     "discrimination": [r"\b(?:discriminat|racist|sexist|ageis|disabilit)\w*\b"],
 }
+
+#: Topics only the user can raise. A complaint is something the user makes; an agent
+#: saying "I'll escalate this" or "I'm sorry to hear your complaint" is not one.
+_USER_ONLY_TOPICS = frozenset({"complaint"})
 
 #: An agent declining is not the same as an agent escalating. Repeated
 #: abstention with no hand-off is the shape where the user gets nothing and leaves.
@@ -177,7 +204,9 @@ def turn_signals(user_text: str, agent_text: str) -> dict[str, Any]:
         "sentiment": sentiment["score"],
         "flags": sentiment["flags"],
         "explicit_request": explicit_handoff_request(user_text),
-        "topics": topic_signal(f"{user_text} {agent_text}"),
+        "topics": sorted(
+            set(topic_signal(user_text)) | (set(topic_signal(agent_text)) - _USER_ONLY_TOPICS)
+        ),
         "abstained": is_abstention(agent_text),
         "claims_resolution": claims_resolution(agent_text),
     }
@@ -390,6 +419,11 @@ def assess(
     conditions = (policy.conditions_json if policy else None) or DEFAULT_CONDITIONS
     triggers: list[Trigger] = []
     failures = abstentions = 0
+    urgent = ALWAYS_URGENT | set(
+        (conditions["urgent_flags"] or [])
+        if "urgent_flags" in conditions
+        else DEFAULT_CONDITIONS["urgent_flags"]
+    )
 
     for turn in sorted(turns, key=lambda t: t.turn_index):
         signals = turn.signals_json or {}
@@ -400,6 +434,8 @@ def assess(
             )
 
         for flag in signals.get("flags") or []:
+            if flag not in urgent:
+                continue
             triggers.append(
                 Trigger(
                     f"flag:{flag}",
@@ -467,8 +503,8 @@ def assess(
                 triggers.append(
                     Trigger(
                         "repeated_abstention",
-                        f"{abstentions} consecutive declines with no hand-off — declining is "
-                        "not the same as escalating",
+                        f"{abstentions} declines in this conversation with no hand-off — "
+                        "declining is not the same as escalating",
                         turn.turn_index,
                         "high",
                     )
@@ -493,10 +529,22 @@ def assess(
 
 
 def turn_depth_risk(turns: list[ConversationTurn], policy: EscalationPolicy | None = None) -> dict:
-    """Quality degradation past a depth the agent was never evaluated at."""
+    """Quality degradation past a depth the agent was never evaluated at.
+
+    With turn depth disabled (``turn_depth: None``, as `assess` reads it) there is no
+    depth to measure against: ``limit`` is None and nothing is exceeded or degrading.
+    """
     conditions = (policy.conditions_json if policy else None) or DEFAULT_CONDITIONS
-    limit = int(conditions.get("turn_depth", 8))
     depth = len(turns)
+    if conditions.get("turn_depth") is None:
+        return {
+            "depth": depth,
+            "limit": None,
+            "exceeded": False,
+            "late_abstention_rate": 0.0,
+            "degrading": False,
+        }
+    limit = int(conditions["turn_depth"])
     late = [t for t in turns if t.turn_index >= limit // 2]
     late_abstentions = sum(1 for t in late if (t.signals_json or {}).get("abstained"))
     return {

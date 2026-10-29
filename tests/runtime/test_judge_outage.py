@@ -16,6 +16,7 @@ path that `fail_mode` already governs:
 
 from __future__ import annotations
 
+import threading
 import time
 
 import pytest
@@ -407,15 +408,26 @@ def test_a_judge_no_enforcing_rule_relies_on_runs_after_the_response(session, ju
     doc = PolicyDocument.from_yaml(NO_DETECTION_PACK.format())
     save_policy(session, doc, bind_mode=doc.mode)
     session.commit()
-    detector = InjectionJudgmentDetector(_Slow())
-    started = time.perf_counter()
+    # The judge holds until the test releases it, so "did not wait" is checked by
+    # whether it had answered when the check returned, not by a wall-clock bound a
+    # loaded CI runner can exceed. Run inline, the check would sit out the 5 s wait.
+    release, answered = threading.Event(), threading.Event()
+
+    class _Held(_Slow):
+        def ask(self, state, questions):  # type: ignore[override]
+            release.wait(5)
+            answered.set()
+            return JevResult()
+
+    detector = InjectionJudgmentDetector(_Held())
     with judgment_posture.use(LAX):
         result = Enforcer(session, pipeline=DetectorPipeline(detectors=[detector])).evaluate(
             agent=agent, identity=None, content="hello", surface="input"
         )
     session.commit()
-    assert time.perf_counter() - started < 0.25  # the judge sleeps 0.3 s
+    assert not answered.is_set()
     assert "injection.judgment" not in result.degraded
+    release.set()
     deadline = time.time() + 5
     while time.time() < deadline:
         session.expire_all()

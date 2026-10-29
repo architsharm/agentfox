@@ -33,6 +33,7 @@ from agentfox.capabilities.containment.escalation import (
     set_policy,
     topic_signal,
     turn_depth_risk,
+    turn_signals,
 )
 from agentfox.core.db import session_scope
 from agentfox.core.models import Agent, ConversationTurn, Finding, Handoff, utcnow
@@ -106,6 +107,30 @@ def test_regulated_topics_are_recognised():
     assert topic_signal("what are your opening hours") == []
 
 
+def test_regulated_topic_words_with_ordinary_senses_are_not_matched():
+    """A support agent investigates and runs diagnostics all day; neither is
+    financial or medical advice. "One sec" is not the SEC."""
+    assert topic_signal("let me investigate that for you") == []
+    assert topic_signal("the investigation is still open") == []
+    assert topic_signal("please run the network diagnostics on your phone") == []
+    assert topic_signal("the diagnostic check passed") == []
+    assert sentiment_signal("one sec, let me check")["flags"] == []
+    assert sentiment_signal("I am reporting this to the SEC")["flags"] == ["regulatory"]
+    # The senses the lexicon is for still match.
+    assert "financial_advice" in topic_signal("I want to invest my savings")
+    assert "financial_advice" in topic_signal("is this a good investment")
+    assert "medical" in topic_signal("I was diagnosed with diabetes")
+    assert "medical" in topic_signal("what is the diagnosis")
+
+
+def test_only_the_user_can_raise_a_complaint():
+    """An agent saying "I'll escalate this" is not the user complaining."""
+    assert turn_signals("my bill is wrong", "I'll escalate this to billing.")["topics"] == []
+    assert turn_signals("I want to make a complaint", "Let me help.")["topics"] == ["complaint"]
+    # Other topics still count from either side of the turn.
+    assert turn_signals("ok", "this depends on your medication")["topics"] == ["medical"]
+
+
 # ---------------------------------------------------------------------------
 # Assessment
 # ---------------------------------------------------------------------------
@@ -172,6 +197,59 @@ def test_self_harm_is_the_only_critical_trigger(seeded, agent_id):
     turns = _conversation(seeded, agent_id, [("I want to hurt myself", "I'm sorry.", {})])
     trigger = next(t for t in assess(turns).triggers if t.condition.startswith("flag:"))
     assert trigger.severity == "critical"
+
+
+def test_a_policy_can_switch_off_urgent_flags_except_self_harm(seeded, agent_id):
+    """A "family emergency" is a reason to hurry, not always a reason for a person; a
+    policy has to be able to say so. "I want to hurt myself" always is."""
+    turns = _conversation(
+        seeded,
+        agent_id,
+        [("this is urgent", "Let me look.", {}), ("I want to hurt myself", "I'm sorry.", {})],
+    )
+    narrowed = set_policy(seeded, agent_id=agent_id, conditions={"urgent_flags": ["legal_threat"]})
+    assert {t.condition for t in assess(turns, narrowed).triggers} == {"flag:self_harm"}
+    disabled = set_policy(seeded, agent_id=agent_id, conditions={"urgent_flags": None})
+    assert {t.condition for t in assess(turns, disabled).triggers} == {"flag:self_harm"}
+
+
+def test_a_stored_policy_from_before_urgent_flags_keeps_every_flag(seeded, agent_id):
+    turns = _conversation(seeded, agent_id, [("this is urgent", "Let me look.", {})])
+    policy = set_policy(seeded, agent_id=agent_id)
+    policy.conditions_json = {
+        k: v for k, v in policy.conditions_json.items() if k != "urgent_flags"
+    }
+    assert "flag:urgency" in {t.condition for t in assess(turns, policy).triggers}
+
+
+def test_repeated_abstention_counts_declines_across_the_conversation(seeded, agent_id):
+    """The count is cumulative, so the trigger must not claim the declines were
+    consecutive."""
+    turns = _conversation(
+        seeded,
+        agent_id,
+        [
+            ("where is my refund?", "I don't have access to that information.", {}),
+            ("ok, what about my order?", "It shipped yesterday.", {}),
+            ("and the refund?", "I can't help with that.", {}),
+        ],
+    )
+    trigger = next(t for t in assess(turns).triggers if t.condition == "repeated_abstention")
+    assert trigger.turn_index == 2
+    assert "consecutive" not in trigger.detail
+
+
+def test_turn_depth_risk_with_turn_depth_disabled(seeded, agent_id):
+    """`turn_depth: None` is how a policy switches the condition off; reading the
+    depth risk must not crash on it."""
+    turns = _conversation(
+        seeded, agent_id, [(f"question {i}", f"answer {i}", {}) for i in range(9)]
+    )
+    policy = set_policy(seeded, agent_id=agent_id, conditions={"turn_depth": None})
+    assert not any(t.condition == "turn_depth" for t in assess(turns, policy).triggers)
+    risk = turn_depth_risk(turns, policy)
+    assert risk["limit"] is None and not risk["exceeded"] and not risk["degrading"]
+    assert risk["depth"] == 9
 
 
 def test_conditions_are_configurable_per_agent(seeded, agent_id):
@@ -524,6 +602,24 @@ def test_the_escalation_api(client):
     assert report["handoffs"] == len(filtered)
     empty_report = client.get("/api/escalation/report?agent=hr-screening", headers=headers).json()
     assert empty_report["handoffs"] == 0
+
+
+def test_the_conversation_api_with_turn_depth_disabled(client):
+    """A policy saved with "turn_depth": null used to make this route raise."""
+    headers = as_user("marcus@example.com")
+    client.put(
+        "/api/escalation/policy",
+        json={"agent": "support-triage", "conditions": {"turn_depth": None}},
+        headers=headers,
+    ).raise_for_status()
+    client.post(
+        "/api/escalation/turns",
+        json={"session_id": "api-depth", "agent": "support-triage", "user_text": "hi"},
+        headers=headers,
+    ).raise_for_status()
+    response = client.get("/api/escalation/conversations/api-depth", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["turn_depth"]["limit"] is None
 
 
 def test_gateway_completions_record_a_conversation_turn(client):
