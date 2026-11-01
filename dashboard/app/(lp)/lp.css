@@ -135,10 +135,10 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
 .lp-card h3 + p { margin-top: 0; }
 
 /* ── CTA and footer ────────────────────────────────────────────────────────── */
-.lp-cta { position: relative; overflow: hidden; padding: 112px 0; background: #121318; color: #eceef2; }
+.lp-cta { position: relative; overflow: hidden; padding: 112px 0; background: #0e0f13; color: #ecedf1; }
 .lp-cta::before { content: ""; position: absolute; left: 50%; top: 0; width: 900px; height: 420px; transform: translate(-50%, -60%); background: radial-gradient(closest-side, color-mix(in srgb, var(--af-brand) 35%, transparent), transparent); pointer-events: none; }
 .lp-cta-in { position: relative; display: grid; justify-items: center; text-align: center; }
-.lp-cta .lp-lead { margin-top: 16px; color: #a3a8b6; }
+.lp-cta .lp-lead { margin-top: 16px; color: #b4b8c5; }
 .lp-foot { padding: 64px 0 0; border-top: 1px solid var(--lp-hair); font-size: 13px; color: var(--af-muted); background: var(--lp-alt); }
 .lp-foot-in { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 48px; }
 .lp-foot-brand .lp-brand { color: var(--lp-ink); }

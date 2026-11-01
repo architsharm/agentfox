@@ -10,7 +10,7 @@ import { cookies } from "next/headers";
 import { FLAT, GROUPS, SECONDARY } from "@/lib/marketing/nav";
 import { SESSION_COOKIE } from "@/lib/product/api";
 
-import { BrandMark } from "@/components/marketing/brand";
+import { Logo } from "@/components/product/Logo";
 import { REPO_URL, SUPPORT_EMAIL } from "@/lib/site";
 import type { VariantSlug } from "@/lib/lp/variants";
 
@@ -40,7 +40,7 @@ export async function LpNav({ slug, home }: { slug: VariantSlug; home?: string }
     <header className="lp-nav">
       <div className="lp-nav-in">
         <Link href={home ?? `/lp/${slug}`} className="lp-brand" aria-label="AgentFox home">
-          <BrandMark size={22} />
+          <Logo size={22} />
           <span>AgentFox</span>
         </Link>
         <div className="lp-nav-cta">
@@ -98,7 +98,7 @@ export function LpFooter({ slug: _slug }: { slug: VariantSlug }) {
       <div className="lp-wrap lp-foot-in">
         <div className="lp-foot-brand">
           <span className="lp-brand">
-            <BrandMark size={22} />
+            <Logo size={22} />
             <span>AgentFox</span>
           </span>
           <p>Runtime guardrails for AI agents. Open source under Apache-2.0, by Nometria.</p>

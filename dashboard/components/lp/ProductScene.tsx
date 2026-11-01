@@ -276,7 +276,7 @@ export function ProductScene({ mode }: { mode: SceneMode }) {
               <g key={eid} className={`lp-mark${hit ? ` is-${active!.v}` : ""}`} transform={`translate(${m.x} ${m.y})`}>
                 <circle r={11} className="lp-mark-bg" />
                 {hit && <circle r={11} className="lp-mark-ring" />}
-                <image href="/brand/mark.webp" x={-7} y={-7} width={14} height={14} />
+                <image href="/brand/mark-shield.svg" x={-7} y={-7} width={14} height={14} />
               </g>
             );
           })}
