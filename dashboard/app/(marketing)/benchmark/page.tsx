@@ -769,7 +769,7 @@ export default function BenchmarkPage() {
         The classifier ensemble is a measured trade, not a free win. On{" "}
         <code className="mono">NotInject</code>, 339 prompts benign by
         construction and built to trigger keyword-reactive guardrails, the
-        ensemble raises <strong>139 false positives, 41%</strong>. PIGuard
+        ensemble raises <strong>140 false positives, 41%</strong>. PIGuard
         alone raises 39, 11.5%. The backstop model&apos;s hits are advisory:
         they are recorded and observe-mode policies see them, but an enforcing
         policy never does, so a block rests on PIGuard&apos;s verdict alone.
@@ -894,7 +894,7 @@ export default function BenchmarkPage() {
       <p>
         Seeds the stack already misses are thrown away before the search starts,
         because counting them would inflate the number for free. Of 81
-        candidates, 48 and 47 seeds remain on the retrieved and direct surfaces:
+        candidates, 47 and 46 seeds remain on the retrieved and direct surfaces:
         attacks the heuristic-only stack, the default until October 2026,
         stopped. That is the denominator, and
         it is why attempt 1 is 0% by construction.
@@ -905,8 +905,8 @@ export default function BenchmarkPage() {
         caption={
           <>
             <strong>
-              A quarter of the attacks our detectors stop are through within
-              five adapted attempts, and roughly seven in ten within fifty.
+              A third to a half of the attacks our detectors stop are through
+              within five adapted attempts, and three in four or more within fifty.
             </strong>{" "}
             Using only mutations that leave the instruction plainly readable —
             no base64, no hex, no fragment reassembly. With the full move set,
@@ -919,13 +919,13 @@ export default function BenchmarkPage() {
           xs={[1, 5, 10, 25, 50]}
           series={[
             {
-              name: "indirect, via retrieved content (48 seeds)",
-              points: [0, 0.25, 0.396, 0.625, 0.729],
+              name: "indirect, via retrieved content (47 seeds)",
+              points: [0, 0.34, 0.489, 0.723, 0.745],
               tone: "stop",
             },
             {
-              name: "direct, in the user message (47 seeds)",
-              points: [0, 0.319, 0.468, 0.723, 0.745],
+              name: "direct, in the user message (46 seeds)",
+              points: [0, 0.5, 0.761, 0.826, 0.826],
               tone: "hold",
             },
           ]}
@@ -985,10 +985,10 @@ export default function BenchmarkPage() {
         with the full move set we exceed it against ourselves.
       </p>
       <p>
-        164 of the 190 searches ended in a bypass. Each one was re-run on the
+        166 of the 186 searches ended in a bypass. Each one was re-run on the
         persisting enforcement path, because the search itself runs with{" "}
         <code className="mono">persist=False</code> for speed, and{" "}
-        <strong>164 of 164 reproduced</strong>.
+        <strong>166 of 166 reproduced</strong>.
       </p>
 
       <h3>What the bypasses did once they were through</h3>
@@ -1011,7 +1011,7 @@ export default function BenchmarkPage() {
           </thead>
           <tbody>
             {[
-              ["exfiltration via email.send (support-triage)", "18", "block", "capability.denied, taint.irreversible_tool"],
+              ["exfiltration via email.send (support-triage)", "17", "block", "capability.denied, taint.irreversible_tool"],
               ["destructive SQL via tickets.update", "8", "block", "sql.unbounded_mutation, cascade.reaches_notification"],
               ["transfer via payments.transfer (payments-ops)", "12", "escalate", "taint.irreversible_tool, eu.art14.human_oversight"],
             ].map(([action, n, verdict, by]) => (
@@ -1026,7 +1026,7 @@ export default function BenchmarkPage() {
         </table>
       </div>
       <p>
-        <strong>38 of 38 contained.</strong> A further 38 bypasses came from
+        <strong>37 of 37 contained.</strong> A further 37 bypasses came from
         seeds that name no specific action (&quot;you are now DAN&quot;, a
         system-prompt leak) and were excluded rather than assigned an invented
         one.
@@ -1085,7 +1085,7 @@ export default function BenchmarkPage() {
             ),
           },
           {
-            lead: "48 seeds is a small set and a biased one.",
+            lead: "47 seeds is a small set and a biased one.",
             body: (
               <>
                 It is specifically the subset our detectors catch, so it answers
@@ -1098,7 +1098,7 @@ export default function BenchmarkPage() {
             lead: "The containment column is invariant to the payload, by design.",
             body: (
               <>
-                The action path never reads the attacker&apos;s text, so 38/38
+                The action path never reads the attacker&apos;s text, so 37/37
                 is not evidence that containment resists these bypasses — it is
                 evidence that containment does not depend on the bypass at all.
               </>
@@ -1122,8 +1122,8 @@ export default function BenchmarkPage() {
       <p>
         <strong>What the result files do record.</strong> The adaptive run
         records its random seed (<code className="mono">20251009</code>), the
-        50-attempt cap, 190 searches, 5,642 attempts, 34.3 seconds of wall
-        clock, the five enabled detectors by name, and the fact that it makes no
+        50-attempt cap, 186 searches, 5,029 attempts, 75.7 seconds of wall
+        clock, the seven enabled detectors by name, and the fact that it makes no
         model calls and no network calls. The AgentDojo summary records the
         AgentDojo package and suite version, the task and pair counts, and each
         condition&apos;s rate with its Wilson interval; the per-call verdicts
@@ -1171,7 +1171,7 @@ export default function BenchmarkPage() {
               <>
                 Not cosmetic here: detectors run under a 40ms timeout and a
                 detector that times out is scored as raising nothing. The
-                adaptive run recorded 9 degraded attempts out of 5,642 (0.16%)
+                adaptive run recorded 10 degraded attempts out of 5,029 (0.20%)
                 on whatever machine produced it. A slower machine would record
                 more, and would move cells in the direction that flatters the
                 attacker.

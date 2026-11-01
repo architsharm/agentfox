@@ -168,7 +168,7 @@ Detection is the layer we trust least, so we publish its numbers.
   heuristic runs alone, and its held-out injection recall is **16.7%**; the startup warning and
   `agentfox doctor` say so.
 - On NotInject, 339 benign prompts built to trip keyword guardrails, the classifier flags
-  11.5% (39/339) at the level an enforcing policy acts on (PIGuard alone), and 41% (139/339)
+  11.5% (39/339) at the level an enforcing policy acts on (PIGuard alone), and 41% (140/339)
   counting the advisory backstop hits that observe mode records.
 - An [adaptive attacker](benchmarks/adaptive/README.md) that reads our verdict and retries gets
   **74% of the attacks we catch through within 50 attempts**, measured against the
