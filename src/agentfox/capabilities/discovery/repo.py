@@ -42,10 +42,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from agentfox.capabilities.discovery import platforms
 from agentfox.capabilities.discovery.agents import (
     AgentCollector,
     AgentEdge,
     AgentSpec,
+    agent_key,
     is_test_path,
     wrapped_tool,
 )
@@ -134,6 +136,43 @@ _FRAMEWORK_IMPORTS = {
     "langfuse": "Langfuse",
     "opentelemetry": "OpenTelemetry",
     "agentfox": "AgentFox",
+    # Agent frameworks the agent pass reads by shape rather than by a constructor of
+    # its own; naming the stack here keeps the report from saying "custom".
+    "pydantic_ai": "Pydantic AI",
+    "strands": "Strands Agents",
+    "agno": "Agno",
+    "smolagents": "smolagents",
+    "dspy": "DSPy",
+    "haystack": "Haystack",
+    "semantic_kernel": "Semantic Kernel",
+    "agent_framework": "Microsoft Agent Framework",
+    "claude_agent_sdk": "Claude Agent SDK",
+    "bedrock_agentcore": "Bedrock AgentCore",
+    # Voice agents: a framework that runs the pipeline in this process, or the SDK of
+    # a hosted platform the agent is configured on (see `discovery/platforms.py`).
+    "livekit": "LiveKit",
+    "pipecat": "Pipecat",
+    "vapi": "Vapi",
+    "vapi_python": "Vapi",
+    "vapi_server_sdk": "Vapi",
+    "retell": "Retell",
+    "elevenlabs": "ElevenLabs",
+    "telnyx": "Telnyx",
+    "twilio": "Twilio",
+    "smallestai": "Smallest AI",
+    "synthflow": "Synthflow",
+}
+
+#: Imports matched by dotted prefix, for packages whose top-level name (`google`) is
+#: shared with unrelated SDKs. The OpenAI Agents SDK's `agents` is left to the agent
+#: pass: a repository's own `agents` package is too common to label from the import.
+_FRAMEWORK_PREFIXES = {
+    "google.adk": "Google ADK",
+    "google.cloud.dialogflowcx": "Dialogflow CX",
+    "google.cloud.dialogflow_v2": "Dialogflow",
+    # `livekit` alone is the rooms and media SDK; the agent framework is a subpackage.
+    "livekit.agents": "LiveKit Agents",
+    "livekit.plugins": "LiveKit Agents",
 }
 
 #: Tool-ish decorators. A decorated function an agent can call is a tool whether or
@@ -583,9 +622,9 @@ class _Visitor(ast.NodeVisitor):
     def _note_import(self, module: str) -> None:
         root = module.split(".")[0]
         label = _FRAMEWORK_IMPORTS.get(root)
-        if module == "google.adk" or module.startswith("google.adk."):
-            # `google` alone names a dozen unrelated SDKs, so ADK is matched by prefix.
-            label = "Google ADK"
+        for prefix, name in _FRAMEWORK_PREFIXES.items():
+            if module == prefix or module.startswith(f"{prefix}."):
+                label = name
         if label:
             self.frameworks.add(label)
         if root == "agentfox":
@@ -817,6 +856,33 @@ _JS_FRAMEWORK_IMPORTS = {
     "langfuse": "Langfuse",
     "langsmith": "LangSmith",
     "@opentelemetry": "OpenTelemetry",
+    "@openai/agents-realtime": "OpenAI Realtime",
+    "@openai/agents/realtime": "OpenAI Realtime",
+    "@anthropic-ai/claude-agent-sdk": "Claude Agent SDK",
+    "@mastra": "Mastra",
+    "@voltagent": "VoltAgent",
+    "@strands-agents": "Strands Agents",
+    "@aws-sdk/client-bedrock-agent-runtime": "Bedrock Agents",
+    "@aws-sdk/client-bedrock-agentcore": "Bedrock AgentCore",
+    "@aws-sdk/client-lex-runtime-v2": "Amazon Lex",
+    "@aws-sdk/client-connect": "Amazon Connect",
+    "@google-cloud/dialogflow-cx": "Dialogflow CX",
+    "@google-cloud/dialogflow": "Dialogflow",
+    "@n8n": "n8n",
+    "n8n-workflow": "n8n",
+    # Voice agents (see the Python map).
+    "@livekit/agents": "LiveKit Agents",
+    "@pipecat-ai": "Pipecat",
+    "@vapi-ai": "Vapi",
+    "retell-sdk": "Retell",
+    "retell-client-js-sdk": "Retell",
+    "@elevenlabs": "ElevenLabs",
+    "@11labs": "ElevenLabs",
+    "elevenlabs": "ElevenLabs",
+    "telnyx": "Telnyx",
+    "twilio": "Twilio",
+    "agora-rtc-sdk-ng": "Agora",
+    "agora-agent-uikit": "Agora",
 }
 
 #: `import x from "pkg"`, `import "pkg"`, `require("pkg")`, `await import("pkg")`.
@@ -1205,6 +1271,8 @@ def scan(
         suffixes |= CONFIG_SUFFIXES
     report.code_files_scanned = 0
     git = _git_files(root_path)
+    #: Files that may hold a hosted platform's agent definition (`discovery/platforms`).
+    platform_files: list[Path] = []
 
     for dirpath, dirnames, filenames in os.walk(root_path):
         rel_dir = os.path.relpath(dirpath, root_path)
@@ -1219,6 +1287,12 @@ def scan(
             path = Path(dirpath) / filename
             if git is not None and os.path.normpath(os.path.join(rel_dir, filename)) not in git[0]:
                 continue
+            if (
+                include_config
+                and platforms.is_candidate(path)
+                and not is_test_path(os.path.join(rel_dir, filename))
+            ):
+                platform_files.append(path)
             if path.suffix in CODE_SUFFIXES and path.stat().st_size > MAX_CODE_BYTES:
                 report.skipped_suffixes["(generated or minified)"] = (
                     report.skipped_suffixes.get("(generated or minified)", 0) + 1
@@ -1241,9 +1315,9 @@ def scan(
                 continue
             frameworks |= found
             if path.suffix in CODE_SUFFIXES:
-                agents.add(
-                    path.read_text(errors="ignore"), str(path.relative_to(root_path)), path.suffix
-                )
+                source = path.read_text(errors="ignore")
+                agents.add(source, str(path.relative_to(root_path)), path.suffix)
+                frameworks |= platforms.detect_code_platforms(source)
             if governed:
                 report.governed_files.append(str(path.relative_to(root_path)))
             for site in sites:
@@ -1253,6 +1327,11 @@ def scan(
                 report.sites.append(site)
 
     report.agents, report.agent_edges = agents.finish()
+    hosted = platforms.detect(platform_files, root_path)
+    frameworks |= hosted.platforms
+    hosted_agents, hosted_edges = _platform_agents(hosted, {a.key for a in report.agents})
+    report.agents.extend(hosted_agents)
+    report.agent_edges.extend(hosted_edges)
     if not report.agents and llm_apps:
         report.agents = _llm_apps(report)
     given = {name for a in report.agents for name in a.tools}
@@ -1266,10 +1345,48 @@ def scan(
     # The OpenAI Agents SDK imports as `agents`, a name too common among a repository's
     # own packages to detect from the import alone; an agent built with it is proof.
     frameworks |= {a.framework for a in report.agents}
+    if "LiveKit Agents" in frameworks:
+        frameworks.discard("LiveKit")  # `from livekit import agents` beside it
     report.frameworks = sorted(frameworks)
     _detect_mcp(root_path, report)
     _detect_trifectas(report)
     return report
+
+
+def _platform_agents(
+    hosted: platforms.Result, taken: set[str]
+) -> tuple[list[AgentSpec], list[AgentEdge]]:
+    """Agents a hosted platform's definition files describe, as :class:`AgentSpec`
+    entries beside the ones the code defines, with keys unique among both; and each
+    team's ``member`` edges (a Vapi squad runs its assistants)."""
+    out = []
+    keys: dict[tuple[str, str], str] = {}
+    for found in hosted.agents:
+        key = agent_key(found.name, found.file, taken)
+        taken.add(key)
+        keys.setdefault((found.file, found.name), key)
+        out.append(
+            AgentSpec(
+                key=key,
+                name=found.name,
+                framework=found.platform,
+                kind=found.kind,
+                file=found.file,
+                line=found.line,
+                tools=found.tools,
+                model=found.model,
+                named=found.named,
+                confidence=found.confidence,
+                evidence=found.evidence,
+            )
+        )
+    edges = [
+        AgentEdge(keys[(found.file, found.name)], keys[(found.file, member)], "member")
+        for found in hosted.agents
+        for member in found.members
+        if (found.file, member) in keys
+    ]
+    return out, edges
 
 
 #: Directories that hold packages rather than being one: an app is named by the
