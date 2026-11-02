@@ -457,7 +457,7 @@ def _trajectory(enforcer, window):
     )
 
 
-def test_the_added_cost_is_the_pipeline_runs_and_little_else(enforcer):
+def test_the_added_cost_is_the_pipeline_runs_and_little_else(enforcer, monkeypatch):
     """The check is obliged to run the real pipeline once per window turn —
     F9.4's sub-threshold component — and the claim is that everything *else* it
     does is regex and set arithmetic. So that is what this measures: the whole
@@ -476,16 +476,44 @@ def test_the_added_cost_is_the_pipeline_runs_and_little_else(enforcer):
     of the work it already has to do.
     """
     window = CRESCENDO_DELETE
-    _trajectory(enforcer, window)  # warm the pipeline and the regexes
-    window_detector_scores(enforcer.pipeline, window)
 
-    baseline = _median_ms(lambda: window_detector_scores(enforcer.pipeline, window))
-    total = _median_ms(lambda: _trajectory(enforcer, window))
+    # The pipeline runs it cannot avoid are counted, not timed: once per window
+    # turn, and not once more. A second pass hidden in the check is the regression
+    # most worth catching, and a count catches it on any machine.
+    runs = []
+    with monkeypatch.context() as patch:
+        real_run = enforcer.pipeline.run
+        patch.setattr(
+            enforcer.pipeline, "run", lambda text, ctx: runs.append(text) or real_run(text, ctx)
+        )
+        _trajectory(enforcer, window)  # also warms the pipeline and the regexes
+    assert len(runs) == len(window), (
+        f"the trajectory check ran the pipeline {len(runs)} times for a "
+        f"{len(window)}-turn window; it should run it once per turn."
+    )
 
-    assert baseline > 0, "baseline measured as zero — the timer is not working"
-    overhead = total / baseline
+    # What is left is timed one call at a time, baseline and check alternating, and
+    # each compared at its fastest. Noise on a shared runner only ever adds time, so
+    # the minimum of many calls is the closest reading of the work itself. Single
+    # calls, not batches: a batch of the check outlasts a scheduler slice on a busy
+    # CPU and is preempted more often than the shorter baseline batch beside it,
+    # which is how medians of batches read 2.0x and 1.7x on GitHub runners for a
+    # check that costs ~1.2x locally.
+    def once_ms(call) -> float:
+        started = time.perf_counter()
+        call()
+        return (time.perf_counter() - started) * 1000
+
+    baseline, total = [], []
+    for _ in range(100):
+        baseline.append(once_ms(lambda: window_detector_scores(enforcer.pipeline, window)))
+        total.append(once_ms(lambda: _trajectory(enforcer, window)))
+    baseline_ms, total_ms = min(baseline), min(total)
+
+    assert baseline_ms > 0, "baseline measured as zero — the timer is not working"
+    overhead = total_ms / baseline_ms
     assert overhead < 1.6, (
-        f"the trajectory check costs {total:.1f}ms against {baseline:.1f}ms of "
+        f"the trajectory check costs {total_ms:.1f}ms against {baseline_ms:.1f}ms of "
         f"pipeline runs it cannot avoid — {overhead:.1f}x. The scoring on top "
         "is supposed to be regex and set arithmetic."
     )
