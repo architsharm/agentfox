@@ -29,7 +29,14 @@ export const OBSERVE_TABS = [
   { key: "review", label: "Human review" },
   { key: "cost", label: "Cost & speed" },
   { key: "runs", label: "Runs" },
+  { key: "sessions", label: "Sessions" },
+  { key: "events", label: "Events" },
+  { key: "tools", label: "Tools" },
+  { key: "models", label: "Models" },
 ] as const;
+
+/** Tabs that are pages of their own, at the URLs they always had; they read only the agent. */
+const OWN_PAGE = new Set<string>(["sessions", "events", "tools", "models"]);
 
 export function observeTabs(f: Filters) {
   return OBSERVE_TABS.map((t) => ({
@@ -38,7 +45,9 @@ export function observeTabs(f: Filters) {
     href:
       t.key === "runs"
         ? href("/app/traces", keep(f))
-        : href("/app/observe", { ...keep(f), tab: t.key === "overview" ? undefined : t.key }),
+        : OWN_PAGE.has(t.key)
+          ? href(`/app/${t.key}`, { agent: f.agent })
+          : href("/app/observe", { ...keep(f), tab: t.key === "overview" ? undefined : t.key }),
   }));
 }
 

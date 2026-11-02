@@ -1,6 +1,7 @@
 "use client";
 
 import "@xyflow/react/dist/style.css";
+import { detailText } from "@/lib/product/errors";
 
 import {
   Background,
@@ -21,8 +22,8 @@ import Link from "next/link";
 import { Logo } from "@/components/product/Logo";
 import { useRouter } from "next/navigation";
 import { Bot, Cpu, FileText, Plus, Search, User, Wrench, X, type LucideIcon } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { ModePill, Pill } from "@/components/kit";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { ModePill, Pill, href } from "@/components/kit";
 import {
   GROUP_BY,
   PERMISSION,
@@ -51,11 +52,17 @@ import {
 } from "@/lib/product/guardrailMap";
 import { IMPACT, detectorName, ruleTitle, wouldDo } from "@/lib/product/vocab";
 import { AttackTests } from "./AttackTests";
+import { ControlButton } from "./AgentStatus";
+import { breakerLabel, isHalted, stateLabel, type AgentFacts } from "@/lib/product/agentStatus";
+import { projectHref } from "@/lib/product/project";
+
+// The surfaces a custom rule can check; a rail's others (retrieval, tool results) have no rule form yet.
+const RULE_SURFACES = ["input", "output", "tool_args"];
 
 export type { AgentMap, MapRule } from "@/lib/product/guardrailMap";
 
-/** What the inspector shows: a step, a tool, a group of tools, or every tool. Nothing: the project. */
-type Selected = { kind: "stage" | "tool" | "group" | "tools"; key: string } | null;
+/** What the inspector shows: a step, a tool, a group of tools, every tool, an agent or its LLM. Nothing: the project. */
+type Selected = { kind: "stage" | "tool" | "group" | "tools" | "agent" | "llm"; key: string } | null;
 
 const SOURCE: Record<string, string> = { code: "In code", granted: "Granted", seen: "Called" };
 
@@ -139,11 +146,11 @@ function SystemNode({ data }: NodeProps<Node<{ title: string; sub: string; w: nu
 /** An agent: the loop that decides what to do next. Guardrails sit on what it reaches, not on it. */
 function AgentNode({
   data,
-}: NodeProps<Node<{ name: string; framework?: string | null; active: boolean; target?: string; handsOffTo?: number }>>) {
+}: NodeProps<Node<{ name: string; framework?: string | null; active: boolean; target?: string; handsOffTo?: number; selected?: boolean; status?: string }>>) {
   return (
     <div
-      className={`gm-node gm-agent${data.active ? " gm-agent-active" : ""}${data.target ? " gm-agent-target" : ""}`}
-      title={data.target ? `${data.target} hands off to this agent` : undefined}
+      className={`gm-node gm-agent${data.active ? " gm-agent-active" : ""}${data.target ? " gm-agent-target" : ""}${data.selected ? " gm-selected" : ""}`}
+      title={data.target ? `${data.target} hands off to this agent` : "Status, owner and controls"}
     >
       <Handle type="target" position={Position.Left} id="in" style={{ top: IN_AT }} />
       <Handle type="source" position={Position.Left} id="reply" style={{ top: OUT_AT }} />
@@ -154,7 +161,10 @@ function AgentNode({
       <Handle type="target" position={Position.Right} id="context" />
       <Kind icon={Bot} label="Agent" />
       <strong className="gm-ellipsis">{data.name}</strong>
-      <span className="gm-sub">{data.framework ? `${data.framework} · ` : ""}decides what to do next</span>
+      <span className="gm-sub">
+        {data.status ? <b>{data.status} · </b> : null}
+        {data.framework ? `${data.framework} · ` : ""}decides what to do next
+      </span>
       {data.handsOffTo ? (
         <span className="gm-handoff-note">
           hands off to {plural(data.handsOffTo, "agent")}
@@ -166,9 +176,9 @@ function AgentNode({
 }
 
 /** The model the agent thinks with. */
-function LlmNode({ data }: NodeProps<Node<{ models: string[] }>>) {
+function LlmNode({ data }: NodeProps<Node<{ models: string[]; selected?: boolean }>>) {
   return (
-    <div className="gm-node gm-llm">
+    <div className={`gm-node gm-llm${data.selected ? " gm-selected" : ""}`} title="The model, and where data may go">
       <Handle type="target" position={Position.Bottom} id="in" style={{ left: CALLS_AT }} />
       <Handle type="source" position={Position.Bottom} id="out" style={{ left: RESULTS_AT }} />
       <Kind icon={Cpu} label={data.models.length > 1 ? `${data.models.length} LLMs` : "LLM"} />
@@ -402,6 +412,7 @@ function layout(
   selected: Selected,
   pick: (slug: string, stage: string) => void,
   project: string,
+  status: (slug: string) => string | undefined = () => undefined,
 ): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
@@ -480,11 +491,13 @@ function layout(
         active: slug === active && many,
         target: targets.has(slug) ? activeMap?.agent.name : undefined,
         handsOffTo,
+        selected: isSel(slug, "agent", slug),
+        status: status(slug),
       },
     });
 
     // Its LLM, straight above.
-    nodes.push({ id: nid(slug, "llm"), type: "llm", position: { x: x + (AGENT_W - LLM_W) / 2, y: top }, data: { models: map.agent.models || [] } });
+    nodes.push({ id: nid(slug, "llm"), type: "llm", position: { x: x + (AGENT_W - LLM_W) / 2, y: top }, data: { models: map.agent.models || [], selected: isSel(slug, "llm", "") } });
     // Up on the left, what goes to it; down on the right, what it answers.
     rail("prompt", agentId, nid(slug, "llm"), { sourceHandle: "ask", targetHandle: "in", style: { stroke: "var(--af-link)" } }, { side: "left" });
     rail("response", nid(slug, "llm"), agentId, { sourceHandle: "out", targetHandle: "answer", style: { stroke: "var(--af-link)", strokeDasharray: "5 4" } }, { side: "right" });
@@ -492,7 +505,7 @@ function layout(
     // Documents & memory, to its right, level with it.
     if (stage("context")) {
       const dx = x + AGENT_W + units(LENGTH.context);
-      nodes.push({ id: nid(slug, "docs"), type: "docs", position: { x: dx, y: ay + (AGENT_H - DOCS_H) / 2 }, data: {} });
+      nodes.push({ id: nid(slug, "docs"), type: "docs", position: { x: dx, y: ay + (AGENT_H - DOCS_H) / 2 }, data: {}, selectable: false });
       rail("context", nid(slug, "docs"), agentId, { targetHandle: "context", style: { strokeDasharray: "4 4" } }, { side: "above" });
       right = Math.max(right, dx + DOCS_W);
     }
@@ -546,7 +559,8 @@ function layout(
   // the user stands level with the middle of them.
   const ys = entryList.map((s) => agentAt[s]?.y).filter((v): v is number => v !== undefined);
   const userY = ys.length ? (Math.min(...ys) + Math.max(...ys)) / 2 : agentDy + TOP;
-  nodes.push({ id: "user", type: "user", position: { x: left - units(LENGTH.user) - USER_W, y: userY }, data: {} });
+  // The user and documents do nothing when clicked, so they don't take the pointer cursor.
+  nodes.push({ id: "user", type: "user", position: { x: left - units(LENGTH.user) - USER_W, y: userY }, data: {}, selectable: false });
   for (const slug of entryList) {
     const agentId = nid(slug, "agent");
     const map = maps.find((m) => m.agent.slug === slug)!;
@@ -602,7 +616,7 @@ function errorOf(data: any, fallback: string): string {
   const d = data?.detail;
   if (typeof d === "string") return d;
   if (d && typeof d.message === "string") return d.message;
-  return fallback;
+  return detailText(d) || fallback;
 }
 
 /** Block / ask / watch / off for one rule, for this agent only. */
@@ -658,9 +672,17 @@ function RuleControl({ rule, slug }: { rule: MapRule; slug: string }) {
   );
 }
 
+/**
+ * Tells the canvas a tool's access changed, so its node shows the new tag at once:
+ * the refresh that follows redraws the panel, but the canvas kept the old badge
+ * until a reload.
+ */
+const PermissionChanged = createContext<(slug: string, key: string, to: Permission) => void>(() => {});
+
 /** Allow / ask a person / not allowed for one tool, through the agent's access grants. */
 function PermissionControl({ tool, slug }: { tool: MapTool; slug: string }) {
   const router = useRouter();
+  const changed = useContext(PermissionChanged);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const pattern = tool.grant && tool.grant.key !== tool.key ? tool.grant.key : null;
@@ -674,6 +696,7 @@ function PermissionControl({ tool, slug }: { tool: MapTool; slug: string }) {
     const r = await send(call.url, call.method, call.body);
     setBusy(false);
     if (!r.ok) return setError(errorOf(r.data, "Could not change access."));
+    changed(slug, tool.key, to);
     router.refresh();
   };
 
@@ -869,7 +892,7 @@ function StagePanel({ stage, map, catalog, back }: { stage: Stage; map: AgentMap
         ) : (
           <p className="gm-sub">No rules on this line yet.</p>
         )}
-        <Link className="gm-add" href={`/app/policies/new?agent=${encodeURIComponent(slug)}`}>
+        <Link className="gm-add" href={href("/app/policies/new", { agent: slug, surfaces: stage.surfaces.filter((x) => RULE_SURFACES.includes(x)).join(",") || undefined })}>
           <Plus size={13} aria-hidden /> Add rule
         </Link>
         {unused.length ? (
@@ -908,10 +931,10 @@ function StagePanel({ stage, map, catalog, back }: { stage: Stage; map: AgentMap
 
 // --- guide (nothing selected) -----------------------------------------------------
 
-function Guide({ project }: { project: string }) {
+function Guide({ project, paused }: { project: string; paused?: string | null }) {
   return (
     <div className="gm-panel gm-guide">
-      <AttackTests project={project} />
+      <AttackTests project={project} paused={paused} />
 
       <section className="gm-more-agents">
         <h4>Add more agents</h4>
@@ -980,6 +1003,82 @@ function StatLine({ days, s, noun }: { days: number; s: Stats; noun: string }) {
   );
 }
 
+// --- the agent and its LLM, selected ------------------------------------------------
+
+const RISK: Record<string, string> = { minimal: "Minimal", limited: "Limited", high: "High", prohibited: "Prohibited" };
+
+/** An agent's node, clicked: its status and Pause, who owns it, what it runs on, and where its controls are. */
+function AgentPanel({ map, facts, actor, back }: { map: AgentMap; facts?: AgentFacts; actor?: string | null; back: ReactNode }) {
+  const slug = map.agent.slug;
+  const name = map.agent.name || slug;
+  const state = facts?.state || "active";
+  const halted = isHalted(state);
+  const models = facts?.models?.length ? facts.models : map.agent.models || [];
+  const [breaker, breakerTone] = breakerLabel(facts?.breaker ?? { state: "closed" });
+  return (
+    <div className="gm-panel">
+      {back}
+      <Kind icon={Bot} label="Agent" />
+      <strong className="gm-break">{name}</strong>
+      <div className="k-pills" style={{ gap: 8 }}>
+        <Pill tone={halted ? "bad" : "ok"}>{stateLabel(state)}</Pill>
+        <ControlButton slug={slug} name={name} actor={actor} action={halted ? "resume" : "quarantine"} label={halted ? "Resume" : "Pause…"} />
+      </div>
+      {halted ? (
+        <p className="gm-sub">
+          {stateLabel(state)} by {facts?.by || "someone"}
+          {facts?.reason ? `: "${facts.reason}"` : ""}. Every call is refused until someone resumes it.
+        </p>
+      ) : null}
+      <table className="k-table">
+        <tbody>
+          <tr><td className="muted">Owner</td><td>{facts?.owner || "Not assigned"}</td></tr>
+          <tr><td className="muted">Risk</td><td>{RISK[facts?.risk || ""] || "Not set"}</td></tr>
+          <tr><td className="muted">{models.length > 1 ? "Models" : "Model"}</td><td className="k-mono gm-break">{models.join(", ") || "Not found"}</td></tr>
+          <tr><td className="muted">Framework</td><td>{facts?.framework || map.agent.framework || "—"}</td></tr>
+          <tr><td className="muted">Circuit breaker</td><td><Pill tone={breakerTone}>{breaker}</Pill></td></tr>
+          <tr>
+            <td className="muted">Open issues</td>
+            <td>
+              <Link href={href("/app/findings", { agent: slug })}>{facts?.openIssues == null ? "See issues" : facts.openIssues}</Link>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div className="k-pills" style={{ gap: 8, flexWrap: "wrap" }}>
+        <Link className="k-btn" href={projectHref(slug, "access")}>Access</Link>
+        <Link className="k-btn" href={projectHref(slug, "controls")}>Controls</Link>
+        <Link className="k-btn" href={projectHref(slug, "settings")}>Settings</Link>
+      </div>
+    </div>
+  );
+}
+
+/** An agent's LLM node, clicked: the model(s), and where judges and data egress are set. */
+function LlmPanel({ map, back }: { map: AgentMap; back: ReactNode }) {
+  const models = map.agent.models || [];
+  return (
+    <div className="gm-panel">
+      {back}
+      <Kind icon={Cpu} label={models.length > 1 ? `${models.length} LLMs` : "LLM"} />
+      {models.length ? (
+        <ul className="gm-rules">
+          {models.map((m) => (
+            <li key={m} className="k-mono gm-break">{m}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="gm-sub">No model found in this agent&apos;s code yet. It shows here once a call goes through AgentFox.</p>
+      )}
+      <p className="gm-sub">
+        The Prompt and Response rails on either side of it are where its calls are checked. Which AI judges run, and what data
+        may leave this deployment, are set for the whole workspace.
+      </p>
+      <Link className="k-btn" href="/app/settings?tab=detection">AI judges and data egress</Link>
+    </div>
+  );
+}
+
 function Panel({
   map,
   selected,
@@ -988,6 +1087,8 @@ function Panel({
   project,
   catalog,
   toolList,
+  facts,
+  actor,
 }: {
   map: AgentMap;
   selected: Selected;
@@ -996,6 +1097,8 @@ function Panel({
   project: string;
   catalog?: Catalog;
   toolList: ReactNode;
+  facts?: Record<string, AgentFacts>;
+  actor?: string | null;
 }) {
   const slug = map.agent.slug;
   // Figma's rule: with nothing selected, the inspector is about the whole file.
@@ -1011,6 +1114,8 @@ function Panel({
         {toolList}
       </div>
     );
+  if (selected?.kind === "agent") return <AgentPanel map={map} facts={facts?.[slug]} actor={actor} back={back} />;
+  if (selected?.kind === "llm") return <LlmPanel map={map} back={back} />;
   if (selected?.kind === "stage") {
     const s = map.stages.find((x) => x.key === selected.key);
     if (s) return <StagePanel stage={s} map={map} catalog={catalog} back={back} />;
@@ -1038,7 +1143,12 @@ function Panel({
     }
   }
   const tl = selected?.kind === "tool" ? map.tools.find((t) => t.key === selected.key) : null;
-  if (!tl) return <Guide project={project} />;
+  if (!tl) {
+    // The attack test sends real calls: none get through while an agent here is paused.
+    const halted = Object.entries(facts || {}).find(([, f]) => isHalted(f.state));
+    const paused = halted ? `${halted[0] === slug ? map.agent.name || slug : halted[0]} is ${stateLabel(halted[1].state).toLowerCase()}: resume it to run the attack test` : null;
+    return <Guide project={project} paused={paused} />;
+  }
   const limits = Object.entries(tl.limits || {});
   return (
     <div className="gm-panel">
@@ -1186,14 +1296,21 @@ function ToolList({
 
 // --- the map -----------------------------------------------------------------------
 
+const LEGEND_COLOR: Record<string, string> = {
+  user: "var(--af-muted)",
+  agent: "var(--af-brand)",
+  llm: "var(--af-link)",
+  tool: "#475569",
+  docs: "var(--af-warn)",
+};
+
 function Legend() {
   return (
     <div className="gm-legend" aria-label="Legend">
+      {/* Plain text: the legend explains, it doesn't filter, so nothing here looks like a button. */}
       {NODE_KINDS.map((k) => (
-        <span key={k.key} className={`gm-legend-kind gm-lk-${k.key}`}>
-          <span className="gm-kind-icon" aria-hidden>
-            <k.icon size={12} strokeWidth={2} />
-          </span>
+        <span key={k.key} className="gm-legend-kind">
+          <k.icon size={12} strokeWidth={2} aria-hidden style={{ color: LEGEND_COLOR[k.key] }} />
           {k.label}
         </span>
       ))}
@@ -1204,7 +1321,7 @@ function Legend() {
       <span className="gm-legend-kind">
         <span className="gm-legend-plus" aria-hidden>+</span> Rail, none yet
       </span>
-      <span className="gm-legend-hint">Rails are where guardrails apply: click one, or a tool</span>
+      <span className="gm-legend-hint">Rails are where guardrails apply: click one, a tool, an agent or its LLM</span>
     </div>
   );
 }
@@ -1263,16 +1380,39 @@ function useNarrow(): boolean {
  * panel is about; with nothing selected the panel is that agent's set-up guide.
  */
 export function GuardrailMap({
-  maps,
+  maps: drawn,
   focus,
   project,
   catalog,
+  facts,
+  actor,
 }: {
   maps: AgentMap[];
   focus: string;
   project: string;
   catalog?: Catalog;
+  /** Per agent slug: status, owner, risk and the rest of what its Agent panel shows. */
+  facts?: Record<string, AgentFacts>;
+  /** Who is signed in: the name a pause from the Agent panel records. */
+  actor?: string | null;
 }) {
+  // Access changed here, by "slug|tool": laid over the page's maps so the canvas and
+  // the panel agree before (and whatever) the refresh brings back.
+  const [access, setAccess] = useState<Record<string, Permission>>({});
+  const maps = useMemo(
+    () =>
+      Object.keys(access).length === 0
+        ? drawn
+        : drawn.map((m) => ({
+            ...m,
+            tools: m.tools.map((t) => {
+              const to = access[`${m.agent.slug}|${t.key}`];
+              return to && to !== t.permission ? { ...t, permission: to } : t;
+            }),
+          })),
+    [drawn, access],
+  );
+  const onPermission = useMemo(() => (slug: string, key: string, to: Permission) => setAccess((a) => ({ ...a, [`${slug}|${key}`]: to })), []);
   const [active, setActive] = useState(focus);
   const [selected, setSelected] = useState<Selected>(null);
   const [hovered, setHovered] = useState<string | null>(null);
@@ -1302,8 +1442,9 @@ export function GuardrailMap({
       const tools = boxTools(list, expanded.has(m.agent.slug), sel);
       return { tools, hidden: list.length - tools.length };
     };
-    return layout(maps, drawnFor, active, selected, (slug, key) => choose(slug, { kind: "stage", key }), project);
-  }, [maps, visible, expanded, active, selected, project]);
+    const status = (slug: string) => (isHalted(facts?.[slug]?.state) ? stateLabel(facts?.[slug]?.state) : undefined);
+    return layout(maps, drawnFor, active, selected, (slug, key) => choose(slug, { kind: "stage", key }), project, status);
+  }, [maps, visible, expanded, active, selected, project, facts]);
   // The rail under the pointer (or its pill) lights up.
   const edges = useMemo(
     () =>
@@ -1348,62 +1489,65 @@ export function GuardrailMap({
     ) : null;
 
   return (
-    <div className="gm">
-      <div className="gm-canvas">
-        <div className="gm-bar">
-          <Legend />
+    <PermissionChanged.Provider value={onPermission}>
+      <div className="gm">
+        <div className="gm-canvas">
+          <div className="gm-bar">
+            <Legend />
+          </div>
+          <div className="gm-flow">
+            <ReactFlow
+              // Re-fit when what is drawn changes shape, not on every selection.
+              // With several agents, open on the active one; picking another moves there.
+              key={`${maps.length}|${[...expanded].join(",")}|${visible.length}|${maps.length > 1 ? active : ""}`}
+              nodes={laid.nodes}
+              edges={edges}
+              nodeTypes={NODE_TYPES}
+              edgeTypes={EDGE_TYPES}
+              onEdgeMouseEnter={(_, edge) => edge.type === "guard" && setHovered(edge.id)}
+              onEdgeMouseLeave={() => setHovered(null)}
+              onEdgeClick={(_, edge) => {
+                if (edge.type !== "guard") return;
+                const [slug, what] = edge.id.split("|");
+                const key = (edge.data as GuardData | undefined)?.stage?.key;
+                if (key && what?.startsWith("edge:")) choose(slug, { kind: "stage", key });
+              }}
+              fitView
+              fitViewOptions={
+                maps.length > 1
+                  ? { padding: 0.25, maxZoom: 1, nodes: laid.nodes.filter((n) => (n.id.startsWith(`${active}|`) || (n.id === "user" && laid.edges.some((e) => e.source === "user" && e.target === `${active}|agent`))) && !n.parentId).map((n) => ({ id: n.id })) }
+                  : { padding: narrow ? 0.04 : 0.12, maxZoom: 1 }
+              }
+              minZoom={0.15}
+              maxZoom={1.5}
+              panOnDrag={!narrow}
+              zoomOnScroll={!narrow}
+              preventScrolling={!narrow}
+              nodesDraggable={false}
+              nodesConnectable={false}
+              proOptions={{ hideAttribution: true }}
+              onNodeClick={(_, node) => {
+                const [slug, what = ""] = node.id.split("|");
+                if (what.startsWith("tool:")) choose(slug, { kind: "tool", key: what.slice(5) });
+                else if (what === "box") choose(slug, { kind: "tools", key: "" });
+                else if (what === "more") setExpanded(new Set([...expanded, slug]));
+                else if (what === "agent") choose(slug, { kind: "agent", key: slug });
+                else if (what === "llm") choose(slug, { kind: "llm", key: "" });
+                else setSelected(null);
+              }}
+              onPaneClick={() => setSelected(null)}
+            >
+              <Background gap={20} size={1} />
+              <Controls showInteractive={false} />
+            </ReactFlow>
+          </div>
         </div>
-        <div className="gm-flow">
-          <ReactFlow
-            // Re-fit when what is drawn changes shape, not on every selection.
-            // With several agents, open on the active one; picking another moves there.
-            key={`${maps.length}|${[...expanded].join(",")}|${visible.length}|${maps.length > 1 ? active : ""}`}
-            nodes={laid.nodes}
-            edges={edges}
-            nodeTypes={NODE_TYPES}
-            edgeTypes={EDGE_TYPES}
-            onEdgeMouseEnter={(_, edge) => edge.type === "guard" && setHovered(edge.id)}
-            onEdgeMouseLeave={() => setHovered(null)}
-            onEdgeClick={(_, edge) => {
-              if (edge.type !== "guard") return;
-              const [slug, what] = edge.id.split("|");
-              const key = (edge.data as GuardData | undefined)?.stage?.key;
-              if (key && what?.startsWith("edge:")) choose(slug, { kind: "stage", key });
-            }}
-            fitView
-            fitViewOptions={
-              maps.length > 1
-                ? { padding: 0.25, maxZoom: 1, nodes: laid.nodes.filter((n) => (n.id.startsWith(`${active}|`) || (n.id === "user" && laid.edges.some((e) => e.source === "user" && e.target === `${active}|agent`))) && !n.parentId).map((n) => ({ id: n.id })) }
-                : { padding: narrow ? 0.04 : 0.12, maxZoom: 1 }
-            }
-            minZoom={0.15}
-            maxZoom={1.5}
-            panOnDrag={!narrow}
-            zoomOnScroll={!narrow}
-            preventScrolling={!narrow}
-            nodesDraggable={false}
-            nodesConnectable={false}
-            proOptions={{ hideAttribution: true }}
-            onNodeClick={(_, node) => {
-              const [slug, what = ""] = node.id.split("|");
-              if (what.startsWith("tool:")) choose(slug, { kind: "tool", key: what.slice(5) });
-              else if (what === "box") choose(slug, { kind: "tools", key: "" });
-              else if (what === "more") setExpanded(new Set([...expanded, slug]));
-              else if (what === "agent") choose(slug, null);
-              else setSelected(null);
-            }}
-            onPaneClick={() => setSelected(null)}
-          >
-            <Background gap={20} size={1} />
-            <Controls showInteractive={false} />
-          </ReactFlow>
+        <div className="gm-side">
+          {agentSwitch}
+          {narrow && !selected && <LineList map={map} onSelect={setSelected} />}
+          <Panel map={map} selected={selected} groups={groups} onSelect={setSelected} project={project} catalog={catalog} toolList={toolList} facts={facts} actor={actor} />
         </div>
       </div>
-      <div className="gm-side">
-        {agentSwitch}
-        {narrow && !selected && <LineList map={map} onSelect={setSelected} />}
-        <Panel map={map} selected={selected} groups={groups} onSelect={setSelected} project={project} catalog={catalog} toolList={toolList} />
-      </div>
-    </div>
+    </PermissionChanged.Provider>
   );
 }

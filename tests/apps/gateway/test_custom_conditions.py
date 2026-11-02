@@ -66,6 +66,7 @@ def test_a_condition_on_a_tool_argument_asks_a_person_once_enforcing(client):
     assert "custom.big-refunds" in _fired(watched)
     assert _mode(watched, "custom.big-refunds") == "observe"
     assert watched["verdict"] == "allow" and watched["effective_verdict"] == "escalate"
+    assert not watched.get("approval_id"), "the call already ran: nothing to approve"
     small = _tool_call(client, "payments.refund", {"order": "o1", "amount": 50})
     assert "custom.big-refunds" not in _fired(small)
     other = _tool_call(client, "crm.update", {"amount": 750})

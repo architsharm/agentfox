@@ -9,7 +9,7 @@ import { legacyTabRedirect } from "@/lib/product/legacyRedirect";
 export const metadata: Metadata = appPageMetadata("Escalation");
 
 /**
- * Escalation used to be its own nav item; it's now the "Escalation" tab on
+ * Escalation used to be its own nav item; it is now the "Human hand-offs" tab on
  * the Approvals page. This keeps old links and bookmarks working.
  */
 export default async function EscalationRedirect({

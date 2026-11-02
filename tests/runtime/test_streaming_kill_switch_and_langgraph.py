@@ -231,7 +231,7 @@ def test_quarantine_blocks_every_request(seeded, enforcer):
     )
     assert result.blocked
     assert response is None
-    assert "quarantined" in result.reason
+    assert "paused" in result.reason
     assert result.rules_fired[0]["rule_id"] == "agent.quarantined"
 
 
@@ -296,10 +296,41 @@ def test_both_edges_are_audited(seeded):
     assert "agent.resumed" in actions
 
 
-def test_stopping_an_agent_raises_a_finding(seeded):
+def test_pausing_or_stopping_raises_no_issue_for_the_person_who_did_it(seeded):
+    """A person's own pause is recorded, not raised back at them as an open issue."""
+    quarantine(seeded, "support-triage", reason="odd tool use", actor="ops")
     kill(seeded, "support-triage", reason="exfil", actor="ops")
-    finding = seeded.query(Finding).filter_by(type="agent_stopped").one()
-    assert finding.severity == "critical"
+    assert seeded.query(Finding).filter_by(type="agent_stopped").count() == 0
+    actions = [e.action for e in seeded.query(AuditEntry).all()]
+    assert "agent.quarantined" in actions and "agent.killed" in actions
+
+
+def test_control_history_reads_the_audit_chain_newest_first(seeded):
+    from agentfox.platform.registry.control import control_of, history
+
+    quarantine(seeded, "support-triage", reason="odd tool use", actor="marcus@example.com")
+    resume(seeded, "support-triage", reason="cleared", actor="aisha@example.com")
+    kill(seeded, "support-triage", reason="exfil", actor="ops")
+    rows = history(seeded, "support-triage")
+    assert [r["action"] for r in rows] == ["agent.killed", "agent.resumed", "agent.quarantined"]
+    assert rows[1]["actor"] == "aisha@example.com"
+    assert rows[1]["reason"] == "cleared"
+    assert rows[0]["from"] == "active" and rows[0]["to"] == "killed"
+    record = control_of(seeded, "support-triage")
+    assert record["state"] == "killed"
+    assert record["actor"] == "ops"
+    assert record["reason"] == "exfil"
+    assert record["changed_at"]
+    assert len(record["history"]) == 3
+
+
+def test_control_of_a_never_paused_agent_is_active_with_no_history(seeded):
+    from agentfox.platform.registry.control import control_of
+
+    record = control_of(seeded, "support-triage")
+    assert record["state"] == "active"
+    assert record["actor"] is None
+    assert record["history"] == []
 
 
 def test_previous_state_is_recorded(seeded):
@@ -344,6 +375,18 @@ def test_kill_switch_api_and_rbac(client):
         headers=as_user("marcus@example.com"),
     )
     assert resumed.json()["state"] == "active"
+
+    record = client.get(
+        "/api/agents/support-triage/control", headers=as_user("aisha@example.com")
+    ).json()
+    assert record["state"] == "active"
+    assert [h["action"] for h in record["history"]] == ["agent.resumed", "agent.killed"]
+    assert record["history"][1]["actor"] == "marcus@example.com"
+    assert record["history"][1]["reason"] == "incident 42"
+    assert (
+        client.get("/api/agents/nope/control", headers=as_user("aisha@example.com")).status_code
+        == 404
+    )
 
 
 # ---------------------------------------------------------------------------

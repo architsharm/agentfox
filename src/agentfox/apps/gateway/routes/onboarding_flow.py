@@ -97,16 +97,21 @@ def reset(session: Session = Depends(db), user: User = Depends(current_user)) ->
 
 @router.get("/key")
 def get_key(
-    session: Session = Depends(db), user: User = Depends(require("registry"))
+    peek: bool = False,
+    session: Session = Depends(db),
+    user: User = Depends(require("registry")),
 ) -> dict[str, Any]:
     """This user's setup key. Made the first time it is asked for (or after the last
     one expired or was revoked), and then shown in full that once: ``value`` is null
     on every later call, which returns the key's ``prefix``, ``createdAt`` and
     ``expiresAt`` instead. ``POST /key/rotate`` replaces it.
 
+    ``peek=1`` only reads: it says whether a key exists and never makes one, so the
+    setup card can show it on load without opening the page minting a key.
+
     Minting one needs the registry write role, because what it does is propose agents."""
     token = keys.live_key(session, user)
-    if token is not None:
+    if token is not None or peek:
         return keys.describe(token)
     row = sessions.ensure(session, user)
     token, raw = keys.mint(session, user, row, reason="setup key made for `agentfox init`")

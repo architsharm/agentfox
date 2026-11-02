@@ -547,6 +547,16 @@ def test_the_setup_key_is_made_on_first_ask_and_the_same_after(client):
     assert key.startswith(again["prefix"])
 
 
+def test_peeking_at_the_setup_key_never_makes_one(client):
+    """The setup card asks on load; loading the page must not mint a key."""
+    me = as_user("admin@example.com")
+    none = client.get("/api/onboarding/key?peek=1", headers=me).json()
+    assert none["hasKey"] is False and none["value"] is None
+    key = client.get("/api/onboarding/key", headers=me).json()["value"]
+    seen = client.get("/api/onboarding/key?peek=1", headers=me).json()
+    assert seen["hasKey"] is True and seen["value"] is None and key.startswith(seen["prefix"])
+
+
 def test_every_user_gets_their_own_setup_key(client):
     a = client.get("/api/onboarding/key", headers=as_user("admin@example.com")).json()["value"]
     b = client.get("/api/onboarding/key", headers=as_user("priya@example.com")).json()["value"]

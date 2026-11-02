@@ -20,7 +20,8 @@ export type OnboardingApi = {
   getState(): Promise<OnboardingState>;
   saveState(state: OnboardingState): Promise<OnboardingState>;
   reset(): Promise<OnboardingState>;
-  getKey(): Promise<OnboardingKey>;
+  /** `peek`: only say whether a key exists; never makes one. */
+  getKey(opts?: { peek?: boolean }): Promise<OnboardingKey>;
   /** Revoke the key and make a new one, shown in full that once. */
   rotateKey(): Promise<OnboardingKey>;
   /** `live`: Connect's status panel, which waits for the agent to report in. Other steps read the map as it stands. */
@@ -122,7 +123,7 @@ export const httpApi: OnboardingApi = {
   getState: () => call("/api/onboarding/state"),
   saveState: (state) => call("/api/onboarding/state", { method: "PATCH", body: JSON.stringify(state) }),
   reset: () => call("/api/onboarding/state", { method: "DELETE" }),
-  getKey: () => call("/api/onboarding/key"),
+  getKey: (opts) => call(`/api/onboarding/key${opts?.peek ? "?peek=1" : ""}`),
   rotateKey: () => call("/api/onboarding/key/rotate", { method: "POST" }),
   getStructure: (opts) => call(`/api/onboarding/structure${opts?.live ? "?live=1" : ""}`),
   saveStructure: (structure) =>

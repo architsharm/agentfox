@@ -486,23 +486,17 @@ x-agentfox-mode: enforce
 
       <p>Escalate to a kill, then bring the agent back when the cause is dealt with:</p>
       <Code>{`agentfox agents kill support-triage --reason "INC-212: confirmed, stop everything"
-agentfox findings --severity critical
-agentfox agents resume support-triage --reason "INC-212: grant narrowed to finance-approved accounts"
-agentfox findings --severity critical`}</Code>
+agentfox agents resume support-triage --reason "INC-212: grant narrowed to finance-approved accounts"`}</Code>
       <Output>{`support-triage quarantined → killed  INC-212: confirmed, stop everything
- id         severity  type           what
- …hpct9jbp  critical  agent_stopped  Agent 'support-triage' killed by cli
-
-  1 open finding(s).
-…
 support-triage killed → active  INC-212: grant narrowed to finance-approved
-accounts
-No open findings at severity 'critical'.`}</Output>
+accounts`}</Output>
       <p>
-        Stopping raises an <code>agent_stopped</code> finding (high for quarantine, critical
-        for kill); resuming resolves it under the name of whoever resumed.{" "}
-        <code>agentfox agents list --stopped</code> keeps listing an agent that has been
-        resumed, with state <code>active</code> and the resume reason.
+        Pausing, stopping and resuming are recorded in the audit chain with who did it and
+        why, and shown on the agent&apos;s Controls tab. They do not raise an open finding:
+        it is the person&apos;s own decision, not a problem for them to clear.{" "}
+        <code>GET /api/agents/{"{slug}"}/control</code> returns the current state and that
+        history. <code>agentfox agents list --stopped</code> keeps listing an agent that has
+        been resumed, with state <code>active</code> and the resume reason.
       </p>
       <p>Over HTTP the same three actions are on the control plane:</p>
       <Code>{`curl -s -X POST http://localhost:8080/api/agents/payments-ops/quarantine \\

@@ -136,3 +136,51 @@ def test_step_six_is_not_done_while_an_agents_protections_only_watch(client):
     client.post("/api/policies/baseline/mode", json={"mode": "observe"}, headers=ADMIN)
     steps = {s["id"]: s for s in client.get("/api/onboarding", headers=ADMIN).json()["steps"]}
     assert steps["enforce"]["done"] is False
+
+
+def test_step_six_completes_without_baseline_and_enforces_the_basic_guardrails(client):
+    """A workspace set up with `agentfox init --key` has no baseline policy, and
+    the basic guardrails from the first attack test are a pack of their own. The
+    step asked for an enforcing baseline that could not exist, and one click left
+    the basic guardrails watching, so it never completed."""
+    from sqlalchemy import select
+
+    from agentfox.capabilities.onboarding.service import basic_guardrails, basic_key
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Policy, PolicyBinding, PolicyVersion, utcnow
+
+    with session_scope() as session:  # no baseline installed
+        bindings = session.scalars(
+            select(PolicyBinding)
+            .join(PolicyVersion, PolicyVersion.id == PolicyBinding.policy_version_id)
+            .join(Policy, Policy.id == PolicyVersion.policy_id)
+            .where(Policy.key == "baseline")
+        )
+        for binding in bindings:
+            binding.effective_to = utcnow()
+    client.post(URL, json=SETUP, headers=ADMIN).raise_for_status()
+    with session_scope() as session:
+        assert basic_guardrails(session, AGENT, actor="t", may_enforce=False) == "observe"
+
+    step = next(
+        s
+        for s in client.get("/api/onboarding", headers=ADMIN).json()["steps"]
+        if s["id"] == "enforce"
+    )
+    assert step["done"] is False
+    assert step["command"] != "agentfox policy enforce baseline", "names a policy that exists"
+
+    preview = client.post(f"/api/agents/{AGENT}/enforcement/preview", headers=ADMIN).json()
+    labels = {p["key"]: p["label"] for p in preview["packs"]}
+    assert set(labels) == {f"agent.{AGENT}", basic_key(AGENT), "custom"}
+    assert labels[basic_key(AGENT)] == "Basic guardrails"
+
+    client.post(f"/api/agents/{AGENT}/enforcement", headers=ADMIN).raise_for_status()
+    modes = _modes(client)
+    assert modes[f"agent.{AGENT}"] == modes[basic_key(AGENT)] == modes["custom"] == "enforce"
+    step = next(
+        s
+        for s in client.get("/api/onboarding", headers=ADMIN).json()["steps"]
+        if s["id"] == "enforce"
+    )
+    assert step["done"] is True

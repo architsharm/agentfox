@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { NoticeToast } from "@/components/product/NoticeToast";
 import Link from "next/link";
 import { appPageMetadata } from "@/lib/site";
 import { ApiError, api, apiErrorProps, safeApi } from "@/lib/product/api";
@@ -33,6 +34,8 @@ import { GuardrailMapLazy as GuardrailMap } from "@/components/product/agent/Gua
 import type { Catalog } from "@/components/product/agent/GuardrailMap";
 import { RangeProvider } from "@/components/kit/RangeContext";
 import { PROJECT_VIEWS, projectHref, projectView } from "@/lib/product/project";
+import { AgentStatusMenu, ControlButton, HaltedBanner } from "@/components/product/agent/AgentStatus";
+import { breakerLabel, breakerRule, isHalted, noticeSentence, stateLabel, type AgentControlRecord, type AgentFacts } from "@/lib/product/agentStatus";
 
 export const metadata: Metadata = appPageMetadata("Project");
 export const dynamic = "force-dynamic";
@@ -58,15 +61,16 @@ export default async function ProjectDetail({ params, searchParams }: { params: 
   const view = projectView(sp);
   const sub = view === "activity" ? (ACTIVITY_TABS.some((t) => t.key === sp.tab) ? sp.tab! : sp.tab === "permissions" ? "rules" : "runs") : null;
   // One round of requests, in parallel: the range (when the URL names none), the
-  // project, and its kill-switch state.
+  // project, its pause/stop state, and who is signed in (the name a pause records).
   const needsRange = view === "canvas" || view === "activity";
-  const [, outcome, controls] = await Promise.all([
+  const [, outcome, controls, me] = await Promise.all([
     needsRange ? ensureRange(`/app/projects/${encodeURIComponent(slug)}`, sp, slug) : Promise.resolve(),
     api(`/api/agents/${encodeURIComponent(slug)}/posture`).then(
       (posture: any) => ({ posture, error: null as any }),
       (error: any) => ({ posture: null, error }),
     ),
     safeApi<any>("/api/agent-controls", { controls: [] }),
+    safeApi<any>("/api/me", null),
   ]);
   const f: Filters = { range: rangeOf(sp.range), agent: slug };
 
@@ -85,8 +89,11 @@ export default async function ProjectDetail({ params, searchParams }: { params: 
   }
   const posture = outcome.posture;
   const a = posture.agent;
-  const control = (controls.controls || []).find((c: any) => c.agent === a.slug);
+  const allControls: (AgentControlRecord & { agent: string })[] = controls.controls || [];
+  const control = allControls.find((c) => c.agent === a.slug);
   const state = control?.state || "active";
+  const name: string = a.name || a.slug;
+  const actor: string | null = me?.email || null;
   const breakerOpen = state === "active" && control?.breaker?.state === "open";
   const label = PROJECT_VIEWS.find((v) => v.key === view)!.label;
 
@@ -109,38 +116,26 @@ export default async function ProjectDetail({ params, searchParams }: { params: 
             ) : state === "active" ? (
               <Pill tone="ok">Active</Pill>
             ) : (
-              <Pill tone="bad">{state === "killed" ? "Stopped" : "Paused"}</Pill>
+              <Pill tone="bad">{stateLabel(state)}</Pill>
             )}
             {a.risk_tier === "high" && <Pill tone="held">High risk</Pill>}
             {!a.registered && a.status !== "draft" && <Pill tone="bad">Unregistered</Pill>}
             {a.is_seed && <Pill tone="outline">Sample</Pill>}
           </>
         }
-        actions={
-          <>
-          <form action={`/api/agents/${encodeURIComponent(a.slug)}/control`} method="POST">
-            <input type="hidden" name="action" value={state === "active" ? "quarantine" : "resume"} />
-            <button
-              type="submit"
-              className="k-btn"
-              title={state === "active" ? "Emergency stop: refuse every call from this agent until resumed" : "Let calls through again"}
-            >
-              {state === "active" ? "Pause agent" : "Resume agent"}
-            </button>
-          </form>
-          </>
-        }
+        actions={<AgentStatusMenu slug={a.slug} name={name} actor={actor} state={state} />}
       />
       {/* The agent's views: its map, its traffic, what it may do (the Access its refusals
-          point to), its feature switches, and its settings (owner, risk, emergency stop). */}
+          point to), its feature switches, its controls (pause history, circuit breaker),
+          and its settings (owner, risk, registration). */}
       <Tabs
         items={PROJECT_VIEWS.map((v) => ({ key: v.key, label: v.label, href: projectHref(slug, v.key, { range: sp.range }) }))}
         active={view}
       />
-      {sp.review_error && <div className="error">{sp.review_error}</div>}
-      {sp.review_notice && <div className="note-panel">Done: {sp.review_notice}.</div>}
+      <HaltedBanner slug={a.slug} name={name} actor={actor} state={state} by={control?.actor} at={control?.changed_at} reason={control?.reason} />
+      <NoticeToast notice={sp.review_notice ? noticeSentence(sp.review_notice) : undefined} error={sp.review_error} />
 
-      {view === "canvas" && <Canvas f={f} posture={posture} />}
+      {view === "canvas" && <Canvas f={f} posture={posture} controls={allControls} actor={actor} />}
       {view === "activity" && (
         <>
           <Tabs
@@ -154,6 +149,7 @@ export default async function ProjectDetail({ params, searchParams }: { params: 
       )}
       {view === "access" && <Access slug={slug} prefill={sp.grant} />}
       {view === "features" && <ProjectFeatures slug={slug} />}
+      {view === "controls" && <Controls slug={a.slug} name={name} actor={actor} control={control} />}
       {view === "settings" && (
         <>
           <Meta
@@ -166,7 +162,7 @@ export default async function ProjectDetail({ params, searchParams }: { params: 
             ]}
           />
           <div style={{ height: 14 }} />
-          <Settings a={a} state={state} />
+          <Settings a={a} />
         </>
       )}
     </>
@@ -185,7 +181,7 @@ async function ProjectFeatures({ slug }: { slug: string }) {
  * the project at a glance: its traffic, its open issues, the guardrails that fired
  * most, who owns it. The rest is a click away in the sidebar.
  */
-async function Canvas({ f }: { f: Filters; posture?: any }) {
+async function Canvas({ f, posture: agentPosture, controls, actor }: { f: Filters; posture?: any; controls: (AgentControlRecord & { agent: string })[]; actor: string | null }) {
   const slug = f.agent!;
   const [map, detectors, posture, agent] = await Promise.all([
     safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/map`, null),
@@ -197,14 +193,35 @@ async function Canvas({ f }: { f: Filters; posture?: any }) {
   const project: string = agent?.project || slug;
   const projectMap = await safeApi<any>(`/api/projects/${encodeURIComponent(project)}/map`, { agents: [] });
   const others: string[] = (projectMap.agents || []).map((a: any) => a.slug).filter((s: string) => s !== slug);
-  const otherMaps = (await Promise.all(others.map((s) => safeApi<any>(`/api/agents/${encodeURIComponent(s)}/map`, null)))).filter(Boolean);
+  const [otherMaps, otherAgents] = await Promise.all([
+    Promise.all(others.map((s) => safeApi<any>(`/api/agents/${encodeURIComponent(s)}/map`, null))).then((m) => m.filter(Boolean)),
+    Promise.all(others.map((s) => safeApi<any>(`/api/agents/${encodeURIComponent(s)}`, null))),
+  ]);
+  // What the Agent panel shows when an agent's node is clicked.
+  const facts: Record<string, AgentFacts> = {};
+  for (const ag of [agent, ...otherAgents]) {
+    if (!ag?.slug) continue;
+    const c = controls.find((x) => x.agent === ag.slug);
+    facts[ag.slug] = {
+      state: c?.state || ag.control_state || "active",
+      by: c?.actor,
+      at: c?.changed_at,
+      reason: c?.reason,
+      owner: ag.owner_email,
+      risk: ag.risk_tier,
+      framework: ag.framework,
+      models: ag.declared_models || [],
+      breaker: c?.breaker || null,
+      openIssues: ag.slug === slug && agentPosture ? (agentPosture.open_findings || []).length : null,
+    };
+  }
   // What can guard a line when it is selected: every check the workspace has, and the judge chain.
   const catalog: Catalog = {
     detectors: (detectors.detectors || []).map((d: any) => ({ key: d.key, label: d.label || "", source: d.source, surfaces: d.surfaces || [], available: Boolean(d.available), finds: d.finds || "" })),
     tiers: (posture?.tiers || []).map((t: any) => ({ tier: t.tier, enabled: Boolean(t.enabled), sends_data: Boolean(t.sends_data), blocked_reason: t.blocked_reason || "" })),
     bands: Object.fromEntries(Object.entries(posture?.kinds || {}).map(([k, v]: [string, any]) => [k, v?.band ?? null])),
   };
-  return map ? <GuardrailMap maps={[map, ...otherMaps]} focus={slug} project={project} catalog={catalog} /> : <Card><Empty>The canvas could not be loaded.</Empty></Card>;
+  return map ? <GuardrailMap maps={[map, ...otherMaps]} focus={slug} project={project} catalog={catalog} facts={facts} actor={actor} /> : <Card><Empty>The canvas could not be loaded.</Empty></Card>;
 }
 
 async function Access({ slug, prefill }: { slug: string; prefill?: string }) {
@@ -654,9 +671,9 @@ async function Quality({ f }: { f: Filters }) {
   );
 }
 
-async function Settings({ a, state }: { a: any; state: string }) {
+/** Who the agent is: details and registration. Pausing and the circuit breaker are in Controls. */
+function Settings({ a }: { a: any }) {
   const action = `/api/agents/${encodeURIComponent(a.slug)}/owner`;
-  const breaker = await safeApi<any>(`/api/agents/${encodeURIComponent(a.slug)}/breaker`, null);
   return (
     <>
       <Card title="Details">
@@ -701,32 +718,81 @@ async function Settings({ a, state }: { a: any; state: string }) {
           </tbody>
         </table>
       </Card>
-      <Card title="Emergency stop" hint="Pause refuses every call from this project until resumed. Stop is the stronger incident action.">
-        <div className="k-pills" style={{ gap: 8 }}>
-          {state === "active" ? <Pill tone="ok">Active</Pill> : <Pill tone="bad">{state}</Pill>}
-          <form action={`/api/agents/${encodeURIComponent(a.slug)}/control`} method="POST" className="k-pills" style={{ gap: 8 }}>
-            <input type="hidden" name="action" value={state === "active" ? "quarantine" : "resume"} />
-            <input className="k-input" name="reason" placeholder="Reason (optional)" style={{ width: 240 }} />
-            <button type="submit" className={state === "active" ? "k-btn-danger" : "k-btn"}>{state === "active" ? "Pause" : "Resume"}</button>
-          </form>
-          {state !== "killed" && (
-            <form action={`/api/agents/${encodeURIComponent(a.slug)}/control`} method="POST">
-              <input type="hidden" name="action" value="kill" />
-              <button type="submit" className="k-btn-danger">Stop</button>
-            </form>
-          )}
-        </div>
-      </Card>
-      {breaker && <Breaker slug={a.slug} b={breaker} />}
     </>
   );
 }
 
-const BREAKER_STATE: Record<string, [string, "ok" | "bad" | "held"]> = {
-  closed: ["Closed", "ok"],
-  open: ["Open: calls refused", "bad"],
-  probing: ["Probing", "held"],
+/** What each control-history entry was, in the words the rest of the page uses. */
+const HISTORY_LABEL: Record<string, string> = {
+  "agent.quarantined": "Paused",
+  "agent.killed": "Stopped",
+  "agent.resumed": "Resumed",
+  "agent.breaker.tripped": "Circuit breaker tripped",
+  "agent.breaker.reopened": "Circuit breaker tripped again",
+  "agent.breaker.probing": "Circuit breaker letting calls through to test",
+  "agent.breaker.closed": "Circuit breaker closed",
+  "agent.breaker.configured": "Circuit breaker settings changed",
 };
+
+/**
+ * The agent's controls: its status with who paused, stopped or resumed it (from the
+ * audit chain), and its circuit breaker. The header's Pause menu is the control;
+ * the button here opens the same dialog.
+ */
+async function Controls({ slug, name, actor, control }: { slug: string; name: string; actor: string | null; control?: AgentControlRecord }) {
+  const [record, breaker] = await Promise.all([
+    safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/control`, null),
+    safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/breaker`, null),
+  ]);
+  const state: string = record?.state || control?.state || "active";
+  const history: any[] = record?.history || [];
+  const halted = isHalted(state);
+  return (
+    <>
+      <Card
+        title="Status"
+        hint="Pause or Stop refuses every call from this agent until someone resumes it. Both are reversible; Stop records that it is an incident."
+        action={<ControlButton slug={slug} name={name} actor={actor} action={halted ? "resume" : "quarantine"} label={halted ? "Resume…" : "Pause…"} />}
+        flush
+      >
+        <div className="k-pills" style={{ gap: 8, padding: "0 16px 12px" }}>
+          <Pill tone={halted ? "bad" : "ok"}>{stateLabel(state)}</Pill>
+          {(record?.changed_at || control?.changed_at) && (
+            <span className="muted">
+              since {ago(record?.changed_at || control?.changed_at)}
+              {record?.actor || control?.actor ? `, by ${record?.actor || control?.actor}` : ""}
+            </span>
+          )}
+        </div>
+        {history.length ? (
+          <table className="k-table">
+            <thead>
+              <tr>
+                <th>What</th>
+                <th>Who</th>
+                <th>Why</th>
+                <th className="tight">When</th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.map((h, i) => (
+                <tr key={`${h.at}-${i}`}>
+                  <td>{HISTORY_LABEL[h.action] || h.action}</td>
+                  <td className="muted">{h.actor_type === "system" ? "Circuit breaker" : h.actor || "—"}</td>
+                  <td className="muted">{typeof h.reason === "string" ? h.reason : h.reason ? "Settings changed" : "—"}</td>
+                  <td className="tight muted" title={h.at || undefined}>{ago(h.at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <Empty>Never paused or stopped.</Empty>
+        )}
+      </Card>
+      {breaker ? <Breaker slug={slug} b={breaker} /> : <Card title="Circuit breaker"><Empty>The circuit breaker could not be loaded.</Empty></Card>}
+    </>
+  );
+}
 
 /**
  * The circuit breaker: when a burst of this project's calls is blocked, pause it (or
@@ -735,20 +801,18 @@ const BREAKER_STATE: Record<string, [string, "ok" | "bad" | "held"]> = {
  */
 function Breaker({ slug, b }: { slug: string; b: any }) {
   const action = `/api/agents/${encodeURIComponent(slug)}/breaker`;
-  const [label, tone] = BREAKER_STATE[b.state] || BREAKER_STATE.closed;
+  const [label, tone] = breakerLabel(b);
   const minutes = (s: number) => Math.round((Number(s) / 60) * 10) / 10;
   return (
-    <Card
-      title="Circuit breaker"
-      hint="Trips when too many of this project's calls are blocked in a short window. Attack tests do not count."
-    >
-      <div className="k-pills" style={{ gap: 8, marginBottom: 12 }}>
+    <Card title="Circuit breaker" hint="Attack tests do not count towards it.">
+      <div className="k-pills" style={{ gap: 8, marginBottom: 8 }}>
         <Pill tone={tone}>{label}</Pill>
         <span className="muted">
           {num(b.window?.blocked || 0)} of {num(b.window?.calls || 0)} calls blocked in the last {minutes(b.window_seconds)} min
           {b.trips ? ` · tripped ${num(b.trips)} time${b.trips === 1 ? "" : "s"}` : ""}
         </span>
       </div>
+      <p style={{ margin: "0 0 12px" }}>{breakerRule(b)}</p>
       {b.state !== "closed" && (
         <div className="note-panel" style={{ marginBottom: 12 }}>
           {b.state === "probing" ? `Probing after: ${b.reason}.` : `${b.reason}.`}

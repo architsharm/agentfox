@@ -11,7 +11,7 @@ import { proxyCustomBody, sameOriginPath } from "@/lib/product/proxy";
  */
 export async function POST(req: NextRequest) {
   const form = await req.formData();
-  const returnTo = sameOriginPath(form.get("return_to") as string | null, "/app/policies?tab=advanced&sec=tuning");
+  const returnTo = sameOriginPath(form.get("return_to") as string | null, "/app/settings?tab=detection&sec=tuning");
 
   const body: Record<string, string> = {};
   for (const key of ["decision_id", "label", "detector_key", "entity_type", "note"]) {

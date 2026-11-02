@@ -156,7 +156,7 @@ export function Retention({ retention }: { retention: any }) {
         ) : (
           <table className="k-table">
             <thead>
-              <tr><th className="tight">Placed</th><th>By</th><th>Agents</th><th>Reason</th><th className="tight">Status</th></tr>
+              <tr><th className="tight">Placed</th><th>By</th><th>Agents</th><th>Reason</th><th className="tight">Status</th><th className="tight" /></tr>
             </thead>
             <tbody>
               {retention.legal_holds.map((h: any) => (
@@ -169,6 +169,13 @@ export function Retention({ retention }: { retention: any }) {
                     <Pill tone={h.released_at ? "outline" : "warn"}>
                       {h.released_at ? `Released ${ts(h.released_at)}` : "Active"}
                     </Pill>
+                  </td>
+                  <td className="tight">
+                    {!h.released_at && (
+                      <form action={`/api/legal-holds/${encodeURIComponent(h.id)}/release`} method="POST">
+                        <button type="submit" className="k-btn">Release</button>
+                      </form>
+                    )}
                   </td>
                 </tr>
               ))}

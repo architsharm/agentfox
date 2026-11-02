@@ -1262,6 +1262,21 @@ def list_agent_controls(
     return {"controls": all_controls(session)}
 
 
+@router.get("/agents/{slug}/control")
+def agent_control(
+    slug: str,
+    limit: int = 20,
+    session: Session = Depends(db),
+    _user: User = Depends(current_user),
+) -> dict[str, Any]:
+    """One agent's pause/stop state (who, when, why) and its control history, newest
+    first, read from the audit chain."""
+    from agentfox.platform.registry.control import control_of
+
+    get_agent_or_404(session, slug)
+    return control_of(session, slug, limit=limit)
+
+
 @router.post("/agents/{slug}/quarantine")
 def quarantine_agent(
     slug: str,

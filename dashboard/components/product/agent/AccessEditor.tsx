@@ -3,11 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { callJson } from "@/components/kit/Act";
+import { grantPayload } from "@/lib/product/resave";
 import { IMPACT, TRUST } from "@/lib/product/vocab";
 
 type Cap = {
   id: string;
   tool_key: string;
+  /** Which of the tool's actions the grant covers; sent back on every edit so a
+   *  narrowed grant is never widened to all actions. */
+  actions?: string[];
   requires_approval: boolean;
   max_taint: string;
   constraints: Record<string, any>;
@@ -110,12 +114,7 @@ export function AccessEditor({
       setBusy("");
     }
   };
-  const payload = (c: Cap, patch: Partial<Cap>) => ({
-    tool_key: c.tool_key,
-    requires_approval: patch.requires_approval ?? c.requires_approval,
-    max_taint: patch.max_taint ?? c.max_taint,
-    constraints: patch.constraints ?? c.constraints,
-  });
+  const payload = (c: Cap, patch: Partial<Cap>) => grantPayload(c, patch);
 
   return (
     <>

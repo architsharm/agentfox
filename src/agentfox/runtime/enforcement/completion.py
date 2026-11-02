@@ -214,17 +214,18 @@ class _CompletionMixin:
         result.taint["answerability"] = verdict.to_json()
         # Recorded like any other decision, watching or not, so the abstention is on
         # the run and counted where wrong answers are counted.
-        self.session.add(
-            Decision(
-                trace_id=trace.id,
-                agent_id=agent.id if agent else None,
-                surface="input",
-                verdict=result.verdict,
-                rules_fired_json=[{**rule, "mode": boundary.mode}],
-                mode=boundary.mode,
-                taint_summary_json={"answerability": verdict.to_json()},
-            )
+        decision = Decision(
+            trace_id=trace.id,
+            agent_id=agent.id if agent else None,
+            surface="input",
+            verdict=result.verdict,
+            rules_fired_json=[{**rule, "mode": boundary.mode}],
+            mode=boundary.mode,
+            taint_summary_json={"answerability": verdict.to_json()},
         )
+        self.session.add(decision)
+        self.session.flush()
+        result.decision_id = decision.id
         return result if verdict.should_abstain else None
 
     def _answerability_postflight(self, agent: Agent | None, trace: Trace, answer: str) -> None:

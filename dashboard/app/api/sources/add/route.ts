@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { detailText } from "@/lib/product/proxy";
 import { apiBase } from "@/lib/env";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE } from "@/lib/product/api";
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) {
     target.searchParams.set("review_error", "not signed in");
-    return NextResponse.redirect(target);
+    return NextResponse.redirect(target, 303);
   }
 
   const form = await req.formData();
@@ -44,13 +45,13 @@ export async function POST(req: NextRequest) {
     });
     if (!registerRes.ok) {
       const body = await registerRes.json().catch(() => ({}));
-      target.searchParams.set("review_error", body.detail || registerRes.statusText);
-      return NextResponse.redirect(target);
+      target.searchParams.set("review_error", detailText(body.detail) || registerRes.statusText);
+      return NextResponse.redirect(target, 303);
     }
 
     if (type !== "database" && type !== "api") {
       target.searchParams.set("review_notice", `${key}: added`);
-      return NextResponse.redirect(target);
+      return NextResponse.redirect(target, 303);
     }
 
     const connection = connectionBody(form, key, type);
@@ -64,13 +65,13 @@ export async function POST(req: NextRequest) {
       const body = await connectionRes.json().catch(() => ({}));
       target.searchParams.set(
         "review_error",
-        `${key}: registered, but the connection failed — ${body.detail || connectionRes.statusText}. Edit it below to try again.`,
+        `${key}: registered, but the connection failed — ${detailText(body.detail) || connectionRes.statusText}. Edit it below to try again.`,
       );
-      return NextResponse.redirect(target);
+      return NextResponse.redirect(target, 303);
     }
     target.searchParams.set("review_notice", `${key}: added and connected (${type})`);
   } catch (e: any) {
     target.searchParams.set("review_error", String(e?.message || e));
   }
-  return NextResponse.redirect(target);
+  return NextResponse.redirect(target, 303);
 }

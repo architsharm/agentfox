@@ -10,6 +10,7 @@ import { SetupProgress } from "@/components/product/home/SetupProgress";
 import { runsHref } from "@/lib/product/observe";
 import { activeRange } from "@/lib/product/range";
 import { RANGE_WORDS, severityRank, sentence } from "@/lib/product/vocab";
+import { NoticeToast } from "@/components/product/NoticeToast";
 
 // `appPageMetadata`, not a literal: it also clears the canonical URL, so this page
 // does not declare itself a duplicate of the marketing home page.
@@ -66,8 +67,7 @@ async function LegacyHome({ searchParams }: { searchParams: Promise<SP> }) {
   return (
     <>
       <Header title="Home" />
-      {sp.review_notice && <div className="note-panel">Request {sp.review_notice}.</div>}
-      {sp.review_error && <div className="error">{sp.review_error}</div>}
+      <NoticeToast notice={sp.review_notice} error={sp.review_error} />
       {onboarding && <SetupProgress onboarding={onboarding} />}
 
       <Card

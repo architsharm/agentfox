@@ -4,6 +4,8 @@ import { Breakdown } from "@/components/product/observe/Breakdown";
 import { safeApi } from "@/lib/product/api";
 import { observeScope } from "@/lib/product/observeScope";
 import { appPageMetadata } from "@/lib/site";
+import { Tabs } from "@/components/kit";
+import { filtersFrom, observeTabs } from "@/lib/product/observe";
 
 export const metadata: Metadata = appPageMetadata("Models");
 export const dynamic = "force-dynamic";
@@ -25,6 +27,7 @@ export default async function Models({ searchParams }: { searchParams: Promise<{
         title="Models"
         sub={`${scope.project ?? "no project"} · LLM calls in the last 7 days${declared.length ? ` · runs on ${declared.join(", ")}` : ""}`}
       />
+      <Tabs items={observeTabs(filtersFrom({ agent }))} active="models" />
       <Breakdown
         rows={shown}
         label="Model"

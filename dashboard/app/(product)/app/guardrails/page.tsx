@@ -1,21 +1,24 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { appPageMetadata } from "@/lib/site";
-import { legacyTabRedirect } from "@/lib/product/legacyRedirect";
+import { sectionHref } from "@/components/product/policies/advanced";
 
 /**
  * Behind the sign-in wall: `noindex`, plus a tab title that is not the fourth
  * copy of "AgentFox Control Plane". See lib/site.ts appPageMetadata.
  */
-export const metadata: Metadata = appPageMetadata("Guardrail tuning");
+export const metadata: Metadata = appPageMetadata("Detector tuning");
 
 /**
- * Guardrails used to be its own nav item; it's now the "Guardrail tuning" tab
- * on the Policies page. This keeps old links and bookmarks working.
+ * Guardrails used to be its own nav item, then a hidden Policies tab; detector
+ * tuning is a section of Settings → Detection now. This keeps old links and
+ * bookmarks working, with the agent filter they carried.
  */
 export default async function GuardrailsRedirect({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  return legacyTabRedirect(searchParams, "/app/policies", "guardrails");
+  const { agent } = await searchParams;
+  redirect(sectionHref("tuning", typeof agent === "string" ? agent : undefined));
 }

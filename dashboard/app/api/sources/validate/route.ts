@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { proxyRedirectWithHandler } from "@/lib/product/proxy";
+import { proxyRedirectWithHandler, detailText } from "@/lib/product/proxy";
 import { requestOrigin } from "@/lib/product/origin";
 
 /**
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   if (!key) {
     const target = new URL("/app/sources", requestOrigin(req));
     target.searchParams.set("review_error", "missing source key");
-    return NextResponse.redirect(target);
+    return NextResponse.redirect(target, 303);
   }
 
   return proxyRedirectWithHandler(
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     "/app/sources",
     undefined,
     (res, body) => {
-      if (!res.ok) return { error: body.detail || res.statusText };
+      if (!res.ok) return { error: detailText(body.detail) || res.statusText };
       if (body.status === "changed") {
         return { notice: `${key}: content changed since it was last validated` };
       }

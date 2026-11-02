@@ -5,8 +5,10 @@ import { safeApi } from "@/lib/product/api";
 import { Card, Empty, Header, Pill, Tabs, ago, href } from "@/components/kit";
 import { Countdown } from "@/components/product/Countdown";
 import { EscalationTab } from "@/components/product/approvals/escalation";
+import { HeldCallBox } from "@/components/product/approvals/HeldCallBox";
 import { TRUST } from "@/lib/product/vocab";
 import { STATUS_TONE, actionLabel, actionSummary, decidedBy, firstSentence, isMessage } from "@/lib/product/approvals";
+import { NoticeToast } from "@/components/product/NoticeToast";
 
 export const metadata: Metadata = appPageMetadata("Approvals", "Actions waiting for a person.");
 export const dynamic = "force-dynamic";
@@ -41,12 +43,16 @@ export default async function Approvals({ searchParams }: { searchParams: Promis
         items={[
           { key: "pending", label: "Waiting", href: q ? `/app/approvals?${q}` : "/app/approvals", count: pending.approvals?.length },
           { key: "history", label: "History", href: `/app/approvals?tab=history${q ? `&${q}` : ""}` },
-          { key: "handoffs", label: "Hand-offs", href: `/app/approvals?tab=handoffs${q ? `&${q}` : ""}` },
+          { key: "handoffs", label: "Human hand-offs", href: `/app/approvals?tab=handoffs${q ? `&${q}` : ""}` },
         ]}
       />
-      {sp.review_error && <div className="error">{sp.review_error}</div>}
-      {sp.review_notice && <div className="note-panel">Request {sp.review_notice}.</div>}
-      {tab === "pending" && <Pending approvals={pending.approvals || []} />}
+      <NoticeToast notice={sp.review_notice} error={sp.review_error} />
+      {tab === "pending" && (
+        <>
+          <HeldCallBox waiting={pending.approvals || []} />
+          <Pending approvals={pending.approvals || []} />
+        </>
+      )}
       {tab === "history" && <History status={sp.status} agent={sp.agent} only={mine} />}
       {tab === "handoffs" && <EscalationTab agent={sp.agent} />}
     </>

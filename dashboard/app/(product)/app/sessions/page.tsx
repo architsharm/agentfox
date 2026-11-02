@@ -4,6 +4,8 @@ import { AgentLink, Empty, ObsTable, SessionId, Time, Verdict } from "@/componen
 import { safeApi } from "@/lib/product/api";
 import { agentQuery, observeScope } from "@/lib/product/observeScope";
 import { appPageMetadata } from "@/lib/site";
+import { Tabs } from "@/components/kit";
+import { filtersFrom, observeTabs } from "@/lib/product/observe";
 
 export const metadata: Metadata = appPageMetadata("Sessions");
 export const dynamic = "force-dynamic";
@@ -18,6 +20,7 @@ export default async function Sessions({ searchParams }: { searchParams: Promise
   return (
     <>
       <PageHeader title="Sessions" sub={`${scope.project ?? "no project"} · one row per conversation, newest first`} />
+      <Tabs items={observeTabs(filtersFrom({ agent }))} active="sessions" />
       <ObsTable head={["Started", "Session", "Agent", "First message", "Steps", "Tools", "Outcome"]} empty={!rows.length && <Empty>no sessions yet.</Empty>}>
         {rows.map((t: any) => (
           <tr key={t.id}>

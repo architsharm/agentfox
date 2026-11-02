@@ -1,6 +1,7 @@
 /**
- * Policies → Advanced: the installed packs, detector tuning, and which AI judges may
- * decide and what data may leave. Each section opens with one line on what it is for
+ * Settings → Detection (was a hidden Policies → Advanced tab): protection levels, the
+ * installed packs, detector tuning, and which AI judges may decide and what data may
+ * leave. Each section opens with one line on what it is for
  * and the controls that change something; reports and reference material sit in
  * collapsed details below.
  */
@@ -11,24 +12,29 @@ import { ApiDown, InfoTip, Severity } from "@/components/ui";
 import { Card, Empty, Grid, Kpi, ModePill, Pill, href } from "@/components/kit";
 import { Countdown } from "@/components/product/Countdown";
 import { DetectorCatalogue } from "@/components/product/DetectorCatalogue";
+import { InstantForm } from "@/components/product/InstantForm";
 
-export type AdvancedSection = "packs" | "tuning" | "judges";
+export type AdvancedSection = "levels" | "packs" | "tuning" | "judges";
 
 export const ADVANCED_SECTIONS: { key: AdvancedSection; label: string; purpose: string }[] = [
+  { key: "levels", label: "Protection levels", purpose: "What every project gets. A project changes these for itself on its own Features view." },
   { key: "packs", label: "Packs", purpose: "Every installed pack and its mode, with the checks and probes behind them." },
   { key: "tuning", label: "Detector tuning", purpose: "Is each check right, fast enough, and not silenced?" },
   { key: "judges", label: "AI judges & egress", purpose: "Which AI judges may decide, and what data may leave this deployment." },
 ];
 
-const sectionHref = (key: AdvancedSection, agent?: string) =>
-  href("/app/policies", { tab: "advanced", sec: key === "packs" ? undefined : key, agent });
+/** Where Detection lives: a Workspace Settings tab. Protection levels are its first section. */
+export const DETECTION_PATH = "/app/settings";
+
+export const sectionHref = (key: AdvancedSection, agent?: string) =>
+  href(DETECTION_PATH, { tab: "detection", sec: key === "levels" ? undefined : key, agent });
 
 /** Section switcher and its one-line purpose. */
 export function AdvancedNav({ section, agent }: { section: AdvancedSection; agent?: string }) {
   const current = ADVANCED_SECTIONS.find((s) => s.key === section)!;
   return (
     <div className="adv-nav">
-      <div className="k-seg" role="tablist" aria-label="Advanced">
+      <div className="k-seg" role="tablist" aria-label="Detection">
         {ADVANCED_SECTIONS.map((s) => (
           <Link key={s.key} href={sectionHref(s.key, agent)} role="tab" aria-selected={s.key === section} className={s.key === section ? "active" : ""}>
             {s.label}
@@ -40,12 +46,12 @@ export function AdvancedNav({ section, agent }: { section: AdvancedSection; agen
   );
 }
 
-/** A GET form that narrows a section to one agent. */
-function AgentFilter({ agents, agent, sec }: { agents: any[]; agent?: string; sec?: string }) {
+/** A GET form that narrows a section to one agent, as soon as one is picked. */
+function AgentFilter({ agents, agent, sec }: { agents: any[]; agent: string | undefined; sec: AdvancedSection }) {
   return (
-    <form action="/app/policies" method="GET" className="adv-filter">
-      <input type="hidden" name="tab" value="advanced" />
-      {sec && <input type="hidden" name="sec" value={sec} />}
+    <InstantForm action={DETECTION_PATH} className="adv-filter" submitLabel="Apply">
+      <input type="hidden" name="tab" value="detection" />
+      <input type="hidden" name="sec" value={sec} />
       <select className="k-select" name="agent" defaultValue={agent ?? ""} aria-label="Agent">
         <option value="">All agents</option>
         {agents.map((a: any) => (
@@ -54,10 +60,7 @@ function AgentFilter({ agents, agent, sec }: { agents: any[]; agent?: string; se
           </option>
         ))}
       </select>
-      <button type="submit" className="k-btn">
-        Apply
-      </button>
-    </form>
+    </InstantForm>
   );
 }
 
@@ -128,7 +131,7 @@ export async function AdvancedPacks({ agent }: { agent?: string }) {
       <Card
         title="Packs"
         hint="A pack governs every agent its scope pattern matches. Watching records what it would block; enforcing blocks."
-        action={<AgentFilter agents={agents.agents || []} agent={agent} />}
+        action={<AgentFilter agents={agents.agents || []} agent={agent} sec="packs" />}
         flush
       >
         {all.length === 0 ? (
@@ -570,7 +573,7 @@ export async function AdvancedJudges() {
       </div>
 
       <form method="post" action="/api/judgment/posture">
-        <input type="hidden" name="return_to" value="/app/policies?tab=advanced&sec=judges" />
+        <input type="hidden" name="return_to" value="/app/settings?tab=detection&sec=judges" />
         <fieldset disabled={!canEdit} className="adv-fieldset">
           <Grid cols={2}>
             <Card title="Judges" hint="Each judge is barred from the decision kinds it measured worse on, so turning one on cannot weaken an existing control.">

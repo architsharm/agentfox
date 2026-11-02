@@ -35,7 +35,7 @@ export default async function EscalationConversation({
           <NotFound
             what="recorded conversation"
             detail={`${sessionId}: no turns were recorded for this session`}
-            back={{ href: "/app/approvals?tab=escalation", label: "Escalation" }}
+            back={{ href: "/app/approvals?tab=handoffs", label: "Human hand-offs" }}
           />
         ) : (
           <ApiDown {...apiErrorProps(e)} />
@@ -53,7 +53,7 @@ export default async function EscalationConversation({
 
   return (
     <>
-      <Header back={{ href: "/app/approvals?tab=handoffs", label: "Hand-offs" }} title={data.handoff?.summary || data.handoff?.reason || "Conversation"} />
+      <Header back={{ href: "/app/approvals?tab=handoffs", label: "Human hand-offs" }} title={data.handoff?.summary || data.handoff?.reason || "Conversation"} />
       <p className="mono small muted" style={{ marginTop: -8 }}>{sessionId}</p>
       <p className="sub">
         Every turn of this conversation, replayed against the escalation policy, so

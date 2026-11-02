@@ -9,7 +9,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ key
   if (!traceId) {
     const target = new URL(`/app/evals/${key}`, requestOrigin(req));
     target.searchParams.set("review_error", "trace id is required");
-    return NextResponse.redirect(target);
+    return NextResponse.redirect(target, 303);
   }
 
   return proxyReviewAction(

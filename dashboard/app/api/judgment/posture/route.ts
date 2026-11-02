@@ -39,7 +39,7 @@ export async function PUT(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   const form = await req.formData();
-  const returnTo = sameOriginPath(form.get("return_to") as string | null, "/app/policies?tab=advanced&sec=tuning");
+  const returnTo = sameOriginPath(form.get("return_to") as string | null, "/app/settings?tab=detection&sec=tuning");
 
   const body = {
     tiers: form.getAll("tiers").map((t) => String(t)),

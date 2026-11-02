@@ -64,7 +64,7 @@ const AREAS: {
   },
   {
     name: "Rules → Detectors & tuning",
-    href: "/app/policies?tab=advanced&sec=tuning",
+    href: "/app/settings?tab=detection&sec=tuning",
     answers:
       "Whether those checks are catching real problems, how much time they cost, and which ones someone has quietly silenced.",
     doThere:

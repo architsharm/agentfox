@@ -91,9 +91,10 @@ export function paramsFor(info: ValidatorInfo | undefined, raw: Record<string, s
   return out;
 }
 
-/** Whether every required setting has a value. */
+/** Whether the check runs here and every required setting has a value. */
 export function validatorReady(info: ValidatorInfo | undefined, raw: Record<string, string | boolean>): boolean {
-  if (!info) return false;
+  // A check that cannot run here would be saved and then pass everything.
+  if (!info || !info.available) return false;
   return (info.params_schema.required ?? []).every((k) => raw[k] !== undefined && String(raw[k]).trim() !== "");
 }
 

@@ -337,7 +337,17 @@ def _drivers(
             if (module, attr) not in loaded:
                 loaded[(module, attr)] = load_agent(root, module, attr)
         except Exception as exc:  # noqa: BLE001 - their import failing is the answer
-            console.print(f"[red]Couldn't load {module}.{attr}:[/red] {exc}")
+            # Said once here; its attacks' identical "not run" lines aren't printed.
+            hint = (
+                "install your agent's dependencies in this environment (the one running "
+                "agentfox init)"
+                if isinstance(exc, ImportError)
+                else "check that it imports on its own"
+            )
+            console.print(
+                f"[red]Couldn't load {module}.{attr}[/red] ({error_text(exc)}), so {name}'s "
+                f"attacks won't run. To fix it, {hint}, then run the test again."
+            )
             out[agent["id"]] = Driver(
                 name, refuse=f"Not run: couldn't load {module}.{attr}: {error_text(exc)}"
             )
@@ -401,6 +411,16 @@ def _run_job(
     out = _Results(api, run_id)
     drivers = _drivers(console, root, mapped, structure, loaded)
     guards = _guards(api, run_id, structure, drivers) if checked else None
+    # An agent that won't run at all: its reason once, not once per attack (they are
+    # still reported to the server, each with the reason).
+    refused: dict[str, int] = {}
+    for a in suite:
+        d = drivers.get(a.agent_id)
+        if d is not None and d.refuse and not a.skip:
+            refused[d.refuse] = refused.get(d.refuse, 0) + 1
+    for reason, n in refused.items():
+        if "couldn't load" not in reason:  # already said, with how to fix it
+            console.print(f"  {TAGS['not_run']}  {reason} ({n} attack{'s' if n != 1 else ''})")
 
     lock = threading.Lock()
     stats = {"done": 0, "through": 0, "ran": 0}
@@ -420,6 +440,8 @@ def _run_job(
                 stats["ran"] += 1
                 if r.get("error"):
                     errors.append(r["error"])
+        if r.get("outcome") == "not_run" and r.get("reason") in refused:
+            return
         tag = TAGS.get(r.get("outcome", ""), "")
         console.print(f"  {stats['done']:>3}/{len(suite)}  {tag}  {r['sentence']}")
 
@@ -468,7 +490,7 @@ def _run_job(
     if stats["ran"] == 0:
         console.print(
             "\n[red]No attack could be run[/red], so this test says nothing about your agent "
-            "yet. The reason is on each line above.\n"
+            "yet. The reason is above.\n"
         )
         return
     console.print(

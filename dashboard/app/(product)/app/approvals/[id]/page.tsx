@@ -15,6 +15,7 @@ import {
   readableReason,
   type Approval,
 } from "@/lib/product/approvals";
+import { NoticeToast } from "@/components/product/NoticeToast";
 
 export const metadata: Metadata = appPageMetadata("Approval");
 export const dynamic = "force-dynamic";
@@ -75,8 +76,7 @@ export default async function ApprovalDetail({
           ) : undefined
         }
       />
-      {sp.review_error && <div className="error">{sp.review_error}</div>}
-      {sp.review_notice && <div className="note-panel">Request {sp.review_notice}.</div>}
+      <NoticeToast notice={sp.review_notice} error={sp.review_error} />
 
       <Card>
         <Meta

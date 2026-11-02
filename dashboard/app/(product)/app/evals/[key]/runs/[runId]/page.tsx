@@ -5,6 +5,7 @@ import { ApiError, api, safeApi, apiErrorProps } from "@/lib/product/api";
 import { ApiDown, InfoTip, NotFound, Panel, ts } from "@/components/ui";
 import { Header } from "@/components/kit";
 import { Modal } from "@/components/product/Modal";
+import { NoticeToast } from "@/components/product/NoticeToast";
 
 /**
  * Behind the sign-in wall: `noindex`, plus a tab title that is not the fourth
@@ -61,8 +62,7 @@ export default async function RunDetail({
         <span className="small muted">{ts(run.created_at)}</span>
       </p>
 
-      {review_error && <div className="error">{review_error}</div>}
-      {review_notice && <div className="note-panel">{review_notice}</div>}
+      <NoticeToast notice={review_notice} error={review_error} />
 
       {run.summary?.scorers && (
         <>

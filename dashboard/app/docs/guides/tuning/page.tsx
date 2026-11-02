@@ -128,7 +128,7 @@ safety.granite      enabled=False available=False  Wrapped IBM Granite Guardian,
         <code>agentfox[classifiers]</code> and its weights (the Docker image ships both);
         without them the heuristic runs alone and catches <strong>16.7%</strong>, and{" "}
         <code>agentfox doctor</code> says so. On NotInject, a set of benign prompts written to
-        look like injections, the ensemble flags 139 of 339 (41%). The backstop model&apos;s
+        look like injections, the ensemble flags 140 of 339 (41%). The backstop model&apos;s
         hits are advisory: observe-mode policies see them, but an enforcing policy acts only
         on PIGuard&apos;s verdict, which flags 39 of 339 (11.5%).
         Containment does not depend on these numbers: grants and provenance stop a tool call
@@ -288,7 +288,7 @@ curl -s localhost:8080/api/guardrails/recommendations`}</Code>
             traffic. Below five judged labels per detector the recommendation is{" "}
             <code>insufficient_data</code>.
           </p>
-          <InTheApp path="/app/policies?tab=advanced&sec=tuning">Policies → Guardrail tuning: precision, latency, suppressions, feedback log</InTheApp>
+          <InTheApp path="/app/settings?tab=detection&sec=tuning">Settings → Detection → Detector tuning: precision, latency, suppressions, feedback log</InTheApp>
         </Step>
       </Steps>
 
@@ -498,7 +498,7 @@ block ['INJECTION.INSTRUCTION_INJECTION', 'INJECTION.INSTRUCTION_OVERRIDE'] | Ne
       <p>
         <code>DELETE /api/guardrails/suppressions/&#123;id&#125;</code> revokes one. Creating
         and revoking both go on the audit chain, and each suppressed detection is recorded on
-        its decision. In the web app, the feedback log on the Guardrail tuning tab has a{" "}
+        its decision. In the web app, the feedback log under Settings → Detection → Detector tuning has a{" "}
         <strong>suppress 30d</strong> button per label and a revoke button per suppression.
       </p>
 
@@ -701,7 +701,7 @@ curl -s -X POST localhost:8080/api/policies/baseline/canary/start \\
 
       <NextSteps
         items={[
-          { href: "/docs/app/policies", label: "Policies and tuning in the web app", why: "the Guardrail tuning tab, simulation and canaries" },
+          { href: "/docs/app/policies", label: "Policies and tuning in the web app", why: "detector tuning, simulation and canaries" },
           { href: "/docs/guides/red-team-and-evals", label: "Red team and evals in CI", why: "check the tuned configuration did not get weaker" },
           { href: "/docs/reference/policies", label: "Policy language", why: "rule conditions, effects and modes" },
           { href: "/docs/reference/config", label: "Configuration", why: "enabled detectors, budgets, egress and judgment settings" },

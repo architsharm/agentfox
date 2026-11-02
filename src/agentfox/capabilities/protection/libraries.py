@@ -476,3 +476,63 @@ def library_status(session: Any, pack_id: str, slugs: list[str]) -> dict[str, An
         "outdated": bool(outdated),
         "outdatedAgents": outdated,
     }
+
+
+#: Runs recorded within this long of the newest one count as the same "Simulate".
+_ONE_SIMULATION = dt.timedelta(minutes=2)
+
+
+def last_simulation(session: Any, pack_id: str, slugs: list[str]) -> dict[str, Any] | None:
+    """What the last simulation of a library on these agents found, in the shape
+    :func:`simulate_library` answers with; None when it was never simulated there.
+
+    :func:`simulate_library` records one run per copy, each tagged with the library and
+    the agent (``scope``). The newest of those, and every run recorded with it, are
+    the last "Simulate"; a later run of one copy replaces its earlier one. Counted the
+    same way, from what each run kept (the first 50 records of each kind)."""
+    from sqlalchemy import select
+
+    from agentfox.core.models import SimulationRun
+
+    wanted = set(slugs)
+    runs = [
+        r
+        for r in session.scalars(
+            select(SimulationRun).order_by(SimulationRun.created_at.desc()).limit(500)
+        )
+        if (r.scope_json or {}).get("library") == pack_id
+        and (not wanted or (r.scope_json or {}).get("agent") in wanted)
+    ]
+    if not runs:
+        return None
+    newest = runs[0].created_at
+    latest: dict[tuple[str, str | None], Any] = {}
+    for run in runs:
+        if newest - run.created_at > _ONE_SIMULATION:
+            break
+        latest.setdefault((run.scope_json.get("agent"), run.policy_id), run)
+    replayed: dict[str, int] = {}
+    seen: dict[str, dict[str, set[str]]] = {}
+    for (slug, _policy), run in latest.items():
+        replayed[slug] = max(replayed.get(slug, 0), run.replayed_count or 0)
+        acted = seen.setdefault(slug, {"block": set(), "escalate": set(), "hide": set()})
+        diff = run.diff_json or {}
+        for record in diff.get("would_stop") or []:
+            if record.get("own") in ("block", "escalate"):
+                acted[record["own"]].add(record.get("decision_id"))
+        acted["hide"].update(r.get("decision_id") for r in diff.get("would_hide") or [])
+    blocked = held = hidden = 0
+    for acted in seen.values():
+        held_here = acted["escalate"] - acted["block"]
+        blocked += len(acted["block"])
+        held += len(held_here)
+        hidden += len(acted["hide"] - acted["block"] - held_here)
+    return {
+        "since_days": runs[0].scope_json.get("since_days", SIMULATE_DAYS),
+        "replayed": sum(replayed.values()),
+        "blocked": blocked,
+        "held": held,
+        "hidden": hidden,
+        "at": newest.isoformat(),
+        "run_by": runs[0].run_by,
+    }

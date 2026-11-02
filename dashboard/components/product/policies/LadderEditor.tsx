@@ -3,8 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { callJson } from "@/components/kit/Act";
-
-type Band = { upto: number | null; outcome: string; approver_role?: string | null; reason?: string };
+import { type Band, bandsForSave, canCheckFirst } from "@/lib/product/resave";
 
 const OUTCOMES = [
   { key: "allow", label: "Allow" },
@@ -23,7 +22,7 @@ export function LadderEditor({ rule, tools }: { rule: any; tools: string[] }) {
   const [name, setName] = useState<string>(def.name || rule.key);
   const [tool, setTool] = useState<string>(def.tool || "");
   const [field, setField] = useState<string>(String(def.field || def.field_path || "arguments.amount").replace(/^arguments\./, ""));
-  const [bands, setBands] = useState<Band[]>((def.bands || []).map((b: any) => ({ upto: b.upto ?? null, outcome: b.outcome, approver_role: b.approver_role || "", reason: b.reason || "" })));
+  const [bands, setBands] = useState<Band[]>((def.bands || []).map((b: any) => ({ ...b, upto: b.upto ?? null, approver_role: b.approver_role || "", reason: b.reason || "" })));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
@@ -47,19 +46,13 @@ export function LadderEditor({ rule, tools }: { rule: any; tools: string[] }) {
 
   const save = () =>
     run(async () => {
-      const ordered = [...bands].sort((a, b) => (a.upto ?? Infinity) - (b.upto ?? Infinity));
       await callJson(`/api/business/rules/${encodeURIComponent(rule.key)}`, "PUT", {
         definition: {
           ...def,
           name,
           tool,
           field: `arguments.${field.replace(/^arguments\./, "")}`,
-          bands: ordered.map((b) => ({
-            ...(b.upto === null ? {} : { upto: b.upto }),
-            outcome: b.outcome,
-            ...(b.outcome === "escalate" && b.approver_role ? { approver_role: b.approver_role } : {}),
-            ...(b.reason ? { reason: b.reason } : {}),
-          })),
+          bands: bandsForSave(bands),
         },
       });
       setSaved(true);
@@ -129,11 +122,22 @@ export function LadderEditor({ rule, tools }: { rule: any; tools: string[] }) {
               </td>
               <td>
                 <div className="k-seg" role="group" aria-label={`Band ${i + 1} outcome`}>
-                  {OUTCOMES.map((o) => (
-                    <button key={o.key} className={b.outcome === o.key ? "active" : ""} onClick={() => set(i, { outcome: o.key })}>
-                      {o.label}
-                    </button>
-                  ))}
+                  {OUTCOMES.map((o) => {
+                    // What a check runs is written in the rule's definition; a band
+                    // without one can't be switched to it here (the gateway refuses it).
+                    const noCheck = o.key === "verify" && !canCheckFirst(b);
+                    return (
+                      <button
+                        key={o.key}
+                        className={b.outcome === o.key ? "active" : ""}
+                        disabled={noCheck}
+                        title={noCheck ? "Needs a check defined in the rule's YAML or API definition" : undefined}
+                        onClick={() => set(i, { outcome: o.key })}
+                      >
+                        {o.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </td>
               <td>

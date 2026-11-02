@@ -86,7 +86,7 @@ def _count(model: Any, *where: Any) -> ScalarSelect[Any]:
     return select(func.count()).select_from(model).where(*where).scalar_subquery()
 
 
-def _onboarding_counts(session: Session) -> dict[str, int]:
+def _onboarding_counts(session: Session) -> dict[str, Any]:
     """Every number the checklist needs, in one round trip.
 
     Eleven separate ``count(*)`` statements plus a parse of every bound policy
@@ -97,44 +97,51 @@ def _onboarding_counts(session: Session) -> dict[str, int]:
     included.
     """
     now = utcnow()
-    # "Turn enforcement on" is about baseline, the content policies. Read the
-    # binding's mode directly instead of loading and parsing every bound document.
-    baseline_enforcing = (
-        select(func.count())
-        .select_from(PolicyBinding)
-        .join(PolicyVersion, PolicyVersion.id == PolicyBinding.policy_version_id)
-        .join(Policy, Policy.id == PolicyVersion.policy_id)
-        .where(
-            Policy.key == "baseline",
-            PolicyBinding.mode == "enforce",
-            PolicyBinding.effective_from <= now,
-            (PolicyBinding.effective_to.is_(None)) | (PolicyBinding.effective_to > now),
+    live = (
+        PolicyBinding.effective_from <= now,
+        (PolicyBinding.effective_to.is_(None)) | (PolicyBinding.effective_to > now),
+    )
+
+    def protection(*where: Any) -> Select[Any]:
+        # The checks "Turn enforcement on" is about: baseline when it is installed, an
+        # agent's own protections and libraries (`agent.<slug>`, `agent.<slug>.basic`,
+        # ...), and the blocked words and topics (the `custom` pack). Read the
+        # binding's mode directly instead of loading and parsing every bound document.
+        return (
+            select(Policy.key)
+            .select_from(PolicyBinding)
+            .join(PolicyVersion, PolicyVersion.id == PolicyBinding.policy_version_id)
+            .join(Policy, Policy.id == PolicyVersion.policy_id)
+            .where(
+                (Policy.key.in_(("baseline", "custom"))) | (Policy.key.like("agent.%")),
+                *live,
+                *where,
+            )
         )
+
+    # Step 6 is done when something enforces and nothing is still only watching.
+    # Baseline counts only where it is bound: a workspace set up with `agentfox init
+    # --key` has none, and its agents' protections carry the same checks.
+    protection_enforcing = (
+        select(func.count())
+        .select_from(protection(PolicyBinding.mode == "enforce").subquery())
         .scalar_subquery()
     )
-    # Protection that is still only watching: baseline, an agent's own protections,
-    # and the blocked words and topics (the `custom` pack). Step 6 is done when none is.
-    protection_watching = (
-        select(func.count())
-        .select_from(PolicyBinding)
-        .join(PolicyVersion, PolicyVersion.id == PolicyBinding.policy_version_id)
-        .join(Policy, Policy.id == PolicyVersion.policy_id)
-        .where(
-            (Policy.key.in_(("baseline", "custom"))) | (Policy.key.like("agent.%")),
-            PolicyBinding.mode != "enforce",
-            PolicyBinding.effective_from <= now,
-            (PolicyBinding.effective_to.is_(None)) | (PolicyBinding.effective_to > now),
-        )
-        .scalar_subquery()
-    )
+    watching = protection(PolicyBinding.mode != "enforce").subquery()
+    protection_watching = select(func.count()).select_from(watching).scalar_subquery()
+    # Named in the step's command, so the hint is a policy this workspace has.
+    first_watching = select(func.min(watching.c.key)).scalar_subquery()
     row = session.execute(
         select(
             _count(Agent).label("agents"),
             protection_watching.label("protection_watching"),
-            _capped(select(Trace.id)).label("traces"),
+            # Dashboard "Try it" checks run as environment "playground"; they are not
+            # the agent's first request.
+            _capped(select(Trace.id).where(Trace.environment != "playground")).label("traces"),
             _capped(select(Decision.id)).label("decisions"),
             _capped(select(Decision.id).where(Decision.mode == "enforce")).label("enforcing"),
-            baseline_enforcing.label("baseline_enforcing"),
+            protection_enforcing.label("protection_enforcing"),
+            first_watching.label("first_watching"),
             _count(KnowledgeBoundary).label("boundaries"),
             _count(SourceRecord).label("sources"),
             _count(Handoff).label("handoffs"),
@@ -152,7 +159,9 @@ def _onboarding_counts(session: Session) -> dict[str, int]:
             _count(Policy, Policy.key.like(f"{protection_layer_key('')}%")).label("protected"),
         )
     ).one()
-    return {k: int(v or 0) for k, v in row._mapping.items()}
+    out: dict[str, Any] = {k: int(v or 0) for k, v in row._mapping.items() if k != "first_watching"}
+    out["first_watching"] = row.first_watching
+    return out
 
 
 @router.get("/onboarding")
@@ -217,13 +226,14 @@ def onboarding(session: Session = Depends(db), _user=Depends(current_user)) -> d
         {
             "id": "enforce",
             "title": "Turn enforcement on",
-            "done": c["baseline_enforcing"] > 0 and c["protection_watching"] == 0,
-            "command": "agentfox policy enforce baseline",
+            "done": c["protection_enforcing"] > 0 and c["protection_watching"] == 0,
+            "command": f"agentfox policy enforce {c['first_watching'] or '<policy>'}",
             "detail": (
                 "Your checks start by watching: they record what they would stop. When "
-                "that looks right, switch them to stopping it: the baseline checks, the "
-                "agent's protections, and your blocked words and topics. Tool permissions "
-                "already apply."
+                "that looks right, switch them to stopping it: the agent's protections "
+                "and basic guardrails, your blocked words and topics, and the baseline "
+                "checks where installed. Tool permissions already apply, including the "
+                "ones that ask a person."
             ),
         },
     ]

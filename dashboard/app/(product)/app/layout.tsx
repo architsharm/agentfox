@@ -53,7 +53,10 @@ const NAV_SEARCH_ONLY: { label: string; href: string; group: string; feature?: s
   { label: "Policy performance", href: "/app/policies?tab=performance", group: "Policies" },
   { label: "Policy library", href: "/app/policies?tab=libraries", group: "Policies" },
   { label: "Suggested changes", href: "/app/policies?tab=changes", group: "Policies" },
-  { label: "Detectors", href: "/app/policies?tab=advanced", group: "Policies" },
+  { label: "Packs", href: "/app/settings?tab=detection&sec=packs", group: "Settings" },
+  { label: "Protection levels", href: "/app/settings?tab=detection", group: "Settings" },
+  { label: "Detector tuning", href: "/app/settings?tab=detection&sec=tuning", group: "Settings" },
+  { label: "AI judges & egress", href: "/app/settings?tab=detection&sec=judges", group: "Settings" },
   { label: "Attack tests", href: "/app/test?tab=attacks", group: "Test" },
   { label: "Test suites", href: "/app/test?tab=suites", group: "Test" },
   { label: "Compliance", href: "/app/compliance", group: "Reports", feature: "compliance" },
@@ -147,7 +150,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       topbar={
         signedIn && (
           <div className="topbar">
-            <Crumbs />
+            {/* Crumbs reads the query (Get started vs. the Settings tabs on /app/start). */}
+            <Suspense fallback={<nav className="crumbs" aria-label="Breadcrumb" />}>
+              <Crumbs />
+            </Suspense>
             <Suspense fallback={<CommandSearch nav={NAV_FLAT} />}>
               <TopbarData />
             </Suspense>

@@ -4,6 +4,8 @@ import { AgentLink, Empty, EventBadge, ObsTable, SessionId, Time, Verdict } from
 import { safeApi } from "@/lib/product/api";
 import { agentQuery, observeScope } from "@/lib/product/observeScope";
 import { appPageMetadata } from "@/lib/site";
+import { Tabs } from "@/components/kit";
+import { filtersFrom, observeTabs } from "@/lib/product/observe";
 
 export const metadata: Metadata = appPageMetadata("Events");
 export const dynamic = "force-dynamic";
@@ -18,6 +20,7 @@ export default async function Events({ searchParams }: { searchParams: Promise<{
   return (
     <>
       <PageHeader title="Events" sub={`${scope.project ?? "no project"} · every guarded step, newest first`} />
+      <Tabs items={observeTabs(filtersFrom({ agent }))} active="events" />
       <ObsTable head={["Time", "Event", "Decision", "Agent", "Session", "Summary"]} empty={!rows.length && <Empty>no events yet. they show up the moment an agent runs.</Empty>}>
         {rows.map((t: any) => (
           <tr key={t.id}>

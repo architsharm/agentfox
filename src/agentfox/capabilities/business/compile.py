@@ -419,14 +419,29 @@ def _subject(sentence: str) -> str | None:
     return subject if len(subject.split()) <= 3 else None
 
 
-def _tool(text: str) -> str | None:
+def _tool(text: str, tools: list[str] | None = None) -> str | None:
+    """The tool a rule governs: one named outright, else the hint for a domain word.
+
+    Given the agent's own `tools`, a hint resolves to the one of them it names
+    ("refund" -> `issue_refund`, not the generic `payments.refund` the agent never
+    calls), so the rule fires on the calls it was written about. With none that
+    matches, the generic hint stands, as it does with no agent.
+    """
     lowered = text.lower()
     explicit = re.search(r"\b([a-z_]+\.[a-z_]+)\b", lowered)
     if explicit:
         return explicit.group(1)
+    own = sorted(t for t in tools or [] if "*" not in t)
+    for name in own:
+        if re.search(rf"(?<![a-z0-9_.]){re.escape(name.lower())}(?![a-z0-9_])", lowered):
+            return name
     for word, tool in _tool_hints().items():
         if word in lowered:
-            return tool
+            if tool in own:
+                return tool
+            tail = tool.rsplit(".", 1)[-1]
+            named = [t for t in own if word in t.lower() or tail in t.lower()]
+            return named[0] if named else tool
     return None
 
 
@@ -560,8 +575,14 @@ def _is_governance(sentence: str) -> bool:
     )
 
 
-def compile_document(text: str, *, key_prefix: str = "policy") -> Compilation:
-    """Compile a written policy into executable rules and a short review queue."""
+def compile_document(
+    text: str, *, key_prefix: str = "policy", tools: list[str] | None = None
+) -> Compilation:
+    """Compile a written policy into executable rules and a short review queue.
+
+    `tools`, the agent's own tools when the rule is written for one, resolves the
+    tool a rule governs to one the agent actually calls (`_tool`).
+    """
     result = Compilation()
     sentences = _sentences(text)
 
@@ -591,9 +612,9 @@ def compile_document(text: str, *, key_prefix: str = "policy") -> Compilation:
     counts = [c for c in ladder_clauses if c.unit == "count"]
     others = [c for c in ladder_clauses if c.unit != "count"]
     if others:
-        _build_ladders(others, result, key_prefix)
+        _build_ladders(others, result, key_prefix, tools)
     if counts:
-        _build_ladders(counts, result, key_prefix)
+        _build_ladders(counts, result, key_prefix, tools)
     return result
 
 
@@ -1065,10 +1086,12 @@ _EXTRACTORS: dict[str, Any] = {
 }
 
 
-def _build_ladders(clauses: list[_Clause], result: Compilation, key_prefix: str) -> None:
+def _build_ladders(
+    clauses: list[_Clause], result: Compilation, key_prefix: str, tools: list[str] | None = None
+) -> None:
     """Assemble threshold clauses into one total ladder per (tool, unit)."""
     units = {c.unit for c in clauses if c.unit}
-    tool = _tool(" ".join(c.source for c in clauses))
+    tool = _tool(" ".join(c.source for c in clauses), tools)
     #: Fragments for quoting back in a question; whole sentences for accounting.
     source_fragments = [c.source for c in clauses]
     source_sentences = list(dict.fromkeys(c.sentence or c.source for c in clauses))
@@ -1114,7 +1137,8 @@ def _build_ladders(clauses: list[_Clause], result: Compilation, key_prefix: str)
                 source=source_fragments[0],
                 why="a ladder with no tool would band every call that happens to carry "
                 "a matching field",
-                options=sorted(set(_tool_hints().values())),
+                options=sorted({t for t in tools or [] if "*" not in t})
+                or sorted(set(_tool_hints().values())),
                 covers=source_sentences,
             )
         )

@@ -25,6 +25,7 @@ export const REPORTS_TABS: AreaTab[] = [
 export const SETTINGS_TABS: AreaTab[] = [
   { key: "connect", label: "Connections", href: "/app/start?tab=connect" },
   { key: "tokens", label: "API keys", href: "/app/start?tab=tokens" },
+  { key: "detection", label: "Detection", href: "/app/settings?tab=detection" },
   { key: "alerts", label: "Alerts", href: "/app/settings?tab=alerts", feature: "monitoring" },
   { key: "retention", label: "Retention", href: "/app/settings?tab=retention" },
   { key: "sources", label: "Verified sources", href: "/app/sources" },

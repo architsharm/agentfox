@@ -212,12 +212,29 @@ def save_protection(
 
 
 #: What "turn enforcement on" means for one agent, in the order a person reads it:
-#: the workspace's baseline checks, this agent's own protections, and the blocked
-#: words and topics written for it. Each switches only if it is watching now.
-def _enforcement_packs(slug: str) -> list[tuple[str, str]]:
+#: the workspace's baseline checks, this agent's own protections, the libraries
+#: applied to it (the basic guardrails among them), and the blocked words and topics
+#: written for it. Each switches only if it is there and watching now.
+def _enforcement_packs(session: Session, slug: str) -> list[tuple[str, str]]:
+    from sqlalchemy import select
+
+    from agentfox.capabilities.protection.libraries import library_of
+    from agentfox.core.models import Agent, Policy
+
+    # An agent's copy of a library is `agent.<slug>.<policy>` (`libraries.agent_copy_key`);
+    # matched by prefix in Python, since a slug may hold LIKE's `_` wildcard. A slug
+    # may hold a dot too, so another agent's own layer (`agent.<slug>.x`) is not one.
+    prefix = f"{protection.layer_key(slug)}."
+    others = {protection.layer_key(s) for s in session.scalars(select(Agent.slug))}
+    copies = sorted(
+        key
+        for key in session.scalars(select(Policy.key).where(Policy.key.like("agent.%")))
+        if key.startswith(prefix) and key not in others
+    )
     return [
         ("baseline", "Baseline checks (prompt attacks, personal data, secrets, harmful content)"),
-        (f"agent.{slug}", "This agent's protections"),
+        (protection.layer_key(slug), "This agent's protections"),
+        *((key, library_of("", key, "agent")) for key in copies),
         ("custom", "Blocked words and topics"),
     ]
 
@@ -229,7 +246,7 @@ def _watching_packs(session: Session, slug: str) -> list[dict[str, Any]]:
     from agentfox.platform.policy import current_binding, load_version_document
 
     out: list[dict[str, Any]] = []
-    for key, label in _enforcement_packs(slug):
+    for key, label in _enforcement_packs(session, slug):
         policy = session.scalar(select(Policy).where(Policy.key == key))
         if policy is None:
             continue

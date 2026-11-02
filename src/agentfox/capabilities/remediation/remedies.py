@@ -611,7 +611,7 @@ def _breaker(session: Session, ctx: _Ctx) -> list[Remedy]:
         )
     out.append(
         Remedy(
-            "breaker_settings", "Breaker settings", kind="link", href=_agent_tab(ctx, "settings")
+            "breaker_settings", "Breaker settings", kind="link", href=_agent_tab(ctx, "controls")
         )
     )
     return out

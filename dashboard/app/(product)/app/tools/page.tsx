@@ -4,6 +4,8 @@ import { Breakdown } from "@/components/product/observe/Breakdown";
 import { safeApi } from "@/lib/product/api";
 import { observeScope } from "@/lib/product/observeScope";
 import { appPageMetadata } from "@/lib/site";
+import { Tabs } from "@/components/kit";
+import { filtersFrom, observeTabs } from "@/lib/product/observe";
 
 export const metadata: Metadata = appPageMetadata("Tools");
 export const dynamic = "force-dynamic";
@@ -19,6 +21,7 @@ export default async function Tools({ searchParams }: { searchParams: Promise<{ 
   return (
     <>
       <PageHeader title="Tools" sub={`${scope.project ?? "no project"} · tool calls in the last 7 days, busiest first`} />
+      <Tabs items={observeTabs(filtersFrom({ agent }))} active="tools" />
       <Breakdown rows={shown} label="Tool" empty="no tool calls in the last 7 days." />
     </>
   );

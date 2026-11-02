@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { actionArguments, actionLabel, actionSummary, decidedBy, firstSentence, readableReason } from "./approvals";
+import { actionArguments, actionLabel, actionSummary, decidedBy, firstSentence, minutesLabel, onExpiry, readableReason, waitMinutes } from "./approvals";
 
 const message = {
   tool: "message:input",
@@ -40,5 +40,26 @@ describe("approvals display", () => {
     expect(decidedBy({ status: "pending" })).toBeNull();
     expect(decidedBy({ status: "denied", resolver: "you@example.com" })).toBe("you@example.com");
     expect(decidedBy({ status: "expired" })).toBe("Nobody answered");
+  });
+
+  it("says how long an unanswered request waited", () => {
+    const a = { status: "expired", requested_at: "2026-11-01T10:00:00+00:00", expires_at: "2026-11-01T10:20:00+00:00" };
+    expect(waitMinutes(a)).toBe(20);
+    expect(decidedBy(a)).toBe("Nobody answered in 20 min");
+    expect(waitMinutes({ requested_at: "2026-11-01T10:00:00Z", expires_at: null })).toBeNull();
+    expect(waitMinutes({ requested_at: "2026-11-01T10:20:00Z", expires_at: "2026-11-01T10:00:00Z" })).toBeNull();
+  });
+
+  it("puts a span of minutes in words", () => {
+    expect(minutesLabel(30)).toBe("30 min");
+    expect(minutesLabel(60)).toBe("1 h");
+    expect(minutesLabel(65)).toBe("1 h 5 min");
+    expect(minutesLabel(3 * 24 * 60)).toBe("3 days");
+  });
+
+  it("says what happens on expiry, failing closed by default", () => {
+    expect(onExpiry("deny")).toMatch(/denied/);
+    expect(onExpiry(undefined)).toMatch(/denied/);
+    expect(onExpiry("allow")).toMatch(/approved/);
   });
 });

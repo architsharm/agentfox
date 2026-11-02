@@ -77,6 +77,22 @@ def test_a_path_added_to_tests_is_covered_and_scored_by_trajectory(client):
     assert after["paths"][0]["covered"] is True and after["uncovered_new"] == 0
 
 
+def test_dashboard_try_it_calls_are_not_paths(client):
+    """Testing → "Try it" sends environment "playground"; it is not production traffic."""
+    client.post(
+        "/v1/guard/tool_call",
+        json={
+            "agent": AGENT,
+            "tool": "billing.refund",
+            "arguments": {},
+            "environment": "playground",
+        },
+    ).raise_for_status()
+    _run(client, ["kb.search"], "prod-1")
+    body = client.get(f"/api/agents/{AGENT}/tool-paths").json()
+    assert [p["path"] for p in body["paths"]] == [["kb.search"]]
+
+
 def test_repeats_collapse_and_redteam_tools_are_not_paths(client):
     _run(client, ["kb.search", "kb.search", "kb.search", "tickets.read"], "r-1")
     _run(client, ["redteam.sim.issue_refund"], "r-2")

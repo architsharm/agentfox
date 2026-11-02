@@ -243,7 +243,7 @@ export async function Checks() {
           <Card
             title="AI judges"
             hint="Models that answer what code cannot. A hosted judge sends checked text to its provider, so it needs egress on this deployment."
-            action={<Link href="/app/policies?tab=advanced&sec=judges">All judge settings</Link>}
+            action={<Link href="/app/settings?tab=detection&sec=judges">All judge settings</Link>}
             flush
           >
             <table className="k-table">

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { InfoTip } from "@/components/ui";
+import { modeWord } from "@/lib/product/vocab";
 
 const inputStyle = {
   width: "100%",
@@ -466,13 +467,13 @@ export function PolicyEditor({
                 className="btn-scan"
                 onClick={() => setMode("observe", latestVersion)}
                 disabled={busy}
-                title={`Make version ${latestVersion} live in observe: it records what it would do and blocks nothing`}
+                title={`Make version ${latestVersion} live, watching: it records what it would do and blocks nothing`}
               >
-                Make v{latestVersion} live in observe
+                Make v{latestVersion} live, watching
               </button>
             ) : (
               <button type="button" className="btn-scan" onClick={() => setMode("observe")} disabled={busy}>
-                Set observe
+                Switch to watching
               </button>
             )}
             <button
@@ -482,7 +483,7 @@ export function PolicyEditor({
               disabled={busy}
               title={simulatedBody !== body ? "Run Simulate first — rules have changed since the last simulation" : undefined}
             >
-              {pending ? `Promote v${latestVersion} to enforce` : "Promote to enforce"}
+              {pending ? `Make v${latestVersion} live, blocking` : "Start blocking"}
             </button>
           </>
         )}
@@ -527,8 +528,8 @@ export function PolicyEditor({
             <>
               <strong>Saved</strong> — version {saveResult.version}.{" "}
               {saveResult.pending && saveResult.live_version != null
-                ? `Version ${saveResult.live_version} stays in force (${saveResult.mode}) until you simulate and promote version ${saveResult.version}. `
-                : `It is live in ${saveResult.mode || "observe"}, which records and blocks nothing. `}
+                ? `Version ${saveResult.live_version} stays live (${modeWord(saveResult.mode)}) until you simulate and promote version ${saveResult.version}. `
+                : `It is live and watching: it records and blocks nothing. `}
               Reloading…
             </>
           ) : (

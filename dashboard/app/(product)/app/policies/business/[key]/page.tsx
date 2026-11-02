@@ -32,7 +32,7 @@ export default async function BusinessRulePage({ params }: { params: Promise<{ k
         meta={<ModePill mode={rule.enabled ? rule.mode : null} />}
         actions={
           <Act url={`/api/business/rules/${encodeURIComponent(key)}/mode`} body={{ mode: rule.mode === "enforce" ? "observe" : "enforce" }} className={rule.mode === "enforce" ? "k-btn" : "k-btn-primary"}>
-            {rule.mode === "enforce" ? "Switch to watching" : "Start enforcing"}
+            {rule.mode === "enforce" ? "Switch to watching" : "Start blocking"}
           </Act>
         }
       />

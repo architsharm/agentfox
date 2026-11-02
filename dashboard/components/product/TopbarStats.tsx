@@ -9,14 +9,15 @@ import Link from "next/link";
 export function TopbarStats({ counts }: { counts: { critical?: number; high?: number } }) {
   const critical = counts.critical || 0;
   const high = counts.high || 0;
+  // Each count opens Issues filtered to it (`/app` itself now redirects to the map).
   return (
-    <Link href="/app" className="topbar-stats" title="Critical / high-priority problems, from Overview">
-      <span className={`topbar-stat${critical ? " bad" : ""}`}>
+    <span className="topbar-stats" title="Critical / high-priority problems">
+      <Link href="/app/findings?severity=critical" className={`topbar-stat${critical ? " bad" : ""}`}>
         <strong>{critical}</strong> critical
-      </span>
-      <span className={`topbar-stat${high ? " warn" : ""}`}>
+      </Link>
+      <Link href="/app/findings?severity=high" className={`topbar-stat${high ? " warn" : ""}`}>
         <strong>{high}</strong> high
-      </span>
-    </Link>
+      </Link>
+    </span>
   );
 }

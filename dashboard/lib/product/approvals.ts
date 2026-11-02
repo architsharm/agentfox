@@ -20,6 +20,8 @@ export type Approval = {
   resolver?: string | null;
   rationale?: string | null;
   trace_id?: string | null;
+  /** `deny` (the default) or `allow`: what an unanswered request turns into. */
+  timeout_action?: string | null;
 };
 
 export const STATUS_TONE: Record<string, "ok" | "bad" | "warn" | "neutral"> = {
@@ -66,12 +68,43 @@ export function actionSummary(a: Pick<Approval, "tool" | "arguments">): string {
     .join(" · ");
 }
 
-/** Who ended it: the person who decided, or nobody when it ran out unanswered. */
-export function decidedBy(a: Pick<Approval, "status" | "resolver">): string | null {
+/** A span of minutes in words: "45 min", "2 h", "1 h 5 min", "3 days". */
+export function minutesLabel(minutes: number): string {
+  const m = Math.max(0, Math.round(minutes));
+  if (m < 60) return `${m} min`;
+  if (m < 48 * 60) {
+    const h = Math.floor(m / 60);
+    const rest = m % 60;
+    return rest ? `${h} h ${rest} min` : `${h} h`;
+  }
+  return `${Math.round(m / (24 * 60))} days`;
+}
+
+/** Minutes between filing and expiry: how long a request waits for a person. */
+export function waitMinutes(a: Pick<Approval, "requested_at" | "expires_at">): number | null {
+  const from = Date.parse(String(a.requested_at || ""));
+  const to = Date.parse(String(a.expires_at || ""));
+  if (Number.isNaN(from) || Number.isNaN(to) || to < from) return null;
+  return Math.round((to - from) / 60000);
+}
+
+/** Who ended it: the person who decided, or nobody when it ran out unanswered, and after how long. */
+export function decidedBy(a: Pick<Approval, "status" | "resolver" | "requested_at" | "expires_at">): string | null {
   if (a.status === "pending") return null;
   if (a.resolver) return a.resolver;
-  return a.status === "expired" ? "Nobody answered" : null;
+  if (a.status !== "expired") return null;
+  // An expired request kept its expiry; it waited from filing to then.
+  const waited = waitMinutes(a);
+  return waited === null ? "Nobody answered" : `Nobody answered in ${minutesLabel(waited)}`;
 }
+
+/** What happens to a held call nobody answers, from its `timeout_action`. Fails closed by default. */
+export function onExpiry(timeoutAction?: string | null): string {
+  return timeoutAction === "allow" ? "it is approved and may run once" : "it is denied and the call does not run";
+}
+
+/** How long requests wait before they expire: what the waiting ones carry, else the gateway default. */
+export const DEFAULT_WAIT_MINUTES = 30;
 
 /** The reason as prose. Several rules' reasons arrive joined with "; ", after each one's
  *  own full stop, which read as "action.; Irreversible". */

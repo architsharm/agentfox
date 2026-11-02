@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import type { AgentMap, Catalog } from "./GuardrailMap";
+import type { AgentFacts } from "@/lib/product/agentStatus";
 
 /**
  * The map's graph library is the heaviest thing on the agent page; load it only when
@@ -18,6 +19,13 @@ const Map = dynamic(() => import("./GuardrailMap").then((m) => m.GuardrailMap), 
   ),
 });
 
-export function GuardrailMapLazy(props: { maps: AgentMap[]; focus: string; project: string; catalog?: Catalog }) {
+export function GuardrailMapLazy(props: {
+  maps: AgentMap[];
+  focus: string;
+  project: string;
+  catalog?: Catalog;
+  facts?: Record<string, AgentFacts>;
+  actor?: string | null;
+}) {
   return <Map {...props} />;
 }

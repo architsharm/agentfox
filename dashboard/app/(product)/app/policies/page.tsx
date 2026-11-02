@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { appPageMetadata } from "@/lib/site";
 import { AppliedRules } from "@/components/product/policies/AppliedRules";
 import { Libraries } from "@/components/product/policies/Libraries";
 import { observeScope } from "@/lib/product/observeScope";
+import { NoticeToast } from "@/components/product/NoticeToast";
 import { safeApi } from "@/lib/product/api";
 import {
   ActionPill,
@@ -27,7 +29,7 @@ import { ImportGuard } from "@/components/product/policies/ImportGuard";
 import { LibraryPacks } from "@/components/product/policies/LibraryPacks";
 import { PackMode } from "@/components/product/policies/PackMode";
 import { WorkspaceCode } from "@/components/product/policies/WorkspaceCode";
-import { AdvancedJudges, AdvancedNav, AdvancedPacks, AdvancedTuning } from "@/components/product/policies/advanced";
+import { sectionHref } from "@/components/product/policies/advanced";
 import { metricsQs, runsHref } from "@/lib/product/observe";
 import { loadRules, ruleMode, type RuleInfo } from "@/lib/product/rules";
 import { ensureRange } from "@/lib/product/range";
@@ -45,13 +47,18 @@ const TABS = [
   { key: "libraries", label: "Libraries" },
 ];
 /** Still reachable by link (installing a check, a library's rules), not in the tab bar. */
-const HIDDEN = ["rules", "checks", "performance", "library", "changes", "code", "advanced"];
+const HIDDEN = ["rules", "checks", "performance", "library", "changes", "code"];
 
-/** Tab names from before the redesign, so old links still land. */
-const LEGACY: Record<string, { tab: string; sec?: string }> = {
-  guardrails: { tab: "advanced", sec: "tuning" },
-  judgment: { tab: "advanced", sec: "judges" },
-};
+/**
+ * Packs, detector tuning and AI judges were hidden tabs here; they are Settings →
+ * Detection now. Old links (and the older guardrails/judgment tab names) land there.
+ */
+function detectionSection(sp: SP): "packs" | "tuning" | "judges" | null {
+  if (sp.tab === "guardrails") return "tuning";
+  if (sp.tab === "judgment") return "judges";
+  if (sp.tab === "advanced") return sp.sec === "tuning" || sp.sec === "judges" ? sp.sec : "packs";
+  return null;
+}
 
 function firstSentence(text: string): string {
   const m = text.match(/^(.{25,}?[.!?])\s+(?=[A-Z])/);
@@ -60,13 +67,15 @@ function firstSentence(text: string): string {
 
 export default async function Policies({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
+  const detection = detectionSection(sp);
+  if (detection) redirect(sectionHref(detection, sp.agent));
   // The detector list moved from Library to its own tab; old links still land there.
   const legacy =
     sp.tab === "library" && sp.sec === "detectors"
       ? { tab: "checks", sec: undefined }
       : sp.tab === "library" && sp.sec !== "import"
         ? { tab: "libraries", sec: undefined }
-        : LEGACY[sp.tab || ""];
+        : undefined;
   const tab = legacy?.tab || (TABS.some((t) => t.key === sp.tab) || HIDDEN.includes(sp.tab || "") ? sp.tab! : "applied");
   const sec = legacy?.sec || sp.sec;
   if (tab === "rules" || tab === "performance") await ensureRange("/app/policies", sp);
@@ -82,8 +91,7 @@ export default async function Policies({ searchParams }: { searchParams: Promise
         actions={<Link href="/app/policies/new" className="k-btn-primary">New rule</Link>}
       />
       <Tabs items={TABS.map((t) => ({ ...t, href: href("/app/policies", { tab: t.key === "applied" ? undefined : t.key }) }))} active={tab} />
-      {sp.review_error && <div className="error">{sp.review_error}</div>}
-      {sp.review_notice && <div className="note-panel">Done: {sp.review_notice}.</div>}
+      <NoticeToast notice={sp.review_notice} error={sp.review_error} />
       {tab === "applied" && <AppliedRules scope={sp.scope} agent={sp.agent} project={project} projectAgents={projectAgents} />}
       {tab === "libraries" && <Libraries project={project} agents={projectAgents} />}
       {tab === "rules" && <RulesTab sp={sp} />}
@@ -92,7 +100,6 @@ export default async function Policies({ searchParams }: { searchParams: Promise
       {tab === "library" && <LibraryTab sec={sec} />}
       {tab === "changes" && <ChangesTab />}
       {tab === "code" && <CodeTab />}
-      {tab === "advanced" && <AdvancedTab sec={sec} agent={sp.agent} />}
     </>
     </RangeProvider>
   );
@@ -156,7 +163,7 @@ async function RulesTab({ sp }: { sp: SP }) {
         </div>
         <div className="k-seg" role="group" aria-label="Mode">
           {chip("mode", "", "Any", mode)}
-          {chip("mode", "enforcing", "Enforcing", mode)}
+          {chip("mode", "enforcing", "Blocking", mode)}
           {chip("mode", "watching", "Watching", mode)}
           {chip("mode", "off", "Off", mode)}
         </div>
@@ -186,7 +193,7 @@ async function RulesTab({ sp }: { sp: SP }) {
                   <td className="tight"><ModePill mode={b.enabled ? b.mode : null} /></td>
                   <td className="tight" style={{ textAlign: "right" }}>
                     <Act url={`/api/business/rules/${encodeURIComponent(b.key)}/mode`} body={{ mode: b.mode === "enforce" ? "observe" : "enforce" }} className={b.mode === "enforce" ? "k-btn" : "k-btn-primary"}>
-                      {b.mode === "enforce" ? "Switch to watching" : "Start enforcing"}
+                      {b.mode === "enforce" ? "Switch to watching" : "Start blocking"}
                     </Act>
                   </td>
                 </tr>
@@ -254,7 +261,7 @@ async function PerformanceTab({ sp }: { sp: SP }) {
   const cats = CATEGORIES.filter((c) => rules.some((r) => ruleCategory(r.rule_id) === c.key));
   const cell = (rs: any[], cat: string) => {
     const inCat = rs.filter((r) => ruleCategory(r.rule_id) === cat);
-    if (inCat.some((r) => r.enforcement === "enforce")) return <Pill tone="ok">Enforced</Pill>;
+    if (inCat.some((r) => r.enforcement === "enforce")) return <Pill tone="ok">Blocking</Pill>;
     if (inCat.length) return <Pill tone="outline">Watching</Pill>;
     return <span className="k-muted">—</span>;
   };
@@ -319,7 +326,7 @@ async function PerformanceTab({ sp }: { sp: SP }) {
           <Empty>Nothing here for this period.</Empty>
         )}
       </Card>
-      <Card title="Coverage by agent" hint="Enforced: at least one rule in the area blocks. Watching: rules only record." flush>
+      <Card title="Coverage by agent" hint="Blocking: at least one rule in the area blocks. Watching: rules only record." flush>
         <table className="k-table">
           <thead>
             <tr>
@@ -486,20 +493,6 @@ async function ChangesTab() {
           </tbody>
         </table>
       </Card>
-    </>
-  );
-}
-
-// --- Advanced ----------------------------------------------------------------
-
-function AdvancedTab({ sec, agent }: { sec?: string; agent?: string }) {
-  const section = sec === "tuning" || sec === "judges" ? sec : "packs";
-  return (
-    <>
-      <AdvancedNav section={section} agent={agent} />
-      {section === "packs" && <AdvancedPacks agent={agent} />}
-      {section === "tuning" && <AdvancedTuning agent={agent} />}
-      {section === "judges" && <AdvancedJudges />}
     </>
   );
 }
