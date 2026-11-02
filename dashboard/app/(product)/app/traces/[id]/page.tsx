@@ -18,6 +18,7 @@ import {
   when,
 } from "@/components/kit";
 import { SURFACES, TRUST, WOULD, detectorName, outcomeOf, ruleTitle } from "@/lib/product/vocab";
+import { NoticeToast } from "@/components/product/NoticeToast";
 
 export const metadata: Metadata = appPageMetadata("Run");
 export const dynamic = "force-dynamic";
@@ -138,8 +139,7 @@ export default async function RunDetail({
         ]}
       />
       <div style={{ height: 14 }} />
-      {sp.review_error && <div className="error">{sp.review_error}</div>}
-      {sp.review_notice && <div className="note-panel">Saved: {sp.review_notice}.</div>}
+      <NoticeToast notice={sp.review_notice} error={sp.review_error} />
       <Tabs items={TABS.map((x) => ({ ...x, href: tabHref(x.key) }))} active={tab} />
 
       {tab === "summary" && <Summary decisions={decisions} />}

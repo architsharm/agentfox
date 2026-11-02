@@ -67,6 +67,8 @@ class CheckContext:
     arguments: dict[str, Any] | None = None
     memory_entry: dict[str, Any] | None = None
     conversation_window: list[str] | None = None
+    #: The tools the caller says this run already called (`prior_tools`).
+    prior_tools: list[str] | None = None
     #: The request's detector pipeline, for a check that needs to score text itself.
     pipeline: Any = None
 

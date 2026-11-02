@@ -96,6 +96,26 @@ describe("in-app links", () => {
     expect(broken).toEqual([]);
   });
 
+  it("every Settings → Detection link names a section it has, and no link uses a hidden tab that moved there", () => {
+    const adv = readFileSync(join(ROOT, "components", "product", "policies", "advanced.tsx"), "utf8");
+    const secs = new Set([...adv.matchAll(/\{ key: "([a-z]+)", label:/g)].map((m) => m[1]));
+    expect(secs).toEqual(new Set(["levels", "packs", "tuning", "judges"]));
+    const settings = readFileSync(join(APP, "(product)", "app", "settings", "page.tsx"), "utf8");
+    expect(settings).toMatch(/tab === "detection"/);
+    const broken: string[] = [];
+    for (const f of [...files, ...walk(join(APP, "docs"))].filter((x) => /\.tsx?$/.test(x) && !x.includes(".test."))) {
+      const src = readFileSync(f, "utf8");
+      for (const m of src.matchAll(/\/app\/settings\?tab=detection(?:&(?:amp;)?sec=([a-z]+))?/g)) {
+        if (m[1] && !secs.has(m[1])) broken.push(`${relative(ROOT, f)}: ${m[0]}`);
+      }
+      // Packs, tuning and judges left Policies, and workspace Features left its own page.
+      for (const m of src.matchAll(/["'`]\/app\/(?:policies\?tab=(?:advanced|guardrails|judgment)|features)\b[^"'`]*["'`]/g)) {
+        broken.push(`${relative(ROOT, f)}: ${m[0]}`);
+      }
+    }
+    expect(broken).toEqual([]);
+  });
+
   it("nothing in the app sends a signed-in user to the marketing page by accident", () => {
     // "/" is the public landing page. The one link that should go there says so.
     const offenders: string[] = [];

@@ -61,9 +61,8 @@ export function WhyBlocked({
       <div className="body">
         {observed && (
           <p className="small muted" style={{ marginTop: 0 }}>
-            This rule is in <span className="mono">observe</span> mode, so nothing was
-            stopped. What follows is what <em>would</em> have happened had it been
-            enforcing.
+            This rule is watching, so nothing was stopped. What follows is what{" "}
+            <em>would</em> have happened had it been blocking.
           </p>
         )}
 
@@ -163,7 +162,7 @@ export function WhyBlocked({
         <p className="small muted">
           Filed against this decision and the detector that decided it. It feeds
           precision reporting and the threshold recommendations on{" "}
-          <Link href="/app/policies?tab=advanced&sec=tuning">Detectors &amp; tuning</Link> — it does not
+          <Link href="/app/settings?tab=detection&sec=tuning">Detectors &amp; tuning</Link> — it does not
           change anything on its own.
         </p>
       </div>

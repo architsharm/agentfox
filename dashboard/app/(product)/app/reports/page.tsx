@@ -7,6 +7,7 @@ import { AreaTabs, REPORTS_TABS } from "@/components/product/AreaTabs";
 import { EnterpriseOnly } from "@/components/product/EnterpriseOnly";
 import { hasFeature } from "@/lib/product/edition";
 import { PrintButton } from "@/components/product/PrintButton";
+import { NoticeToast } from "@/components/product/NoticeToast";
 
 export const metadata: Metadata = appPageMetadata("Reports", "Evidence that your agents are under control.");
 export const dynamic = "force-dynamic";
@@ -30,8 +31,7 @@ export default async function Reports({ searchParams }: { searchParams: Promise<
     <>
       <Header title="Reports" actions={tab === "summary" ? <PrintButton /> : undefined} />
       <AreaTabs tabs={REPORTS_TABS} active={tab} />
-      {sp.review_error && <div className="error">{sp.review_error}</div>}
-      {sp.review_notice && <div className="note-panel">{sp.review_notice}</div>}
+      <NoticeToast notice={sp.review_notice} error={sp.review_error} />
       {tab === "summary" && <Summary />}
       {tab === "evidence" && ((await hasFeature("evidence")) ? <Evidence /> : <EnterpriseOnly feature="evidence" />)}
       {tab === "audit" && <Audit />}

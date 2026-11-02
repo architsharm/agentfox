@@ -243,15 +243,27 @@ def set_project_protection(
         states[key] = level
         protection.save(session, slug, states, "", actor=actor)
         return {"project": level}
+    # The workspace's level is the one its first rule shows; choosing it again is
+    # going back to the workspace, not a copy of it. A copy would flatten rules the
+    # workspace tunes apart (indirect injection sits more sensitive than direct) and
+    # read as lowering the more sensitive one.
+    if level == _level(workspace.get(p.rules[0], (None,))[0]):
+        return set_project_protection(session, slug, key, None, actor=actor, reason=reason)
+    raising = level != OFF and protection.LEVELS.get(level, 0) <= protection.LEVELS.get(
+        _level(workspace.get(p.rules[0], (None,))[0]) or "", 1
+    )
     applied = []
     for rid in p.rules:
         if rid not in workspace:
             continue
         rule, pack = workspace[rid]
+        change = _change(level, rule.when.detection is not None)
+        detection = rule.when.detection
+        if raising and "min_score" in change and detection and detection.min_score is not None:
+            # Raising never makes a rule less sensitive than the workspace keeps it.
+            change["min_score"] = min(change["min_score"], detection.min_score)
         try:
-            planned = scope.plan(
-                session, pack, rid, [slug], _change(level, rule.when.detection is not None)
-            )
+            planned = scope.plan(session, pack, rid, [slug], change)
         except scope.LooseningNotAllowed as exc:
             raise FeatureLocked(
                 f"The workspace does not let projects lower '{p.title}'. Change it for "

@@ -148,6 +148,46 @@ def add_span(
     return span
 
 
+#: The span kind a refusal before any check is recorded as (see `note_refusal`).
+REFUSAL_SPAN = "refusal"
+
+
+def note_refusal(
+    session: Session,
+    trace: Trace,
+    result: dict[str, Any],
+    *,
+    surface: str,
+    tool: str | None = None,
+) -> None:
+    """Record on the trace that a killed, paused or tripped agent was refused.
+
+    That refusal comes before any check, so no Decision is written (on purpose: the
+    breaker counts decisions, and a pause must not trip it on resume). Without this
+    the run listed as allowed and "Not checked", and a refused tool call as a model
+    call. A span says what was refused and by which rule; `search_traces` reads it.
+    """
+    if result.get("decision_id") or result.get("verdict") != "block":
+        return
+    rules = [r.get("rule_id") for r in result.get("rules_fired") or [] if isinstance(r, dict)]
+    if not any(isinstance(r, str) and r.startswith("agent.") for r in rules):
+        return
+    trace.verdict = "block"
+    add_span(
+        session,
+        trace,
+        kind=REFUSAL_SPAN,
+        name=tool or surface,
+        status="blocked",
+        attributes={
+            "surface": surface,
+            "tool": tool,
+            "rules": [r for r in rules if r],
+            "reason": result.get("reason") or "",
+        },
+    )
+
+
 @contextmanager
 def span(
     session: Session, trace: Trace | str, *, kind: str, name: str, **attrs: Any
@@ -442,6 +482,21 @@ def search_traces(
                 tools[d.trace_id].append(d.tool_key)
             if d.surface and d.surface not in surfaces.setdefault(d.trace_id, []):
                 surfaces[d.trace_id].append(d.surface)
+        # A refusal before any check (a paused agent) left a span, not a decision.
+        for sp in session.scalars(
+            select(Span).where(Span.trace_id.in_({t.id for t in traces}), Span.kind == REFUSAL_SPAN)
+        ):
+            attrs = sp.attributes_json or {}
+            checks[sp.trace_id] = checks.get(sp.trace_id, 0) + 1
+            for rid in attrs.get("rules") or []:
+                if rid not in fired.setdefault(sp.trace_id, []):
+                    fired[sp.trace_id].append(rid)
+            tool = attrs.get("tool")
+            if tool and tool not in tools.setdefault(sp.trace_id, []):
+                tools[sp.trace_id].append(tool)
+            surface = attrs.get("surface")
+            if surface and surface not in surfaces.setdefault(sp.trace_id, []):
+                surfaces[sp.trace_id].append(surface)
 
     return [
         {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { callJson } from "@/components/kit/Act";
 import { projectHref } from "@/lib/product/project";
 import { bannerFor, dismissKey, type Banner, type Onboarding, type ProjectSetup } from "@/lib/product/setupBanner";
 import { useProjectScope } from "@/lib/product/useProjectScope";
@@ -164,20 +165,32 @@ function Snippet({ text }: { text: string }) {
 function AddProject({ id }: { id: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   return (
-    <button
-      type="button"
-      className="k-btn-primary"
-      disabled={busy}
-      onClick={async () => {
-        setBusy(true);
-        await fetch(`/api/agents/${encodeURIComponent(id)}/approve`, { method: "POST" }).catch(() => null);
-        setBusy(false);
-        router.refresh();
-      }}
-    >
-      Add project
-    </button>
+    <>
+      <button
+        type="button"
+        className="k-btn-primary"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setError("");
+          try {
+            // A JSON call, so the route answers with the gateway's status rather
+            // than redirecting to a page that loads fine whatever happened.
+            await callJson(`/api/agents/${encodeURIComponent(id)}/approve`, "POST");
+            router.refresh();
+          } catch (e: any) {
+            setError(e.message || "Could not add the project.");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        Add project
+      </button>
+      {error && <span className="k-act-error">{error}</span>}
+    </>
   );
 }
 

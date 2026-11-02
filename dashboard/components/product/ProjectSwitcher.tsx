@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { MAP_PROJECT_COOKIE, NEW_PROJECT, PROJECT_COOKIE_AGE } from "@/lib/product/project";
 
@@ -20,16 +20,33 @@ export function ProjectSwitcher({ projects, current }: { projects: ProjectOption
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const box = useRef<HTMLDivElement>(null);
+  const btn = useRef<HTMLButtonElement>(null);
+  // The sidebar scrolls, so anything positioned inside it is clipped to its 224px
+  // ("1 a", "All projects and age…"). The menu is fixed to the viewport instead, at
+  // the button, and may be wider than the sidebar.
+  const [at, setAt] = useState<CSSProperties>({});
+  const toggle = () => {
+    const r = btn.current?.getBoundingClientRect();
+    if (r) setAt({ "--psm-top": `${r.bottom + 4}px`, "--psm-left": `${r.left}px`, "--psm-min": `${r.width}px` } as CSSProperties);
+    setOpen(!open);
+  };
 
   useEffect(() => {
     if (!open) return;
     const away = (e: MouseEvent) => box.current && !box.current.contains(e.target as Node) && setOpen(false);
     const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    // A fixed menu would stay put while the button scrolled away under it.
+    const moved = (e: Event) => !(e.target instanceof Node && box.current?.contains(e.target)) && setOpen(false);
+    const resized = () => setOpen(false);
     document.addEventListener("mousedown", away);
     document.addEventListener("keydown", esc);
+    document.addEventListener("scroll", moved, true);
+    window.addEventListener("resize", resized);
     return () => {
       document.removeEventListener("mousedown", away);
       document.removeEventListener("keydown", esc);
+      document.removeEventListener("scroll", moved, true);
+      window.removeEventListener("resize", resized);
     };
   }, [open]);
 
@@ -63,7 +80,7 @@ export function ProjectSwitcher({ projects, current }: { projects: ProjectOption
 
   return (
     <div className="project-switch" ref={box}>
-      <button type="button" className="project-switch-btn" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(!open)}>
+      <button ref={btn} type="button" className="project-switch-btn" aria-haspopup="listbox" aria-expanded={open} onClick={toggle}>
         <span className="project-switch-name">
           <small>{adding ? "not connected yet" : here ? agents(here.agents) : "no project yet"}</small>
           {adding ? "New project" : (here?.project ?? "Set up a project")}
@@ -73,7 +90,13 @@ export function ProjectSwitcher({ projects, current }: { projects: ProjectOption
         </svg>
       </button>
       {open && (
-        <div className="project-switch-menu" role="listbox" aria-label="Projects">
+        <div className="project-switch-menu" role="listbox" aria-label="Projects" style={at}>
+          {/* Every project and agent, with the ones a later `agentfox init` proposed
+              waiting to be added. First, because it is the way out of one project. */}
+          <Link href="/app/projects" className="project-switch-foot project-switch-all" onClick={() => setOpen(false)}>
+            All projects
+          </Link>
+          {projects.length > 0 && <div className="project-switch-sep" />}
           <div className="project-switch-list">
             {projects.map((p) => (
               <button
@@ -90,11 +113,6 @@ export function ProjectSwitcher({ projects, current }: { projects: ProjectOption
             ))}
           </div>
           {projects.length > 0 && <div className="project-switch-sep" />}
-          {/* Every project and agent, with the ones a later `agentfox init` proposed
-              waiting to be added. */}
-          <Link href="/app/projects" className="project-switch-foot" onClick={() => setOpen(false)}>
-            All projects and agents
-          </Link>
           <button type="button" onClick={() => go(NEW_PROJECT)} className="project-switch-foot">
             + Add a project
           </button>

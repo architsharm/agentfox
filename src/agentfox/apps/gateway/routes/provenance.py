@@ -38,7 +38,11 @@ router = APIRouter(prefix="/api/sources", tags=["provenance"])
 
 
 class SourceIn(BaseModel):
-    key: str = Field(description="The identifier the retriever emits — URI, doc id, table.")
+    key: str = Field(
+        min_length=1,
+        pattern=r"\S",
+        description="The identifier the retriever emits — URI, doc id, table.",
+    )
     title: str = ""
     tier: str = Field("unverified", description=" | ".join(TIERS))
     owner: str | None = None

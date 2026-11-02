@@ -643,6 +643,22 @@ a.gm-add { align-self: flex-start; text-decoration: none; }
 .lib-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .lib-foot { margin-top: auto; }
 .lib-default { border-color: color-mix(in srgb, var(--af-brand) 35%, var(--af-line)); }
+/* A card opens its library's drawer (LibraryCard); its buttons stay buttons. */
+.lib-open { cursor: pointer; text-align: left; }
+.lib-open:hover { border-color: var(--af-line-2); background: var(--af-subtle); }
+.lib-open:focus-visible { outline: 2px solid var(--af-brand); outline-offset: 2px; }
+.lib-open .lib-actions { cursor: default; }
+.lib-apply { position: relative; display: inline-flex; align-items: center; gap: 4px; }
+.lib-apply-more { padding-inline: 8px; }
+.lib-apply-menu { position: absolute; top: calc(100% + 4px); right: 0; z-index: 5; padding: 6px; border: 1px solid var(--af-line); border-radius: 8px; background: var(--af-surface); box-shadow: 0 6px 20px rgb(0 0 0 / 0.12); white-space: nowrap; }
+/* The drawer: the native <dialog> Modal uses, docked to the right edge, full height. */
+.modal.lib-drawer { margin: 0 0 0 auto; width: min(640px, 100vw); height: 100dvh; max-height: 100dvh; border-width: 0 0 0 1px; border-radius: 0; }
+.lib-drawer .modal-body { max-height: none; height: calc(100% - 52px); overflow-y: auto; }
+.lib-detail { display: flex; flex-direction: column; gap: 14px; }
+.lib-detail-text, .lib-detail-note, .lib-detail-sim { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--af-fg-2); }
+.lib-detail-note { color: var(--af-muted); }
+.lib-detail-sim { padding-top: 12px; border-top: 1px solid var(--af-line); }
+.lib-rules { width: 100%; }
 
 /* ── Phones (≤760px) ─────────────────────────────────────────────────────────
  * The rail becomes a top bar: the mark, the project switcher and a Menu button
@@ -789,3 +805,24 @@ a.gm-add { align-self: flex-start; text-decoration: none; }
   .at-icon { width: 40px; height: 40px; }
   .at-lib { left: 0; right: 0; width: auto; max-width: none; }
 }
+
+/* NoticeToast: the result of a form post. Bottom right, above the page; a success
+   notice leaves on its own, an error waits to be dismissed. */
+.k-toasts { position: fixed; right: 16px; bottom: 16px; z-index: 60; display: flex; flex-direction: column; gap: 8px; max-width: min(420px, calc(100vw - 32px)); pointer-events: none; }
+.k-toasts > div { display: flex; flex-direction: column; gap: 8px; }
+.k-toast { pointer-events: auto; display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px 10px 14px; border: 1px solid var(--hairline); border-radius: var(--r-2); background: var(--elevated); color: var(--text); box-shadow: var(--e-2); font-size: var(--t-small); line-height: 1.4; }
+.k-toast > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.k-toast-bad { background: var(--bad-bg); color: var(--bad); border-color: transparent; }
+.k-toast-x { flex: none; border: 0; background: transparent; color: inherit; opacity: .6; cursor: pointer; font-size: 16px; line-height: 1; padding: 0 2px; }
+.k-toast-x:hover, .k-toast-x:focus-visible { opacity: 1; }
+
+/* Approvals → Waiting: "When a call is held". Three short facts in a row; stacked on a phone. */
+.k-held-box { margin-bottom: 14px; }
+.k-held-box .k-card-body { display: flex; flex-direction: column; gap: 8px; }
+.k-held-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 20px; margin: 0; font-size: var(--t-small); }
+.k-held-facts dt { color: var(--muted); font-size: var(--t-micro); margin-bottom: 2px; }
+.k-held-facts dd { margin: 0; }
+@media (max-width: 720px) { .k-held-facts { grid-template-columns: 1fr; } }
+
+/* Approvals → Human hand-offs: the line under the tab bar saying what this tab is. */
+.k-tab-intro { margin: 4px 0 12px; color: var(--muted); font-size: var(--t-small); }

@@ -1,0 +1,57 @@
+/* The agent's one status control (header menu, dialog) and the banner while halted. */
+
+.menuWrap { position: relative; display: inline-flex; }
+.menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  min-width: 220px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-2);
+  background: var(--panel);
+  box-shadow: var(--e-3);
+  display: flex;
+  flex-direction: column;
+}
+.item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--r-1);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.item:hover, .item:focus-visible { background: var(--panel-2); outline: none; }
+.item small { color: var(--muted); font-size: var(--t-micro); }
+
+.does { margin: 0 0 12px; }
+.receives { margin: 0 0 14px; color: var(--muted); font-size: var(--t-small); }
+.receives code { color: var(--text); word-break: break-word; }
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.field label { font-size: var(--t-small); font-weight: 600; }
+.actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--bad) 35%, var(--border));
+  border-left-width: 3px;
+  border-radius: var(--r-2);
+  background: var(--bad-bg);
+  color: var(--text);
+  font-size: var(--t-small);
+}
+.bannerText { flex: 1 1 260px; min-width: 0; overflow-wrap: anywhere; }
+.bannerText q { color: var(--text); }

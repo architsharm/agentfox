@@ -1,13 +1,14 @@
 /**
  * The sidebar, in each of its two scopes (see lib/product/project.ts).
  *
- * All projects is the workspace: is anything wrong (Home), what is happening
- * (Observe), what is broken (Issues), which projects (Projects), what is allowed
- * (Policies), which switches are on (Features), what needs me (Approvals), does it hold up (Test), show others
- * (Reports). One project is that project's pages only: its canvas (the map of
- * its guardrails, and everything about it when nothing is selected), its traffic,
- * what it may do, which features it changed, its issues and approvals, its settings. The workspace pages
- * stay one click away, under All projects in the switcher.
+ * All projects is the workspace: which agents (Agents), what is allowed
+ * (Policies), what needs me (Approvals), what is broken (Issues), does it hold up
+ * (Testing), what happened (Traces), show others (Reports), and how it is set up
+ * (Settings, whose Detection tab holds the protection levels every project gets).
+ * One project is that project's pages only: its canvas (the map of its guardrails,
+ * and everything about it when nothing is selected), what it may do (Access), its
+ * issues and approvals, its traffic, its settings. The workspace pages stay one
+ * click away, under All projects in the switcher.
  *
  * A row lists the other pages it stands for, so it stays lit on all of them, and
  * may name the icon it shows when its href is not an icon's key.
@@ -24,24 +25,40 @@ export type NavGroup = { group: string; items: NavItem[] };
 const SETTINGS: NavItem = [
   "Settings",
   "/app/settings",
-  ["/app/start", "/app/start?tab=connect", "/app/start?tab=tokens", "/app/sources", "/app/entitlement", "/app/onboarding"],
+  [
+    "/app/start",
+    "/app/start?tab=connect",
+    "/app/start?tab=tokens",
+    "/app/sources",
+    "/app/entitlement",
+    "/app/onboarding",
+    "/app/features",
+    "/app/guardrails",
+  ],
 ];
 
 /**
  * Guardrails is everything: Agents (each project's map) is home and the place to set
  * things up; Policies, Approvals, Issues and Testing are the ways back in to what
- * needs a decision; Traces is the record behind all of it, for troubleshooting.
+ * needs a decision; Traces is the record behind all of it, for troubleshooting
+ * (its tabs include Tools, Models, Sessions and Events); Reports is what you show
+ * others (Compliance, Threat coverage, Evidence and the audit log are its tabs).
  */
 export const WORKSPACE_NAV: NavGroup[] = [
   {
     group: "Guardrails",
     items: [
       ["Agents", "/app/map", ["/app/projects"], "/app/projects"],
-      ["Policies", "/app/policies", ["/app/features"]],
+      ["Policies", "/app/policies"],
       ["Approvals", "/app/approvals"],
       ["Issues", "/app/findings"],
       ["Testing", "/app/test"],
-      ["Traces", "/app/traces", ["/app/events", "/app/sessions", "/app/escalation/conversations"]],
+      [
+        "Traces",
+        "/app/traces",
+        ["/app/observe", "/app/tools", "/app/models", "/app/events", "/app/sessions", "/app/escalation/conversations"],
+      ],
+      ["Reports", "/app/reports", ["/app/compliance", "/app/coverage", "/app/board"]],
     ],
   },
   { group: "", items: [SETTINGS] },
@@ -54,7 +71,9 @@ export function projectNav(slug: string): NavGroup[] {
       group: "Guardrails",
       items: [
         ["Agents", projectHref(slug), [`/app/projects/${encodeURIComponent(slug)}?view=canvas`], "/app/projects"],
-        ["Policies", projectHref(slug, "access"), [projectHref(slug, "features")], "/app/policies"],
+        // "Access", not "Policies": it opens the agent's Access tab, and Policies is the
+        // workspace's rules list.
+        ["Access", projectHref(slug, "access"), [projectHref(slug, "features")], "/app/entitlement"],
         ["Approvals", `/app/approvals?${q}`],
         ["Issues", `/app/findings?${q}`],
         ["Traces", `/app/traces?${q}`, [projectHref(slug, "activity"), `/app/observe?${q}`], "/app/traces"],

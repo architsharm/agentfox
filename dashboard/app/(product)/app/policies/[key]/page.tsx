@@ -5,6 +5,9 @@ import { ApiDown, Panel, ts } from "@/components/ui";
 import { PolicyEditor } from "@/components/product/PolicyEditor";
 import { Header } from "@/components/kit";
 import { CanaryPanel } from "@/components/product/CanaryPanel";
+import { LibraryPage, findLibrary } from "@/components/product/policies/Libraries";
+import { observeScope } from "@/lib/product/observeScope";
+import { notFound } from "next/navigation";
 
 /**
  * Behind the sign-in wall: `noindex`, plus a tab title that is not the fourth
@@ -96,6 +99,15 @@ function RuleWhen({ when }: { when: any }) {
   return <>{bits.join(" \u00b7 ")}</>;
 }
 
+/** A route segment as the library id it may name: `payments%2Frefunds` is `payments/refunds`. */
+function decodeKey(key: string): string {
+  try {
+    return decodeURIComponent(key);
+  } catch {
+    return key;
+  }
+}
+
 export default async function PolicyDetail({
   params,
   searchParams,
@@ -118,6 +130,23 @@ export default async function PolicyDetail({
     // created — the editor below starts from a blank starter template, pre-scoped
     // to whatever level/scope_id got us here (e.g. an agent detail page's
     // "customize for this agent" link), rather than a 404 dead end.
+    //
+    // Only for a key that is meant to be created, though: one scoped by the URL, or an
+    // agent's own layer (agent.<slug>, the protection wizard's link). Any other key
+    // with no policy behind it is a library not applied yet, shown as the library,
+    // or nothing: not an empty editor offering to save a stray policy by that name.
+    const creating = Boolean(qsLevel || qsScopeId || qsName) || /^agent\.[^.]+$/.test(key);
+    if (e instanceof ApiError && e.status === 404 && !creating) {
+      const { project, agents } = await observeScope();
+      const found = await findLibrary(decodeKey(key), agents);
+      if (!found) notFound();
+      return (
+        <>
+          <Header back={{ href: "/app/policies?tab=libraries", label: "Libraries" }} title={found.title} />
+          <LibraryPage found={found} project={project} agents={agents} />
+        </>
+      );
+    }
     if (e instanceof ApiError && e.status === 404) {
       isNew = true;
       policy = { key, name: qsName || key, description: "", versions: [] };

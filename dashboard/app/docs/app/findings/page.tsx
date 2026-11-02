@@ -178,7 +178,7 @@ PII.US_SSN       0.95   123-*******             LLM02  AML.T0057`}</Output>
         Suppressing a finding is not the same as suppressing a detector. A finding suppression
         only changes this record. To stop a detector acting on a known false positive, file
         feedback on the trace and create a scoped, expiring suppression on{" "}
-        <Link href="/docs/app/policies#tuning">Guardrail tuning</Link>.
+        <Link href="/docs/app/policies#tuning">Detector tuning</Link>.
       </Callout>
 
       <h2>Common tasks</h2>

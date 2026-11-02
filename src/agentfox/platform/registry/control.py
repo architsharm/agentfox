@@ -9,6 +9,8 @@ The control every competitor ships. Design decisions worth stating:
 * **Checked before anything else.** `Enforcer.preflight` consults this before taint,
   detectors or policy. A killed agent must not reach a model even if every policy
   would have allowed it.
+* **Not an issue.** Pausing is someone's own decision, so it is recorded (audit chain,
+  control history) rather than raised as an open finding against the person who did it.
 * **Two states, not one.** `quarantined` ("we are investigating") and `killed`
   ("stop now") block identically but declare different intent, and an incident review
   will ask which was declared.
@@ -21,9 +23,9 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.core.models import Agent, AgentControl, utcnow
+from agentfox.core.models import Agent, AgentControl, AuditEntry, utcnow
 from agentfox.platform.ledger import chain
-from agentfox.platform.ledger.findings import open_finding, raise_finding, resolve_finding
+from agentfox.platform.ledger.findings import open_finding, resolve_finding
 
 STATES = ("active", "quarantined", "killed")
 
@@ -94,13 +96,12 @@ def set_state(
         },
     )
 
-    # A stopped agent is a governance event a human should see, not just a log line.
-    # One finding per (agent, stop kind): stopping it again after a resume reopens the
-    # same finding as a recurrence, which is what an agent that keeps needing to be
-    # stopped is.
+    # Pausing or stopping is a person's own deliberate action: it is recorded in the
+    # audit chain above (and shown as the agent's control history), not raised as an
+    # open issue that would page the very person who just clicked it. Earlier
+    # versions did raise an `agent_stopped` finding per stop; any still open close on
+    # resume, under the name of the person who resumed it.
     if state == "active":
-        # Resuming is the named person's decision that the reason for the stop is dealt
-        # with; the stop findings close under their name, not as an automated clear.
         for stopped in ("quarantined", "killed"):
             finding = open_finding(
                 session,
@@ -116,18 +117,6 @@ def set_state(
                     actor=actor,
                     note=f"agent resumed from {previous}: {reason or 'no reason given'}",
                 )
-    if state in ("quarantined", "killed"):
-        raise_finding(
-            session,
-            type="agent_stopped",
-            severity="critical" if state == "killed" else "high",
-            title=f"Agent '{agent.slug}' {state} by {actor}",
-            subject_type="agent",
-            subject_id=agent.id,
-            evidence={"from": previous, "to": state, "reason": reason, "actor": actor},
-            control_keys=["NOM-RTG-14", "NOM-DSC-02", "NOM-IAM-03"],
-            fingerprint_parts=(state,),
-        )
     session.flush()
     return control
 
@@ -165,3 +154,60 @@ def all_controls(session: Session) -> list[dict[str, Any]]:
             }
         )
     return out
+
+
+#: The audit actions that make up an agent's control history: a person's pause, stop
+#: and resume, and the circuit breaker's own transitions and settings changes.
+_HISTORY_ACTIONS = ("agent.quarantined", "agent.killed", "agent.resumed")
+
+
+def history(session: Session, slug: str, *, limit: int = 20) -> list[dict[str, Any]]:
+    """Who paused, stopped or resumed this agent (and what the breaker did), newest first.
+
+    Read from the audit chain, so it is the same record an auditor verifies.
+    """
+    agent = _agent(session, slug)
+    rows = session.scalars(
+        select(AuditEntry)
+        .where(
+            AuditEntry.subject_type == "agent",
+            AuditEntry.subject_id == agent.id,
+            AuditEntry.action.in_(_HISTORY_ACTIONS) | AuditEntry.action.like("agent.breaker.%"),
+        )
+        .order_by(AuditEntry.seq.desc())
+        .limit(max(1, min(int(limit), 200)))
+    )
+    out: list[dict[str, Any]] = []
+    for e in rows:
+        payload = e.payload_json or {}
+        occurred = e.occurred_at
+        out.append(
+            {
+                "action": e.action,
+                "actor": e.actor_id,
+                "actor_type": e.actor_type,
+                "at": occurred.isoformat() if occurred else None,
+                "from": payload.get("from"),
+                "to": payload.get("to"),
+                "reason": payload.get("reason")
+                or payload.get("note")
+                or payload.get("after")
+                or None,
+            }
+        )
+    return out
+
+
+def control_of(session: Session, slug: str, *, limit: int = 20) -> dict[str, Any]:
+    """One agent's control record, with its history: what the agent page's banner and
+    Controls tab show."""
+    control = get_control(session, slug)
+    return {
+        "agent": slug,
+        "state": control.state if control else "active",
+        "previous_state": control.previous_state if control else None,
+        "reason": control.reason if control else None,
+        "actor": control.actor if control else None,
+        "changed_at": control.changed_at.isoformat() if control and control.changed_at else None,
+        "history": history(session, slug, limit=limit),
+    }

@@ -53,6 +53,28 @@ def test_compile_asks_instead_of_guessing(client):
     assert out["review"] and out["review"][0]["question"]
 
 
+def test_compile_for_an_agent_governs_its_own_tool(client):
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Agent
+
+    with session_scope() as session:
+        session.add(
+            Agent(
+                slug="support-agent",
+                registered=True,
+                status="active",
+                declared_tools=["issue_refund", "lookup_order", "send_email"],
+            )
+        )
+    out = client.post(
+        "/api/business/compile",
+        json={"text": "Refunds over $50 need approval from a manager.", "agent": "support-agent"},
+        headers=ADMIN,
+    ).json()
+    ladder = next(r for r in out["rules"] if r["kind"] == "threshold_ladder")
+    assert ladder["definition"]["tool"] == "issue_refund"
+
+
 def test_a_compiled_ladder_saves_watching_and_can_be_enforced(client):
     compiled = client.post(
         "/api/business/compile", json={"text": LADDER_TEXT}, headers=ADMIN

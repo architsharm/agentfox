@@ -2,16 +2,7 @@
 
 import { useState } from "react";
 import { Act, callJson } from "@/components/kit/Act";
-
-type Result = { replayed: number; blocked: number; held: number; hidden: number; since_days: number };
-
-/** "Would have blocked 3, asked a person about 1 and hidden data in 2 of 140 checks". */
-export function simulationSummary(r: Result): string {
-  if (!r.replayed) return `No traffic in the last ${r.since_days} days to replay. Blocking is allowed now; nothing tells you yet what it will stop.`;
-  const parts = [`blocked ${r.blocked}`, r.held ? `asked a person about ${r.held}` : "", r.hidden ? `hidden data in ${r.hidden}` : ""].filter(Boolean);
-  const last = parts.length > 1 ? ` and ${parts.pop()}` : "";
-  return `Last ${r.since_days} days: would have ${parts.join(", ")}${last} of ${r.replayed} checks.`;
-}
+import { simulationSummary } from "@/lib/product/libraries";
 
 /**
  * Replay the project's recent traffic against its copies of a library, as if they

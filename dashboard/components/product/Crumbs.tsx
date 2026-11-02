@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { WORKSPACE_NAV } from "@/lib/product/nav";
 import { projectInPath } from "@/lib/product/project";
 
@@ -10,6 +10,7 @@ const ROWS = WORKSPACE_NAV.flatMap(({ items }) => items);
 /** Where you are, as a path: "AgentFox / Map", or "AgentFox / Map / marketplace-agent" inside a project. */
 export function Crumbs() {
   const pathname = usePathname() || "/app";
+  const tab = useSearchParams()?.get("tab");
   const project = projectInPath(pathname);
   const row = ROWS.find(([, href, also]) =>
     [href, ...(also || [])].some((h) => {
@@ -17,7 +18,9 @@ export function Crumbs() {
       return pathname === path || pathname.startsWith(`${path}/`);
     }),
   );
-  const page = pathname.startsWith("/app/onboarding") ? "Guardrails" : row?.[0];
+  // Get started shares /app/start with two Settings tabs, but is not a setting.
+  const gettingStarted = pathname === "/app/start" && tab !== "connect" && tab !== "tokens";
+  const page = pathname.startsWith("/app/onboarding") ? "Guardrails" : gettingStarted ? "Get started" : row?.[0];
 
   return (
     <nav className="crumbs" aria-label="Breadcrumb">

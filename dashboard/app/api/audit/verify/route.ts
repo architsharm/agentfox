@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyRedirectWithHandler } from "@/lib/product/proxy";
+import { proxyRedirectWithHandler, detailText } from "@/lib/product/proxy";
 
 /**
  * A full independent re-derivation of the audit-chain hash, on demand — the
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     "/app/reports?tab=audit",
     undefined,
     (res, body) => {
-      if (!res.ok) return { error: body.detail || res.statusText };
+      if (!res.ok) return { error: detailText(body.detail) || res.statusText };
       if (body.valid) {
         return {
           notice: `chain verified — ${body.entries_checked} entr${body.entries_checked === 1 ? "y" : "ies"} (seq ${body.first_seq ?? "—"}–${body.last_seq ?? "—"}), ${body.checkpoints_checked} checkpoint(s), intact`,

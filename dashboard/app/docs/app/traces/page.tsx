@@ -131,7 +131,7 @@ for arguments derived from it rather than relaxing the detector.`}</Output>
         </li>
         <li>
           Feedback changes nothing on its own. It appears in the Feedback log on{" "}
-          <Link href="/docs/app/policies#tuning">Guardrail tuning</Link>, where an open false
+          <Link href="/docs/app/policies#tuning">Detector tuning</Link>, where an open false
           positive is one click (<strong>suppress 30d</strong>) from a suppression scoped to
           that agent and entity.
         </li>
@@ -213,7 +213,7 @@ for arguments derived from it rather than relaxing the detector.`}</Output>
 
       <NextSteps
         items={[
-          { href: "/docs/app/policies#tuning", label: "Guardrail tuning", why: "where feedback lands" },
+          { href: "/docs/app/policies#tuning", label: "Detector tuning", why: "where feedback lands" },
           { href: "/docs/app/findings", label: "Findings", why: "the queue built from these decisions" },
           { href: "/docs/guides/observability", label: "Traces and integrations", why: "OpenTelemetry, Langfuse, LangSmith" },
         ]}

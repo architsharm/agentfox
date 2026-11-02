@@ -333,7 +333,7 @@ AGENTFOX_API_URL=http://127.0.0.1:8080 npm run dev`}</Code>
           </tr>
           <tr>
             <td><Link href="/docs/app/policies">Policies</Link> <code>/app/policies</code></td>
-            <td>Rules and modes, simulation, canary, detector tuning, judgment posture.</td>
+            <td>Applied rules and libraries, simulation, canary. Detector tuning and AI judges are under Settings → Detection.</td>
             <td><code>agentfox policy list</code></td>
           </tr>
           <tr>
@@ -445,7 +445,7 @@ AGENTFOX_API_URL=http://127.0.0.1:8080 npm run dev`}</Code>
           elsewhere, and the same key closes it; so does <code>Esc</code>. Arrow keys move,
           Enter opens. It matches page names and their group, including entries that are tabs
           rather than sidebar items: Connect GitHub, Connect a hosted API, API tokens,
-          Guardrail tuning, Judgment posture, Egress, Escalation, Board view, OWASP LLM Top 10,
+          Detector tuning, AI judges, Egress, Escalation, Board view, OWASP LLM Top 10,
           OWASP Agentic, MITRE ATLAS and Glossary. Paste a trace id (<code>trc_…</code>) or a
           finding id (<code>fnd_…</code>) and the first result jumps straight to it. It does
           not search the contents of records.
@@ -456,8 +456,8 @@ AGENTFOX_API_URL=http://127.0.0.1:8080 npm run dev`}</Code>
           and points at the board snapshot for what it does not cover.
         </li>
         <li>
-          <strong>Account menu</strong>: signed-in email, workspace, role, and links to
-          Connect, API tokens, the public site, and Sign out.
+          <strong>Account menu</strong>: signed-in email, workspace, role, and links to the
+          public site and Sign out. Connections and API keys are Settings tabs.
         </li>
       </ul>
 

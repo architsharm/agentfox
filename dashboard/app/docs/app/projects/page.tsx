@@ -100,10 +100,10 @@ export default function Page() {
       </p>
 
       <h2 id="features">Features</h2>
-      <InTheApp path="/app/features">Features</InTheApp>
+      <InTheApp path="/app/settings?tab=detection">Settings → Detection → Protection levels</InTheApp>
       <p>
         The switches a developer reaches for, set once for every project on{" "}
-        <code>/app/features</code> and changed per project on its own Features view.
+        <code>/app/settings?tab=detection</code> and changed per project on its own Features view.
       </p>
       <ul>
         <li>

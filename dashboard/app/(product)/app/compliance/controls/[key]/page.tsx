@@ -8,6 +8,7 @@ import { Card, Empty, Header, Meta, ModePill, Pill, SeverityPill, ago } from "@/
 import { ApiDown, NotFound } from "@/components/ui";
 import { OUTCOMES, ReviewBy, ReviewPill, StatusPill, type Review } from "@/ee/compliance";
 import { ruleTitle } from "@/lib/product/vocab";
+import { NoticeToast } from "@/components/product/NoticeToast";
 
 export const metadata: Metadata = appPageMetadata("Control");
 
@@ -69,8 +70,7 @@ export default async function ControlPage({
         }
       />
 
-      {review_error && <div className="error">{review_error}</div>}
-      {review_notice && <div className="note-panel">{review_notice}</div>}
+      <NoticeToast notice={review_notice} error={review_error} />
 
       <p className="sub">{c.objective}</p>
 

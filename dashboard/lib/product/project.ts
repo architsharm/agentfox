@@ -36,6 +36,7 @@ export const PROJECT_VIEWS = [
   { key: "activity", label: "Activity" },
   { key: "access", label: "Access" },
   { key: "features", label: "Features" },
+  { key: "controls", label: "Controls" },
   { key: "settings", label: "Settings" },
 ] as const;
 
@@ -55,6 +56,8 @@ const VIEW_FOR_TAB: Record<string, ProjectView> = {
   quality: "activity",
   access: "access",
   features: "features",
+  controls: "controls",
+  breaker: "controls",
   settings: "settings",
   registration: "settings",
 };

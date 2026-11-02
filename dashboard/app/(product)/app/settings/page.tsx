@@ -8,23 +8,41 @@ import { EnterpriseOnly } from "@/components/product/EnterpriseOnly";
 import { Retention } from "@/components/product/Retention";
 import { Card, Empty, Header, Pill, Tabs, ago } from "@/components/kit";
 import { Act } from "@/components/kit/Act";
+import { NoticeToast } from "@/components/product/NoticeToast";
 import { AreaTabs, SETTINGS_TABS } from "@/components/product/AreaTabs";
 import { SlackForm } from "@/ee/SlackForm";
 import { CodeSnippet } from "@/components/product/start/CodeSnippet";
 import { publicApiBase } from "@/lib/env";
+import { FeaturesEditor } from "@/components/product/features/FeaturesEditor";
+import {
+  AdvancedJudges,
+  AdvancedNav,
+  AdvancedPacks,
+  AdvancedTuning,
+  type AdvancedSection,
+} from "@/components/product/policies/advanced";
 
 export const metadata: Metadata = appPageMetadata("Settings");
 export const dynamic = "force-dynamic";
 
 /**
  * Settings is one sidebar row over several pages that share a tab bar. Its own
- * URL holds the Alerts tab; without a tab it lands on the first one, Connections.
+ * URL holds the Alerts, Detection and Retention tabs; without a tab it lands on the
+ * first one, Connections.
  */
-export default async function Settings({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  const { tab } = await searchParams;
+export default async function Settings({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string; sec?: string; agent?: string; review_notice?: string; review_error?: string }>;
+}) {
+  const { tab, sec, agent, review_notice, review_error } = await searchParams;
   // Checks was a Settings tab that only linked to Policies; it lives there now.
   if (tab === "checks") redirect("/app/policies?tab=checks");
-  if (tab === "retention") return <RetentionTab />;
+  // Retention and Detection hold plain form posts (retention, legal holds, purge,
+  // judges, suppressions, feedback) that redirect back here with their outcome.
+  const toast = <NoticeToast notice={review_notice} error={review_error} />;
+  if (tab === "retention") return <>{toast}<RetentionTab /></>;
+  if (tab === "detection") return <>{toast}<DetectionTab sec={sec} agent={agent} /></>;
   if (tab !== "alerts") redirect("/app/start?tab=connect");
   if (!(await hasFeature("monitoring"))) {
     return (
@@ -109,4 +127,38 @@ async function RetentionTab() {
       <Retention retention={retention} />
     </>
   );
+}
+
+const DETECTION_SECTIONS: AdvancedSection[] = ["levels", "packs", "tuning", "judges"];
+
+/**
+ * How the workspace detects things, in one place: protection levels for every
+ * project, the installed packs, detector tuning and suppressions, and which AI
+ * judges may decide and what data may leave. Each section is the component it
+ * was before it moved here (workspace Features, and Policies' hidden tabs).
+ */
+async function DetectionTab({ sec, agent }: { sec?: string; agent?: string }) {
+  const section = DETECTION_SECTIONS.find((s) => s === sec) ?? "levels";
+  return (
+    <>
+      <Header title="Settings" />
+      <AreaTabs tabs={SETTINGS_TABS} active="detection" />
+      <AdvancedNav section={section} agent={agent} />
+      {section === "levels" && <ProtectionLevels />}
+      {section === "packs" && <AdvancedPacks agent={agent} />}
+      {section === "tuning" && <AdvancedTuning agent={agent} />}
+      {section === "judges" && <AdvancedJudges />}
+    </>
+  );
+}
+
+/** Each protection's level for every project, and whether projects may lower it. */
+async function ProtectionLevels() {
+  let features: any;
+  try {
+    features = await api("/api/features");
+  } catch (e: any) {
+    return <ApiDown {...apiErrorProps(e)} />;
+  }
+  return <FeaturesEditor initial={features} />;
 }

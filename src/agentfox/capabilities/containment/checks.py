@@ -111,7 +111,14 @@ def custom_sequence_check(ctx: CheckContext) -> dict[str, Any]:
     rules = sequence_rules(ctx.session, agent_slug)
     if not rules:
         return {}
-    earlier = {"trace": _earlier_tools(ctx, "trace"), "session": _earlier_tools(ctx, "session")}
+    # What the caller says the run already called counts too: a caller that keeps no
+    # session with us still passes `prior_tools`. It can only add to what was
+    # recorded here, so a caller omitting it does not hide a recorded call.
+    claimed = list(ctx.prior_tools or [])
+    earlier = {
+        "trace": _earlier_tools(ctx, "trace") + claimed,
+        "session": _earlier_tools(ctx, "session") + claimed,
+    }
     risks = []
     for key, seq in rules:
         if not fnmatch.fnmatch(ctx.tool_key, seq.then):

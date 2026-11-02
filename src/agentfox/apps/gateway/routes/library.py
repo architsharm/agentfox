@@ -7,6 +7,7 @@ behind the screen a customer uses to add policies:
 
 * ``GET  /api/library/packs``                — what ships, and whether it is installed
 * ``POST /api/library/packs/{id}/install``   — install a pack, watching (observe)
+* ``GET  /api/library/packs/{id}/contents``  — its rules, and its last simulation
 * ``GET  /api/business/rules``               — the business rules in force
 * ``POST /api/business/compile``             — compile written text; saves nothing
 * ``POST /api/business/rules``               — save one compiled rule, watching
@@ -152,6 +153,103 @@ def install_pack(
     return {"pack": pack_id, "added": added}
 
 
+#: The order a ladder's outcomes are named by: its strongest band decides.
+_STRONGEST = ("block", "escalate", "verify", "redact", "allow")
+
+BASIC_DESCRIPTION = (
+    "The default set: prompt attacks and jailbreaks in what users send, and personal data "
+    "and secrets in replies. Nothing on tools. Watches first, then blocks the attacks and "
+    "hides the data."
+)
+
+
+def _ladder_row(ladder: Ladder, business: dict[str, BusinessRule]) -> dict[str, Any]:
+    outcomes = {b.outcome for b in ladder.bands}
+    saved = business.get(ladder.key)
+    bands = []
+    for band in ladder.bands:
+        edge = f"up to {band.upto:g} {ladder.unit}" if band.upto is not None else "above that"
+        bands.append(f"{edge}: {band.outcome}")
+    return {
+        "id": ladder.key,
+        "description": ladder.description or ladder.name,
+        "surfaces": [ladder.surface],
+        "effect": next((o for o in _STRONGEST if o in outcomes), "allow"),
+        "severity": None,
+        "tool": ladder.tool,
+        "detail": " · ".join(bands),
+        "installed": saved is not None,
+        "mode": saved.mode if saved is not None else None,
+    }
+
+
+@router.get("/api/library/packs/{pack_id:path}/contents")
+def pack_contents(
+    pack_id: str,
+    agents: str = "",
+    session: Session = Depends(db),
+    _user: User = Depends(current_user),
+) -> dict[str, Any]:
+    """What a library holds, rule by rule, and what its last simulation on these agents
+    (comma-separated) found: the library drawer and the library's own page.
+
+    ``pack_id`` is a library (``basic`` is the basic guardrails) or the key of a policy
+    one ships, so a link to a library's policy that was never applied lands on the
+    library. ``scoped`` is false for a library of business rules only (ladders): those
+    apply to every agent, not one project's."""
+    from agentfox.capabilities.onboarding.service import basic_document
+    from agentfox.capabilities.protection.libraries import BASIC, BASIC_ID, last_simulation
+
+    slugs = [a for a in agents.split(",") if a]
+    if pack_id == BASIC_ID:
+        doc = basic_document("agent")
+        return {
+            "id": BASIC_ID,
+            "title": BASIC,
+            "description": BASIC_DESCRIPTION,
+            "scoped": True,
+            "rules": [_policy_rule(doc, r) for r in doc.rules],
+            "simulation": last_simulation(session, BASIC_ID, slugs),
+        }
+    packs = load_packs()
+    pack = next((p for p in packs if p.id == pack_id), None) or next(
+        (p for p in packs if any(d.key == pack_id for d in _pack_docs(p))), None
+    )
+    if pack is None:
+        raise HTTPException(404, f"no library '{pack_id}'")
+    docs = _pack_docs(pack)
+    ladders = _pack_ladders(pack)
+    if not docs and not ladders:
+        raise HTTPException(404, f"no library '{pack_id}'")
+    business = {
+        r.key: r
+        for r in session.scalars(
+            select(BusinessRule).where(BusinessRule.key.in_([lad.key for lad in ladders]))
+        )
+    }
+    return {
+        "id": pack.id,
+        "title": pack.manifest.title,
+        "description": (pack.manifest.description or "").strip(),
+        "scoped": bool(docs),
+        "rules": [_policy_rule(d, r) for d in docs for r in d.rules]
+        + [_ladder_row(lad, business) for lad in ladders],
+        "simulation": last_simulation(session, pack.id, slugs) if docs else None,
+    }
+
+
+def _policy_rule(doc: PolicyDocument, rule: Any) -> dict[str, Any]:
+    return {
+        "id": rule.id,
+        "description": rule.description,
+        "surfaces": list(rule.when.surface or []) if rule.when else [],
+        "effect": rule.effect,
+        "severity": rule.severity,
+        "tool": getattr(rule.when, "tool", None) if rule.when else None,
+        "policy": doc.key,
+    }
+
+
 def _rule_json(rule: BusinessRule) -> dict[str, Any]:
     definition = dict(rule.definition_json or {})
     return {
@@ -179,6 +277,9 @@ def list_business_rules(
 
 class CompileIn(BaseModel):
     text: str = Field(min_length=1, max_length=20000)
+    #: The agent the rule is written for: its declared tools are what a rule's tool
+    #: resolves to ("refund" -> its `issue_refund`).
+    agent: str | None = None
 
 
 def _field_warnings(session: Session, compiled: dict[str, Any]) -> dict[str, Any]:
@@ -210,7 +311,13 @@ def compile_text(
     payload: CompileIn, session: Session = Depends(db), _user: User = Depends(current_user)
 ) -> dict[str, Any]:
     """Compile written policy into rules and questions. Nothing is saved."""
-    return _field_warnings(session, compile_document(payload.text, key_prefix="custom").to_json())
+    agent = (
+        session.scalar(select(Agent).where(Agent.slug == payload.agent)) if payload.agent else None
+    )
+    tools = list(agent.declared_tools or []) if agent else None
+    return _field_warnings(
+        session, compile_document(payload.text, key_prefix="custom", tools=tools).to_json()
+    )
 
 
 class BusinessRuleIn(BaseModel):

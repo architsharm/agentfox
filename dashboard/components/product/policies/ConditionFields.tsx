@@ -14,6 +14,8 @@ export type Condition = {
   measure: string;
   operator: string;
   value: string;
+  /** Not edited here; carried from a saved rule so a re-save keeps it. */
+  case_sensitive?: boolean;
 };
 
 export type ConditionSpec = {
@@ -23,6 +25,7 @@ export type ConditionSpec = {
   measure?: string;
   operator: string;
   value?: number | string | (number | string)[] | null;
+  case_sensitive?: boolean;
 };
 
 export const WHERE: { key: string; label: string }[] = [
@@ -71,6 +74,7 @@ export function conditionFrom(spec?: ConditionSpec | null): Condition {
     measure: spec.measure || "value",
     operator: spec.operator || "gt",
     value: Array.isArray(v) ? v.join(", ") : v === null || v === undefined ? "" : String(v),
+    ...(spec.case_sensitive !== undefined ? { case_sensitive: spec.case_sensitive } : {}),
   };
 }
 
@@ -91,6 +95,7 @@ export function conditionSpec(c: Condition): ConditionSpec {
     measure: c.measure,
     operator: c.operator,
     value,
+    ...(c.case_sensitive !== undefined ? { case_sensitive: c.case_sensitive } : {}),
   };
 }
 

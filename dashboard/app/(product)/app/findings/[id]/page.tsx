@@ -7,6 +7,7 @@ import { Card, Header, Meta, Pill, SeverityPill, ago, num } from "@/components/k
 import { FindingEvidence } from "@/components/product/FindingEvidence";
 import { FindingActions, type Remedy } from "@/components/product/FindingActions";
 import { sentence } from "@/lib/product/vocab";
+import { NoticeToast } from "@/components/product/NoticeToast";
 
 export const metadata: Metadata = appPageMetadata("Issue");
 export const dynamic = "force-dynamic";
@@ -77,7 +78,7 @@ export default async function IssueDetail({
         ]}
       />
       <div style={{ height: 14 }} />
-      {review_error && <div className="error">{review_error}</div>}
+      <NoticeToast error={review_error} />
 
       {remedies.length > 0 && (
         <Card title={f.status === "open" ? "Fix" : "Related"} hint={f.status === "open" && hasActions ? "Each action is recorded. The issue closes itself once the problem is gone." : undefined}>

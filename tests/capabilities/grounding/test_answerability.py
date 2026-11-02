@@ -502,6 +502,30 @@ def test_the_guard_api_abstains_too(client):
     assert answerable["verdict"] != "abstain"
 
 
+def test_an_abstained_guard_call_names_a_decision_a_rule_test_can_keep(client):
+    # The dashboard saves a rule's test by running the text here and keeping the
+    # decision it names; an abstention used to name none, and the save was a 422.
+    client.put(
+        "/api/answerability/boundary",
+        json={
+            "agent": "support-triage",
+            "systems_of_record": ["order-db"],
+            "answerable_types": ["fact"],
+            "mode": "enforce",
+        },
+    ).raise_for_status()
+    body = client.post(
+        "/v1/guard/input",
+        json={"agent": "support-triage", "content": "what will our revenue be next year?"},
+    ).json()
+    assert body["verdict"] == "abstain" and body["decision_id"]
+    r = client.post(
+        "/api/rules/safety.harm/examples",
+        json={"decision_id": body["decision_id"], "fires": False},
+    )
+    assert r.status_code == 201, r.text
+
+
 def test_a_blocked_message_is_blocked_not_abstained(client):
     """The boundary ran before the message's own checks, so with a judge on a prompt
     attack could be "abstained" instead of stopped. A message its checks stop is

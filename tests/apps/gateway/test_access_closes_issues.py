@@ -51,3 +51,26 @@ def test_a_call_held_for_its_sign_off_is_not_an_issue(client):
     ).json()
     assert out["verdict"] == "escalate"
     assert [f for f in _containment() if f.status == "open"] == []
+
+
+def test_a_call_held_for_its_sign_off_is_held_while_every_policy_watches(client):
+    """ "Ask a person" is the grant's own condition, like a missing grant: it holds the
+    call from the first one, not only once some content policy enforces. Observed: with
+    every policy watching the call ran (verdict allow) and still filed an approval."""
+    from agentfox.platform.policy.store import active_layers, set_mode
+
+    with session_scope() as s:
+        for layer in active_layers(s):
+            set_mode(s, layer.document.key, "observe")
+    client.post(
+        f"/api/agents/{AGENT}/access",
+        json={"tool_key": TOOL, "requires_approval": True},
+        headers=ADMIN,
+    ).raise_for_status()
+    out = client.post(
+        "/v1/guard/tool_call", json={"agent": AGENT, "tool": TOOL, "arguments": {}}
+    ).json()
+    assert out["verdict"] == "escalate", out
+    assert out["approval_id"], "a held call waits on a person"
+    ids = {"capability.requires_approval", "capability.approval_required"}
+    assert ids & {r["rule_id"] for r in out["rules_fired"]}

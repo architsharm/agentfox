@@ -4,6 +4,7 @@ import Link from "next/link";
 import { api, safeApi, apiErrorProps } from "@/lib/product/api";
 import { ApiDown, Panel, ts } from "@/components/ui";
 import { Header } from "@/components/kit";
+import { NoticeToast } from "@/components/product/NoticeToast";
 
 /**
  * Behind the sign-in wall: `noindex`, plus a tab title that is not the fourth
@@ -42,7 +43,7 @@ export default async function SuiteDetail({
   return (
     <>
       <Header back={{ href: "/app/test?tab=suites", label: "Test suites" }} title={suite.name || suite.key} hint={suite.description || undefined} />
-      {review_error && <div className="error">{review_error}</div>}
+      <NoticeToast error={review_error} />
 
       <h2>Cases ({suite.cases.length})</h2>
       {suite.cases.length === 0 ? (

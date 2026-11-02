@@ -46,7 +46,7 @@ describe("proxy auth/mutation boundary", () => {
       const res = await proxyReviewAction(req(), "/api/agents/x/approve", "/app/projects");
 
       expect(fetchMock).not.toHaveBeenCalled();
-      expect(res.status).toBe(307); // NextResponse.redirect default
+      expect(res.status).toBe(303); // NextResponse.redirect default
       const location = new URL(res.headers.get("location")!);
       expect(location.pathname).toBe("/app/projects");
       expect(location.searchParams.get("review_error")).toBe("not signed in");
@@ -116,6 +116,37 @@ describe("proxy auth/mutation boundary", () => {
     });
   });
 
+  describe("a script calling a form route", () => {
+    it("gets the gateway's failure status, not a redirect to a page that loads fine", async () => {
+      withToken("real-session-token");
+      fetchMock.mockResolvedValue(new Response(JSON.stringify({ detail: "no such draft" }), { status: 404 }));
+      const r = new NextRequest("http://localhost:3000/api/agents/x/approve", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+      });
+
+      const res = await proxyReviewAction(r, "/api/agents/x/approve", "/app/projects");
+
+      expect(res.status).toBe(404);
+      expect(res.headers.get("location")).toBeNull();
+      expect((await res.json()).detail).toBe("no such draft");
+    });
+
+    it("a browser form post still redirects", async () => {
+      withToken("real-session-token");
+      fetchMock.mockResolvedValue(new Response(JSON.stringify({ detail: "no such draft" }), { status: 404 }));
+      const r = new NextRequest("http://localhost:3000/api/agents/x/approve", {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded", accept: "text/html,application/xhtml+xml,*/*;q=0.8" },
+      });
+
+      const res = await proxyReviewAction(r, "/api/agents/x/approve", "/app/projects");
+
+      expect(res.status).toBe(303);
+      expect(new URL(res.headers.get("location")!).searchParams.get("review_error")).toBe("no such draft");
+    });
+  });
+
   describe("JSON-shaped calls (proxyJson, used by interactive client components)", () => {
     it("an unauthenticated caller gets a 401 body and the gateway is never called", async () => {
       withToken(undefined);
@@ -142,5 +173,16 @@ describe("proxy auth/mutation boundary", () => {
       const [, init] = fetchMock.mock.calls[0];
       expect(JSON.parse(init.body)).toEqual({ body: "key: x" });
     });
+  });
+});
+
+describe("detailText", () => {
+  it("turns FastAPI validation errors into one line", async () => {
+    const { detailText } = await import("./proxy");
+    expect(detailText([{ loc: ["body", "name"], msg: "Field required" }, { loc: ["body", "key"], msg: "too short" }])).toBe(
+      "name: Field required; key: too short",
+    );
+    expect(detailText("plain")).toBe("plain");
+    expect(detailText(undefined)).toBe("");
   });
 });

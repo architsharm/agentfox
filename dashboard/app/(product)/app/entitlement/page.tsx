@@ -6,6 +6,7 @@ import { ApiDown, Empty, InfoTip, Panel, Stat } from "@/components/ui";
 import { AreaTabs, SETTINGS_TABS } from "@/components/product/AreaTabs";
 import { Header, Tabs } from "@/components/kit";
 import { Modal } from "@/components/product/Modal";
+import { NoticeToast } from "@/components/product/NoticeToast";
 
 /**
  * Behind the sign-in wall: `noindex`, plus a tab title that is not the fourth
@@ -44,7 +45,14 @@ const inputStyle = {
  * reach than its callers are entitled to. It is meaningful before any entitlement
  * model exists, which is the argument for looking at it first.
  */
-export default async function Entitlement() {
+export default async function Entitlement({
+  searchParams,
+}: {
+  searchParams: Promise<{ review_notice?: string; review_error?: string }>;
+}) {
+  // The principal and grant forms post to /api/entitlement/* and redirect back here
+  // with their outcome (a 422 for a missing resource, say) in these params.
+  const sp = await searchParams;
   let report: any, principals: any, grants: any;
   try {
     [report, principals, grants] = await Promise.all([
@@ -66,6 +74,7 @@ export default async function Entitlement() {
 
   return (
     <>
+      <NoticeToast notice={sp.review_notice} error={sp.review_error} />
       <Header title="Settings" />
       <AreaTabs tabs={SETTINGS_TABS} active="entitlement" />
 

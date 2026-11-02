@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   if (!id) {
     const target = new URL("/app/approvals?tab=handoffs", requestOrigin(req));
     target.searchParams.set("review_error", "missing hand-off id");
-    return NextResponse.redirect(target);
+    return NextResponse.redirect(target, 303);
   }
 
   return proxyReviewAction(

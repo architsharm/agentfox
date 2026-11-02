@@ -1181,7 +1181,12 @@ def guard_content(
     """
     from agentfox.core.config import get_settings
     from agentfox.core.models import Trace
-    from agentfox.platform.ledger.trace import commit_before_checks, end_trace, start_trace
+    from agentfox.platform.ledger.trace import (
+        commit_before_checks,
+        end_trace,
+        note_refusal,
+        start_trace,
+    )
     from agentfox.platform.registry.service import slugify
 
     surface = "output" if request.url.path.endswith("/output") else payload.surface
@@ -1267,6 +1272,7 @@ def guard_content(
             trace=trace,
             approval_id=payload.approval_id,
         )
+        note_refusal(session, trace, result, surface=surface)
         if surface == "input" and result.get("verdict") not in ("block", "escalate"):
             # What the agent may answer, as on the model proxy. An app that calls the
             # model itself and checks here would otherwise never abstain: the
@@ -1278,6 +1284,9 @@ def guard_content(
                 trace.verdict = abstain.verdict
                 result = {
                     **abstain.to_json(),
+                    # The content check's decision stays the one this call names: it
+                    # holds the detector runs a rule's saved example replays.
+                    "decision_id": result.get("decision_id") or abstain.decision_id,
                     # The abstention is what the user should hear.
                     "user_message": abstain.content or abstain.reason,
                 }
@@ -1314,7 +1323,7 @@ def guard_tool_call(
     count as untainted: taint rules cannot fire.
     """
     from agentfox.capabilities.detection import TaintTracker
-    from agentfox.platform.ledger.trace import commit_before_checks, start_trace
+    from agentfox.platform.ledger.trace import commit_before_checks, note_refusal, start_trace
     from agentfox.platform.registry.service import slugify
 
     enforcer = Enforcer(session)
@@ -1347,7 +1356,9 @@ def guard_tool_call(
         approval_id=payload.approval_id,
         principal=_principal_for(session, payload.agent, payload.principal),
     )
-    return with_verdict_aliases(result.to_json())
+    body = result.to_json()
+    note_refusal(session, trace, body, surface="tool_args", tool=payload.tool)
+    return with_verdict_aliases(body)
 
 
 class GuardMemoryWriteRequest(BaseModel):

@@ -45,6 +45,18 @@ def test_a_project_can_be_stricter_without_asking(client):
     assert _by_key(_agent(client, OTHER).json(), "protections")["attacks"]["project"] is None
 
 
+def test_a_project_can_go_back_down_to_the_workspace_level(client):
+    """Prompt attacks holds two rules tuned apart (indirect more sensitive than
+    direct). Picking the workspace's level after raising it used to set both to one
+    threshold, which read as lowering the indirect rule and was refused (409)."""
+    ws = _by_key(_agent(client).json(), "protections")["attacks"]["workspace"]
+    assert _set(client, "attacks", agent=AGENT, level="high").status_code == 200
+    r = _set(client, "attacks", agent=AGENT, level=ws)
+    assert r.status_code == 200, r.text
+    mine = _by_key(r.json(), "protections")["attacks"]
+    assert mine["project"] is None and mine["effective"] == ws
+
+
 def test_lowering_needs_the_workspace_to_allow_it(client):
     ws = _by_key(client.get("/api/features", headers=ADMIN).json(), "protections")["harmful"]
     assert ws["workspace"] != "off" and not ws["open_to_projects"]

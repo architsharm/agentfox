@@ -62,10 +62,48 @@ export function sensitivityOf(minScore: number | null): string | null {
   return SENSITIVITY.reduce((a, b) => (Math.abs(b.minScore - minScore) < Math.abs(a.minScore - minScore) ? b : a)).key;
 }
 
+/**
+ * A policy, library or rule's mode, in one pair of words everywhere in the UI:
+ * "Watching" (records what it would do, stops nothing) and "Blocking" (acts).
+ * The API and CLI keep `observe` / `enforce`; only the words a person reads change.
+ */
+export const MODE_WORDS = { watching: "Watching", blocking: "Blocking" } as const;
+
+/** Mode words keyed by every value the API sends for a mode. */
 export const MODES: Record<string, string> = {
-  observe: "Watching",
-  enforce: "Enforcing",
+  observe: MODE_WORDS.watching,
+  observing: MODE_WORDS.watching,
+  watch: MODE_WORDS.watching,
+  watching: MODE_WORDS.watching,
+  enforce: MODE_WORDS.blocking,
+  enforcing: MODE_WORDS.blocking,
+  enforced: MODE_WORDS.blocking,
+  blocking: MODE_WORDS.blocking,
+  mixed: "Mixed",
 };
+
+/** "observe" / "enforce" and their variants, as the API spells the two modes. */
+export function modeKey(mode?: string | null): "observe" | "enforce" | null {
+  const label = MODES[String(mode || "").toLowerCase()];
+  return label === MODE_WORDS.blocking ? "enforce" : label === MODE_WORDS.watching ? "observe" : null;
+}
+
+/** The mode as a pill or column reads it: "Watching", "Blocking", or "Off" with none. */
+export function modeLabel(mode?: string | null): string {
+  if (!mode) return "Off";
+  return MODES[String(mode).toLowerCase()] || mode;
+}
+
+/** Buttons that switch a mode, and the short suffix a saved state carries ("Saved · watching"). */
+export const MODE_ACTIONS = {
+  toBlocking: "Start blocking",
+  toWatching: "Switch to watching",
+} as const;
+
+/** Lower-case mode word, for running text: "Added · watching", "Saved · blocking". */
+export function modeWord(mode?: string | null): string {
+  return modeLabel(mode).toLowerCase();
+}
 
 export const IMPACT: Record<string, string> = {
   read: "Read only",
@@ -117,6 +155,10 @@ export const CATEGORIES: Category[] = [
 ];
 
 const RULE_TITLES: Record<string, string> = {
+  // Refusals before any check: the agent's kill switch and circuit breaker.
+  "agent.quarantined": "Agent paused",
+  "agent.killed": "Agent stopped",
+  "agent.circuit_open": "Circuit breaker open",
   "injection.direct": "Jailbreaks & prompt injection",
   "injection.indirect": "Injection in documents or tool results",
   "injection.system_prompt_leak": "System prompt extraction",

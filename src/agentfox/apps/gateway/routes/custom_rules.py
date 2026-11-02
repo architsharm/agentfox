@@ -60,6 +60,17 @@ class CustomRuleIn(CustomRuleSpec):
     severity: Literal["low", "medium", "high", "critical"] = "medium"
 
 
+def _require_runnable(compiled) -> None:
+    """Refuse a validator rule whose check is not installed on this server."""
+    if compiled is not None and compiled.validator is not None:
+        if not compiled.validator.available():
+            raise HTTPException(
+                400,
+                f"'{compiled.validator.name}' cannot run here: "
+                f"{compiled.validator.unavailable_reason()}",
+            )
+
+
 @router.post("/custom-rules", status_code=201)
 def post_custom_rule(
     payload: CustomRuleIn, session: Session = Depends(db), user: User = Depends(require("policy"))
@@ -67,6 +78,8 @@ def post_custom_rule(
     spec = CustomRuleSpec(
         **payload.model_dump(exclude={"effect", "message", "on_block", "severity"})
     )
+    # A check that cannot run here would be saved as enforcing and pass everything.
+    _require_runnable(compile_rule(spec))
     # A model reporting under CUSTOM owns the rule `custom.<key>` (custom_models.py).
     if get_model(session, spec.key) is not None:
         raise HTTPException(409, f"one of your models is already called '{spec.key}'")
@@ -119,12 +132,7 @@ def try_custom_rule(payload: TryIn, _user: User = Depends(current_user)) -> dict
         else None
     )
     detector = CustomValidatorDetector() if compiled.validator is not None else CustomListDetector()
-    if compiled.validator is not None and not compiled.validator.available():
-        raise HTTPException(
-            400,
-            f"'{compiled.validator.name}' cannot run here: "
-            f"{compiled.validator.unavailable_reason()}",
-        )
+    _require_runnable(compiled)
     result = detector.detect(
         payload.text,
         DetectionContext(
@@ -132,6 +140,9 @@ def try_custom_rule(payload: TryIn, _user: User = Depends(current_user)) -> dict
             if payload.surface in compiled.surfaces
             else compiled.surfaces[0],
             tool_key=tool,
+            # A rule scoped to agents is tried as it would run for the first of them;
+            # with no agent it would never apply, and every try would say "no match".
+            agent_slug=compiled.agents[0] if compiled.agents else None,
             extra={"custom_rules": [compiled]},
         ),
     )

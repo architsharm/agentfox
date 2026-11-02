@@ -161,6 +161,38 @@ def test_a_sequence_rule_holds_the_second_step_only(client):
     assert "custom.no-leak" in {f["rule_id"] for f in outside["rules_fired"]}
 
 
+def test_a_sequence_rule_reads_the_callers_prior_tools_without_a_session(client):
+    client.post(
+        "/api/custom-rules",
+        json={
+            "key": "no-refund-after-lookup",
+            "name": "No refund straight after a lookup",
+            "kind": "sequence",
+            "sequence": {"after": "lookup_order", "then": "issue_refund"},
+            "effect": "escalate",
+        },
+        headers=ADMIN,
+    )
+
+    def call(prior):
+        return client.post(
+            "/v1/guard/tool_call",
+            json={
+                "agent": "ops-bot",
+                "tool": "issue_refund",
+                "arguments": {"order": "o1"},
+                "provenance": {"order": "user"},
+                "prior_tools": prior,
+                "intent": "help a customer",
+            },
+        ).json()
+
+    fired = {f["rule_id"] for f in call(["lookup_order"])["rules_fired"]}
+    assert "custom.no-refund-after-lookup" in fired
+    fired = {f["rule_id"] for f in call(["send_email"])["rules_fired"]}
+    assert "custom.no-refund-after-lookup" not in fired
+
+
 # --- task alignment -------------------------------------------------------------
 
 

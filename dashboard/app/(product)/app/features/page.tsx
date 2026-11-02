@@ -1,34 +1,14 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { appPageMetadata } from "@/lib/site";
-import { api, apiErrorProps } from "@/lib/product/api";
-import { ApiDown } from "@/components/ui";
-import { Header } from "@/components/kit";
-import { FeaturesEditor } from "@/components/product/features/FeaturesEditor";
+import { sectionHref } from "@/components/product/policies/advanced";
 
-export const metadata: Metadata = appPageMetadata("Features", "What every project gets, unless it changes it.");
-export const dynamic = "force-dynamic";
+export const metadata: Metadata = appPageMetadata("Protection levels");
 
 /**
- * The workspace's switches: each protection's level, whether projects may lower it,
- * and which checks run. Every project starts from these and changes them on its own
- * Features view.
+ * Workspace Features (each protection's level for every project) is the first
+ * section of Settings → Detection now. This keeps old links and bookmarks working.
  */
-export default async function WorkspaceFeatures() {
-  let features: any;
-  try {
-    features = await api("/api/features");
-  } catch (e: any) {
-    return (
-      <>
-        <Header title="Features" />
-        <ApiDown {...apiErrorProps(e)} />
-      </>
-    );
-  }
-  return (
-    <>
-      <Header title="Features" hint="What every project gets. A project changes these for itself on its own Features view." />
-      <FeaturesEditor initial={features} />
-    </>
-  );
+export default function WorkspaceFeaturesRedirect() {
+  redirect(sectionHref("levels"));
 }

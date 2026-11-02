@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { detailText } from "@/lib/product/errors";
 import { useState, type ReactNode } from "react";
 
 /**
@@ -15,8 +16,7 @@ export async function callJson(url: string, method: string, body?: unknown): Pro
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const detail = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail || res.statusText);
-    throw new Error(detail);
+    throw new Error(detailText(data.detail) || res.statusText);
   }
   return data;
 }

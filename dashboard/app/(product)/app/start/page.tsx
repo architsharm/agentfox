@@ -253,6 +253,8 @@ async function ConnectTab({
   const github = Number(counts.github_connections || 0) > 0;
   const traffic = Number(counts.traces || 0) > 0;
   const hostedScans = Number(counts.hosted_api_scans || 0);
+  // Without an OAuth app, "Connect GitHub" can only fail; say so instead of offering it.
+  const githubReady = Boolean(process.env.GITHUB_CLIENT_ID);
 
   return (
     <>
@@ -277,18 +279,26 @@ async function ConnectTab({
         <ConnCard
           id="github"
           title="GitHub"
-          status={github ? <Pill tone="ok">Connected</Pill> : <Pill tone="outline">Not connected</Pill>}
+          status={
+            github ? (
+              <Pill tone="ok">Connected</Pill>
+            ) : githubReady ? (
+              <Pill tone="outline">Not connected</Pill>
+            ) : (
+              <Pill tone="outline">Not configured on this server</Pill>
+            )
+          }
           text="Find agents in your repositories. Code is read, never run."
           action={
             github ? (
               <a href="#repos" className="k-btn-primary">
                 Choose a repository
               </a>
-            ) : (
+            ) : githubReady ? (
               <a href="/api/auth/github/login" className="k-btn-primary">
                 Connect GitHub
               </a>
-            )
+            ) : undefined
           }
         />
 

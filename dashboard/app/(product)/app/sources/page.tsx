@@ -10,6 +10,7 @@ import { Modal } from "@/components/product/Modal";
 import { SourceAddFlow } from "@/components/product/SourceAddFlow";
 import { SourceRowActions } from "@/components/product/SourceRowActions";
 import { TIER_TONE } from "@/lib/product/sourceOptions";
+import { NoticeToast } from "@/components/product/NoticeToast";
 
 /**
  * Behind the sign-in wall: `noindex`, plus a tab title that is not the fourth
@@ -101,8 +102,7 @@ export default async function Sources({
       <Header title="Settings" actions={sources.sources.length > 0 ? addSourceModal : undefined} />
       <AreaTabs tabs={SETTINGS_TABS} active="sources" />
 
-      {review_error && <div className="error">{review_error}</div>}
-      {review_notice && <div className="note-panel">{review_notice}</div>}
+      <NoticeToast notice={review_notice} error={review_error} />
 
       {sources.sources.length === 0 ? (
         <>

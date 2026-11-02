@@ -110,7 +110,8 @@ function Library({ items, onAdd, onClose }: { items: LibrarySet[]; onAdd: (key: 
   );
 }
 
-export function AttackTests({ project }: { project: string }) {
+/** `paused`: why the test can't run now (an agent in the project is paused or stopped), shown on the Run button. */
+export function AttackTests({ project, paused }: { project: string; paused?: string | null }) {
   const router = useRouter();
   const [tests, setTests] = useState<Tests | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -184,8 +185,8 @@ export function AttackTests({ project }: { project: string }) {
             type="button"
             className="at-icon"
             onClick={run}
-            disabled={busy || !here || Boolean(live)}
-            title={here ? "Run the test" : "Run agentfox init in this project's repository to test it"}
+            disabled={busy || !here || Boolean(live) || Boolean(paused)}
+            title={paused ? paused : here ? "Run the test" : "Run agentfox init in this project's repository to test it"}
             aria-label="Run the test"
           >
             <Play size={13} aria-hidden />
@@ -246,7 +247,7 @@ export function AttackTests({ project }: { project: string }) {
             <strong>Add basic guardrails</strong>
             <p>Blocks attacks in what users send; hides personal data and secrets in replies. Nothing on tools.</p>
           </div>
-          <button type="button" className="at-btn" onClick={addBasic} disabled={busy || !here}>
+          <button type="button" className="at-btn" onClick={addBasic} disabled={busy || !here || Boolean(paused)} title={paused || undefined}>
             Add and test again
           </button>
         </div>

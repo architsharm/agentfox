@@ -279,6 +279,18 @@ Scope:
 - [ ] **Two "attack test" features don't link to each other:** the map's onboarding test and Testing → red-team campaigns.
 - [ ] **Status of §6:** most items are still open. Fixed: Projects/Add all (#126), mobile (#124), wording. Changed: Monitoring is now reachable from the Traces tabs; Advanced/judge settings are three clicks deep (map → Checks → All judge settings).
 
+## 8. UI test of onboarding and policies (2026-10-31), UI items recorded only
+
+Full findings: `local/ui-test-onboarding-policies-2026-10-31.md`. Functional bugs from it are being fixed; these need a UI decision.
+- [ ] **The map's attack test and Testing → Attack tests disagree.** Map (runs the real agent): 66/84 got through. Testing (gateway rules only): "0 got through · 100%", 22 tried / 18 stopped leaves 4 unaccounted, and its Past runs omit the map runs. Extends the §7 "two attack test features" item.
+- [ ] **No drill-down on attack results**: map panel category rows and Testing run rows aren't clickable; errored attacks aren't shown anywhere. While a re-test runs, the "before" numbers are replaced by 0/N.
+- [ ] **Basic guardrails duplicate the Protect wizard's rules** (Input attacks ≈ Jailbreaks & prompt injection, Reply personal data ≈ Personal data in replies, Reply secrets ≈ Secrets & API keys); "Add basic guardrails" is offered after Protect already set them.
+- [ ] **Library scope is inconsistent**: Add rule → Libraries "Install" applies workspace-wide, Policies → Libraries says "Apply to <agent>"; Baseline has no Start blocking button there.
+- [ ] **Search finds only page names/IDs**, not rules, tools or agents ("refund" finds nothing).
+- [ ] **Three install commands**: setup card `pip install "agentfox>=0.5"` + `init --key`, Get started `pip install agentfox`, Welcome `uvx --from git+… agentfox up`.
+- [ ] **One area, three names**: sidebar "traces", page header "Observe", Overview tab "Activity".
+- [ ] Rule page "Change" links to the tab you're on; rule "Checked by" lists four detectors for a words rule; "Prevent this" on an already-blocked run; Access table overflows with the limit editor open; project switcher text clipped.
+
 ## Housekeeping
 
 - [x] ~~`agentfox init --path <repo>` writes `agentfox.toml`~~: not a bug; with `--key` init only maps and connects.

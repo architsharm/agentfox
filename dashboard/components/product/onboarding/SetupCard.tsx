@@ -82,6 +82,26 @@ export function SetupCard({
       .catch(() => (baseline.current = { connected: false, at: null }));
   }, [api, mock]);
 
+  // A key made earlier: show it (by prefix) and go straight to waiting, as making one does.
+  // `peek` only reads, so opening this page never mints a key.
+  useEffect(() => {
+    if (mock) return;
+    let stop = false;
+    api
+      .getKey({ peek: true })
+      .then((k) => {
+        if (stop || !k.hasKey) return;
+        setKeyInfo((cur) => cur ?? k);
+        setPhase((p) => (p === "key" ? "waiting" : p));
+      })
+      .catch(() => {
+        // No key shown; "Create a key" still works.
+      });
+    return () => {
+      stop = true;
+    };
+  }, [api, mock]);
+
   // Waiting: poll until `agentfox init` reports in.
   useEffect(() => {
     if (phase !== "waiting") return;

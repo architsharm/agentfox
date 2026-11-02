@@ -230,3 +230,36 @@ def test_a_validator_rule_is_listed_tried_saved_and_enforced(client):
     assert blocked["verdict"] == "block", blocked
     assert blocked["user_message"] == "Let's talk about us."
     assert _guard(client, "What are your opening hours?")["verdict"] == "allow"
+
+
+def test_try_applies_a_rule_scoped_to_agents_as_it_runs_for_them(client):
+    rule = {"name": "x", "kind": "terms", "entries": ["acme"], "agents": ["support-agent"]}
+    r = client.post(
+        "/api/custom-rules/try", json={"rule": rule, "text": "Acme's prices"}, headers=ADMIN
+    )
+    assert r.json()["matched"] is True
+
+
+def test_a_check_that_cannot_run_here_is_not_saved_and_degrades_if_already_saved(
+    client, monkeypatch
+):
+    from agentfox.capabilities.detection.validators import get_validator
+
+    rule = {
+        "key": "competitors",
+        "name": "Competitors",
+        "kind": "validator",
+        "validator": {"name": "ban_list", "params": {"banned_words": ["Globex"]}},
+        "surfaces": ["input"],
+    }
+    # Saved while the check could run; then the server lost what it needs.
+    assert client.post("/api/custom-rules", json=rule, headers=ADMIN).status_code == 201
+    cls = type(get_validator("ban_list"))
+    monkeypatch.setattr(cls, "available", lambda self: False)
+    monkeypatch.setattr(cls, "unavailable_reason", lambda self: "needs nothing-here")
+
+    r = client.post("/api/custom-rules", json={**rule, "key": "again"}, headers=ADMIN)
+    assert r.status_code == 400 and "needs nothing-here" in r.json()["detail"]
+
+    out = _guard(client, "Is Globex cheaper?")
+    assert "custom.validators" in out["degraded"], out

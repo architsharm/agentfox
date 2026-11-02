@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { safeApi } from "@/lib/product/api";
 import { Empty, href } from "@/components/kit";
+import { InstantForm } from "@/components/product/InstantForm";
 import { ruleTitle, wouldDo } from "@/lib/product/vocab";
 
 type Applied = {
@@ -82,7 +83,7 @@ export async function AppliedRules({
               </Link>
             ))}
           </div>
-          <form action="/app/policies" className="pol-agent">
+          <InstantForm action="/app/policies" className="pol-agent">
             {scope ? <input type="hidden" name="scope" value={scope} /> : null}
             <select name="agent" defaultValue={agent || ""} aria-label="Show rules for one agent">
               <option value="">Every agent in {project ?? "the project"}</option>
@@ -92,8 +93,7 @@ export async function AppliedRules({
                 </option>
               ))}
             </select>
-            <button type="submit" className="k-btn">Show</button>
-          </form>
+          </InstantForm>
         </div>
       </div>
 

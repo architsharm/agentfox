@@ -16,7 +16,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -356,7 +356,16 @@ def retention_runs(
 
 class LegalHoldIn(BaseModel):
     scope: dict[str, Any] = Field(default_factory=dict)
-    reason: str
+    # A hold stops the purge (all of it, when no agents are named), so it says why:
+    # an empty form used to place a workspace-wide hold nobody could account for.
+    reason: str = Field(min_length=1)
+
+    @field_validator("reason")
+    @classmethod
+    def _stated(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("a legal hold needs a reason")
+        return v.strip()
 
 
 @router.post("/legal-holds", status_code=201)
@@ -378,6 +387,37 @@ def place_hold(
         payload={"scope": payload.scope, "reason": payload.reason},
     )
     return {"id": hold.id, "placed_at": _iso(hold.placed_at)}
+
+
+class LegalHoldRelease(BaseModel):
+    reason: str = ""
+
+
+@router.post("/legal-holds/{hold_id}/release")
+def release_hold(
+    hold_id: str,
+    payload: LegalHoldRelease | None = None,
+    session: Session = Depends(db),
+    user: User = Depends(require("compliance")),
+) -> dict[str, Any]:
+    """Lift a hold, so the purge reaches what it preserved. Audited like placing one."""
+    hold = session.get(LegalHold, hold_id)
+    if hold is None:
+        raise HTTPException(404, "no such legal hold")
+    if hold.released_at is not None:
+        raise HTTPException(409, "this hold was already released")
+    hold.released_at = dt.datetime.now(dt.UTC)
+    session.flush()
+    chain.append(
+        session,
+        "legal_hold.released",
+        actor_type="user",
+        actor_id=user.email or user.id,
+        subject_type="legal_hold",
+        subject_id=hold.id,
+        payload={"reason": (payload.reason if payload else "").strip()},
+    )
+    return {"id": hold.id, "released_at": _iso(hold.released_at)}
 
 
 def _iso(value: dt.datetime | None) -> str | None:

@@ -1,10 +1,15 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { Severity, ts } from "@/components/ui";
 
 /**
  * The shell had no persistent cross-page signal for "something needs you" —
  * Overview's "Needs attention" table is not visible from anywhere else. This is
- * the same underlying data (`/api/attention`), surfaced everywhere.
+ * the same underlying data (`/api/attention`), surfaced everywhere. The rest of
+ * the list lives on Issues (`/app` itself now redirects to the map).
  */
 export function NotificationsBell({
   items,
@@ -14,8 +19,35 @@ export function NotificationsBell({
   total: number;
 }) {
   const count = items.length;
+  // A <details> stays open until its summary is clicked again; a dropdown should
+  // also close on Escape, a click outside it, and on moving to another page.
+  const ref = useRef<HTMLDetailsElement>(null);
+  const pathname = usePathname();
+  useEffect(() => {
+    if (ref.current) ref.current.open = false;
+  }, [pathname]);
+  useEffect(() => {
+    const close = () => {
+      if (ref.current) ref.current.open = false;
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && ref.current?.open) {
+        close();
+        ref.current.querySelector("summary")?.focus();
+      }
+    };
+    const onDown = (e: MouseEvent) => {
+      if (ref.current?.open && !ref.current.contains(e.target as Node)) close();
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onDown);
+    };
+  }, []);
   return (
-    <details className="notif-bell">
+    <details className="notif-bell" ref={ref}>
       <summary aria-label={`${total} item(s) need attention`}>
         <BellIcon />
         {total > 0 && <span className="notif-count">{total > 99 ? "99+" : total}</span>}
@@ -40,8 +72,8 @@ export function NotificationsBell({
               </Link>
             ))}
             {total > count && (
-              <Link href="/app" className="notif-more small muted">
-                {total - count} more on Overview →
+              <Link href="/app/findings" className="notif-more small muted">
+                {total - count} more on Issues →
               </Link>
             )}
           </>

@@ -371,19 +371,33 @@ def test_a_rerun_red_team_campaign_counts_then_closes_once_retested_clean(seeded
     assert "none reproduced" in rows[0].resolution_note
 
 
-def test_resuming_an_agent_closes_its_stop_finding_and_a_new_stop_reopens_it(seeded):
+def test_pausing_an_agent_raises_no_finding_and_resume_closes_a_legacy_one(seeded):
+    """A person's own pause is not an issue. A stop finding raised by an earlier version
+    still closes when the agent resumes, under the name of the person who resumed it."""
+    from agentfox.core.models import Agent
+    from agentfox.platform.ledger.findings import raise_finding
     from agentfox.platform.registry.control import quarantine, resume
 
     quarantine(seeded, "support-triage", reason="odd tool use", actor="marcus@example.com")
-    finding = _rows(seeded, "agent_stopped")[0]
+    assert _rows(seeded, "agent_stopped") == []
+
+    agent = seeded.scalar(select(Agent).where(Agent.slug == "support-triage"))
+    legacy, _ = raise_finding(
+        seeded,
+        type="agent_stopped",
+        severity="high",
+        title="Agent 'support-triage' quarantined by marcus@example.com",
+        subject_type="agent",
+        subject_id=agent.id,
+        fingerprint_parts=("quarantined",),
+    )
     resume(seeded, "support-triage", reason="root cause fixed", actor="marcus@example.com")
-    assert finding.status == "resolved"
-    assert finding.resolved_by == "marcus@example.com"
+    assert legacy.status == "resolved"
+    assert legacy.resolved_by == "marcus@example.com"
 
     quarantine(seeded, "support-triage", reason="again", actor="marcus@example.com")
-    assert finding.status == "open"
+    assert legacy.status == "resolved"
     assert len(_rows(seeded, "agent_stopped")) == 1
-    assert finding.occurrences == 2
 
 
 # ---------------------------------------------------------------------------

@@ -67,8 +67,11 @@ class _LimitsMixin:
         if control is None or control.state == "active":
             return self._breaker_verdict(agent, control)
 
+        # The words people see everywhere: paused / stopped (the states stay
+        # quarantined / killed in the API and the rule ids).
+        word = {"quarantined": "paused", "killed": "stopped"}.get(control.state, control.state)
         reason = (
-            f"Agent is {control.state}"
+            f"Agent is {word}"
             + (f": {control.reason}" if control.reason else "")
             + (f" (by {control.actor})" if control.actor else "")
         )

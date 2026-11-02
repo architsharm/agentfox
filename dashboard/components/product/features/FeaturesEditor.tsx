@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { detailText } from "@/lib/product/errors";
 import { useState } from "react";
 import { detectorName } from "@/lib/product/vocab";
 import {
@@ -30,7 +31,7 @@ function errorOf(data: any, fallback: string): string {
   const d = data?.detail;
   if (typeof d === "string") return d;
   if (d && typeof d.message === "string") return d.message;
-  return fallback;
+  return detailText(d) || fallback;
 }
 
 /**
@@ -74,7 +75,7 @@ export function FeaturesEditor({ initial, canOpen = true }: { initial: Features;
         <p className="ft-intro">
           Everything here starts as the workspace sets it.{" "}
           {changed ? <strong>{changed} changed for this project.</strong> : "Nothing changed for this project yet."}{" "}
-          <Link href="/app/features">Workspace features</Link>
+          <Link href="/app/settings?tab=detection">Workspace features</Link>
         </p>
       )}
 
@@ -182,7 +183,7 @@ export function FeaturesEditor({ initial, canOpen = true }: { initial: Features;
                       <CheckRow key={c.key} c={c} project={project} busy={false} error={null} onSet={setCheck} onReset={resetCheck} />
                     ))}
                   </ul>
-                  <Link href="/app/policies?tab=advanced">How to install checks</Link>
+                  <Link href="/app/settings?tab=detection&sec=packs">How to install checks</Link>
                 </details>
               )}
             </div>
