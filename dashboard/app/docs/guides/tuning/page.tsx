@@ -128,7 +128,7 @@ safety.granite      enabled=False available=False  Wrapped IBM Granite Guardian,
         <code>agentfox[classifiers]</code> and its weights (the Docker image ships both);
         without them the heuristic runs alone and catches <strong>16.7%</strong>, and{" "}
         <code>agentfox doctor</code> says so. On NotInject, a set of benign prompts written to
-        look like injections, the ensemble flags 139 of 339 (41%). The backstop model&apos;s
+        look like injections, the ensemble flags 140 of 339 (41%). The backstop model&apos;s
         hits are advisory: observe-mode policies see them, but an enforcing policy acts only
         on PIGuard&apos;s verdict, which flags 39 of 339 (11.5%).
         Containment does not depend on these numbers: grants and provenance stop a tool call
