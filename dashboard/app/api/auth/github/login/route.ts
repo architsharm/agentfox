@@ -6,18 +6,34 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { requestOrigin } from "@/lib/product/origin";
 
 export const dynamic = "force-dynamic";
 
 const STATE_COOKIE = "gh_oauth_state";
 
+const NOT_CONFIGURED = "GitHub sign-in is not configured (GITHUB_CLIENT_ID is unset).";
+
 export async function GET(req: NextRequest) {
   const clientId = process.env.GITHUB_CLIENT_ID;
   if (!clientId) {
-    return NextResponse.json(
-      { error: "GitHub sign-in is not configured (GITHUB_CLIENT_ID is unset)." },
-      { status: 503 },
-    );
+    // A browser following a "Connect GitHub" button gets a page, not raw JSON: back
+    // to sign-in with the reason, or to Connections, whose GitHub card says it is
+    // not configured. A script (curl, the docs) still gets the 503.
+    if (!(req.headers.get("accept") || "").includes("text/html")) {
+      return NextResponse.json({ error: NOT_CONFIGURED }, { status: 503 });
+    }
+    const origin = requestOrigin(req);
+    let from = "";
+    try {
+      const ref = new URL(req.headers.get("referer") || "");
+      if (ref.origin === origin) from = ref.pathname;
+    } catch {
+      // No referrer, or not a URL: Connections.
+    }
+    const back = from === "/login" ? new URL("/login", origin) : new URL("/app/start?tab=connect", origin);
+    if (from === "/login") back.searchParams.set("error", NOT_CONFIGURED);
+    return NextResponse.redirect(back, 303);
   }
 
   // Double-submit-cookie CSRF check: a value we set here as a cookie and also pass

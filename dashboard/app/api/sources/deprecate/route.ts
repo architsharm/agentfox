@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   if (!key) {
     const target = new URL("/app/sources", requestOrigin(req));
     target.searchParams.set("review_error", "missing source key");
-    return NextResponse.redirect(target);
+    return NextResponse.redirect(target, 303);
   }
 
   return proxyCustomBody(

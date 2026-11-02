@@ -8,6 +8,7 @@ import { ConditionFields, blankCondition, canMask, conditionFrom, conditionReady
 import type { Condition, ConditionSpec } from "@/components/product/policies/ConditionFields";
 import { ValidatorFields, paramsFor, rawFrom, useValidators, validatorReady } from "@/components/product/policies/ValidatorFields";
 import type { ValidatorValue } from "@/components/product/policies/ValidatorFields";
+import { keptRuleFields, keptWithin } from "@/lib/product/resave";
 
 type Kind = "terms" | "patterns" | "topic" | "allow" | "sequence" | "condition" | "validator";
 
@@ -62,9 +63,11 @@ export type CustomRuleSpec = {
   description?: string;
   surfaces?: string[];
   agents?: string[];
-  sequence?: { after?: string; then?: string; unless_path?: string | null; unless_matches?: string | null } | null;
+  sequence?: { after?: string; then?: string; unless_path?: string | null; unless_matches?: string | null; within?: string } | null;
   condition?: ConditionSpec | null;
   validator?: { name: string; params?: Record<string, unknown> } | null;
+  case_sensitive?: boolean;
+  enabled?: boolean;
 };
 
 function kindOf(spec?: CustomRuleSpec): Kind {
@@ -78,12 +81,15 @@ export function CustomRule({
   initial,
   startKind,
   startOperator,
+  startSurfaces,
 }: {
   agent?: string;
   initial?: CustomRuleSpec;
   startKind?: Kind;
   /** For a value check: the comparison to start from, e.g. "not_in" for "only allow these values". */
   startOperator?: string;
+  /** Opened from a rail on the map: check the surfaces that rail covers. */
+  startSurfaces?: string[];
 }) {
   const router = useRouter();
   // Editing an existing rule: same form, prefilled; its key, and so its id, stay put.
@@ -94,7 +100,15 @@ export function CustomRule({
     initial ? (initial.kind === "topic" ? initial.description || (initial.entries || []).join(", ") : (initial.entries || []).join("\n")) : "",
   );
   const [examples, setExamples] = useState((initial?.examples || []).join("\n"));
-  const [checks, setChecks] = useState<string[]>(initial?.surfaces?.length ? initial.surfaces : startKind === "allow" ? ["input"] : ["input", "output"]);
+  const [checks, setChecks] = useState<string[]>(
+    initial?.surfaces?.length
+      ? initial.surfaces
+      : startSurfaces?.some((x) => CHECKS.some((c) => c.key === x))
+        ? startSurfaces.filter((x) => CHECKS.some((c) => c.key === x))
+        : startKind === "allow"
+          ? ["input"]
+          : ["input", "output"],
+  );
   const [after, setAfter] = useState(initial?.sequence?.after || "");
   const [then, setThen] = useState(initial?.sequence?.then || "");
   const [unlessPath, setUnlessPath] = useState(initial?.sequence?.unless_path || "");
@@ -118,12 +132,14 @@ export function CustomRule({
       key: initial?.key || slug(name),
       name: name.trim() || "Untitled rule",
       agents: initial ? initial.agents || [] : agent ? [agent] : [],
+      // Not on the form; a save replaces the rule, so an edit carries them over.
+      ...keptRuleFields(initial),
     };
     if (kind === "sequence")
       return {
         ...base,
         kind: "sequence",
-        sequence: { after: after.trim(), then: then.trim(), ...(unlessPath ? { unless_path: unlessPath.trim(), unless_matches: unlessMatches.trim() } : {}) },
+        sequence: { after: after.trim(), then: then.trim(), ...keptWithin(initial), ...(unlessPath ? { unless_path: unlessPath.trim(), unless_matches: unlessMatches.trim() } : {}) },
       };
     if (kind === "condition") return { ...base, kind: "condition", condition: conditionSpec(cond) };
     if (kind === "validator")

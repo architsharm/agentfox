@@ -25,7 +25,7 @@ import datetime as dt
 from dataclasses import dataclass, field
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from agentfox.core.models import Agent, Decision, EvalCase, EvalSuite, Finding, Trace, utcnow
@@ -91,6 +91,8 @@ def _runs(
             Decision.agent_id == agent_id,
             Decision.tool_key.is_not(None),
             Decision.created_at >= since,
+            # The dashboard's "Try it" calls are testing, not a path the agent took.
+            or_(Trace.environment.is_(None), Trace.environment != "playground"),
         )
         .order_by(Decision.created_at)
     ).all()

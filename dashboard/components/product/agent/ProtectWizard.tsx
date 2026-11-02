@@ -193,7 +193,7 @@ export function ProtectWizard({
               </div>
               <div className="k-preview-nums">
                 <span>
-                  <strong>{preview.runs_would_stop ?? preview.counts?.would_stop ?? 0}</strong> would have been stopped or held once enforcing
+                  <strong>{preview.runs_would_stop ?? preview.counts?.would_stop ?? 0}</strong> would have been stopped or held once blocking
                 </span>
               </div>
               {(payload().words.length > 0 || avoid.trim() || allowed.trim()) && (
@@ -227,7 +227,7 @@ export function ProtectWizard({
       {STEPS[step] === "Test" && saved && (
         <>
           <div className="k-pills" style={{ gap: 8, flexWrap: "wrap" }}>
-            <span className="k-pill k-pill-ok">Saved · {saved.policy.mode === "enforce" ? "enforcing" : "watching"}</span>
+            <span className="k-pill k-pill-ok">Saved · {saved.policy.mode === "enforce" ? "blocking" : "watching"}</span>
             {saved.not_installed?.length > 0 && <span className="k-pill k-pill-warn">Model not installed: {saved.not_installed.join(", ")}</span>}
             <Link className="k-btn" href={`/app/policies/agent.${encodeURIComponent(initial.agent)}`}>
               Open policy

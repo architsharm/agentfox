@@ -741,6 +741,7 @@ class Enforcer(
             arguments=call.arguments,
             memory_entry=call.memory_entry,
             conversation_window=call.conversation_window,
+            prior_tools=list(call.prior_tools or []),
             pipeline=self.pipeline,
         )
 
@@ -980,9 +981,11 @@ class Enforcer(
                     )
                 )
         elif capability.get("requires_approval") and call.effective != "block":
-            call.effective = "escalate"
-            if call.mode == "enforce":
-                call.verdict = "escalate"
+            # The grant itself asks for a person, so like a missing grant it holds the
+            # call whatever mode the packs are bound in. Gating it on the decision's
+            # mode let an "Ask a person" tool run, and still file an approval, while
+            # the content policies only watched.
+            call.verdict = call.effective = "escalate"
             if "capability.approval_required" not in fired_ids:
                 rules_fired.append(
                     _fired_rule(
@@ -991,7 +994,6 @@ class Enforcer(
                         "; ".join(capability.get("reasons") or ["approval required"]),
                         severity="medium",
                         controls=["NOM-IAM-03"],
-                        mode=call.mode,
                     )
                 )
 
@@ -1090,7 +1092,7 @@ class Enforcer(
         # the oversharing failure itself, not a quality issue, so unlike the evidence
         # issues above it is preventive: the answer is withheld whenever the decision
         # enforces, and recorded as would-have-blocked when it observes. Gated on the
-        # decision's mode like an approval requirement, because a principal declared
+        # decision's mode like an approval rule a pack fires, because a principal declared
         # in observe mode is how an operator dry-runs an entitlement model.
         leaks = [
             i
@@ -1620,7 +1622,9 @@ class Enforcer(
     ) -> None:
         """An escalated call files an approval request; a redeemed one links its approval."""
         # --- 6. escalation ----------------------------------------
-        if call.effective == "escalate":
+        # Only a call actually held: one an observing rule would have escalated has
+        # already run, and a request for it would ask a person to approve the past.
+        if call.verdict == "escalate":
             # Filed under what the approver needs to see: the tool and arguments, or
             # for a held message its (masked) content and the digest a retry is
             # matched against.

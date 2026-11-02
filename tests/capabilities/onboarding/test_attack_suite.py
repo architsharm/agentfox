@@ -523,3 +523,152 @@ def test_an_agent_without_a_reference_is_reported_not_run(tmp_path):
     structure = {"agents": [{"id": "ag-1", "name": "Ghost"}], "tools": []}
     drivers = init_client._drivers(Console(quiet=True), tmp_path, {}, structure, {})
     assert "couldn't find where Ghost is created" in drivers["ag-1"].refuse
+
+
+def test_a_first_write_during_a_suite_does_not_deadlock_the_audit_hook(tmp_path):
+    """Found live: the hook called ``tempfile.gettempdir()`` on every write. The first
+    call takes a lock it doesn't re-enter and writes a probe file, which fired the hook
+    again: an agent writing a file in its first attack hung the suite at 0/N forever."""
+    import tempfile
+    import threading
+    from pathlib import Path
+
+    failed = []
+
+    def first_write():
+        try:
+            # Writes (and deletes) its probe file: the hook must not re-enter it.
+            target = Path(tempfile.gettempdir()) / f"agentfox-{id(tmp_path)}.pyc"
+            target.write_bytes(b"x")
+            target.unlink()
+        except Exception as exc:  # noqa: BLE001 - reported by the assertion below
+            failed.append(exc)
+
+    saved = tempfile.tempdir
+    try:
+        with runner.faking():
+            tempfile.tempdir = None  # as in a process that never asked for it before
+            worker = threading.Thread(target=first_write, daemon=True)
+            worker.start()
+            worker.join(timeout=10)
+            assert not worker.is_alive(), "the audit hook deadlocked on tempfile's lock"
+            assert failed == []
+    finally:
+        tempfile.tempdir = saved
+
+
+def _fake_sdk(monkeypatch, calls):
+    """A stand-in for the OpenAI Agents SDK whose shared client, like the real one's,
+    is bound to the first event loop it is used on."""
+    import asyncio
+    import types
+
+    class FunctionTool:
+        def __init__(self, name, invoke):
+            self.name = name
+            self.on_invoke_tool = invoke
+
+    class Agent:
+        def __init__(self, name, tools):
+            self.name, self.tools = name, tools
+
+    bound = []
+
+    class Runner:
+        @staticmethod
+        async def run(agent, message, max_turns=10):
+            loop = asyncio.get_running_loop()
+            bound[:] = bound or [loop]
+            if bound[0] is not loop:
+                raise RuntimeError(
+                    f"<asyncio.locks.Event object at 0x{id(loop):x} [unset]> is bound to "
+                    "a different event loop"
+                )
+            await asyncio.sleep(0.01)
+            for tool in agent.tools:
+                calls.append(await tool.on_invoke_tool(None, json.dumps({"person_id": "P-1"})))
+            return types.SimpleNamespace(final_output="done")
+
+        @staticmethod
+        def run_sync(agent, message, max_turns=10):
+            return asyncio.run(Runner.run(agent, message, max_turns=max_turns))
+
+    sdk = types.ModuleType("agents")
+    sdk.Agent, sdk.Runner = Agent, Runner
+    tool_mod = types.ModuleType("agents.tool")
+    tool_mod.FunctionTool = FunctionTool
+    monkeypatch.setitem(sys.modules, "agents", sdk)
+    monkeypatch.setitem(sys.modules, "agents.agent", sdk)
+    monkeypatch.setitem(sys.modules, "agents.tool", tool_mod)
+    return Agent, FunctionTool
+
+
+def test_sdk_agents_run_concurrently_on_one_event_loop_with_their_test(monkeypatch):
+    """Found live: ``Runner.run_sync`` from the suite's worker threads made a loop per
+    call, and the SDK's shared client, bound to the first, failed every other attack.
+    Every run now goes to one loop, and the attack's context reaches its tool calls."""
+    calls = []
+    Agent, FunctionTool = _fake_sdk(monkeypatch, calls)
+
+    async def real_tool(_ctx, raw):
+        raise AssertionError("the real tool ran")
+
+    agent = Agent("People Loop", [FunctionTool("remove_person", real_tool)])
+    driver = runner.make_driver(agent, name="People Loop")
+    assert driver.refuse is None
+    suite = [a for a in build_suite(LOOP_STRUCTURE) if not a.skip][:8]
+    got = _results(driver, suite)
+    assert len(got) == len(suite)
+    assert not [r for r in got.values() if r["outcome"] == "errored"], got
+    # Each run's tool call found its own attack (recorded, faked), never the real tool.
+    assert all([c["tool"] for c in r["calls"]] == ["remove_person"] for r in got.values())
+    assert len(calls) == len(suite)
+
+
+def test_a_runner_error_is_not_blamed_on_the_model():
+    error = runner.error_text(
+        RuntimeError(
+            "<asyncio.locks.Event object at 0x10a2b3c40 [unset, waiters:1]> is bound to a "
+            "different event loop"
+        )
+    )
+    said = runner.explain_model_error(error)
+    assert "AgentFox couldn't run the attacks" in said and "RuntimeError" in said
+    assert "model returned errors" not in said and "0x" not in said and "<" not in said
+    # A model provider's own error is still the model's.
+    said = runner.explain_model_error("openai.InternalServerError: Error code: 500 - boom")
+    assert "model returned errors" in said
+
+
+def test_init_says_once_that_an_agent_could_not_be_loaded(tmp_path):
+    """Found live: an agent whose import failed printed the same "NOT RUN couldn't
+    load" line for every one of 92 attacks. Said once, with how to fix it; every
+    result still goes to the server."""
+    from io import StringIO
+
+    from rich.console import Console
+
+    from agentfox.capabilities.onboarding import client as init_client
+
+    class Api:
+        def __init__(self):
+            self.results = []
+
+        def post(self, path, body=None):
+            self.results.extend((body or {}).get("results") or [])
+            return {}
+
+    structure = {
+        "agents": [{"id": "ag-1", "name": "Ghost", "module": "agentfox_no_such_mod",
+                    "attr": "agent"}],
+        "tools": LOOP_STRUCTURE["tools"],
+    }  # fmt: skip
+    api, buf = Api(), StringIO()
+    job = {"runId": "r-1", "phase": "before", "structure": structure}
+    init_client._run_job(Console(file=buf, width=200), api, tmp_path, {}, job, {})
+    said = buf.getvalue()
+    assert said.count("Couldn't load agentfox_no_such_mod.agent") == 1
+    assert "install your agent's dependencies in this environment" in said
+    assert "NOT RUN" not in said and "No attack could be run" in said
+    assert len(api.results) == len(build_suite(structure))
+    assert all(r["outcome"] == "not_run" for r in api.results)

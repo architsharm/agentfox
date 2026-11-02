@@ -20,8 +20,8 @@ email, no row written.
 
 Fail closed, twice over: a tool call made while the suite runs but outside any
 attack (a thread that dropped the test's context) is refused rather than run, and
-an audit hook refuses the side effects a tool would have (writing a file outside the
-temp and cache directories, deleting or renaming one, starting a process) for the
+an audit hook refuses the side effects a tool would have (writing, deleting or
+renaming a file outside the temp and cache directories, starting a process) for the
 whole of the suite.
 
 **Before and after.** "Before" runs the attacks with no policy evaluation at all.
@@ -45,6 +45,7 @@ rule in ``stoppedBy`` with ``watching``, ``liveEnforced: false`` and ``waitingFo
 
 from __future__ import annotations
 
+import asyncio
 import contextvars
 import importlib
 import inspect
@@ -54,8 +55,8 @@ import sys
 import tempfile
 import threading
 import uuid
-from collections.abc import Callable, Iterator
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from collections.abc import Callable, Coroutine, Iterator
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -446,7 +447,9 @@ def _install_openai_agents() -> None:
                 except ValueError:
                     args = {"input": raw}
                 args = args if isinstance(args, dict) else {"input": args}
-                return _as_text(_record(inst.name, args))
+                # Off the loop: every attack's run shares it, and the check is a
+                # blocking call to the server. ``to_thread`` carries the attack's context.
+                return _as_text(await asyncio.to_thread(_record, inst.name, args))
 
             inst.__dict__[_SDK_RECORDER] = recorded
         return recorded
@@ -464,6 +467,7 @@ def faking() -> Iterator[None]:
     global _ACTIVE
     with _PATCH_LOCK:
         if _ACTIVE == 0:
+            _resolve_roots()  # before the hook can fire: never from inside it
             _install_audit_hook()
             _install_langchain()
             _install_openai_agents()
@@ -508,14 +512,46 @@ _REFUSED_EVENTS = (
 _WRITE_FLAGS = os.O_WRONLY | os.O_RDWR | os.O_APPEND | os.O_CREAT | os.O_TRUNC
 
 
-def _writable_roots() -> list[str]:
+#: The default writable roots, resolved when a suite starts (``faking``), never from
+#: inside the hook: ``tempfile.gettempdir()`` writes a probe file the first time, under
+#: a lock it doesn't re-enter, and that write fires the hook again (a deadlock).
+_ROOTS: list[str] = []
+#: Set while ``_audit`` runs on a thread: an event it raises itself is let through.
+_IN_AUDIT = threading.local()
+
+
+def _resolve_roots() -> None:
+    global _ROOTS
     roots = [tempfile.gettempdir(), sys.prefix, sys.base_prefix, str(Path.home() / ".cache")]
-    return [os.path.realpath(r) for r in (WRITABLE or roots)]
+    _ROOTS = [os.path.realpath(r) for r in roots]
+
+
+#: Refused events that name paths: how many leading arguments are paths (the rest are
+#: directory descriptors).
+_PATH_EVENTS = {"os.remove": 1, "os.rmdir": 1, "os.rename": 2, "shutil.move": 2}
+
+
+def _writable(real: str, *, inside: bool = False) -> bool:
+    """Under a writable root (or the root itself, unless ``inside``)."""
+    roots = _writable_roots()
+    return any((real == r and not inside) or real.startswith(r + os.sep) for r in roots)
+
+
+def _writable_roots() -> list[str]:
+    return [os.path.realpath(r) for r in WRITABLE] if WRITABLE else _ROOTS
 
 
 def _audit(event: str, args: tuple[Any, ...]) -> None:
-    if not _ACTIVE:
+    if not _ACTIVE or getattr(_IN_AUDIT, "on", False):
         return
+    _IN_AUDIT.on = True
+    try:
+        _check(event, args)
+    finally:
+        _IN_AUDIT.on = False
+
+
+def _check(event: str, args: tuple[Any, ...]) -> None:
     if event == "open":
         path, mode, flags = (tuple(args) + (None, None, None))[:3]
         writing = (isinstance(mode, str) and any(c in mode for c in "wax+")) or (
@@ -524,9 +560,21 @@ def _audit(event: str, args: tuple[Any, ...]) -> None:
         if not writing or not isinstance(path, (str, bytes, os.PathLike)):
             return
         real = os.path.realpath(os.fsdecode(path))
-        if any(real == r or real.startswith(r + os.sep) for r in _writable_roots()):
+        if _writable(real):
             return
         raise PermissionError(f"AgentFox's attack test refused to write {real}")
+    if event in _PATH_EVENTS:
+        # Deleting or renaming where a write is allowed (tempfile's own probe file and
+        # cleanup) is allowed too. A path relative to a directory descriptor is not.
+        n = _PATH_EVENTS[event]
+        paths, fds = tuple(args)[:n], tuple(args)[n:]
+        # (A missing descriptor is None or negative: -1, or AT_FDCWD, the working directory.)
+        if all(fd is None or (isinstance(fd, int) and fd < 0) for fd in fds) and all(
+            isinstance(p, (str, bytes, os.PathLike))
+            and _writable(os.path.realpath(os.fsdecode(p)), inside=True)
+            for p in paths
+        ):
+            return
     if event in _REFUSED_EVENTS:
         raise PermissionError(f"AgentFox's attack test refused {event} while it ran")
 
@@ -636,6 +684,49 @@ class Driver:
     restore: Callable[[], None] = lambda: None
 
 
+_SDK_LOOP: asyncio.AbstractEventLoop | None = None
+_SDK_LOOP_LOCK = threading.Lock()
+
+
+def _sdk_loop() -> asyncio.AbstractEventLoop:
+    """The one event loop every Agents SDK run goes to, on its own daemon thread."""
+    global _SDK_LOOP
+    with _SDK_LOOP_LOCK:
+        if _SDK_LOOP is None or _SDK_LOOP.is_closed():
+            loop = asyncio.new_event_loop()
+            threading.Thread(target=loop.run_forever, name="agentfox-sdk-loop", daemon=True).start()
+            _SDK_LOOP = loop
+        return _SDK_LOOP
+
+
+def _on_sdk_loop(make: Callable[[], Coroutine[Any, Any, Any]]) -> Any:
+    """Run ``make()`` on the shared loop and wait for it. The caller's context (the
+    attack being run) goes with it, so tool calls made on the loop find their test;
+    ``run_coroutine_threadsafe`` wouldn't carry it."""
+    loop = _sdk_loop()
+    ctx = contextvars.copy_context()
+    done: Future[Any] = Future()
+
+    def finish(task: asyncio.Task[Any]) -> None:
+        if task.cancelled():
+            done.cancel()
+        elif task.exception() is not None:
+            done.set_exception(task.exception())  # type: ignore[arg-type]
+        else:
+            done.set_result(task.result())
+
+    def start() -> None:
+        try:
+            task = loop.create_task(ctx.run(make), context=ctx)
+        except BaseException as exc:  # noqa: BLE001 - handed to the waiting thread
+            done.set_exception(exc)
+            return
+        task.add_done_callback(finish)
+
+    loop.call_soon_threadsafe(start)
+    return done.result()
+
+
 def _reply_text(result: Any) -> str:
     if isinstance(result, str):
         return result
@@ -695,8 +786,10 @@ def make_driver(
         from agents import Runner
 
         def run_sdk(message: str, agent: Any = obj) -> str:
-            # `run_sync` makes its own event loop on the worker thread an attack runs on.
-            return _reply_text(Runner.run_sync(agent, message, max_turns=12))
+            # Not `run_sync`: it makes a new event loop per call, and the SDK's shared
+            # OpenAI client binds to the first one, so concurrent attacks failed with
+            # "bound to a different event loop". Every run goes to one loop instead.
+            return _reply_text(_on_sdk_loop(lambda: Runner.run(agent, message, max_turns=12)))
 
         return Driver(name, call=run_sdk)
     if hasattr(obj, "invoke"):
@@ -1213,4 +1306,35 @@ def explain_model_error(error: str) -> str:
             "Your agent couldn't reach its model (network error). "
             "Check your connection, then try again."
         )
+    if not _from_model_client(error):
+        # Not raised by a model provider's package (AgentFox's own runner, the agent's
+        # framework, the agent's code): the model isn't to blame. Named by type, with
+        # the object reprs and memory addresses taken out.
+        return (
+            f"AgentFox couldn't run the attacks against your agent ({_brief(error)}). "
+            "Check that your agent runs on its own, then try again."
+        )
     return f"Your agent's model returned errors, so the attacks couldn't run: {error[:240]}"
+
+
+#: Packages whose exceptions are a model's or its client's, beyond ``PROVIDERS``.
+_MODEL_CLIENTS = ("litellm", "ollama", "botocore", "vertexai", "together", "fireworks")
+
+
+def _from_model_client(error: str) -> bool:
+    """Whether ``error`` (``<package>.<Type>: ...``) was raised by a model provider's
+    package. A builtin or another package's exception was not."""
+    head = error.partition(":")[0].strip()
+    package = head.split(".")[0].lower() if "." in head else ""
+    return package in {p for _, packages, _ in PROVIDERS for p in packages} | set(_MODEL_CLIENTS)
+
+
+def _brief(error: str) -> str:
+    """``Type: message`` without object reprs or memory addresses, kept short."""
+    import re
+
+    head, _, rest = error.partition(":")
+    rest = re.sub(r"<[^<>]*>", "", rest)
+    rest = re.sub(r"\s+at 0x[0-9a-fA-F]+", "", rest)
+    rest = " ".join(rest.split())[:120]
+    return f"{head.strip()}: {rest}" if rest else head.strip()

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ruleTitle, sentence, wouldDo } from "./vocab";
+import { MODES, modeKey, modeLabel, modeWord, ruleTitle, sentence, wouldDo } from "./vocab";
 
 describe("sentence", () => {
   it("capitalises a title that opens with a plain word", () => {
@@ -37,5 +37,25 @@ describe("wouldDo", () => {
     expect(wouldDo("Asks a person")).toBe("Would ask a person");
     expect(wouldDo("Hides")).toBe("Would hide");
     expect(wouldDo("Asks")).toBe("Would ask");
+  });
+});
+
+describe("mode words", () => {
+  it("says every mode as Watching or Blocking", () => {
+    expect(modeLabel("observe")).toBe("Watching");
+    expect(modeLabel("enforce")).toBe("Blocking");
+    expect(modeLabel("enforcing")).toBe("Blocking");
+    expect(modeLabel("observing")).toBe("Watching");
+    expect(modeLabel(null)).toBe("Off");
+    expect(modeWord("enforce")).toBe("blocking");
+  });
+  it("never uses the old names", () => {
+    const words = new Set(Object.values(MODES));
+    for (const old of ["Enforcing", "Enforce", "Observe", "Observing", "Log only"]) expect(words.has(old)).toBe(false);
+  });
+  it("maps the words back to the API's modes", () => {
+    expect(modeKey("enforced")).toBe("enforce");
+    expect(modeKey("watching")).toBe("observe");
+    expect(modeKey("mixed")).toBeNull();
   });
 });

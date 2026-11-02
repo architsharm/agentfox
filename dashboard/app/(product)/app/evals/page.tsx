@@ -11,6 +11,7 @@ function score(v: unknown): string {
 }
 import { Header } from "@/components/kit";
 import { Explainer } from "@/components/product/Explainer";
+import { NoticeToast } from "@/components/product/NoticeToast";
 
 /**
  * Behind the sign-in wall: `noindex`, plus a tab title that is not the fourth
@@ -77,8 +78,7 @@ export default async function Evals({
         ]}
       />
 
-      {review_error && <div className="error">{review_error}</div>}
-      {review_notice && <div className="note-panel">{review_notice}</div>}
+      <NoticeToast notice={review_notice} error={review_error} />
 
       {latest?.summary?.scorers && (
         <>

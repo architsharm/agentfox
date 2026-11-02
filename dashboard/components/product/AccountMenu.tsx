@@ -41,12 +41,7 @@ export function AccountMenu({
             <span className="small">{role}</span>
           </div>
         )}
-        <Link href="/app/start?tab=connect" className="account-menu-row" style={{ display: "block" }}>
-          Connect a source
-        </Link>
-        <Link href="/app/start?tab=tokens" className="account-menu-row" style={{ display: "block" }}>
-          API tokens
-        </Link>
+        {/* Connections and API keys live in Settings; the menu is who you are and the way out. */}
         {/* The way back out to the public site. A signed-in visitor had no route to
             it at all while the dashboard lived at "/": every URL that served the
             marketing page also served them the app. */}

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { proxyRedirectWithHandler, sameOriginPath } from "@/lib/product/proxy";
+import { proxyRedirectWithHandler, sameOriginPath, detailText } from "@/lib/product/proxy";
 
 /**
  * Scores already-recorded production traces for an agent with the same scorers an
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     back,
     { agent, since_days, rate },
     (res, body) => {
-      if (!res.ok) return { error: body.detail || res.statusText };
+      if (!res.ok) return { error: detailText(body.detail) || res.statusText };
       if (!body.summary) {
         return { notice: `No production traffic for '${agent}' in the last ${since_days} day(s) to sample.` };
       }

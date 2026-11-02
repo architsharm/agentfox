@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   } catch {
     const target = new URL("/app/approvals?tab=handoffs", requestOrigin(req));
     target.searchParams.set("review_error", "conditions must be valid JSON");
-    return NextResponse.redirect(target);
+    return NextResponse.redirect(target, 303);
   }
 
   return proxyCustomBody(

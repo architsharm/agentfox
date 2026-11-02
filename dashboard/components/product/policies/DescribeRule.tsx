@@ -52,7 +52,7 @@ export function DescribeRule({ agent, tools = [] }: { agent?: string; tools?: st
     setBusy(true);
     setError("");
     try {
-      setResult(await callJson("/api/business/compile", "POST", { text: source }));
+      setResult(await callJson("/api/business/compile", "POST", { text: source, agent }));
     } catch (e: any) {
       setError(e.message);
     } finally {

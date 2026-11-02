@@ -42,6 +42,19 @@ def test_grant_update_and_revoke_a_tool(client):
     assert client.get(f"/api/agents/{slug}/access", headers=ADMIN).json()["capabilities"] == []
 
 
+def test_an_update_without_actions_keeps_a_narrowed_grant(client):
+    slug = _agent("narrow-bot")
+    url = f"/api/agents/{slug}/access"
+    client.post(url, json={"tool_key": "crm.lookup", "actions": ["read"]}, headers=ADMIN)
+    client.post(url, json={"tool_key": "crm.lookup", "requires_approval": True}, headers=ADMIN)
+    [cap] = client.get(url, headers=ADMIN).json()["capabilities"]
+    assert cap["actions"] == ["read"] and cap["requires_approval"] is True
+
+    client.post(url, json={"tool_key": "crm.other"}, headers=ADMIN)
+    caps = client.get(url, headers=ADMIN).json()["capabilities"]
+    assert next(c for c in caps if c["tool_key"] == "crm.other")["actions"] == ["*"]
+
+
 def test_refused_tools_are_listed_as_tried(client):
     from sqlalchemy import select
 

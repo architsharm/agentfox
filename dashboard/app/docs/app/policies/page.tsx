@@ -17,10 +17,10 @@ export default function Page() {
       <p className="docs-kicker">Web app</p>
       <h1>Policies and tuning</h1>
       <p className="docs-lede">
-        Policies has three tabs: Rules (what each policy checks and whether it observes or
-        enforces), Guardrail tuning (whether the detectors behind those rules are right, fast
-        and not silenced), and Judgment posture (whether any text may leave the deployment to
-        be judged).
+        Policies has two tabs: Applied rules (what each rule checks and whether it watches or
+        blocks) and Libraries (sets of rules to apply). Detector tuning (whether the detectors
+        behind those rules are right, fast and not silenced) and AI judges &amp; egress (whether
+        any text may leave the deployment to be judged) live under Settings → Detection.
       </p>
       <InTheApp path="/app/policies">Policies</InTheApp>
 
@@ -275,8 +275,8 @@ POST   /api/policies/{key}/rules/{rule_id}/scope    {"agents": [...], "include_d
 DELETE /api/policies/agents/{slug}/rules/{rule_id}  back to the workspace default
 GET    /api/policies/effective?agent=<slug>          per rule: changed_for_agent; plus agent_changes`}</Output>
 
-      <h2 id="tuning">Guardrail tuning tab</h2>
-      <InTheApp path="/app/policies?tab=advanced&sec=tuning">Policies → Guardrail tuning</InTheApp>
+      <h2 id="tuning">Detector tuning (Settings → Detection)</h2>
+      <InTheApp path="/app/settings?tab=detection&sec=tuning">Settings → Detection → Detector tuning</InTheApp>
       <p>
         Are the checks catching real problems, slowing agents down, or silenced? Filter by
         agent. Warning tiles appear only when something needs a person: checks that ran late
@@ -313,8 +313,8 @@ GET    /api/policies/effective?agent=<slug>          per rule: changed_for_agent
       <Output title="Suppressions table, page text, after suppress 30d">{`detector             scope                                         reason                                          hits         expires
 injection.heuristic  support-triage  INJECTION.INSTRUCTION_OVERRIDE  quoted text in a ticket, not an instruction  0 never used  2026-11-04  revoke`}</Output>
 
-      <h2 id="judgment">Judgment posture tab</h2>
-      <InTheApp path="/app/policies?tab=advanced&sec=judges">Policies → Judgment posture</InTheApp>
+      <h2 id="judgment">AI judges &amp; egress (Settings → Detection)</h2>
+      <InTheApp path="/app/settings?tab=detection&sec=judges">Settings → Detection → AI judges &amp; egress</InTheApp>
       <p>
         Whether optional evaluators may judge what code cannot, and whether a customer&apos;s
         text may leave the deployment for that. Loads and saves{" "}
@@ -447,10 +447,6 @@ injection.heuristic  support-triage  INJECTION.INSTRUCTION_OVERRIDE  quoted text
           build the list reads the latest version&apos;s binding, which a canary start or rollback
           replaces. <code>agentfox policy effective --agent …</code> shows what is actually in
           force.
-        </li>
-        <li>
-          <strong>&quot;Change these on Settings → Judgment posture&quot;</strong> under Judgment
-          tiers leads to a missing page; the setting is the Judgment posture tab.
         </li>
         <li>
           <strong>Tool containment blocks with no detector involved.</strong> It reads no text;

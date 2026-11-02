@@ -12,6 +12,8 @@ describe("project views", () => {
     expect(projectView({ tab: "rules" })).toBe("activity");
     expect(projectView({ tab: "quality" })).toBe("activity");
     expect(projectView({ tab: "registration" })).toBe("settings");
+    expect(projectView({ view: "controls" })).toBe("controls");
+    expect(projectView({ tab: "breaker" })).toBe("controls");
     // Inside Activity, `tab` picks its part and the view stays.
     expect(projectView({ view: "activity", tab: "rules" })).toBe("activity");
   });
@@ -37,12 +39,27 @@ describe("sidebar scopes", () => {
     expect(hrefs.some((h) => h.startsWith("/app/policies"))).toBe(false);
   });
 
+  it("calls the project's rules Access, so Policies means one page", () => {
+    const labels = projectNav("billing").flatMap((g) => g.items.map((i) => i[0]));
+    expect(labels).toContain("Access");
+    expect(labels).not.toContain("Policies");
+  });
+
+  it("lights Reports on its tab pages and Traces on its tab pages", () => {
+    const rows = WORKSPACE_NAV.flatMap((g) => g.items);
+    const reports = rows.find((r) => r[0] === "Reports")!;
+    expect(reports[1]).toBe("/app/reports");
+    expect(reports[2]).toEqual(expect.arrayContaining(["/app/compliance", "/app/coverage"]));
+    const traces = rows.find((r) => r[0] === "Traces")!;
+    expect(traces[2]).toEqual(expect.arrayContaining(["/app/tools", "/app/models", "/app/sessions", "/app/events"]));
+  });
+
   it("leads with Agents, which stands for the project pages", () => {
     const rows = WORKSPACE_NAV.flatMap((g) => g.items);
     expect(rows[0][1]).toBe("/app/map");
     expect(rows[0][2]).toContain("/app/projects");
     expect(rows.map((r) => r[0])).toEqual([
-      "Agents", "Policies", "Approvals", "Issues", "Testing", "Traces",
+      "Agents", "Policies", "Approvals", "Issues", "Testing", "Traces", "Reports",
       "Settings",
     ]);
   });

@@ -9,7 +9,7 @@ import { proxyCustomBody } from "@/lib/product/proxy";
 export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const form = await req.formData();
-  const back = `/app/projects/${encodeURIComponent(slug)}?view=settings`;
+  const back = `/app/projects/${encodeURIComponent(slug)}?view=controls`;
   const base = `/api/agents/${encodeURIComponent(slug)}/breaker`;
   if (form.get("action") === "reset") {
     return proxyCustomBody(req, "POST", `${base}/reset`, back, { reason: String(form.get("reason") || "") }, {

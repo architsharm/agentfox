@@ -710,10 +710,65 @@ def govern(client: Any, *agents: Any, tool_prefix: str | None = None) -> None:
                 agentfox_tool_output_guardrail(client, tools=names),
             ]
         for handoff in getattr(agent, "handoffs", None) or []:
-            # A handoff is the agent itself, or a Handoff wrapping one.
-            target = getattr(handoff, "agent", None) or handoff
-            if hasattr(target, "input_guardrails"):
+            target = _handoff_target(handoff)
+            if target is not None:
                 pending.append(target)
+            else:
+                log.warning(
+                    "agentfox govern(): could not find the agent behind handoff %r from "
+                    "agent %r; it and its tools are not governed. Pass that agent to "
+                    "govern() as well.",
+                    getattr(handoff, "agent_name", None) or getattr(handoff, "tool_name", handoff),
+                    getattr(agent, "name", agent),
+                )
+
+
+def _is_agent(obj: Any) -> bool:
+    return hasattr(obj, "input_guardrails") and hasattr(obj, "handoffs")
+
+
+def _handoff_target(handoff: Any) -> Any:
+    """The agent a handoff leads to: the agent itself, or the one a ``Handoff`` wraps.
+
+    The SDK has no public accessor. ``handoff(agent=...)`` keeps a weak reference in
+    ``_agent_ref`` (0.10 and later); earlier versions keep the agent only in the
+    closure of ``on_invoke_handoff``. ``.agent`` covers hand-built wrappers.
+    """
+    if _is_agent(handoff):
+        return handoff
+    ref = getattr(handoff, "_agent_ref", None)
+    target = ref() if callable(ref) else None
+    if _is_agent(target):
+        return target
+    target = getattr(handoff, "agent", None)
+    if _is_agent(target):
+        return target
+    return _agent_in_closure(getattr(handoff, "on_invoke_handoff", None))
+
+
+def _agent_in_closure(fn: Any, depth: int = 0) -> Any:
+    """The agent a handoff's invoke function closes over, through partials and wrappers."""
+    if fn is None or depth > 4:
+        return None
+    if isinstance(fn, functools.partial):
+        candidates = [fn.func, *fn.args, *fn.keywords.values()]
+    else:
+        cells = getattr(fn, "__closure__", None) or ()
+        candidates = []
+        for cell in cells:
+            try:
+                candidates.append(cell.cell_contents)
+            except ValueError:  # an empty cell
+                continue
+    for value in candidates:
+        if _is_agent(value):
+            return value
+    for value in candidates:
+        if callable(value):
+            found = _agent_in_closure(value, depth + 1)
+            if found is not None:
+                return found
+    return None
 
 
 __all__ = [

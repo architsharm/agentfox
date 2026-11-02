@@ -6,7 +6,8 @@ import { ActionPill, Card, Empty, Header, ModePill, OutcomePill, Pill, Tabs, hre
 import { CustomRule } from "@/components/product/policies/CustomRule";
 import { DescribeRule } from "@/components/product/policies/DescribeRule";
 import { ImportGuard } from "@/components/product/policies/ImportGuard";
-import { LibraryPacks } from "@/components/product/policies/LibraryPacks";
+import { Libraries } from "@/components/product/policies/Libraries";
+import { observeScope } from "@/lib/product/observeScope";
 import { SURFACES, WOULD, outcomeOf, ruleTitle } from "@/lib/product/vocab";
 
 export const metadata: Metadata = appPageMetadata("Add rule");
@@ -31,7 +32,7 @@ export default async function NewRule({ searchParams }: { searchParams: Promise<
   ];
   const keep = { run: sp.run, agent: sp.agent };
   // No builder chosen yet: start from what the person wants, not from our mechanisms.
-  if (!sp.from && !sp.run) return <Start agent={sp.agent} />;
+  if (!sp.from && !sp.run) return <Start agent={sp.agent} surfaces={sp.surfaces} />;
   const tab = tabs.some((t) => t.key === sp.from) ? sp.from! : tabs[0].key;
 
   return (
@@ -42,10 +43,10 @@ export default async function NewRule({ searchParams }: { searchParams: Promise<
       {tab === "describe" && <Describe agent={sp.agent} />}
       {tab === "custom" && (
         <Card>
-          <CustomRule agent={sp.agent} startKind={sp.kind as any} startOperator={sp.op} />
+          <CustomRule agent={sp.agent} startKind={sp.kind as any} startOperator={sp.op} startSurfaces={sp.surfaces?.split(",")} />
         </Card>
       )}
-      {tab === "packs" && <LibraryPacks />}
+      {tab === "packs" && <PacksTab />}
       {tab === "import" && (
         <Card title="From another tool">
           <ImportGuard />
@@ -54,6 +55,12 @@ export default async function NewRule({ searchParams }: { searchParams: Promise<
       {tab === "access" && <ToolAccess agent={sp.agent} />}
     </>
   );
+}
+
+/** The same library cards, drawer and scope as Policies → Libraries: the project's agents first. */
+async function PacksTab() {
+  const { project, agents } = await observeScope();
+  return <Libraries project={project} agents={agents} />;
 }
 
 async function FromRun({ id }: { id: string }) {
@@ -181,7 +188,7 @@ const GOALS: { title: string; text: string; to: Record<string, string> | string 
   { title: "Bring rules you already have", text: "From Guardrails AI, or a workspace file.", to: { from: "import" } },
 ];
 
-function Start({ agent }: { agent?: string }) {
+function Start({ agent, surfaces }: { agent?: string; surfaces?: string }) {
   return (
     <>
       <Header back={{ href: "/app/policies", label: "Policies" }} title={agent ? `Add rule for ${agent}` : "What do you want to do?"} />
@@ -199,7 +206,7 @@ function Start({ agent }: { agent?: string }) {
         {GOALS.map((g) => (
           <Link
             key={g.title}
-            href={typeof g.to === "string" ? g.to : href("/app/policies/new", { ...g.to, agent })}
+            href={typeof g.to === "string" ? g.to : href("/app/policies/new", { ...g.to, agent, surfaces })}
             className="k-card k-tile k-goal"
           >
             <div className="k-card-body">

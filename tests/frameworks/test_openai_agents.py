@@ -84,6 +84,7 @@ def fake_agents(monkeypatch):
 class _Session:
     def __init__(self, fox: _Fox) -> None:
         self.fox = fox
+        self.prior_tools: list[str] = []
 
     def guard_tool(self, tool, arguments, *, provenance=None, raise_on_block=True, **_):
         self.fox.tool_calls.append((tool, arguments, provenance))
@@ -530,3 +531,104 @@ def test_govern_wires_every_agent_handoff_and_tool_once(fake_agents):
     for tool in (shared, *refunds.tools):
         assert len(tool.tool_input_guardrails) == 1, tool.name
         assert len(tool.tool_output_guardrails) == 1, tool.name
+
+
+class _Handoff:
+    """`agents.Handoff` as built by ``handoff(agent=...)`` in SDK 0.10 and later: the
+    target is a weak reference in ``_agent_ref``, and there is no ``.agent``."""
+
+    def __init__(self, agent):
+        import weakref
+
+        self.agent_name = agent.name
+        self.tool_name = f"transfer_to_{agent.name}"
+        self._agent_ref = weakref.ref(agent)
+
+
+class _ClosureHandoff:
+    """``handoff(agent=...)`` in SDK 0.3 to 0.9: the target lives only in the closure of
+    ``on_invoke_handoff`` (wrapped in a partial, as 0.22 also does)."""
+
+    def __init__(self, agent):
+        import functools
+
+        async def _invoke(ctx, args):
+            return agent
+
+        async def _redacting(impl, ctx, args):
+            return await impl(ctx, args)
+
+        self.agent_name = agent.name
+        self.tool_name = f"transfer_to_{agent.name}"
+        self.on_invoke_handoff = functools.partial(_redacting, _invoke)
+
+
+@pytest.mark.parametrize("wrap", [_Handoff, _ClosureHandoff])
+def test_govern_follows_handoff_wrappers_to_their_agents(fake_agents, wrap):
+    """Regression: `govern()` read ``handoff.agent``, which no SDK version sets, so agents
+    reached through ``handoff(agent=...)`` and their tools were silently left ungoverned."""
+    from agentfox.frameworks.openai_agents import govern
+
+    fake_agents.tool_output_guardrail = lambda fn: _Guardrail(fn, fn.__name__)
+    seat = _Agent("seat", tools=[_Tool("update_seat")])
+    booking = _Agent("booking", tools=[_Tool("cancel_flight")])
+    triage = _Agent("triage", handoffs=[wrap(seat), booking])
+    seat.handoffs.append(wrap(triage))  # cycles back are fine
+
+    govern(_Fox(), triage)
+
+    for agent in (triage, seat, booking):
+        assert len(agent.input_guardrails) == 1, agent.name
+    for tool in (*seat.tools, *booking.tools):
+        assert len(tool.tool_input_guardrails) == 1, tool.name
+
+
+def test_govern_warns_when_a_handoff_target_cannot_be_found(fake_agents, caplog):
+    from agentfox.frameworks.openai_agents import govern
+
+    opaque = types.SimpleNamespace(agent_name="seat", tool_name="transfer_to_seat")
+    triage = _Agent("triage", handoffs=[opaque])
+
+    with caplog.at_level("WARNING", logger="agentfox.frameworks.openai_agents"):
+        govern(_Fox(), triage)
+
+    assert len(triage.input_guardrails) == 1
+    assert "'seat'" in caplog.text and "not governed" in caplog.text
+
+
+def test_govern_follows_real_sdk_handoffs():
+    """The airline demo's shape: ``handoff(agent=..., on_handoff=...)`` mixed with bare
+    agents, cycles back to triage, and agents reachable only through a ``Handoff``."""
+    agents = _real_agents()
+
+    @agents.function_tool
+    def update_seat(seat: str) -> str:
+        """Change the seat."""
+        return seat
+
+    @agents.function_tool
+    def cancel_flight(confirmation: str) -> str:
+        """Cancel a flight."""
+        return confirmation
+
+    async def on_handoff(ctx) -> None:
+        return None
+
+    faq = agents.Agent(name="FAQ Agent")
+    seat = agents.Agent(name="Seat Agent", tools=[update_seat])
+    booking = agents.Agent(name="Booking Agent", tools=[cancel_flight])
+    triage = agents.Agent(name="Triage Agent")
+    triage.handoffs = [
+        faq,
+        agents.handoff(agent=booking, on_handoff=on_handoff),
+        agents.handoff(agent=seat, on_handoff=on_handoff),
+    ]
+    booking.handoffs.extend([agents.handoff(agent=seat, on_handoff=on_handoff), triage])
+    seat.handoffs.extend([faq, triage])
+
+    oa.govern(_Fox(), triage)
+
+    for agent in (triage, faq, seat, booking):
+        assert len(agent.input_guardrails) == 1, agent.name
+    for tool in (update_seat, cancel_flight):
+        assert len(tool.tool_input_guardrails) == 1, tool.name

@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   if (!id) {
     const target = new URL("/app/policies?tab=changes", requestOrigin(req));
     target.searchParams.set("review_error", "missing suppression id");
-    return NextResponse.redirect(target);
+    return NextResponse.redirect(target, 303);
   }
 
   return proxyCustomBody(

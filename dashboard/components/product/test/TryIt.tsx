@@ -191,7 +191,7 @@ export function TryIt({ agents, tools: initialTools }: { agents: { slug: string;
             <span className={`k-pill k-pill-${OUTCOME_TONE[now]}`}>{OUTCOME_LABEL[now]}</span>
             {would !== now && (
               <span className="k-muted">
-                With rules enforcing: <span className={`k-pill k-pill-${OUTCOME_TONE[would]}`}>{OUTCOME_LABEL[would]}</span>
+                With every rule blocking: <span className={`k-pill k-pill-${OUTCOME_TONE[would]}`}>{OUTCOME_LABEL[would]}</span>
               </span>
             )}
             {result.trace_id && (

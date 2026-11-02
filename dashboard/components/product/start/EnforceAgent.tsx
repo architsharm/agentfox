@@ -8,8 +8,9 @@ type Preview = { packs: { key: string; label: string; would_stop: number }[]; wo
 
 /**
  * Get started, step 6: everything that protects this agent goes from watching to
- * enforcing in one go (baseline checks, its own protections, blocked words and
- * topics), after showing what each would have stopped last week.
+ * enforcing in one go (baseline checks where installed, its own protections, the
+ * libraries applied to it such as the basic guardrails, blocked words and topics),
+ * after showing what each would have stopped last week.
  */
 export function EnforceAgent({ agent }: { agent: string }) {
   const router = useRouter();

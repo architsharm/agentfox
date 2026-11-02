@@ -49,6 +49,22 @@ type ForwardOpts = {
   cache?: RequestCache;
 };
 
+/**
+ * A script calling a form route (fetch/callJson) rather than a browser submitting a
+ * form. Following the redirect would hand it a 200 page whatever the gateway said,
+ * so it gets the gateway's status and body instead. A browser form post never sends
+ * a JSON content type and always accepts HTML first.
+ */
+export function wantsJson(req: NextRequest | null): boolean {
+  if (!req) return false;
+  const type = req.headers.get("content-type") || "";
+  const accept = req.headers.get("accept") || "";
+  return type.includes("application/json") || (accept.includes("application/json") && !accept.includes("text/html"));
+}
+
+export { detailText } from "@/lib/product/errors";
+import { detailText } from "@/lib/product/errors";
+
 async function proxyForward(
   req: NextRequest | null,
   method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE",
@@ -58,11 +74,11 @@ async function proxyForward(
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   const errorParam = opts.errorParam || "review_error";
 
-  if (opts.redirectTo) {
+  if (opts.redirectTo && !wantsJson(req)) {
     const target = new URL(opts.redirectTo, requestOrigin(req!));
     if (!token) {
       target.searchParams.set(errorParam, "not signed in");
-      return NextResponse.redirect(target);
+      return NextResponse.redirect(target, 303);
     }
     try {
       const res = await fetch(`${API_BASE}${gatewayPath}`, {
@@ -72,17 +88,17 @@ async function proxyForward(
       });
       if (!res.ok) {
         const resBody = await res.json().catch(() => ({}));
-        target.searchParams.set(errorParam, resBody.detail || res.statusText);
+        target.searchParams.set(errorParam, detailText(resBody.detail) || res.statusText);
       } else if (opts.successNotice) {
         target.searchParams.set("review_notice", opts.successNotice);
       }
     } catch (e: any) {
       target.searchParams.set(errorParam, String(e?.message || e));
     }
-    return NextResponse.redirect(target);
+    return NextResponse.redirect(target, 303);
   }
 
-  // No redirectTo -> a client component wants the response body directly.
+  // No redirectTo, or a script called a form route -> it wants the response body.
   if (!token) {
     return NextResponse.json({ detail: "not signed in" }, { status: 401 });
   }
@@ -241,9 +257,7 @@ export async function proxyPublicFormPost(
   }
   // 303, not `NextResponse.redirect`'s 307 default: 307 preserves the method, so the
   // browser would POST the form again at the page it is being sent to — which is a
-  // Server Component that only answers GET. The helpers above inherit the default
-  // because changing it is a behaviour change on a dozen signed-in routes; this one
-  // is new, and the pricing form is a plain POST with no client JS to paper over it.
+  // Server Component that only answers GET ("Server Action unavailable", 409).
   return NextResponse.redirect(target, 303);
 }
 
@@ -276,7 +290,7 @@ export async function proxyRedirectWithHandler(
   const target = new URL(redirectTo, requestOrigin(req));
   if (!token) {
     target.searchParams.set(errorParam, "not signed in");
-    return NextResponse.redirect(target);
+    return NextResponse.redirect(target, 303);
   }
   try {
     const res = await fetch(`${API_BASE}${gatewayPath}`, {
@@ -292,5 +306,5 @@ export async function proxyRedirectWithHandler(
   } catch (e: any) {
     target.searchParams.set(errorParam, String(e?.message || e));
   }
-  return NextResponse.redirect(target);
+  return NextResponse.redirect(target, 303);
 }

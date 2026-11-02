@@ -1,12 +1,12 @@
 import { NextRequest } from "next/server";
-import { proxyRedirectWithHandler } from "@/lib/product/proxy";
+import { proxyRedirectWithHandler, detailText } from "@/lib/product/proxy";
 
 export const dynamic = "force-dynamic";
 
 /** Run the retention purge now and say what it removed. */
 export async function POST(req: NextRequest) {
   return proxyRedirectWithHandler(req, "POST", "/api/retention/purge", "/app/settings?tab=retention", undefined, (res, body) => {
-    if (!res.ok) return { error: body.detail || res.statusText };
+    if (!res.ok) return { error: detailText(body.detail) || res.statusText };
     let deleted = 0;
     let redacted = 0;
     for (const r of Object.values<any>(body.run?.results || {})) {

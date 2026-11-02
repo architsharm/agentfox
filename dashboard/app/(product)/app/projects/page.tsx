@@ -8,6 +8,7 @@ import { ApiDown } from "@/components/ui";
 import { Card, Dot, Empty, Header, Pill, StackBar, Tabs, ago, href, num, pctOf } from "@/components/kit";
 import { Modal } from "@/components/product/Modal";
 import { groupProposed, memberRelation } from "@/lib/product/proposedSystems";
+import { NoticeToast } from "@/components/product/NoticeToast";
 
 export const metadata: Metadata = appPageMetadata("Projects", "Every project in this workspace: one per AI agent.");
 export const dynamic = "force-dynamic";
@@ -59,7 +60,7 @@ export default async function Projects({ searchParams }: { searchParams: Promise
           { key: "proposed", label: "Proposed", href: "/app/projects?tab=proposed", count: proposed.length },
         ]}
       />
-      {sp.review_error && <div className="error">{sp.review_error}</div>}
+      <NoticeToast error={sp.review_error} />
 
       {tab === "proposed" ? (
         <Card flush>

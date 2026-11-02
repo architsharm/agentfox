@@ -20,6 +20,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ rul
   });
   if (!ran.ok) return ran;
   const { decision_id } = await ran.json();
+  // A test is a recorded decision; without one there is nothing to keep.
+  if (!decision_id) return NextResponse.json({ detail: "that text wasn't recorded as a decision, so it can't be kept as a test" }, { status: 409 });
   return proxyJson(`/api/rules/${encodeURIComponent(ruleId)}/examples`, "POST", {
     decision_id,
     fires: Boolean(fires),

@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from agentfox.core.config import get_settings
@@ -59,9 +60,16 @@ def ensure_identity(session: Session, agent: Agent, principal: str | None = None
     principal = principal or f"agent:{agent.slug}"
     identity = session.scalar(select(Identity).where(Identity.principal == principal))
     if identity is None:
-        identity = Identity(agent_id=agent.id, principal=principal, kind="agent")
-        session.add(identity)
-        session.flush()
+        # A savepoint, because a new agent's first calls arrive together (an attack
+        # test checks eight at once) and the loser of that insert race must find the
+        # winner's row, not fail the call or roll back the session.
+        try:
+            with session.begin_nested():
+                identity = Identity(agent_id=agent.id, principal=principal, kind="agent")
+                session.add(identity)
+                session.flush()
+        except IntegrityError:
+            identity = session.scalar(select(Identity).where(Identity.principal == principal))
     return identity
 
 

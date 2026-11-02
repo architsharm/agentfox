@@ -1,8 +1,12 @@
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { appPageMetadata } from "@/lib/site";
 import { safeApi } from "@/lib/product/api";
 import { MAP_PROJECT_COOKIE, NEW_PROJECT, projectHref } from "@/lib/product/project";
 
+// Named like its sidebar row; without a project it stays on this URL showing setup.
+export const metadata: Metadata = appPageMetadata("Agents");
 export const dynamic = "force-dynamic";
 
 /**

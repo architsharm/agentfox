@@ -31,11 +31,11 @@ ACTIVE = ("queued", "running")
 TERMINAL = ("done", "failed")
 
 DEAD_RUNNER = (
-    "The test stopped: `agentfox init` stopped responding while it ran. "
+    "The test stopped: agentfox init stopped responding while it ran. "
     "Start it again in the project's repository, then run the test again."
 )
 NO_RUNNER = (
-    "No `agentfox init` picked this test up. Run it in the project's repository "
+    "No agentfox init picked this test up. Run it in the project's repository "
     "(it must stay running), then start the test again."
 )
 

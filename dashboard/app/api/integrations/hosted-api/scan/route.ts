@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { proxyRedirectWithHandler } from "@/lib/product/proxy";
+import { proxyRedirectWithHandler, detailText } from "@/lib/product/proxy";
 import { requestOrigin } from "@/lib/product/origin";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   if (!endpoint_url) {
     const target = new URL("/app/start?tab=connect", requestOrigin(req));
     target.searchParams.set("scan_error", "missing endpoint URL or session");
-    return NextResponse.redirect(target);
+    return NextResponse.redirect(target, 303);
   }
 
   return proxyRedirectWithHandler(
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     (res, body) =>
       res.ok
         ? { extra: { hosted_scan_run_id: body.scan_run_id } }
-        : { error: body.detail || res.statusText },
+        : { error: detailText(body.detail) || res.statusText },
     { errorParam: "scan_error" },
   );
 }

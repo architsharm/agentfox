@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 319,
+ "count": 322,
  "routes": [
   {
    "method": "GET",
@@ -1313,6 +1313,41 @@
      }
     ]
    }
+  },
+  {
+   "method": "GET",
+   "path": "/api/agents/{slug}/control",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "One agent's pause/stop state (who, when, why) and its control history, newest first, read from the audit chain.",
+   "description": "One agent's pause/stop state (who, when, why) and its control history, newest\nfirst, read from the audit chain.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "limit",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
   },
   {
    "method": "POST",
@@ -3007,6 +3042,12 @@
       "name": "text",
       "type": "string",
       "required": true,
+      "description": ""
+     },
+     {
+      "name": "agent",
+      "type": "string",
+      "required": false,
       "description": ""
      }
     ]
@@ -7212,6 +7253,35 @@
    }
   },
   {
+   "method": "POST",
+   "path": "/api/legal-holds/{hold_id}/release",
+   "section": "legal-holds",
+   "audience": "operator",
+   "summary": "Lift a hold, so the purge reaches what it preserved. Audited like placing one.",
+   "description": "Lift a hold, so the purge reaches what it preserved. Audited like placing one.",
+   "params": [
+    {
+     "name": "hold_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
    "method": "GET",
    "path": "/api/library/packs",
    "section": "library",
@@ -7219,6 +7289,41 @@
    "summary": "List Packs",
    "description": "",
    "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/library/packs/{pack_id}/contents",
+   "section": "library",
+   "audience": "operator",
+   "summary": "What a library holds, rule by rule, and what its last simulation on these agents (comma-separated) found: the library drawer and the library's own page.",
+   "description": "What a library holds, rule by rule, and what its last simulation on these agents\n(comma-separated) found: the library drawer and the library's own page.\n\n``pack_id`` is a library (``basic`` is the basic guardrails) or the key of a policy\none ships, so a link to a library's policy that was never applied lands on the\nlibrary. ``scoped`` is false for a library of business rules only (ladders): those\napply to every agent, not one project's.",
+   "params": [
+    {
+     "name": "pack_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "agents",
+     "in": "query",
+     "required": false,
+     "type": "string"
+    },
     {
      "name": "authorization",
      "in": "header",
@@ -8193,8 +8298,14 @@
    "section": "onboarding",
    "audience": "operator",
    "summary": "This user's setup key. Made the first time it is asked for (or after the last one expired or was revoked), and then shown in full that once: ``value`` is null on every later call, which returns the key's ``prefix``, ``createdAt`` and ``expiresAt`` instead. ``POST /key/rotate`` replaces it.",
-   "description": "This user's setup key. Made the first time it is asked for (or after the last\none expired or was revoked), and then shown in full that once: ``value`` is null\non every later call, which returns the key's ``prefix``, ``createdAt`` and\n``expiresAt`` instead. ``POST /key/rotate`` replaces it.\n\nMinting one needs the registry write role, because what it does is propose agents.",
+   "description": "This user's setup key. Made the first time it is asked for (or after the last\none expired or was revoked), and then shown in full that once: ``value`` is null\non every later call, which returns the key's ``prefix``, ``createdAt`` and\n``expiresAt`` instead. ``POST /key/rotate`` replaces it.\n\n``peek=1`` only reads: it says whether a key exists and never makes one, so the\nsetup card can show it on load without opening the page minting a key.\n\nMinting one needs the registry write role, because what it does is propose agents.",
    "params": [
+    {
+     "name": "peek",
+     "in": "query",
+     "required": false,
+     "type": "boolean"
+    },
     {
      "name": "authorization",
      "in": "header",

@@ -606,8 +606,12 @@ class CustomValidatorDetector(BaseDetector):
 
         out: list[Detection] = []
         failed: dict[str, tuple[str, str, str]] = {}  # rule key -> (cause, entity, why)
+        missing: dict[str, str] = {}  # rule key -> why its validator cannot run here
         for rule in self._rules(context):
             if not rule.validator.available():
+                missing[rule.key] = (
+                    f"{rule.validator.name} cannot run here: {rule.validator.unavailable_reason()}"
+                )
                 continue
             try:
                 out.extend(
@@ -638,6 +642,17 @@ class CustomValidatorDetector(BaseDetector):
                 "entities": [e for c, e, _w in failed.values() if c == cause],
                 "rules": {key: c for key, (c, _e, _w) in failed.items()},
             }
+        if missing:
+            # A saved rule whose check is not installed here checked nothing: an error,
+            # so the pipeline counts it as degraded and `fail_mode` decides it, rather
+            # than the content passing as if it had been checked.
+            reason = "; ".join(f"{key}: {why}" for key, why in missing.items())
+            if failed:
+                result.raw["reason"] += f"; {reason}"
+                result.raw["missing"] = missing
+            else:
+                result.status = "error"
+                result.raw = {"error": reason, "missing": missing}
         return result
 
     def _detect(self, content: str, context: DetectionContext) -> list[Detection]:

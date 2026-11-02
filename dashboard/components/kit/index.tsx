@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { InfoTip } from "@/components/ui/InfoTip";
-import { ACTIONS, IMPACT, MODES, OUTCOMES, type Outcome } from "@/lib/product/vocab";
+import { ACTIONS, IMPACT, OUTCOMES, modeKey, modeLabel, type Outcome } from "@/lib/product/vocab";
 
 /**
  * The dashboard's building blocks. Every signed-in page is made of these, so a
@@ -36,7 +36,10 @@ export function money(n?: number | null): string {
 
 export function ago(iso?: string | null): string {
   if (!iso) return "—";
-  const s = (Date.now() - Date.parse(iso)) / 1000;
+  // The gateway writes UTC without a zone ("2026-11-01T09:25:21"), which Date.parse
+  // reads as local time: a pause made just now showed as "5h ago" in IST.
+  const zoned = /T.*(Z|[+-]\d\d:?\d\d)$/.test(iso) || !iso.includes("T") ? iso : `${iso}Z`;
+  const s = (Date.now() - Date.parse(zoned)) / 1000;
   if (Number.isNaN(s)) return "—";
   if (s < 60) return "just now";
   if (s < 3600) return `${Math.floor(s / 60)}m ago`;
@@ -271,7 +274,7 @@ export function ActionPill({ effect }: { effect?: string | null }) {
 
 export function ModePill({ mode }: { mode?: string | null }) {
   if (!mode) return <Pill tone="outline">Off</Pill>;
-  return <Pill tone={mode === "enforce" ? "ok" : "outline"}>{MODES[mode] || mode}</Pill>;
+  return <Pill tone={modeKey(mode) === "enforce" ? "ok" : "outline"}>{modeLabel(mode)}</Pill>;
 }
 
 export function SeverityPill({ value }: { value?: string | null }) {

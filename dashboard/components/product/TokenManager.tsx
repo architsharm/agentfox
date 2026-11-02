@@ -14,6 +14,9 @@ const inputStyle = {
   fontFamily: "inherit",
 } as const;
 
+/** What the gateway names a GitHub sign-in's session token (routes/integrations.py). */
+const LOGIN_TOKEN_NAME = "github-login";
+
 type TokenRow = {
   id: string;
   name: string;
@@ -26,7 +29,7 @@ type TokenRow = {
 export function TokenManager() {
   const [tokens, setTokens] = useState<TokenRow[] | null>(null);
   const [name, setName] = useState("");
-  const [minted, setMinted] = useState<{ name: string; token: string } | null>(null);
+  const [minted, setMinted] = useState<{ id?: string; name: string; token: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -51,7 +54,7 @@ export function TokenManager() {
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.detail || "Failed to create token");
-      setMinted({ name: body.name, token: body.token });
+      setMinted({ id: body.id, name: body.name, token: body.token });
       setName("");
       load();
     } catch (e: any) {
@@ -61,8 +64,18 @@ export function TokenManager() {
     }
   };
 
-  const revoke = async (id: string) => {
-    await fetch(`/api/tokens/${id}/revoke`, { method: "POST" });
+  const revoke = async (t: TokenRow) => {
+    // Immediate and permanent; a sign-in token may be the one this session uses.
+    const label = `"${t.name || "unnamed"}" (${t.key_prefix}…)`;
+    const signIn = t.name === LOGIN_TOKEN_NAME ? " If it is the one this browser signed in with, you will be signed out." : "";
+    if (!window.confirm(`Revoke ${label}? Anything using it stops working now.${signIn}`)) return;
+    const res = await fetch(`/api/tokens/${t.id}/revoke`, { method: "POST" });
+    if (!res.ok) {
+      setError("Could not revoke the token. Try again.");
+      return;
+    }
+    // The "copy it now" box must not keep showing a token that no longer works.
+    if (minted?.id === t.id) setMinted(null);
     load();
   };
 
@@ -157,7 +170,7 @@ export function TokenManager() {
                       type="button"
                       className="btn-reject"
                       style={{ fontSize: "var(--t-micro)" }}
-                      onClick={() => revoke(t.id)}
+                      onClick={() => revoke(t)}
                     >
                       Revoke
                     </button>

@@ -152,7 +152,9 @@ class AccessIn(BaseModel):
     requires_approval: bool = False
     max_taint: str = "user"
     constraints: dict[str, Any] = Field(default_factory=dict)
-    actions: list[str] = Field(default_factory=lambda: ["*"])
+    #: Absent on an update keeps the grant's actions, so a client that edits only the
+    #: approval or limits never widens a narrowed grant; absent on a new grant is all.
+    actions: list[str] | None = None
     #: The tool's risk, when the operator chose one: read, write, high_impact or
     #: irreversible. Absent, an undeclared tool is registered with a cautious guess.
     impact: str | None = None
@@ -204,7 +206,8 @@ def set_access(
         existing.requires_approval = payload.requires_approval
         existing.max_taint = payload.max_taint
         existing.constraints_json = payload.constraints
-        existing.actions = payload.actions
+        if payload.actions is not None:
+            existing.actions = payload.actions
         capability, event = existing, "capability.updated"
         session.flush()
     else:
@@ -212,7 +215,7 @@ def set_access(
             session,
             identity,
             payload.tool_key,
-            actions=payload.actions,
+            actions=payload.actions if payload.actions is not None else ["*"],
             constraints=payload.constraints,
             requires_approval=payload.requires_approval,
             max_taint=payload.max_taint,

@@ -17,8 +17,12 @@ export async function POST(req: NextRequest) {
   const scope: Record<string, unknown> = {};
   if (agents.length) scope.agents = agents;
 
-  return proxyCustomBody(req, "POST", "/api/legal-holds", "/app/settings?tab=retention", {
-    scope,
-    reason,
-  });
+  return proxyCustomBody(
+    req,
+    "POST",
+    "/api/legal-holds",
+    "/app/settings?tab=retention",
+    { scope, reason },
+    { successNotice: agents.length ? `Hold placed on ${agents.join(", ")}` : "Hold placed on every agent: the purge is paused" },
+  );
 }

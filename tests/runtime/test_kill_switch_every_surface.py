@@ -16,6 +16,7 @@ from agentfox.core.db import session_scope
 from agentfox.core.models import Agent, MemoryEntry
 from agentfox.platform.identity import AgentStopped, request_approval, resolve_approval
 from agentfox.platform.registry.control import set_state
+from tests.conftest import as_user
 
 AGENT = "support-triage"
 
@@ -114,3 +115,19 @@ def test_an_approval_can_be_granted_once_resumed(client):
     )
     assert response.status_code == 200, response.text
     assert response.json()["status"] == "approved"
+
+
+def test_a_paused_agents_refused_tool_call_lists_as_blocked_with_its_tool(client):
+    """The refusal comes before any check, so no decision is written; the runs list
+    must still say it was blocked, by the pause, and which tool was refused, rather
+    than an allowed, unchecked "model call"."""
+    _stop()
+    client.post(
+        "/v1/guard/tool_call", json={"agent": AGENT, "tool": "billing.refund", "arguments": {}}
+    )
+    rows = client.get(f"/api/traces?agent={AGENT}", headers=as_user("admin@example.com")).json()[
+        "traces"
+    ]
+    row = next(r for r in rows if "billing.refund" in r["tools"])
+    assert row["verdict"] == "block" and row["checks"] >= 1
+    assert "agent.quarantined" in row["rules"]

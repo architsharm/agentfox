@@ -84,7 +84,9 @@ export default function Page() {
           <tr>
             <td>Turn enforcement on</td>
             <td>
-              The <code>baseline</code> pack (injection, PII, safety) is bound in enforce mode.
+              Something protects in enforce mode and nothing is still only watching: each
+              agent&apos;s protections and basic guardrails, the blocked words and topics, and
+              the <code>baseline</code> pack (injection, PII, safety) where it is installed.
             </td>
             <td>The same <strong>Start enforcing</strong> control as Policies, which simulates first.</td>
           </tr>

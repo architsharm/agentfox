@@ -146,8 +146,9 @@ def _fired_rule(
     ``mode`` says whether *this rule's* effect was applied or only recorded. It
     defaults to ``enforce`` because a synthetic rule is a fact about the call rather
     than a policy opinion: the absence of a grant, a destructive statement, a killed
-    agent. Those set the verdict whatever mode the packs are bound in. The two call
-    sites that are gated on the decision's mode pass it explicitly.
+    agent, a grant that asks for a person. Those set the verdict whatever mode the
+    packs are bound in. The call sites that are gated on the decision's mode pass it
+    explicitly.
     """
     rule: dict[str, Any] = {"rule_id": rule_id, "effect": effect, "reason": reason, "mode": mode}
     if severity is not None:

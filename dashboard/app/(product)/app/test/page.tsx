@@ -8,6 +8,7 @@ import { CodeSnippet } from "@/components/product/start/CodeSnippet";
 import { TryIt } from "@/components/product/test/TryIt";
 import { AddPathToTests } from "@/components/product/test/AddPathToTests";
 import { publicApiBase } from "@/lib/env";
+import { NoticeToast } from "@/components/product/NoticeToast";
 
 export const metadata: Metadata = appPageMetadata("Test", "Check rules and agents before they meet real traffic.");
 export const dynamic = "force-dynamic";
@@ -33,8 +34,7 @@ export default async function Test({ searchParams }: { searchParams: Promise<SP>
     <>
       <Header title="Test" />
       <Tabs items={TABS.map((t) => ({ ...t, href: href("/app/test", { tab: t.key === "try" ? undefined : t.key }) }))} active={tab} />
-      {sp.review_error && <div className="error">{sp.review_error}</div>}
-      {sp.review_notice && <div className="note-panel">{sp.review_notice}</div>}
+      <NoticeToast notice={sp.review_notice} error={sp.review_error} />
       {tab === "try" && <Try agents={live} />}
       {tab === "attacks" && <Attacks agents={live} />}
       {tab === "paths" && <Paths agents={live} agent={sp.agent} days={sp.days} />}

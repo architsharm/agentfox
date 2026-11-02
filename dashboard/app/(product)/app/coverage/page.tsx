@@ -36,8 +36,8 @@ export const dynamic = "force-dynamic";
 const STATUS: Record<string, { label: string; tone: string; rank: number }> = {
   breached: { label: "breached", tone: "bad", rank: 0 },
   uncovered: { label: "uncovered", tone: "bad", rank: 1 },
-  observing: { label: "watching only", tone: "warn", rank: 2 },
-  enforcing: { label: "enforcing", tone: "ok", rank: 3 },
+  observing: { label: "watching", tone: "warn", rank: 2 },
+  enforcing: { label: "blocking", tone: "ok", rank: 3 },
   out_of_scope: { label: "out of scope", tone: "muted", rank: 4 },
 };
 
@@ -71,7 +71,7 @@ export default async function Coverage({
       <AreaTabs tabs={REPORTS_TABS} active="coverage" />
 
       <div className="cards">
-        <Stat n={`${pct}%`} label={`of ${data.scored} in-scope threats enforced`} tone={pct >= 80 ? "ok" : pct >= 50 ? "warn" : "bad"} />
+        <Stat n={`${pct}%`} label={`of ${data.scored} in-scope threats blocked`} tone={pct >= 80 ? "ok" : pct >= 50 ? "warn" : "bad"} />
         <Stat n={counts.uncovered || 0} label="nothing watching" tone={counts.uncovered ? "bad" : "ok"} />
         <Stat n={counts.observing || 0} label="watching, not stopping" tone={counts.observing ? "warn" : "ok"} />
         {(data.threats || []).some((t: any) => t.redteam_attempts) ? (
@@ -82,9 +82,8 @@ export default async function Coverage({
       </div>
 
       <p className="stat-note">
-        A threat counts as covered only when a rule is <span className="mono">enforcing</span>{" "}
-        it.{" "}
-        <InfoTip text="Observe mode records what would have happened and stops nothing. Counting it as covered would let a deployment that blocks nothing report full coverage, which is the most expensive wrong number this product could publish." />{" "}
+        A threat counts as covered only when a rule is blocking it.{" "}
+        <InfoTip text="A watching rule records what would have happened and stops nothing. Counting it as covered would let a deployment that blocks nothing report full coverage, which is the most expensive wrong number this product could publish." />{" "}
         Out-of-scope threats are excluded from the ratio rather than counted as failures —
         training-data poisoning is not something a runtime control plane is in the path of.
       </p>

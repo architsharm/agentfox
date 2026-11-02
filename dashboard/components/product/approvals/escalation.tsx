@@ -1,6 +1,6 @@
 /**
  * The conversation hand-off queue, missed escalations and the escalation policy
- * form, as they were before the redesign. Rendered under Approvals → Hand-offs.
+ * form, as they were before the redesign. Rendered under Approvals → Human hand-offs.
  */
 import Link from "next/link";
 import { api, safeApi, apiErrorProps } from "@/lib/product/api";
@@ -8,6 +8,8 @@ import { AgentLink, ApiDown, ArgsCell, Empty, InfoTip, InventoryStrip, Severity,
 import { PageHeader } from "@/components/product/PageHeader";
 import { Countdown } from "@/components/product/Countdown";
 import { Card } from "@/components/kit";
+import { FilterBar } from "@/components/kit/FilterBar";
+import { MODE_WORDS } from "@/lib/product/vocab";
 
 function clip(text: string, n: number): string {
   return text.length > n ? `${text.slice(0, n - 1)}…` : text;
@@ -52,29 +54,13 @@ export async function EscalationTab({ agent }: { agent?: string }) {
 
   return (
     <>
-      <p className="small muted" style={{ marginTop: 4, marginBottom: 12 }}>
-        Conversations that met an escalation condition and never got a human.{" "}
+      <p className="k-tab-intro">
+        Conversations an agent handed to a person, or should have. Held tool calls are under Waiting.{" "}
         <InfoTip text="Click any conversation to see the transcript and which turn triggered it." />
       </p>
 
-      <form action="/app/approvals" method="GET" className="chipbar" style={{ marginBottom: 4 }}>
-        <input type="hidden" name="tab" value="escalation" />
-        <span className="chipbar-label">agent:</span>
-        <select
-          name="agent"
-          defaultValue={agent ?? ""}
-          style={{ padding: "3px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--panel-2)", color: "var(--text)", fontSize: 12, fontFamily: "inherit" }}
-        >
-          <option value="">all agents</option>
-          {(agents.agents || []).map((a: any) => (
-            <option key={a.slug} value={a.slug}>{a.slug}</option>
-          ))}
-        </select>
-        <button type="submit" className="chip" style={{ cursor: "pointer" }}>filter</button>
-        {agent && (
-          <Link href="/app/approvals?tab=escalation" className="chip">clear agent ×</Link>
-        )}
-      </form>
+      {/* The agent filter applies on change, like every other filter in the app. */}
+      <FilterBar range={false} agents={(agents.agents || []).map((a: any) => ({ slug: a.slug, name: a.name }))} />
 
       {/* Five tiles, three of them zero and wearing a green border to say so,
           above an empty "Missed escalations" section, above the hand-off queue —
@@ -86,13 +72,13 @@ export async function EscalationTab({ agent }: { agent?: string }) {
           {
             n: report.qualified_for_escalation ? `${(rate * 100).toFixed(1)}%` : "—",
             label: "missed-escalation rate",
-            href: "/app/approvals?tab=escalation",
+            href: "/app/approvals?tab=handoffs",
             ...(breaching ? { tone: "bad" as const } : {}),
           },
           {
             n: report.qualified_for_escalation,
             label: "conversations that qualified",
-            href: "/app/approvals?tab=escalation",
+            href: "/app/approvals?tab=handoffs",
           },
           {
             n: report.sla_breached,
@@ -267,7 +253,7 @@ export async function EscalationTab({ agent }: { agent?: string }) {
         </h2>
         <p className="sub">
           Every condition is a signal, not a guarantee.{" "}
-          <InfoTip text="That is why this pillar ships observe-first. Fields not present in the JSON fall back to the platform default shown as a placeholder." />
+          <InfoTip text="That is why it starts out watching. Fields not present in the JSON fall back to the platform default shown as a placeholder." />
         </p>
         <form action="/api/escalation/policy" method="POST" className="panel body stack">
           <div className="field-grid">
@@ -298,8 +284,8 @@ export async function EscalationTab({ agent }: { agent?: string }) {
                 defaultValue={policy?.mode || "observe"}
                 style={{ width: "100%", padding: "5px 9px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--panel-2)", color: "var(--text)", fontSize: 13, fontFamily: "inherit" }}
               >
-                <option value="observe">observe</option>
-                <option value="enforce">enforce</option>
+                <option value="observe">{MODE_WORDS.watching}</option>
+                <option value="enforce">{MODE_WORDS.blocking}</option>
               </select>
             </div>
           </div>

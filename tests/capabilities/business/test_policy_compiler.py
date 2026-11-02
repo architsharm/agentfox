@@ -36,6 +36,18 @@ def test_three_band_policy_compiles_whole():
     assert bands[2]["approver_role"] == "finance"
 
 
+def test_the_tool_resolves_to_the_agents_own_tool():
+    """'refund' named the generic `payments.refund`, which an agent whose refund tool
+    is `issue_refund` never calls, so the saved rule never fired."""
+    text = "Refunds over $50 need approval from a manager."
+    own = ["issue_refund", "lookup_order", "send_email"]
+    assert _ladder(compile_document(text, tools=own)).definition["tool"] == "issue_refund"
+    # Nothing of the agent's matches: the generic hint stands, as with no agent.
+    other = ["lookup_order", "send_email"]
+    assert _ladder(compile_document(text, tools=other)).definition["tool"] == "payments.refund"
+    assert _ladder(compile_document(text)).definition["tool"] == "payments.refund"
+
+
 def test_wrapped_lines_do_not_split_a_phrase():
     """A policy pasted from a PDF wraps mid-phrase, and the middle band vanished.
 

@@ -9,6 +9,7 @@ import { Card, Empty, Header, Pill, Tabs, ago } from "@/components/kit";
 import { days } from "@/ee/compliance";
 import { EnterpriseOnly } from "@/components/product/EnterpriseOnly";
 import { hasFeature } from "@/lib/product/edition";
+import { NoticeToast } from "@/components/product/NoticeToast";
 
 /**
  * Behind the sign-in wall: `noindex`, plus a tab title that is not the fourth
@@ -94,8 +95,7 @@ export default async function Compliance({
       <Header title="Reports" />
       <AreaTabs tabs={REPORTS_TABS} active="compliance" />
 
-      {review_error && <div className="error">{review_error}</div>}
-      {review_notice && <div className="note-panel">{review_notice}</div>}
+      <NoticeToast notice={review_notice} error={review_error} />
 
       {!catalogLoaded && (
         <div className="hero empty" style={{ marginBottom: 20 }}>
