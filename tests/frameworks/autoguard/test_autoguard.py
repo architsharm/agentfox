@@ -917,7 +917,7 @@ def test_observe_mode_ignores_the_kill_switch_but_policy_mode_honours_it(init_db
     assert len(calls) == 1
 
     auto(agent="support-triage", quiet=True)  # back to the default
-    with pytest.raises(Blocked, match="killed"):
+    with pytest.raises(Blocked, match="stopped"):
         client().create(model="gpt-4o", messages=[{"role": "user", "content": "hi"}])
     assert len(calls) == 1
 

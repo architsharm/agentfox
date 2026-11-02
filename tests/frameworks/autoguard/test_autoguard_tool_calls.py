@@ -518,7 +518,7 @@ def test_the_kill_switch_stops_tool_calls_in_policy_mode(fake_openai):
         kill(session, "support-bot", reason="incident 7")
     script.append(_openai_response(_openai_tool_call("c1", "fetch_url", {"url": "https://x.io"})))
     # Pre-flight refuses a killed agent before the model is even called.
-    with pytest.raises(Blocked, match="killed"):
+    with pytest.raises(Blocked, match="stopped"):
         client().create(model="gpt-4o", messages=[{"role": "user", "content": "hi"}], tools=TOOLS)
 
 
