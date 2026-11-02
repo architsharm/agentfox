@@ -158,12 +158,6 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
 .lp-pill-link { gap: 6px; text-transform: none; letter-spacing: 0; font-size: 13px; height: 30px; padding: 0 14px; }
 .lp-pill-link:hover { border-color: color-mix(in srgb, var(--af-brand) 40%, var(--lp-hair)); }
 .lp-hero-fine { margin-top: 16px; font-size: 13px; color: var(--af-muted); }
-.lp-platform { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
-.lp-plat { display: grid; align-content: start; gap: 8px; padding: 22px 20px; border: 1px solid var(--lp-hair); border-radius: 12px; background: var(--af-surface); transition: border-color 150ms var(--af-ease), transform 150ms var(--af-ease); }
-.lp-plat:hover { border-color: color-mix(in srgb, var(--af-brand) 40%, var(--lp-hair)); transform: translateY(-2px); }
-.lp-plat-k { font-size: 12px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--af-brand); }
-.lp-plat p { font-size: 14px; color: var(--af-fg-2); }
-.lp-plat-more { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 13px; font-weight: 500; color: var(--lp-ink); }
 .lp-center-link { display: flex; justify-content: center; align-items: center; gap: 24px; flex-wrap: wrap; }
 .lp-link-quiet { font-weight: 400; color: var(--af-muted) !important; }
 .lp-link-quiet:hover { color: var(--lp-ink) !important; }
@@ -350,8 +344,7 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
   .lp-test { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .lp-foot-in { grid-template-columns: minmax(0, 1fr); }
   .lp-foot-cols { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .lp-platform { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .lp-section, .lp-cta { padding: 80px 0; }
+    .lp-section, .lp-cta { padding: 80px 0; }
 }
 @media (max-width: 640px) {
   .lp { --lp-gutter: 20px; }
@@ -369,8 +362,7 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
   .lp-hero-copy { padding-bottom: 48px; }
   .lp-logos-label { display: none; }
   .lp-foot-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .lp-platform { grid-template-columns: minmax(0, 1fr); }
-  .lp-nav-text { display: none; }
+    .lp-nav-text { display: none; }
   .lp-race-row { grid-template-columns: 112px minmax(0, 1fr) 48px; }
   .lp-log .lp-why, .lp-chip-d, .lp-scene-tag { display: none; }
   .lp-say { max-width: 86%; font-size: 12px; }
