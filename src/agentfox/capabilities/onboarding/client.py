@@ -250,9 +250,14 @@ def _print_coverage(console: Console, mapped: dict[str, Any]) -> None:
 
 def _print_missing_help(console: Console) -> None:
     """How to add an agent, tool or model that init did not find."""
+    from agentfox.capabilities.discovery.platforms import RECOGNISED as HOSTED
     from agentfox.capabilities.onboarding.mapper import RECOGNISED
 
     found = "".join(f"  • {what}: [cyan]{shapes}[/cyan]\n" for what, shapes in RECOGNISED)
+    found += (
+        "  • Agents configured on a hosted platform, from the files the repository keeps "
+        f"for them: [cyan]{', '.join(what for what, _ in HOSTED)}[/cyan]\n"
+    )
     console.print(
         "\n[bold]Missing something?[/bold] Mapping reads your code; it never runs it. "
         "The attack test does run your agent, here on this machine, with every tool "

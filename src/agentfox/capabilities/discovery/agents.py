@@ -35,6 +35,14 @@ What is recognised, per framework:
   that runs it.
 * **Google ADK** — ``Agent`` / ``LlmAgent`` ``sub_agents`` and ``AgentTool``, and the
   ``Sequential``/``Parallel``/``Loop`` workflow agents.
+* **Voice agents** — LiveKit Agents' ``class Assistant(Agent)`` (its ``@function_tool``
+  methods and ``super().__init__(tools=[...])``) or ``Agent(instructions=..., tools=...)``;
+  a Pipecat ``Pipeline``, whose tools are what its LLM service registers
+  (``register_function("name", ...)``); OpenAI's ``RealtimeAgent``.
+* **Frameworks known by constructor** (:data:`_KNOWN_AGENTS`) — Pydantic AI, Strands,
+  Agno, smolagents, LlamaIndex, Semantic Kernel, Microsoft Agent Framework, Haystack,
+  DSPy and the Claude Agent SDK's ``ClaudeAgentOptions``: read with the generic keyword
+  rules below, reported at high confidence under their own name.
 * **LangChain (pre-1.0)** — ``create_tool_calling_agent(llm, tools, prompt)`` and the
   other ``create_*_agent`` constructors, ``initialize_agent(tools, llm)``, and the
   ``AgentExecutor(agent=..., tools=...)`` that runs one: executor and agent are one.
@@ -99,14 +107,25 @@ RECOGNISED = (
     ("AutoGen / AG2", "AssistantAgent(tools=...), group chats, Swarm handoffs"),
     ("Google ADK", "Agent / LlmAgent(sub_agents=[...]), AgentTool, workflow agents"),
     (
+        "Voice agents in code",
+        "LiveKit class X(Agent) with @function_tool, Pipecat Pipeline + register_function, "
+        "OpenAI RealtimeAgent",
+    ),
+    (
+        "Pydantic AI, Strands, Agno, smolagents, LlamaIndex, Semantic Kernel, Microsoft "
+        "Agent Framework, Haystack, DSPy, Claude Agent SDK",
+        "their agent constructors given tools=[...] (ClaudeAgentOptions(allowed_tools=...))",
+    ),
+    (
         "Hand-written loops",
         "chat.completions.create / responses.create / messages.create / litellm "
         "completion(tools=[...]) with JSON tool schemas",
     ),
     (
         "TypeScript / JavaScript",
-        "new XAgent({...}), create…Agent({...}), streamText/generateText with tools, "
-        "responses/messages.create with tools, Claude Agent SDK query()",
+        "new XAgent({...}) (Mastra, VoltAgent, Strands, LiveKit voice.Agent), create…Agent({...}), "
+        "streamText/generateText with tools, responses/messages.create with tools, Claude "
+        "Agent SDK query()",
     ),
     (
         "Any other framework",
@@ -365,6 +384,8 @@ _MODEL_KW = {
     "crew_agent": ("llm",),
     "autogen_agent": ("model_client", "llm_config"),
     "loop": ("model",),
+    "known_agent": ("model", "llm", "model_client", "chat_client", "service", "chat_generator"),
+    "known_team": ("model", "llm"),
 }
 #: Where each framework takes the agent's instructions (its system prompt).
 _INSTRUCTION_KW = (
@@ -411,6 +432,7 @@ _GENERIC_CHILDREN_KW = {
     "managed_agents": "delegates",
     "agents": "member",
     "participants": "member",
+    "members": "member",
 }
 #: Calls that take tools but build no agent: a tool node, a toolkit, an MCP server.
 #: A task, pack, plugin, chain or pipeline takes tools too and is not the agent.
@@ -457,6 +479,9 @@ _GENERIC_STEMS = {
     "client",
     "api",
 }
+
+#: Variable names that say nothing about which agent they hold.
+_GENERIC_VARS = {"agent", "agents", "pipeline", "options", "opts", "config", "team", "workflow"}
 
 #: Directories and file names that hold tests, mocks and fixtures. Code there builds
 #: stand-in agents and tools; it is left out of agent and tool attribution (but not of
@@ -522,11 +547,63 @@ def _record_imports(tree: ast.Module, rel: str, out: _FileResult) -> None:
                     out.imports[alias.asname or alias.name] = (base, alias.name)
 
 
+#: Agent constructors of frameworks read with the generic keyword rules (tools,
+#: children, name, model and instructions under any of the usual names) but known by
+#: name, so an agent built with one is reported at high confidence under its own
+#: label. Keyed by the import-resolved package prefix, then the constructor's name.
+_KNOWN_AGENTS: dict[str, tuple[str, dict[str, str]]] = {
+    "pydantic_ai": ("Pydantic AI", {"Agent": "agent"}),
+    "strands": ("Strands Agents", {"Agent": "agent"}),
+    "agno": ("Agno", {"Agent": "agent", "Team": "team"}),
+    "smolagents": (
+        "smolagents",
+        {"CodeAgent": "agent", "ToolCallingAgent": "agent", "MultiStepAgent": "agent"},
+    ),
+    "llama_index": (
+        "LlamaIndex",
+        {
+            "FunctionAgent": "agent",
+            "ReActAgent": "agent",
+            "CodeActAgent": "agent",
+            "AgentWorkflow": "team",
+        },
+    ),
+    "semantic_kernel": (
+        "Semantic Kernel",
+        {"ChatCompletionAgent": "agent", "AzureAIAgent": "agent", "OpenAIAssistantAgent": "agent"},
+    ),
+    "agent_framework": ("Microsoft Agent Framework", {"ChatAgent": "agent", "Agent": "agent"}),
+    "haystack": ("Haystack", {"Agent": "agent"}),
+    "dspy": ("DSPy", {"ReAct": "agent", "CodeAct": "agent"}),
+    "claude_agent_sdk": ("Claude Agent SDK", {"ClaudeAgentOptions": "agent"}),
+    # A voice agent built in code: `Agent(instructions=..., tools=[...])`, or the
+    # class form `class Assistant(Agent)` (see `_Extractor.classes`).
+    "livekit.agents": ("LiveKit Agents", {"Agent": "agent"}),
+}
+
+
+def _known_agent(qual: str) -> tuple[str, str] | None:
+    last = qual.rsplit(".", 1)[-1]
+    for prefix, (label, names) in _KNOWN_AGENTS.items():
+        if (qual == prefix or qual.startswith(f"{prefix}.")) and last in names:
+            return label, names[last]
+    return None
+
+
 def _constructor(qual: str) -> tuple[str, str] | None:
     root = qual.split(".")[0]
     last = qual.rsplit(".", 1)[-1]
     if root == "agents" and last == "Agent":
         return "OpenAI Agents SDK", "openai_agent"
+    if root == "agents" and last == "RealtimeAgent":
+        # Same constructor shape, run over a speech-to-speech session.
+        return "OpenAI Realtime", "openai_agent"
+    if root == "pipecat" and last == "Pipeline":
+        # Pipecat has no agent object: the pipeline (transport, STT, LLM, TTS) is the
+        # agent, and its tools are what the LLM service registers.
+        return "Pipecat", "voice_pipeline"
+    if (known := _known_agent(qual)) is not None:
+        return known[0], f"known_{known[1]}"
     if root == "crewai":
         if last == "Agent":
             return "CrewAI", "crew_agent"
@@ -582,7 +659,8 @@ _TOOL_CONSTRUCTORS = ("Tool", "StructuredTool", "StructuredTool.from_function", 
 #: define a decorated tool an agent in another file may name.
 _HINT = re.compile(
     r"(?:from|import)\s+(?:agents|crewai|autogen\w*|ag2|google\.adk|langgraph\w*|langchain\w*"
-    r"|openai|anthropic|litellm)\b"
+    r"|openai|anthropic|litellm|pydantic_ai|strands|agno|smolagents|llama_index|semantic_kernel"
+    r"|agent_framework|haystack|dspy|claude_agent_sdk|livekit|pipecat)\b"
     r"|@openai/agents|@(?:\w+\.)?(?:function_)?tool\b"
     # `triage.handoffs.append(x)` in a file of wiring that imports no framework itself.
     r"|\.(?:handoffs|tools)\s*(?:=|\+=|\.(?:append|extend|insert)\s*\()"
@@ -717,6 +795,19 @@ def _path(node: ast.AST) -> str:
     else:
         return ""
     return ".".join(reversed(parts))
+
+
+def _service_model(node: ast.AST | None) -> ast.AST | None:
+    """The model a voice framework's LLM service is built with: a string as is, else
+    ``model=`` on the call, or on its ``settings=``/``params=`` object."""
+    if not isinstance(node, ast.Call):
+        return node
+    if (model := _kw(node, "model")) is not None:
+        return model
+    for nested in (_kw(node, "settings"), _kw(node, "params")):
+        if isinstance(nested, ast.Call) and (model := _kw(nested, "model")) is not None:
+            return model
+    return None
 
 
 def _str(node: ast.AST | None) -> str | None:
@@ -1100,6 +1191,10 @@ class _Extractor:
             model_node = _kw(node, *_MODEL_KW.get(role, ()))
             if model_node is None and role in _MODEL_ARG and len(node.args) > _MODEL_ARG[role]:
                 model_node = node.args[_MODEL_ARG[role]]
+            if model_node is None and node.args and qual.startswith("pydantic_ai."):
+                model_node = node.args[0]  # `Agent("openai:gpt-4o", tools=[...])`
+            if role == "voice_pipeline":
+                model_node = self._pipeline_model()
             raw.model, raw.model_var = self.model_of(model_node)
             if cls is None and id(node) in self.module_calls:
                 raw.attr, raw.attr_kind = var, "object"
@@ -1161,24 +1256,22 @@ class _Extractor:
                 continue
             if node.name.endswith(("Base", "Mixin", "Protocol", "Interface")):
                 continue
+            origins = [
+                self.imports[b]
+                for b in (_path(x).split(".")[0] for x in node.bases)
+                if b in self.imports
+            ]
+            known = next((k for o in origins if (k := self._known_base(o, node)) is not None), None)
             raw = _Raw(
                 idx=self.next_idx,
-                framework=_framework_label(
-                    next(
-                        (
-                            self.imports[b].split(".")[0]
-                            for b in (_path(x).split(".")[0] for x in node.bases)
-                            if b in self.imports
-                        ),
-                        "custom",
-                    )
-                ),
+                framework=known
+                or _framework_label(next((o.split(".")[0] for o in origins), "custom")),
                 kind="agent",
                 file=self.rel,
                 line=node.lineno,
                 name=node.name,
                 cls=node.name,
-                confidence="low",
+                confidence="high" if known else "low",
                 evidence=f"class {node.name}({', '.join(b for b in bases if b)})",
             )
             raw.attr, raw.attr_kind = node.name, "factory"
@@ -1195,12 +1288,55 @@ class _Extractor:
                         sub
                     ) not in self.call_raw:
                         self._tools(raw, fns)
+                    elif (
+                        known
+                        and isinstance(sub.func, ast.Attribute)
+                        and sub.func.attr == "__init__"
+                    ):
+                        # LiveKit: `super().__init__(instructions=..., tools=[...],
+                        # llm=inference.LLM(model="..."))`.
+                        self._tools(raw, _kw(sub, "tools"))
+                        raw.instructions = raw.instructions or self.resolve_str(
+                            _kw(sub, *_INSTRUCTION_KW)
+                        )
+                        if raw.model is None:
+                            raw.model, raw.model_var = self.model_of(
+                                _service_model(_kw(sub, "llm"))
+                            )
+            if known:
+                # Methods the framework exposes to the model: `@function_tool async def
+                # lookup(self, ...)`, by the name it is given or the method's own.
+                for item in node.body:
+                    if not isinstance(item, ast.FunctionDef | ast.AsyncFunctionDef):
+                        continue
+                    for dec in item.decorator_list:
+                        target = dec.func if isinstance(dec, ast.Call) else dec
+                        if _path(target).rsplit(".", 1)[-1] != "function_tool":
+                            continue
+                        named = _str(_kw(dec, "name")) if isinstance(dec, ast.Call) else None
+                        raw.tools.append(("name", named or item.name))
+                        doc, args = _fn_info(item)
+                        self.out.tool_info.setdefault(named or item.name, (doc, args))
             self.next_idx += 1
             self.out.raws.append(raw)
             self.made[raw.idx] = (
                 ast.Call(func=ast.Name(id=node.name), args=[], keywords=[]),
                 "class_agent",
             )
+
+    def _known_base(self, origin: str, node: ast.ClassDef) -> str | None:
+        """The framework of a class agent whose base is a known agent class
+        (LiveKit's ``Agent``), or None for any other ``*Agent`` base."""
+        qual = origin
+        for base in node.bases:
+            path = _path(base)
+            head = path.split(".")[0]
+            if self.imports.get(head) == origin:
+                rest = path.split(".", 1)[1] if "." in path else ""
+                qual = f"{origin}.{rest}" if rest else origin
+                break
+        known = _known_agent(qual)
+        return known[0] if known else None
 
     def _loop(self, call: ast.Call, loop: _Raw | None) -> _Raw | None:
         """``client.chat.completions.create(..., tools=TOOLS)`` and its Anthropic and
@@ -1247,6 +1383,33 @@ class _Extractor:
         self._tools(loop, _kw(call, "tools"))
         return loop
 
+    def _pipeline_tools(self, raw: _Raw) -> None:
+        """A Pipecat pipeline's tools: what its LLM service registers in this file
+        (``llm.register_function("lookup", handler)``,
+        ``llm.register_direct_function(lookup)``), and ``FunctionSchema(name=...)``."""
+        for node in ast.walk(self.tree):
+            if not isinstance(node, ast.Call):
+                continue
+            last = _path(node.func).rsplit(".", 1)[-1]
+            if last == "register_function" and node.args:
+                if (name := _str(node.args[0])) is not None:
+                    raw.tools.append(("name", name))
+            elif last == "register_direct_function" and node.args:
+                if isinstance(node.args[0], ast.Name):
+                    raw.tools.append(("var", node.args[0].id))
+            elif last == "FunctionSchema" and (name := _str(_kw(node, "name"))) is not None:
+                raw.tools.append(("name", name))
+
+    def _pipeline_model(self) -> ast.AST | None:
+        """The model a Pipecat pipeline's LLM service is given in this file: the first
+        ``OpenAILLMService(model=...)`` (or ``settings=...Settings(model=...)``) that
+        names one."""
+        for node in ast.walk(self.tree):
+            if isinstance(node, ast.Call) and _path(node.func).endswith("LLMService"):
+                if (model := _service_model(node)) is not None:
+                    return model
+        return None
+
     def _label(self, node: ast.AST | None) -> str | None:
         """A name the code gives: a literal or a module-level string constant."""
         return self.resolve_str(node) if isinstance(node, ast.Constant | ast.Name) else None
@@ -1267,6 +1430,16 @@ class _Extractor:
             return var
         if role == "generic_agent":
             return self._label(_kw(call, *_GENERIC_NAME_KW)) or var
+        if role in ("known_agent", "known_team", "voice_pipeline"):
+            named = self._label(_kw(call, *_GENERIC_NAME_KW))
+            if named:
+                return named
+            if var and var not in _GENERIC_VARS:
+                return var
+            # `pipeline = Pipeline([...])`, `options = ClaudeAgentOptions(...)`: the
+            # variable says nothing, so the file (or its directory) names the agent.
+            stem, parent = Path(self.rel).stem, Path(self.rel).parent.name
+            return parent if stem in _GENERIC_STEMS and parent else stem
         return self._label(_kw(call, "name")) or var
 
     # -- pass C: tools and children -----------------------------------------
@@ -1278,12 +1451,20 @@ class _Extractor:
             call, role = self.made[raw.idx]
             if role == "class_agent":
                 continue
-            if role == "generic_agent":
-                self._tools(raw, _kw(call, *_GENERIC_TOOLS_KW))
+            if role in ("generic_agent", "known_agent", "known_team"):
+                tools = _kw(call, *_GENERIC_TOOLS_KW, "plugins")
+                if tools is None and role != "generic_agent" and call.args:
+                    # smolagents' `CodeAgent([search, fetch], model)`: tools first.
+                    first = call.args[0]
+                    tools = first if isinstance(first, ast.List) else None
+                self._tools(raw, tools)
                 for kw in call.keywords:
                     if kw.arg in _GENERIC_CHILDREN_KW:
                         for elt in self._elements(kw.value):
                             self._child(raw, elt, _GENERIC_CHILDREN_KW[kw.arg])
+                continue
+            if role == "voice_pipeline":
+                self._pipeline_tools(raw)
                 continue
             if role in _TOOL_ROLES:
                 tools_expr = _kw(call, "tools")
@@ -1761,6 +1942,9 @@ _KIND = {
     "swarm": "team",
     "generic_agent": "agent",
     "class_agent": "agent",
+    "known_agent": "agent",
+    "known_team": "team",
+    "voice_pipeline": "agent",
 }
 
 #: Display names for packages the agent-shaped rule meets; anything else is shown as
@@ -1967,7 +2151,7 @@ def _js_string(value: str) -> str | None:
 #: SDK's ``query({options: {allowedTools}})``. Optionally assigned: ``const x = …``.
 _JS_AGENT_CALL = re.compile(
     r"(?:(?:const|let|var|export\s+const)\s+(?P<var>\w+)\s*(?::[^=]{0,80})?=\s*)?(?:await\s+)?"
-    r"(?:new\s+(?P<cls>\w*Agent)|(?P<create>\w*Agent)\.create|(?P<factory>create\w*Agent)"
+    r"(?:new\s+(?:\w+\.)?(?P<cls>\w*Agent)|(?P<create>\w*Agent)\.create|(?P<factory>create\w*Agent)"
     r"|(?P<vercel>streamText|generateText|streamObject|generateObject)"
     r"|(?P<sdk>(?:\w+\.)*(?:responses|messages|chat\.completions)\.(?:create|stream|parse))"
     r"|(?P<query>\bquery))\s*\(\s*\{"
@@ -1980,6 +2164,10 @@ _JS_TOOL_DECL = re.compile(
 )
 _JS_AGENTS_IMPORT = re.compile(r"""from\s+["']@openai/agents(?:[-/][\w/-]*)?["']""")
 _JS_FRAMEWORKS = (
+    (re.compile(r"""from\s+["']@openai/agents(?:-|/)realtime"""), "OpenAI Realtime"),
+    (re.compile(r"""from\s+["']@livekit/agents"""), "LiveKit Agents"),
+    (re.compile(r"""from\s+["']@voltagent/"""), "VoltAgent"),
+    (re.compile(r"""from\s+["']@strands-agents/"""), "Strands Agents"),
     (re.compile(r"""from\s+["']@openai/agents"""), "OpenAI Agents SDK"),
     (re.compile(r"""from\s+["']@langchain/langgraph"""), "LangGraph"),
     (re.compile(r"""from\s+["']@anthropic-ai/claude-agent-sdk"""), "Claude Agent SDK"),
@@ -1988,6 +2176,17 @@ _JS_FRAMEWORKS = (
     (re.compile(r"""from\s+["']@anthropic-ai/sdk"""), "Anthropic SDK"),
     (re.compile(r"""from\s+["']openai["']"""), "OpenAI SDK"),
 )
+#: Constructors each framework above builds an agent with: one of these in a file
+#: that imports the framework is reported at high confidence.
+_JS_KNOWN = {
+    "OpenAI Agents SDK": ("Agent", "RealtimeAgent"),
+    "OpenAI Realtime": ("Agent", "RealtimeAgent"),
+    "LiveKit Agents": ("Agent",),
+    "Mastra": ("Agent",),
+    "VoltAgent": ("Agent",),
+    "Strands Agents": ("Agent",),
+}
+
 #: Keys an agent-ish object must have one of to be taken for an agent.
 _JS_AGENT_KEYS = {
     "name",
@@ -2079,7 +2278,7 @@ def _extract_js(source: str, rel: str, start: int) -> _FileResult:
             or m.group("vercel")
             or "query"
         )
-        known = framework == "OpenAI Agents SDK" and callee in ("Agent", "RealtimeAgent")
+        known = callee in _JS_KNOWN.get(framework, ())
         stem = Path(rel).stem
         parent = Path(rel).parent.name
         raw = _Raw(
@@ -2689,3 +2888,15 @@ _SLUG = re.compile(r"[^a-z0-9-]+")
 
 def _slug(value: str) -> str:
     return _SLUG.sub("-", (value or "").strip().lower()).strip("-") or "agent"
+
+
+def agent_key(name: str, file: str, taken: set[str]) -> str:
+    """A key for an agent found outside this module (a hosted platform's definition),
+    unique among ``taken``: its name, then its file's stem, then a counter."""
+    key = _slug(name)
+    if key in taken:
+        key = f"{key}-{_slug(Path(file).stem)}"
+    candidate, n = key, 2
+    while candidate in taken:
+        candidate, n = f"{key}-{n}", n + 1
+    return candidate

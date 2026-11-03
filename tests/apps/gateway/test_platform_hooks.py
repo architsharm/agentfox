@@ -287,16 +287,20 @@ def test_retell_args_only_payloads_take_the_function_from_the_url(desk, upstream
 
 
 @pytest.mark.parametrize(
-    "signature",
-    [
-        None,
-        "v=1,d=deadbeef",
-        _sign(b"other body"),
-        _sign(_retell_body("lookup_order", {}), key="someone_elses_key"),
-        _sign(_retell_body("lookup_order", {}), at_ms=int(time.time() * 1000) - 10 * 60 * 1000),
-    ],
+    "case",
+    ["missing", "malformed", "another body", "another key", "ten minutes old"],
 )
-def test_retell_deliveries_that_do_not_verify_are_refused(desk, upstream, signature):
+def test_retell_deliveries_that_do_not_verify_are_refused(desk, upstream, case):
+    # Built here, not in the parametrize list: a signature carries the time it was
+    # made, and every test worker must collect the same test ids.
+    body = _retell_body("lookup_order", {})
+    signature = {
+        "missing": None,
+        "malformed": "v=1,d=deadbeef",
+        "another body": _sign(b"other body"),
+        "another key": _sign(body, key="someone_elses_key"),
+        "ten minutes old": _sign(body, at_ms=int(time.time() * 1000) - 10 * 60 * 1000),
+    }[case]
     made = _connect(
         desk, "retell", upstream_url="https://tools.example.com/retell", secret=RETELL_KEY
     )
@@ -400,10 +404,12 @@ def test_copilot_studio_validates_and_decides_each_planned_tool(desk, entra):
         {"azp": "99999999-0000-0000-0000-000000000000"},  # another app in the tenant
         {"tid": "99999999-0000-0000-0000-000000000000"},  # another tenant
         {"aud": "https://elsewhere.example.com"},
-        {"exp": int(time.time()) - 3600},
+        {"exp": "an hour ago"},  # made into a timestamp in the test (stable test ids)
     ],
 )
 def test_copilot_studio_refuses_a_token_that_is_not_the_configured_apps(desk, entra, claims):
+    if claims.get("exp") == "an hour ago":
+        claims = {"exp": int(time.time()) - 3600}
     made = _connect(desk, "copilot_studio", config={"tenant_id": TENANT, "app_id": APP})
     response = desk.post(
         f"/v1/hooks/copilot-studio/{made['id']}/analyze-tool-execution",

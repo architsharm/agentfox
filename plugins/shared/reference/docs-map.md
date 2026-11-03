@@ -85,6 +85,7 @@ Quote coverage numbers only from these, and only after regenerating.
 | `.github/PULL_REQUEST_TEMPLATE.md` | opening a pull request: the four checks that gate it and the vendored-wheel rule |
 | `deploy/README-dashboard.md` | deploying the hosted dashboard (Render/Fly/Vercel), its shared secrets and the Neon migration state |
 | `deploy/FLY.md` | deploying the dashboard to Fly.io step by step: `fly launch --no-deploy`, the three secrets, the deploy command, then the OAuth callback and playground origins |
+| `deploy/aws-agentcore-interceptor/README.md` | governing an Amazon Bedrock AgentCore Gateway's MCP tool calls: deploying the REQUEST-interceptor Lambda (SAM), attaching it to the gateway, fail and block modes | Setup guide; `handler.py`, `template.yaml` |
 | `deploy/model-server/README.md` | running model-backed detectors on another machine (EC2, a GPU box) for a gateway that cannot hold weights; self-hosted LLMs for the judgment tiers and `trusted_model_hosts` | Setup guide; `agentfox serve models`, `AGENTFOX_MODEL_SERVER_URL` |
 | `sdk/typescript/README.md` | using or changing the TypeScript client (`@agentfox/sdk`) for the `/v1/guard/*` routes |
 

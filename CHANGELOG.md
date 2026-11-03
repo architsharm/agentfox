@@ -160,6 +160,27 @@ the file it came from.
   `https` on a public host, and its address is checked again before each forward,
   with redirects not followed.
 
+- **Discovery finds voice agents and agents built on hosted platforms.** `agentfox scan`,
+  `agentfox init` and a connected repository now report:
+  - Voice agents written in code: a LiveKit `class X(Agent)` with its `@function_tool`
+    methods, a Pipecat `Pipeline` with the functions its LLM service registers, and
+    OpenAI's `RealtimeAgent`, each with the model it is built with.
+  - Agents of Pydantic AI, Strands, Agno, smolagents, LlamaIndex, Semantic Kernel,
+    Microsoft Agent Framework, Haystack, DSPy and the Claude Agent SDK. These were
+    already found by shape at medium confidence; they are now high confidence under
+    their own name, as are TypeScript agents of Mastra, VoltAgent, Strands and LiveKit.
+  - Agents with no code, read from the files a platform exports
+    (`discovery/platforms.py`): Vapi assistants and squads, Retell agents and LLMs,
+    ElevenLabs agents, Bland pathways, n8n workflows with an AI Agent node, Dify apps,
+    Flowise and Langflow flows, Voiceflow projects, Dialogflow CX and ES exports,
+    Copilot Studio agents, Agentforce metadata and Agent Script, Bedrock Agents,
+    AgentCore runtimes and Lex bots in CloudFormation or Terraform, and Genesys
+    Architect bot flows. Each comes with its tools and model where the file names them.
+
+  A platform is named in the stack when code calls its API (Synthflow, Telnyx, Smallest
+  AI, Agora, Bedrock Agents and others). A file counts as a platform's agent only when
+  it has several of that platform's own keys together. Files in test and fixture
+  directories are not read.
 - **The share of checks answered without a detector is visible.** Counted per process
   on the request path: `/metrics` has `agentfox_checks_total`,
   `agentfox_checks_degraded_total{detector,cause}`, `agentfox_checks_degraded_ratio`
