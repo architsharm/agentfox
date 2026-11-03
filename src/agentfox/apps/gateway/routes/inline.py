@@ -1322,6 +1322,14 @@ def guard_tool_call(
     call. With neither, the gateway has nothing to infer from and the arguments
     count as untainted: taint rules cannot fire.
     """
+    return authorise_tool_call(session, payload, credential)
+
+
+def authorise_tool_call(
+    session: Session, payload: GuardToolCallRequest, credential: str | None
+) -> dict[str, Any]:
+    """`POST /v1/guard/tool_call`'s decision, for the routes that translate another
+    platform's tool-call webhook into it (``routes/platform_hooks.py``)."""
     from agentfox.capabilities.detection import TaintTracker
     from agentfox.platform.ledger.trace import commit_before_checks, note_refusal, start_trace
     from agentfox.platform.registry.service import slugify

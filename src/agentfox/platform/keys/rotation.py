@@ -63,6 +63,7 @@ from agentfox.core.models import (
     ExternalAuthorizer,
     GithubConnection,
     Job,
+    PlatformConnection,
     ProbeTarget,
     SourceConnection,
     utcnow,
@@ -88,6 +89,7 @@ ENCRYPTED_FIELDS: tuple[tuple[type, str], ...] = (
     (AgentSigningKey, "key_encrypted"),
     (CustomModel, "auth_secret_encrypted"),
     (ExternalAuthorizer, "auth_secret_encrypted"),
+    (PlatformConnection, "secret_encrypted"),
 )
 
 #: Rotation states, per key.

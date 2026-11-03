@@ -135,6 +135,31 @@ the file it came from.
 
 ### Added
 
+- **Tool calls from Vapi, Retell, Copilot Studio and AgentCore Gateway are governed
+  before they run.** Each platform calls a URL before a tool runs; pointed at
+  AgentFox, the call gets `/v1/guard/tool_call`'s decision and an answer in the
+  platform's own format.
+  - **Vapi** (`/v1/hooks/vapi/{id}`): each call in a `tool-calls` message is decided.
+    Refusals come back as an `error` the assistant voices. Allowed calls are forwarded
+    to the customer's tool server.
+  - **Retell** (`/v1/hooks/retell/{id}`): calls are decided after `X-Retell-Signature`
+    verifies (HMAC with the Retell API key, 5-minute replay window). Allowed calls are
+    forwarded with Retell's own body and signature.
+  - **Copilot Studio**: the external threat detection endpoint
+    (`/v1/hooks/copilot-studio/{id}/analyze-tool-execution` and `/validate`) answers
+    `blockAction`. It first verifies the Entra app token: the RS256 signature against
+    the tenant's keys, plus tenant, issuer, app id, audience and expiry.
+  - **AgentCore Gateway**: a REQUEST-interceptor Lambda with a SAM template
+    (`deploy/aws-agentcore-interceptor/`). Blocked calls never reach the target.
+    Fail-closed by default.
+
+  An operator registers each connection with
+  `POST /api/agents/{slug}/platform-connections`; the change is audited and the
+  secret is stored encrypted and included in key rotation. The server allowed calls
+  are forwarded to is registered there, never taken from the request. It must be
+  `https` on a public host, and its address is checked again before each forward,
+  with redirects not followed.
+
 - **Discovery finds voice agents and agents built on hosted platforms.** `agentfox scan`,
   `agentfox init` and a connected repository now report:
   - Voice agents written in code: a LiveKit `class X(Agent)` with its `@function_tool`
