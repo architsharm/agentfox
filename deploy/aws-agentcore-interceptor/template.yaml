@@ -1,0 +1,50 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  AgentFox REQUEST interceptor for an Amazon Bedrock AgentCore Gateway. Every MCP
+  tools/call is decided by AgentFox before the gateway sends it to a target.
+
+Parameters:
+  AgentFoxUrl:
+    Type: String
+    Description: The AgentFox gateway's base URL, e.g. https://api.example.com
+  AgentFoxAgent:
+    Type: String
+    Description: The agent (slug) the gateway's tool calls are governed as
+  AgentFoxKeySecretName:
+    Type: String
+    Description: Secrets Manager secret holding the agent's key (nom_agt_...) as plain text
+  FailMode:
+    Type: String
+    Default: closed
+    AllowedValues: [closed, open]
+    Description: What happens to a call AgentFox could not decide
+  BlockStyle:
+    Type: String
+    Default: jsonrpc_error
+    AllowedValues: [jsonrpc_error, tool_error]
+
+Resources:
+  Interceptor:
+    Type: AWS::Serverless::Function
+    Properties:
+      Runtime: python3.12
+      Handler: handler.handler
+      CodeUri: .
+      Timeout: 10
+      MemorySize: 128
+      Environment:
+        Variables:
+          AGENTFOX_URL: !Ref AgentFoxUrl
+          AGENTFOX_AGENT: !Ref AgentFoxAgent
+          AGENTFOX_KEY: !Sub "{{resolve:secretsmanager:${AgentFoxKeySecretName}}}"
+          AGENTFOX_FAIL_MODE: !Ref FailMode
+          AGENTFOX_BLOCK_STYLE: !Ref BlockStyle
+
+Outputs:
+  InterceptorArn:
+    Description: >
+      Attach to the gateway as its REQUEST interceptor (InterceptorConfigurations on
+      AWS::BedrockAgentCore::Gateway, with InputConfiguration PassRequestHeaders true),
+      and allow the gateway's role lambda:InvokeFunction on it.
+    Value: !GetAtt Interceptor.Arn

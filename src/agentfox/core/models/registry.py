@@ -292,6 +292,42 @@ class Monitor(Base, TimestampMixin):
     created_by: Mapped[str] = mapped_column(String(120), default="")
 
 
+class PlatformConnection(Base, TimestampMixin):
+    """An agent that runs on a hosted platform and sends its tool calls here first.
+
+    Vapi, Retell and Copilot Studio call a URL of the customer's choosing before a tool
+    runs. Pointed at ``/v1/hooks/<platform>/<id>``, that call is governed as
+    :attr:`agent_id`'s tool call (``apps/gateway/routes/platform_hooks.py``): a
+    blocked or held call is answered with the refusal the platform speaks or shows,
+    an allowed one is forwarded to :attr:`upstream_url` and its answer returned.
+
+    The upstream is registered by an operator here, never taken from the request: a
+    gateway that dials whatever URL a caller names is an open relay into the network
+    it runs in.
+    """
+
+    __tablename__ = "platform_connections"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: ids.new_id("plc"))
+    agent_id: Mapped[str] = mapped_column(String(40), ForeignKey("agents.id"), index=True)
+    #: vapi | retell | copilot_studio (see PLATFORMS).
+    platform: Mapped[str] = mapped_column(String(32), index=True)
+    #: The customer's own tool server, where an allowed call is forwarded (Vapi and
+    #: Retell). Null for Copilot Studio, which only asks for a decision.
+    upstream_url: Mapped[str | None] = mapped_column(String(500))
+    #: What proves a delivery came from the platform, encrypted: for Vapi the bearer
+    #: secret its credential sends, for Retell the API key it signs bodies with.
+    secret_encrypted: Mapped[str | None] = mapped_column(Text)
+    #: Platform-specific settings: Copilot Studio's Entra tenant and app ids.
+    config_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by: Mapped[str] = mapped_column(String(120), default="")
+
+
+#: Values of `PlatformConnection.platform`.
+PLATFORMS = ("vapi", "retell", "copilot_studio")
+
+
 class AlertChannel(Base, TimestampMixin):
     """Where a tenant wants monitor alerts sent, beyond the deployment-wide webhook.
 
