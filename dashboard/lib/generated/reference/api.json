@@ -520,6 +520,12 @@
       "description": ""
      },
      {
+      "name": "redeem_approved",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
       "name": "principal",
       "type": "string | object",
       "required": false,

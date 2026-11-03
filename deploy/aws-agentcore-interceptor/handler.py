@@ -73,7 +73,8 @@ def refusal(decision: dict[str, Any]) -> str:
     if decision.get("verdict") == "escalate" and decision.get("approval_id"):
         return (
             "This action was not done: it needs a person to approve it and has been sent "
-            f"for approval (approval id {decision['approval_id']})."
+            f"for approval (approval id {decision['approval_id']}). Once approved, the same "
+            "call goes through when it is made again."
         )
     return "This action was not done: it is not allowed by this organisation's policy."
 
@@ -84,6 +85,9 @@ def _decide(tool: str, arguments: dict[str, Any], session_id: str | None) -> dic
         "tool": tool,
         "arguments": arguments,
         "session_id": session_id,
+        # The gateway cannot carry an approval id back: once a person approves a held
+        # call, the same call (agent, tool, arguments) is let through once.
+        "redeem_approved": True,
     }
     request = urllib.request.Request(
         _env("AGENTFOX_URL").rstrip("/") + "/v1/guard/tool_call",

@@ -79,6 +79,7 @@ def test_an_allowed_tool_call_passes_through_unchanged(interceptor):
                 "tool": "lookup_claim",  # without the gateway's target prefix
                 "arguments": {"id": "c1"},
                 "session_id": "sess-1",
+                "redeem_approved": True,
             },
         }
     ]
