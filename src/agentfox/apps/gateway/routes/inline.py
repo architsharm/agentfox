@@ -1106,6 +1106,11 @@ class GuardToolCallRequest(BaseModel):
     # The retry of a call a person approved. The same agent, tool and
     # arguments run once; anything else escalates as it would have without it.
     approval_id: str | None = None
+    # For a caller that cannot carry `approval_id` back (a voice platform, a gateway
+    # interceptor): without one, an approval a person granted for this exact agent,
+    # tool and arguments is found and spent, once. Off by default, so an SDK caller
+    # that holds its approval ids is never let through on a match it did not ask for.
+    redeem_approved: bool = False
     # The person the agent acts for: a subject (an OIDC `sub`, an employee id) or
     # {"subject", "groups", "attributes"}. Sent to the workspace's access checks
     # (`agentfox_ee.access_checks`, when installed); a bare subject picks up the
@@ -1350,6 +1355,13 @@ def authorise_tool_call(
         tracker = TaintTracker(trace_id=trace.id)
         called = tracker.mark_messages(payload.messages, payload.trust)
         prior_tools = prior_tools or called
+    approval_id = payload.approval_id
+    if approval_id is None and payload.redeem_approved and agent is not None:
+        from agentfox.platform.identity.service import find_approved
+
+        approval_id = find_approved(
+            session, agent_id=agent.id, tool_key=payload.tool, arguments=payload.arguments
+        )
     result = enforcer.guard_tool_call(
         agent_slug=payload.agent,
         tool_key=payload.tool,
@@ -1361,7 +1373,7 @@ def authorise_tool_call(
         credential=credential,
         prior_tools=prior_tools,
         prior_steps=payload.prior_steps,
-        approval_id=payload.approval_id,
+        approval_id=approval_id,
         principal=_principal_for(session, payload.agent, payload.principal),
     )
     body = result.to_json()

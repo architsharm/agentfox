@@ -120,6 +120,9 @@ def _decide(
         arguments=arguments,
         messages=messages or None,
         session_id=session_id,
+        # The platforms never send an approval id back: a retry of a call a person
+        # has since approved is matched by agent, tool and arguments instead.
+        redeem_approved=True,
     )
     return authorise_tool_call(session, payload, credential=None)
 
@@ -136,8 +139,8 @@ def refusal(result: dict[str, Any]) -> str:
     if result.get("verdict") == "escalate" and result.get("approval_id"):
         return (
             "This action was not done: it needs a person to approve it, and it has been "
-            "sent for approval. Tell the caller it is pending and that someone will "
-            "follow up; do not try it again in this call."
+            "sent for approval. Tell the caller it is pending; once a person approves it, "
+            "the same request will go through when they ask again."
         )
     return (
         "This action was not done: it is not allowed by this organisation's policy. Tell "
@@ -476,7 +479,8 @@ def copilot_analyze(
             "blockAction": True,
             "reasonCode": REASON_APPROVAL if held else REASON_POLICY,
             "reason": (
-                "This action needs a person's approval before it can run."
+                "This action needs a person's approval. It has been sent for approval and "
+                "will run when it is asked for again after that."
                 if held
                 else "This action is not allowed by your organisation's AgentFox policy."
             ),

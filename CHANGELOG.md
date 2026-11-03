@@ -135,6 +135,13 @@ the file it came from.
 
 ### Added
 
+- **A tool call a person approved goes through when the platform retries it.** Vapi,
+  Retell, Copilot Studio and AgentCore Gateway never send an approval id back, so an
+  approved call used to be held again on every retry. `POST /v1/guard/tool_call` now
+  accepts `redeem_approved: true`: with no `approval_id`, it finds an approval granted
+  for exactly this agent, tool and arguments, unexpired and unspent, and spends it
+  once. The platform hooks and the AgentCore interceptor turn it on; any other caller
+  keeps the old behaviour unless it asks.
 - **Tool calls from Vapi, Retell, Copilot Studio and AgentCore Gateway are governed
   before they run.** Each platform calls a URL before a tool runs; pointed at
   AgentFox, the call gets `/v1/guard/tool_call`'s decision and an answer in the

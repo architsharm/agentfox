@@ -46,7 +46,11 @@ def desk(client, monkeypatch):
     with session_scope() as s:
         agent = register_agent(s, slug=AGENT, name="Voice desk")
         upsert_tool(s, key="lookup_order", impact="read")
-        grant_capability(s, ensure_identity(s, agent), "lookup_order", granted_by="test")
+        identity = ensure_identity(s, agent)
+        grant_capability(s, identity, "lookup_order", granted_by="test")
+        # Allowed only with a person's approval.
+        upsert_tool(s, key="issue_refund", impact="write")
+        grant_capability(s, identity, "issue_refund", requires_approval=True, granted_by="test")
     return client
 
 
@@ -150,7 +154,7 @@ def test_vapi_blocks_one_call_and_forwards_the_other(desk, upstream):
     }
     response = desk.post(
         f"/v1/hooks/vapi/{made['id']}",
-        json=_vapi([("c1", "lookup_order", {"id": "o1"}), ("c2", "issue_refund", {"amount": 900})]),
+        json=_vapi([("c1", "lookup_order", {"id": "o1"}), ("c2", "delete_account", {"id": "u1"})]),
         headers={"Authorization": f"Bearer {made['secret']}"},
     )
     assert response.status_code == 200
@@ -260,7 +264,7 @@ def test_retell_refuses_with_a_sentence_and_forwards_with_its_own_signature(desk
     )
     hook = f"/v1/hooks/retell/{made['id']}"
 
-    blocked = _retell_body("issue_refund", {"order_id": "o1"})
+    blocked = _retell_body("delete_account", {"id": "u1"})
     response = desk.post(hook, content=blocked, headers={"X-Retell-Signature": _sign(blocked)})
     assert response.status_code == 200 and "not done" in response.json()["result"]
     assert seen == []
@@ -279,7 +283,7 @@ def test_retell_args_only_payloads_take_the_function_from_the_url(desk, upstream
     )
     body = json.dumps({"amount": 900}).encode()
     response = desk.post(
-        f"/v1/hooks/retell/{made['id']}?tool=issue_refund",
+        f"/v1/hooks/retell/{made['id']}?tool=delete_account",
         content=body,
         headers={"X-Retell-Signature": _sign(body)},
     )
@@ -391,7 +395,7 @@ def test_copilot_studio_validates_and_decides_each_planned_tool(desk, entra):
 
     blocked = desk.post(
         f"{base}/analyze-tool-execution?api-version=2025-05-01",
-        json=_copilot("issue_refund", {"amount": 900}),
+        json=_copilot("delete_account", {"id": "u1"}),
         headers=auth,
     ).json()
     assert blocked["blockAction"] is True and blocked["reasonCode"] == 100
@@ -438,3 +442,44 @@ def test_copilot_studio_needs_its_tenant_and_app(desk):
         headers=ADMIN,
     )
     assert response.status_code == 422 and "app_id" in response.json()["detail"]
+
+
+# --- A call a person approved, retried ----------------------------------------
+
+
+def test_a_retried_call_runs_once_after_a_person_approves_it(desk, upstream):
+    """The platform never sends the approval id back: the retry is matched by agent,
+    tool and arguments, and spends the approval once."""
+    seen, answer = upstream
+    made = _connect(desk, "vapi", upstream_url="https://tools.example.com/vapi")
+    hook, auth = f"/v1/hooks/vapi/{made['id']}", {"Authorization": f"Bearer {made['secret']}"}
+    refund = _vapi([("c1", "issue_refund", {"order_id": "o1", "amount": 40})])
+
+    held = desk.post(hook, json=refund, headers=auth).json()["results"][0]
+    assert "sent for approval" in held["error"] and seen == []
+    approvals = desk.get("/api/approvals?status=pending", headers=ADMIN).json()["approvals"]
+    (pending,) = [a for a in approvals if a.get("tool") == "issue_refund"]
+    assert desk.post(f"/api/approvals/{pending['id']}/approve", json={}, headers=ADMIN).is_success
+
+    # Different arguments than the person saw: still held.
+    other = _vapi([("c2", "issue_refund", {"order_id": "o1", "amount": 4000})])
+    assert "error" in desk.post(hook, json=other, headers=auth).json()["results"][0]
+
+    answer["json"] = {"results": [{"toolCallId": "c3", "result": "refunded"}]}
+    retry = _vapi([("c3", "issue_refund", {"order_id": "o1", "amount": 40})])
+    assert desk.post(hook, json=retry, headers=auth).json()["results"][0]["result"] == "refunded"
+
+    # Spent: the same call again is held again.
+    again = _vapi([("c4", "issue_refund", {"order_id": "o1", "amount": 40})])
+    assert "error" in desk.post(hook, json=again, headers=auth).json()["results"][0]
+    assert len(seen) == 1
+
+
+def test_an_sdk_caller_is_not_let_through_on_a_match_it_did_not_ask_for(desk):
+    call = {"agent": AGENT, "tool": "issue_refund", "arguments": {"order_id": "o9"}}
+    held = desk.post("/v1/guard/tool_call", json=call).json()
+    assert held["verdict"] == "escalate"
+    desk.post(f"/api/approvals/{held['approval_id']}/approve", json={}, headers=ADMIN)
+    assert desk.post("/v1/guard/tool_call", json=call).json()["verdict"] == "escalate"
+    retry = desk.post("/v1/guard/tool_call", json={**call, "redeem_approved": True}).json()
+    assert retry["verdict"] == "allow"
