@@ -16,11 +16,19 @@ MAX_CHARS = 160
 _DETECTORS = (NativePiiDetector(), SecretsDetector())
 
 
+def mask(text: str) -> str:
+    """``text`` with personal data and secrets masked, at full length: for content
+    stored as a record, such as a call's transcript."""
+    if not text:
+        return ""
+    context = DetectionContext(surface="input")
+    found = [d for detector in _DETECTORS for d in detector.detect(text, context).detections]
+    return redact_content(text, found)
+
+
 def summarize(text: str) -> str | None:
     text = " ".join((text or "").split())
     if not text:
         return None
-    context = DetectionContext(surface="input")
-    found = [d for detector in _DETECTORS for d in detector.detect(text, context).detections]
-    masked = redact_content(text, found)
+    masked = mask(text)
     return masked if len(masked) <= MAX_CHARS else masked[: MAX_CHARS - 1] + "…"

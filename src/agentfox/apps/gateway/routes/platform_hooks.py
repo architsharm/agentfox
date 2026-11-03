@@ -183,6 +183,16 @@ def vapi_hook(
         raise HTTPException(401, "the connection's secret was not presented")
     event = _json_object(body)
     message = _obj(event.get("message"))
+    if message.get("type") == "end-of-call-report":
+        call = _obj(message.get("call"))
+        ingest_call(
+            session,
+            connection,
+            call_id=str(call.get("id") or ""),
+            turns=_vapi_turns(_obj(message.get("artifact")).get("messages")),
+            ended=str(message.get("endedReason") or ""),
+        )
+        return JSONResponse({})
     if message.get("type") != "tool-calls":
         return JSONResponse({})
     agent = _agent_slug(session, connection)
@@ -259,6 +269,105 @@ def _vapi_forward(
             for c in allowed
         ]
     return [r for r in upstream if isinstance(r, dict) and str(r.get("toolCallId") or "") in ids]
+
+
+# ---------------------------------------------------------------------------
+# After the call: the transcript, recorded
+# ---------------------------------------------------------------------------
+
+
+def _vapi_turns(messages: Any) -> list[tuple[str, str]]:
+    """``(role, text)`` from a Vapi end-of-call report's ``artifact.messages``: what the
+    caller said (``user``) and what the assistant said (``bot``). Tool calls and
+    their results are on the tool-call traces already."""
+    out = []
+    for item in messages if isinstance(messages, list) else []:
+        if not isinstance(item, dict) or not isinstance(item.get("message"), str):
+            continue
+        if item.get("role") == "user":
+            out.append(("user", item["message"]))
+        elif item.get("role") in ("bot", "assistant"):
+            out.append(("agent", item["message"]))
+    return out
+
+
+def _retell_turns(call: dict[str, Any]) -> list[tuple[str, str]]:
+    return [
+        ("agent" if turn.get("role") == "agent" else "user", turn["content"])
+        for turn in call.get("transcript_object") or []
+        if isinstance(turn, dict) and isinstance(turn.get("content"), str)
+    ]
+
+
+def ingest_call(
+    session: Session,
+    connection: PlatformConnection,
+    *,
+    call_id: str,
+    turns: list[tuple[str, str]],
+    ended: str = "",
+) -> int:
+    """Record a finished call as one run with its conversation turns, under the call's
+    id, the same session its tool-call decisions were recorded under.
+
+    Personal data and secrets are masked before anything is stored (the detectors
+    that mask a run's preview). Delivered twice (a platform retry, Retell's
+    ``call_ended`` then ``call_analyzed``), a call is recorded once. Returns the
+    number of turns recorded."""
+    from sqlalchemy import select
+
+    from agentfox.capabilities.containment.escalation import record_turn
+    from agentfox.core.models import ConversationTurn
+    from agentfox.platform.ledger.trace import end_trace, start_trace
+    from agentfox.runtime.enforcement.summary import mask, summarize
+
+    if not call_id or not turns:
+        return 0
+    already = session.scalar(
+        select(ConversationTurn.id).where(
+            ConversationTurn.session_id == call_id,
+            ConversationTurn.agent_id == connection.agent_id,
+        )
+    )
+    if already is not None:
+        return 0
+    trace = start_trace(
+        session,
+        agent_id=connection.agent_id,
+        agent_slug=_agent_slug(session, connection),
+        session_id=call_id,
+        intent=f"{connection.platform} call transcript",
+    )
+    first = next((text for role, text in turns if role == "user"), "")
+    trace.summary = summarize(first)
+    # One turn per thing the caller said (consecutive utterances joined) and the reply
+    # to it. What the agent says before the caller speaks, its greeting, is a turn of
+    # its own with no caller text.
+    pairs: list[tuple[str, str]] = []
+    user, agent = "", ""
+    for role, text in turns:
+        if role == "user":
+            if agent:
+                pairs.append((user, agent))
+                user, agent = "", ""
+            user = f"{user} {text}".strip()
+        else:
+            agent = f"{agent} {text}".strip()
+    if user or agent:
+        pairs.append((user, agent))
+    for user_text, agent_text in pairs:
+        record_turn(
+            session,
+            session_id=call_id,
+            agent_id=connection.agent_id,
+            trace_id=trace.id,
+            user_text=mask(user_text),
+            agent_text=mask(agent_text),
+            act=False,
+        )
+    failed = ended in ("error", "pipeline-error") or ended.startswith(("pipeline-error", "error"))
+    end_trace(session, trace, status="error" if failed else "ok")
+    return len(pairs)
 
 
 # ---------------------------------------------------------------------------
@@ -352,6 +461,34 @@ def retell_hook(
         status_code=response.status_code,
         media_type=response.headers.get("content-type", "application/json"),
     )
+
+
+@router.post("/v1/hooks/retell/{connection_id}/webhook", summary="Record a finished Retell call")
+def retell_webhook(
+    connection_id: str,
+    body: bytes = Depends(_raw_body),
+    session: Session = Depends(db),
+    x_retell_signature: Annotated[str | None, Header()] = None,
+) -> Response:
+    """The Retell agent's webhook URL: ``call_ended`` and ``call_analyzed`` record the
+    call's transcript (once, whichever comes first); every other event is
+    acknowledged. Verified like the custom function, with the connection's Retell API
+    key."""
+    connection = _connection(session, connection_id, "retell")
+    secret = connections.secret_of(connection) or ""
+    if not retell_signature_valid(secret, body, x_retell_signature, int(time.time() * 1000)):
+        raise HTTPException(401, "the Retell signature did not verify")
+    event = _json_object(body)
+    if event.get("event") in ("call_ended", "call_analyzed"):
+        call = _obj(event.get("call"))
+        ingest_call(
+            session,
+            connection,
+            call_id=str(call.get("call_id") or ""),
+            turns=_retell_turns(call),
+            ended=str(call.get("disconnection_reason") or ""),
+        )
+    return Response(status_code=204)
 
 
 # ---------------------------------------------------------------------------

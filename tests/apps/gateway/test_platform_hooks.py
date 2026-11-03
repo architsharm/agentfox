@@ -483,3 +483,77 @@ def test_an_sdk_caller_is_not_let_through_on_a_match_it_did_not_ask_for(desk):
     assert desk.post("/v1/guard/tool_call", json=call).json()["verdict"] == "escalate"
     retry = desk.post("/v1/guard/tool_call", json={**call, "redeem_approved": True}).json()
     assert retry["verdict"] == "allow"
+
+
+# --- After the call: the transcript ---------------------------------------------
+
+
+def _turns(call_id: str) -> list[tuple[str, str]]:
+    from sqlalchemy import select
+
+    from agentfox.core.models import ConversationTurn
+
+    with session_scope() as s:
+        rows = s.scalars(
+            select(ConversationTurn)
+            .where(ConversationTurn.session_id == call_id)
+            .order_by(ConversationTurn.turn_index)
+        ).all()
+        return [(r.user_text, r.agent_text) for r in rows]
+
+
+def test_a_vapi_end_of_call_report_is_recorded_once_with_personal_data_masked(desk, upstream):
+    made = _connect(desk, "vapi", upstream_url="https://tools.example.com/vapi")
+    report = {
+        "message": {
+            "type": "end-of-call-report",
+            "endedReason": "customer-ended-call",
+            "call": {"id": "vapi-call-9"},
+            "artifact": {
+                "messages": [
+                    {"role": "system", "message": "You are a receptionist."},
+                    {"role": "bot", "message": "Hi, how can I help?"},
+                    {"role": "user", "message": "Book me in."},
+                    {"role": "user", "message": "My email is jane.doe@example.com"},
+                    {"role": "tool_calls", "toolCalls": []},
+                    {"role": "bot", "message": "Done, see you Tuesday."},
+                ]
+            },
+        }
+    }
+    auth = {"Authorization": f"Bearer {made['secret']}"}
+    for _ in range(2):  # Vapi may deliver twice
+        assert desk.post(f"/v1/hooks/vapi/{made['id']}", json=report, headers=auth).json() == {}
+    turns = _turns("vapi-call-9")
+    assert turns[0] == ("", "Hi, how can I help?")
+    user, agent = turns[1]
+    assert user.startswith("Book me in. My email is ") and "jane.doe@example.com" not in user
+    assert agent == "Done, see you Tuesday."
+    assert len(turns) == 2 and upstream[0] == []
+
+
+def test_a_retell_call_is_recorded_from_its_signed_webhook(desk, upstream):
+    made = _connect(
+        desk, "retell", upstream_url="https://tools.example.com/retell", secret=RETELL_KEY
+    )
+    hook = f"/v1/hooks/retell/{made['id']}/webhook"
+    call = {
+        "call_id": "retell-call-3",
+        "disconnection_reason": "user_hangup",
+        "transcript_object": [
+            {"role": "agent", "content": "Hello, collections desk."},
+            {"role": "user", "content": "I want to pay my bill."},
+            {"role": "agent", "content": "Sure, taking you through it."},
+        ],
+    }
+    for event in ("call_ended", "call_analyzed"):  # both carry the transcript
+        body = json.dumps({"event": event, "call": call}).encode()
+        response = desk.post(hook, content=body, headers={"X-Retell-Signature": _sign(body)})
+        assert response.status_code == 204
+    assert _turns("retell-call-3") == [
+        ("", "Hello, collections desk."),
+        ("I want to pay my bill.", "Sure, taking you through it."),
+    ]
+    unsigned = json.dumps({"event": "call_ended", "call": {**call, "call_id": "x"}}).encode()
+    assert desk.post(hook, content=unsigned).status_code == 401
+    assert _turns("x") == []
