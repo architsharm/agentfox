@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 329,
+ "count": 330,
  "routes": [
   {
    "method": "GET",
@@ -599,6 +599,29 @@
      "in": "query",
      "required": false,
      "type": null
+    },
+    {
+     "name": "x-retell-signature",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/v1/hooks/retell/{connection_id}/webhook",
+   "section": "v1/hooks",
+   "audience": "public",
+   "summary": "The Retell agent's webhook URL: ``call_ended`` and ``call_analyzed`` record the call's transcript (once, whichever comes first); every other event is acknowledged. Verified like the custom function, with the connection's Retell API key.",
+   "description": "The Retell agent's webhook URL: ``call_ended`` and ``call_analyzed`` record the\ncall's transcript (once, whichever comes first); every other event is\nacknowledged. Verified like the custom function, with the connection's Retell API\nkey.",
+   "params": [
+    {
+     "name": "connection_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
     },
     {
      "name": "x-retell-signature",

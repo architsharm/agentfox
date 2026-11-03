@@ -108,7 +108,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-329 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+330 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -123,6 +123,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/v1/hooks/copilot-studio/{connection_id}/analyze-tool-execution` | Each tool a generative-orchestration agent plans to run, before it runs. |
 | `POST` | `/v1/hooks/copilot-studio/{connection_id}/validate` | Called when an admin saves the endpoint in the Power Platform admin center: |
 | `POST` | `/v1/hooks/retell/{connection_id}` | A Retell custom function's URL. The call is decided after its signature is |
+| `POST` | `/v1/hooks/retell/{connection_id}/webhook` | The Retell agent's webhook URL: ``call_ended`` and ``call_analyzed`` record the |
 | `POST` | `/v1/hooks/vapi/{connection_id}` | Vapi's server URL for a tool (or the assistant): ``tool-calls`` messages are |
 | `POST` | `/v1/mcp/call` | Govern one MCP call for callers that are not in-process Python. |
 | `POST` | `/v1/messages` | Anthropic-compatible inline proxy |

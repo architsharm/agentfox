@@ -135,6 +135,12 @@ the file it came from.
 
 ### Added
 
+- **Vapi and Retell calls are recorded when they end.** Vapi's `end-of-call-report`
+  (sent to the same hook URL) and Retell's `call_ended` / `call_analyzed` (a new
+  signed webhook route, `/v1/hooks/retell/{id}/webhook`) become one run per call with
+  its conversation turns, under the call's id, so they sit with that call's tool-call
+  decisions. Personal data and secrets are masked before anything is stored, and a
+  call delivered twice is recorded once. Spoken numbers are not masked yet.
 - **A tool call a person approved goes through when the platform retries it.** Vapi,
   Retell, Copilot Studio and AgentCore Gateway never send an approval id back, so an
   approved call used to be held again on every retry. `POST /v1/guard/tool_call` now
