@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 322,
+ "count": 330,
  "routes": [
   {
    "method": "GET",
@@ -520,6 +520,12 @@
       "description": ""
      },
      {
+      "name": "redeem_approved",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
       "name": "principal",
       "type": "string | object",
       "required": false,
@@ -527,6 +533,133 @@
      }
     ]
    }
+  },
+  {
+   "method": "POST",
+   "path": "/v1/hooks/copilot-studio/{connection_id}/analyze-tool-execution",
+   "section": "v1/hooks",
+   "audience": "public",
+   "summary": "Each tool a generative-orchestration agent plans to run, before it runs.",
+   "description": "Each tool a generative-orchestration agent plans to run, before it runs.\n\nAnswered with ``blockAction``. Copilot Studio cannot wait for a person, so a call\nthat needs approval is blocked with that reason. Copilot Studio gives this a\nsecond; the decision is the deterministic tier (judges are deferred), well under\nit.",
+   "params": [
+    {
+     "name": "connection_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/v1/hooks/copilot-studio/{connection_id}/validate",
+   "section": "v1/hooks",
+   "audience": "public",
+   "summary": "Called when an admin saves the endpoint in the Power Platform admin center: answers OK when the connection exists and the token is the configured app's.",
+   "description": "Called when an admin saves the endpoint in the Power Platform admin center:\nanswers OK when the connection exists and the token is the configured app's.",
+   "params": [
+    {
+     "name": "connection_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/v1/hooks/retell/{connection_id}",
+   "section": "v1/hooks",
+   "audience": "public",
+   "summary": "A Retell custom function's URL. The call is decided after its signature is verified with the connection's Retell API key; a refusal is answered with 200 and the sentence for the agent to say (a non-2xx would be retried, then read to the model as an error), an allowed call is forwarded to the tool server with Retell's own body and signature, so the server's verification still holds.",
+   "description": "A Retell custom function's URL. The call is decided after its signature is\nverified with the connection's Retell API key; a refusal is answered with 200 and\nthe sentence for the agent to say (a non-2xx would be retried, then read to the\nmodel as an error), an allowed call is forwarded to the tool server with Retell's\nown body and signature, so the server's verification still holds.\n\nWith \"Payload: args only\" the body carries no function name: add ``?tool=<name>``\nto the URL.",
+   "params": [
+    {
+     "name": "connection_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "tool",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-retell-signature",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/v1/hooks/retell/{connection_id}/webhook",
+   "section": "v1/hooks",
+   "audience": "public",
+   "summary": "The Retell agent's webhook URL: ``call_ended`` and ``call_analyzed`` record the call's transcript (once, whichever comes first); every other event is acknowledged. Verified like the custom function, with the connection's Retell API key.",
+   "description": "The Retell agent's webhook URL: ``call_ended`` and ``call_analyzed`` record the\ncall's transcript (once, whichever comes first); every other event is\nacknowledged. Verified like the custom function, with the connection's Retell API\nkey.",
+   "params": [
+    {
+     "name": "connection_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "x-retell-signature",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/v1/hooks/vapi/{connection_id}",
+   "section": "v1/hooks",
+   "audience": "public",
+   "summary": "Vapi's server URL for a tool (or the assistant): ``tool-calls`` messages are governed call by call, everything else Vapi sends is acknowledged and ignored.",
+   "description": "Vapi's server URL for a tool (or the assistant): ``tool-calls`` messages are\ngoverned call by call, everything else Vapi sends is acknowledged and ignored.\n\nAuthenticated by the connection's secret, sent by a Vapi Bearer credential (or the\nlegacy ``X-Vapi-Secret`` header).",
+   "params": [
+    {
+     "name": "connection_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-vapi-secret",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
   },
   {
    "method": "POST",
@@ -1590,6 +1723,127 @@
    "params": [
     {
      "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/agents/{slug}/platform-connections",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "List Connections",
+   "description": "",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/agents/{slug}/platform-connections",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Register the agent as running on Vapi, Retell or Copilot Studio. The answer's ``hook_url`` is what to paste into the platform; a Vapi ``secret`` made here is shown once.",
+   "description": "Register the agent as running on Vapi, Retell or Copilot Studio. The answer's\n``hook_url`` is what to paste into the platform; a Vapi ``secret`` made here is\nshown once.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "agentfox__apps__gateway__routes__platform_hooks__ConnectionIn",
+    "fields": [
+     {
+      "name": "platform",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "upstream_url",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "secret",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "config",
+      "type": "object",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/agents/{slug}/platform-connections/{connection_id}",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Disable a connection. Its hook URL answers 404 from then on; the row is kept for the audit trail.",
+   "description": "Disable a connection. Its hook URL answers 404 from then on; the row is kept\nfor the audit trail.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "connection_id",
      "in": "path",
      "required": true,
      "type": "string"
@@ -11748,7 +12002,7 @@
     }
    ],
    "body": {
-    "model": "ConnectionIn",
+    "model": "agentfox__apps__gateway__routes__provenance__ConnectionIn",
     "fields": [
      {
       "name": "key",

@@ -138,6 +138,7 @@ from agentfox.core.models.registry import (
     McpServer,
     McpToolSnapshot,
     Monitor,
+    PlatformConnection,
     Tool,
 )
 
@@ -151,6 +152,7 @@ __all__ = [
     "AgentMessageLog",
     "AgentSigningKey",
     "AlertChannel",
+    "PlatformConnection",
     "ApiToken",
     "ApprovalRequest",
     "AuditCheckpoint",

@@ -15,6 +15,65 @@ the file it came from.
 
 ### Added
 
+- **Vapi and Retell calls are recorded when they end.** Vapi's `end-of-call-report`
+  (sent to the same hook URL) and Retell's `call_ended` / `call_analyzed` (a new
+  signed webhook route, `/v1/hooks/retell/{id}/webhook`) become one run per call with
+  its conversation turns, under the call's id, so they sit with that call's tool-call
+  decisions. Personal data and secrets are masked before anything is stored, and a
+  call delivered twice is recorded once. Spoken numbers are not masked yet.
+- **A tool call a person approved goes through when the platform retries it.** Vapi,
+  Retell, Copilot Studio and AgentCore Gateway never send an approval id back, so an
+  approved call used to be held again on every retry. `POST /v1/guard/tool_call` now
+  accepts `redeem_approved: true`: with no `approval_id`, it finds an approval granted
+  for exactly this agent, tool and arguments, unexpired and unspent, and spends it
+  once. The platform hooks and the AgentCore interceptor turn it on; any other caller
+  keeps the old behaviour unless it asks.
+- **Tool calls from Vapi, Retell, Copilot Studio and AgentCore Gateway are governed
+  before they run.** Each platform calls a URL before a tool runs; pointed at
+  AgentFox, the call gets `/v1/guard/tool_call`'s decision and an answer in the
+  platform's own format.
+  - **Vapi** (`/v1/hooks/vapi/{id}`): each call in a `tool-calls` message is decided.
+    Refusals come back as an `error` the assistant voices. Allowed calls are forwarded
+    to the customer's tool server.
+  - **Retell** (`/v1/hooks/retell/{id}`): calls are decided after `X-Retell-Signature`
+    verifies (HMAC with the Retell API key, 5-minute replay window). Allowed calls are
+    forwarded with Retell's own body and signature.
+  - **Copilot Studio**: the external threat detection endpoint
+    (`/v1/hooks/copilot-studio/{id}/analyze-tool-execution` and `/validate`) answers
+    `blockAction`. It first verifies the Entra app token: the RS256 signature against
+    the tenant's keys, plus tenant, issuer, app id, audience and expiry.
+  - **AgentCore Gateway**: a REQUEST-interceptor Lambda with a SAM template
+    (`deploy/aws-agentcore-interceptor/`). Blocked calls never reach the target.
+    Fail-closed by default.
+
+  An operator registers each connection with
+  `POST /api/agents/{slug}/platform-connections`; the change is audited and the
+  secret is stored encrypted and included in key rotation. The server allowed calls
+  are forwarded to is registered there, never taken from the request. It must be
+  `https` on a public host, and its address is checked again before each forward,
+  with redirects not followed.
+
+- **Discovery finds voice agents and agents built on hosted platforms.** `agentfox scan`,
+  `agentfox init` and a connected repository now report:
+  - Voice agents written in code: a LiveKit `class X(Agent)` with its `@function_tool`
+    methods, a Pipecat `Pipeline` with the functions its LLM service registers, and
+    OpenAI's `RealtimeAgent`, each with the model it is built with.
+  - Agents of Pydantic AI, Strands, Agno, smolagents, LlamaIndex, Semantic Kernel,
+    Microsoft Agent Framework, Haystack, DSPy and the Claude Agent SDK. These were
+    already found by shape at medium confidence; they are now high confidence under
+    their own name, as are TypeScript agents of Mastra, VoltAgent, Strands and LiveKit.
+  - Agents with no code, read from the files a platform exports
+    (`discovery/platforms.py`): Vapi assistants and squads, Retell agents and LLMs,
+    ElevenLabs agents, Bland pathways, n8n workflows with an AI Agent node, Dify apps,
+    Flowise and Langflow flows, Voiceflow projects, Dialogflow CX and ES exports,
+    Copilot Studio agents, Agentforce metadata and Agent Script, Bedrock Agents,
+    AgentCore runtimes and Lex bots in CloudFormation or Terraform, and Genesys
+    Architect bot flows. Each comes with its tools and model where the file names them.
+
+  A platform is named in the stack when code calls its API (Synthflow, Telnyx, Smallest
+  AI, Agora, Bedrock Agents and others). A file counts as a platform's agent only when
+  it has several of that platform's own keys together. Files in test and fixture
+  directories are not read.
 - **The share of checks answered without a detector is visible.** Counted per process
   on the request path: `/metrics` has `agentfox_checks_total`,
   `agentfox_checks_degraded_total{detector,cause}`, `agentfox_checks_degraded_ratio`
@@ -150,6 +209,7 @@ the file it came from.
   (a skill warning about "ignore previous instructions") is reported at `medium`, one step
   lower. The output now ends with what was checked, how many issues need a look, and the next
   command; skills whose only issue is bundled scripts are named on one line.
+
 - **`agentfox up` says the hook daemon started only once it answers.** It printed "started"
   as soon as the process was spawned, so a coding-agent call in the first moment after setup
   ran unchecked. It now waits up to ten seconds and otherwise says the daemon is still

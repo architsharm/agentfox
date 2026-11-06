@@ -728,6 +728,44 @@ def redeem_approval(
     return request, ""
 
 
+def find_approved(
+    session: Session,
+    *,
+    agent_id: str | None,
+    tool_key: str | None,
+    arguments: dict[str, Any] | None,
+) -> str | None:
+    """The id of an approval a person granted for exactly this call and nobody has
+    spent yet, or None.
+
+    For callers that cannot carry an ``approval_id`` back: a voice platform or a
+    gateway retries a tool call with only the tool and its arguments, so after a
+    person approves, the retry is matched here and then spent through
+    :func:`redeem_approval` like any other, once. Nothing is spent by this lookup.
+    """
+    if not agent_id or not tool_key:
+        return None
+    candidates = session.scalars(
+        select(ApprovalRequest)
+        .where(
+            ApprovalRequest.status == "approved",
+            ApprovalRequest.agent_id == agent_id,
+            ApprovalRequest.tool_key == tool_key,
+        )
+        .order_by(ApprovalRequest.requested_at.desc())
+        .limit(50)
+    ).all()
+    wanted = _binding(tool_key, arguments)
+    now = utcnow()
+    for request in candidates:
+        expires = as_aware(request.expires_at)
+        if expires and expires < now:
+            continue
+        if _binding(request.tool_key, request.arguments_json) == wanted:
+            return request.id
+    return None
+
+
 def expire_stale_approvals(session: Session) -> int:
     """Fail closed: an unanswered approval denies (NOM-IAM-03)."""
     now = utcnow()

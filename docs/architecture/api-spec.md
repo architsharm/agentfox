@@ -108,7 +108,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-322 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+330 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -120,6 +120,11 @@ from the code. Regenerate after changing any route:
 | `POST` | `/v1/guard/memory_write` | Authorise a memory write |
 | `POST` | `/v1/guard/output` | Enforce on content without proxying. |
 | `POST` | `/v1/guard/tool_call` | Authorise a tool call. |
+| `POST` | `/v1/hooks/copilot-studio/{connection_id}/analyze-tool-execution` | Each tool a generative-orchestration agent plans to run, before it runs. |
+| `POST` | `/v1/hooks/copilot-studio/{connection_id}/validate` | Called when an admin saves the endpoint in the Power Platform admin center: |
+| `POST` | `/v1/hooks/retell/{connection_id}` | A Retell custom function's URL. The call is decided after its signature is |
+| `POST` | `/v1/hooks/retell/{connection_id}/webhook` | The Retell agent's webhook URL: ``call_ended`` and ``call_analyzed`` record the |
+| `POST` | `/v1/hooks/vapi/{connection_id}` | Vapi's server URL for a tool (or the assistant): ``tool-calls`` messages are |
 | `POST` | `/v1/mcp/call` | Govern one MCP call for callers that are not in-process Python. |
 | `POST` | `/v1/messages` | Anthropic-compatible inline proxy |
 | `POST` | `/v1/traces` | OTLP/HTTP trace ingest |
@@ -195,6 +200,9 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/agents/{slug}/kill` | Stop an agent now. Requires the stronger role — this is an incident action. |
 | `GET` | `/api/agents/{slug}/lineage` | Agent Lineage |
 | `GET` | `/api/agents/{slug}/map` | Which guardrails apply at each step of this agent's requests, with recent traffic. |
+| `GET` | `/api/agents/{slug}/platform-connections` | List Connections |
+| `POST` | `/api/agents/{slug}/platform-connections` | Register the agent as running on Vapi, Retell or Copilot Studio. The answer's |
+| `DELETE` | `/api/agents/{slug}/platform-connections/{connection_id}` | Disable a connection. Its hook URL answers 404 from then on; the row is kept |
 | `GET` | `/api/agents/{slug}/posture` | Agent Posture |
 | `GET` | `/api/agents/{slug}/protection` | Get Protection |
 | `POST` | `/api/agents/{slug}/protection` | Save Protection |

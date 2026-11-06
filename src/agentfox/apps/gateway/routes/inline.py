@@ -1106,6 +1106,11 @@ class GuardToolCallRequest(BaseModel):
     # The retry of a call a person approved. The same agent, tool and
     # arguments run once; anything else escalates as it would have without it.
     approval_id: str | None = None
+    # For a caller that cannot carry `approval_id` back (a voice platform, a gateway
+    # interceptor): without one, an approval a person granted for this exact agent,
+    # tool and arguments is found and spent, once. Off by default, so an SDK caller
+    # that holds its approval ids is never let through on a match it did not ask for.
+    redeem_approved: bool = False
     # The person the agent acts for: a subject (an OIDC `sub`, an employee id) or
     # {"subject", "groups", "attributes"}. Sent to the workspace's access checks
     # (`agentfox_ee.access_checks`, when installed); a bare subject picks up the
@@ -1322,6 +1327,14 @@ def guard_tool_call(
     call. With neither, the gateway has nothing to infer from and the arguments
     count as untainted: taint rules cannot fire.
     """
+    return authorise_tool_call(session, payload, credential)
+
+
+def authorise_tool_call(
+    session: Session, payload: GuardToolCallRequest, credential: str | None
+) -> dict[str, Any]:
+    """`POST /v1/guard/tool_call`'s decision, for the routes that translate another
+    platform's tool-call webhook into it (``routes/platform_hooks.py``)."""
     from agentfox.capabilities.detection import TaintTracker
     from agentfox.platform.ledger.trace import commit_before_checks, note_refusal, start_trace
     from agentfox.platform.registry.service import slugify
@@ -1342,6 +1355,13 @@ def guard_tool_call(
         tracker = TaintTracker(trace_id=trace.id)
         called = tracker.mark_messages(payload.messages, payload.trust)
         prior_tools = prior_tools or called
+    approval_id = payload.approval_id
+    if approval_id is None and payload.redeem_approved and agent is not None:
+        from agentfox.platform.identity.service import find_approved
+
+        approval_id = find_approved(
+            session, agent_id=agent.id, tool_key=payload.tool, arguments=payload.arguments
+        )
     result = enforcer.guard_tool_call(
         agent_slug=payload.agent,
         tool_key=payload.tool,
@@ -1353,7 +1373,7 @@ def guard_tool_call(
         credential=credential,
         prior_tools=prior_tools,
         prior_steps=payload.prior_steps,
-        approval_id=payload.approval_id,
+        approval_id=approval_id,
         principal=_principal_for(session, payload.agent, payload.principal),
     )
     body = result.to_json()
