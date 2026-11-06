@@ -11,7 +11,209 @@ the file it came from.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-06
+
+### Added
+
+- **Vapi and Retell calls are recorded when they end.** Vapi's `end-of-call-report`
+  (sent to the same hook URL) and Retell's `call_ended` / `call_analyzed` (a new
+  signed webhook route, `/v1/hooks/retell/{id}/webhook`) become one run per call with
+  its conversation turns, under the call's id, so they sit with that call's tool-call
+  decisions. Personal data and secrets are masked before anything is stored, and a
+  call delivered twice is recorded once. Spoken numbers are not masked yet.
+- **A tool call a person approved goes through when the platform retries it.** Vapi,
+  Retell, Copilot Studio and AgentCore Gateway never send an approval id back, so an
+  approved call used to be held again on every retry. `POST /v1/guard/tool_call` now
+  accepts `redeem_approved: true`: with no `approval_id`, it finds an approval granted
+  for exactly this agent, tool and arguments, unexpired and unspent, and spends it
+  once. The platform hooks and the AgentCore interceptor turn it on; any other caller
+  keeps the old behaviour unless it asks.
+- **Tool calls from Vapi, Retell, Copilot Studio and AgentCore Gateway are governed
+  before they run.** Each platform calls a URL before a tool runs; pointed at
+  AgentFox, the call gets `/v1/guard/tool_call`'s decision and an answer in the
+  platform's own format.
+  - **Vapi** (`/v1/hooks/vapi/{id}`): each call in a `tool-calls` message is decided.
+    Refusals come back as an `error` the assistant voices. Allowed calls are forwarded
+    to the customer's tool server.
+  - **Retell** (`/v1/hooks/retell/{id}`): calls are decided after `X-Retell-Signature`
+    verifies (HMAC with the Retell API key, 5-minute replay window). Allowed calls are
+    forwarded with Retell's own body and signature.
+  - **Copilot Studio**: the external threat detection endpoint
+    (`/v1/hooks/copilot-studio/{id}/analyze-tool-execution` and `/validate`) answers
+    `blockAction`. It first verifies the Entra app token: the RS256 signature against
+    the tenant's keys, plus tenant, issuer, app id, audience and expiry.
+  - **AgentCore Gateway**: a REQUEST-interceptor Lambda with a SAM template
+    (`deploy/aws-agentcore-interceptor/`). Blocked calls never reach the target.
+    Fail-closed by default.
+
+  An operator registers each connection with
+  `POST /api/agents/{slug}/platform-connections`; the change is audited and the
+  secret is stored encrypted and included in key rotation. The server allowed calls
+  are forwarded to is registered there, never taken from the request. It must be
+  `https` on a public host, and its address is checked again before each forward,
+  with redirects not followed.
+
+- **Discovery finds voice agents and agents built on hosted platforms.** `agentfox scan`,
+  `agentfox init` and a connected repository now report:
+  - Voice agents written in code: a LiveKit `class X(Agent)` with its `@function_tool`
+    methods, a Pipecat `Pipeline` with the functions its LLM service registers, and
+    OpenAI's `RealtimeAgent`, each with the model it is built with.
+  - Agents of Pydantic AI, Strands, Agno, smolagents, LlamaIndex, Semantic Kernel,
+    Microsoft Agent Framework, Haystack, DSPy and the Claude Agent SDK. These were
+    already found by shape at medium confidence; they are now high confidence under
+    their own name, as are TypeScript agents of Mastra, VoltAgent, Strands and LiveKit.
+  - Agents with no code, read from the files a platform exports
+    (`discovery/platforms.py`): Vapi assistants and squads, Retell agents and LLMs,
+    ElevenLabs agents, Bland pathways, n8n workflows with an AI Agent node, Dify apps,
+    Flowise and Langflow flows, Voiceflow projects, Dialogflow CX and ES exports,
+    Copilot Studio agents, Agentforce metadata and Agent Script, Bedrock Agents,
+    AgentCore runtimes and Lex bots in CloudFormation or Terraform, and Genesys
+    Architect bot flows. Each comes with its tools and model where the file names them.
+
+  A platform is named in the stack when code calls its API (Synthflow, Telnyx, Smallest
+  AI, Agora, Bedrock Agents and others). A file counts as a platform's agent only when
+  it has several of that platform's own keys together. Files in test and fixture
+  directories are not read.
+- **The share of checks answered without a detector is visible.** Counted per process
+  on the request path: `/metrics` has `agentfox_checks_total`,
+  `agentfox_checks_degraded_total{detector,cause}`, `agentfox_checks_degraded_ratio`
+  (over `degraded_window_seconds`, 60 by default),
+  `agentfox_classifier_backstop_shed_total` and `agentfox_inference_abandoned_total`;
+  `/api/health` reports them under `degradation.checks` and turns
+  `governance_healthy` false while the share is above `degraded_warn_ratio` (5%, with at
+  least `degraded_warn_min_checks` checks in the window), and the gateway logs a warning
+  once per window saying what `fail_mode` did with those checks (`open` answered them on
+  the other detectors' findings; `closed` blocked them).
+
+- **`scan --json` says more about each agent**: its `model` (read from a literal, a
+  module constant, an f-string of constants, an `os.getenv` default or a chat-model
+  object, and `null` when only running the code would tell), a `ref` (module, name and
+  whether it is the agent, a factory or a loop function) for a local runner, and
+  `tool_details` (each tool's description and argument names). The report gains
+  `unassigned_tools`, the tools found that no agent is handed. None of this is added to
+  what `scan --submit` sends.
+
+- **`unicode.tags`, a default detector for text hidden in Unicode tag characters**
+  (U+E0000 to U+E007F, "ASCII smuggling"): invisible to a person, read by a model. It
+  reports `INJECTION.HIDDEN_TAG_TEXT`, so the baseline injection rules act on it, and
+  skips the England, Scotland and Wales flag emoji, the block's one legitimate use (#15).
+- **A Fly.io guide for the control-plane UI**, `deploy/FLY.md` (#11).
+  `fly.dashboard.toml` now sets `HOSTNAME=0.0.0.0`, as `render.yaml` does.
+- **A scanned multi-agent system comes out as its agents.** The repository scan reads
+  each agent the code defines, the tools it is handed and which agent hands work to
+  which (OpenAI Agents SDK handoffs and `as_tool`, LangGraph supervisors, swarms and
+  `StateGraph` agent nodes, CrewAI crews and delegation, AutoGen teams and group chats,
+  Google ADK `sub_agents`), statically. `scan --json` gains `agents` and `agent_edges`.
+  A repository with two or more agents is proposed as one draft per agent with its own
+  tools, joined by declared delegation edges, so the guardrail map shows sub-agents
+  ("From code, no calls yet") and the agent that calls each one, and "apply to
+  sub-agents" reaches them, before any traffic. The Proposed list groups a system under
+  its orchestrator with an "Add all" action. A re-scan updates the drafts in place and
+  never turns an agent someone added back into a proposal.
+- **`agentfox up`, the guided setup.** One command from a fresh install to a governed
+  project: it scans the repository, asks where AgentFox runs (this machine; self-hosted,
+  either started here with Docker Compose and a first operator, or an existing server;
+  or AgentFox Cloud with an API key), what to cover and how strict to start, then sets up
+  the Claude Code and Codex hooks, `agentfox.auto()` in your entry point, the gateway
+  environment for any language, the tools it found (impact inferred, never overwriting
+  a declaration), your MCP servers, the scan in the dashboard, Enterprise monitoring and
+  compliance where available, and the dashboard. It starts in observe by default. Each
+  question has a recommended answer (`--yes` takes them all); answers are saved in
+  `.agentfox/up.json` and credentials in `.agentfox/agentfox.env` (0600, git-ignored).
+  `up` takes `demo`'s place in the Start panel; `agentfox demo` still works.
+  Its scan step also reads the AI tools set up on this machine (`agentfox scan
+  machine`, skipped with `--skip-machine`) and the repository's own skills, and a
+  coding agent configured only at user level is offered too. It can add the AgentFox
+  GitHub Action as `.github/workflows/agentfox.yml`, never over an existing one.
+- `exposure.declared_mcp_servers()`: the servers a repository's MCP configs declare,
+  once each by name, shared by `agentfox scan mcp` and `agentfox up`.
+
+- **Delivery policies for coding agents** (`capabilities/delivery`). The hook now
+  also catches an agent that is about to lose work it already got right: a service
+  the task needs left attached to the session (including a harness background task),
+  a damaged database opened before it was copied with its sidecars, deployed state
+  torn down after a successful check, a closed replacement map with no diff check
+  after the last write, one answer where every answer was asked for, and a stated
+  numeric bar never measured. Each policy reads the task text once and intervenes at
+  most once or twice per session. On by default; `AGENTFOX_DELIVERY=off` disables
+  them, and `AGENTFOX_DELIVERY=only` runs them without the daemon.
+- The Claude Code adapter binds **Stop**, probed live at 2.1.292: a refusal keeps
+  the agent working with the reason as its next instruction. Existing installs get
+  it by rerunning `agentfox admin hooks install --write`.
+- **`messages` (and `trust`) on `/v1/guard/tool_call`.** The conversation that led to the
+  call; an undeclared argument's provenance is inferred from it. Without it, or a
+  declared `provenance`, nothing is inferred (now documented). The TypeScript SDK's
+  `guardToolCall` options take `messages` and `trust`.
+- **Built-in validators.** About seventy checks ported from the Guardrails AI validators
+  (Apache-2.0) as native code, so none needs a separate install: system-prompt leaks,
+  forbidden SQL and unknown columns, unsafe HTML, internal domains, fuzzy word lists,
+  drug names, price quotes, format checks, local-model classifiers (jailbreak,
+  toxicity, NSFW, bias, gibberish) and LLM judges routed through the judgment tier.
+  Pick one under Policies → Add rule → **Use a built-in check**, give it its settings,
+  and try it on a sample; it is watched and enforced like any other rule. Ones that
+  need no settings can also be switched on as `validator.*` checks.
+- Your own validators register through the `agentfox.validators` entry point.
+- Importing a Guardrails AI guard maps each validator onto its port with the same
+  settings, so `ValidLength`, `RegexMatch` and the rest import instead of being skipped.
+
+### Changed
+
+- **The multi-agent scan reads more of the shapes real repositories use.** Typed
+  constructors (`Agent[Context](...)`); hand-offs and tools added after an agent is
+  built (`a.handoffs = [...]`, `.append`, `.extend`, `+=`, `handoff(agent=x, ...)`),
+  including from a separate wiring module; tool lists built by a helper
+  (`tools=build_tools()`), `tools or ALL_TOOLS`, `A if c else B`, and a list another
+  module defines; tools made by a call (`function_tool(fn)`,
+  `function_tool(name_override="x")(fn)`, `StructuredTool.from_function(fn)`), named as
+  the code names them, here and in the repo scan's tool sites; an agent `name=` held in
+  a module constant; pre-1.0 LangChain (`create_tool_calling_agent` and friends,
+  `initialize_agent`, `AgentExecutor`, reported as one agent); and, only when nothing
+  else is an agent, a hand-written OpenAI/Anthropic/LiteLLM function-calling loop. On
+  OpenAI's customer-service agents demo the scan now finds all 8 agents, their tools and
+  15 hand-offs, where it found 2 agents, no tools and no hand-offs. A list the scan
+  cannot read adds nothing instead of a tool named after the helper.
+- **Test, mock and fixture files are no longer read for agents or tools** (`tests/`,
+  `testing/`, `mocks/`, `fixtures/`, `test_*.py`, `*_test.py`, `conftest.py`). The repo
+  scan's own findings still cover them.
+- **`judgment_fail_closed` defaults to off**, like `fail_mode`, and a workspace may turn
+  it on or off. Before, it defaulted on and the deployment ceiling refused to let anyone
+  turn it off, though nothing acted on it. Set `AGENTFOX_JUDGMENT_FAIL_CLOSED=true` to
+  require it for every workspace.
+
+- **Open core and AgentFox Enterprise.** The repository is now an Apache-2.0 open core
+  plus a source-available enterprise package in `ee/` (Business Source License 1.1: free
+  in production for one workspace with up to four agents; each release becomes
+  Apache-2.0 three years after it ships). Enterprise holds compliance status, reviews
+  and sign-off, the risk register and board view, auditor evidence packages, fleet
+  monitoring with Slack alerts, and external access checks. Everything else, including
+  enforcement, containment, every detector and validator, custom rules, packs, data
+  retention and legal holds, stays in the open core, which runs on its own.
+- The open core finds the enterprise package through the `agentfox.extensions` entry
+  point and never imports it; an import contract enforces that. CI runs the open core's
+  suite without `ee/` and both suites with it.
+- The dashboard shows enterprise areas only where the deployment has them
+  (`/api/version` now reports `edition` and `features`). Retention moved to
+  Settings → Retention; the Reports summary reads the new open-core `/api/overview`.
+- The `rails.hub.*` detectors, which needed a `pip install` per validator, are replaced
+  by the ports. `rails.guardrails_ai` stays for running your own Guard.
+
 ### Fixed
+
+- **`agentfox scan machine` reports what needs a look instead of every skill that ships
+  a script.** A skill that bundles scripts is now `low` (an inventory of unread code), not
+  `high`; most real skills ship scripts, and at `high` they buried the findings that matter.
+  A tool grant is overbroad only when it is `*`, `all`, or a tool whose whole argument is a
+  wildcard (`Bash(*)`): `Bash(ls *)` scopes the grant to `ls`, and a comma-joined
+  `allowed-tools` string is read grant by grant. "Don't tell the user to ..." is advice on what
+  to say, not a planted directive, and an injection phrase that only ever appears in quotes
+  (a skill warning about "ignore previous instructions") is reported at `medium`, one step
+  lower. The output now ends with what was checked, how many issues need a look, and the next
+  command; skills whose only issue is bundled scripts are named on one line.
+
+- **`agentfox up` says the hook daemon started only once it answers.** It printed "started"
+  as soon as the process was spawned, so a coding-agent call in the first moment after setup
+  ran unchecked. It now waits up to ten seconds and otherwise says the daemon is still
+  starting and where its log is.
 
 - **The injection classifier keeps up under concurrency instead of being skipped.**
   With the default detectors (classifier on, score cache off), 16 concurrent clients
@@ -109,198 +311,6 @@ the file it came from.
   `Blocked` at the end of the stream instead; a response that cannot be rewritten is
   refused rather than returned unredacted.
 
-### Changed
-
-- **The multi-agent scan reads more of the shapes real repositories use.** Typed
-  constructors (`Agent[Context](...)`); hand-offs and tools added after an agent is
-  built (`a.handoffs = [...]`, `.append`, `.extend`, `+=`, `handoff(agent=x, ...)`),
-  including from a separate wiring module; tool lists built by a helper
-  (`tools=build_tools()`), `tools or ALL_TOOLS`, `A if c else B`, and a list another
-  module defines; tools made by a call (`function_tool(fn)`,
-  `function_tool(name_override="x")(fn)`, `StructuredTool.from_function(fn)`), named as
-  the code names them, here and in the repo scan's tool sites; an agent `name=` held in
-  a module constant; pre-1.0 LangChain (`create_tool_calling_agent` and friends,
-  `initialize_agent`, `AgentExecutor`, reported as one agent); and, only when nothing
-  else is an agent, a hand-written OpenAI/Anthropic/LiteLLM function-calling loop. On
-  OpenAI's customer-service agents demo the scan now finds all 8 agents, their tools and
-  15 hand-offs, where it found 2 agents, no tools and no hand-offs. A list the scan
-  cannot read adds nothing instead of a tool named after the helper.
-- **Test, mock and fixture files are no longer read for agents or tools** (`tests/`,
-  `testing/`, `mocks/`, `fixtures/`, `test_*.py`, `*_test.py`, `conftest.py`). The repo
-  scan's own findings still cover them.
-- **`judgment_fail_closed` defaults to off**, like `fail_mode`, and a workspace may turn
-  it on or off. Before, it defaulted on and the deployment ceiling refused to let anyone
-  turn it off, though nothing acted on it. Set `AGENTFOX_JUDGMENT_FAIL_CLOSED=true` to
-  require it for every workspace.
-
-### Added
-
-- **Vapi and Retell calls are recorded when they end.** Vapi's `end-of-call-report`
-  (sent to the same hook URL) and Retell's `call_ended` / `call_analyzed` (a new
-  signed webhook route, `/v1/hooks/retell/{id}/webhook`) become one run per call with
-  its conversation turns, under the call's id, so they sit with that call's tool-call
-  decisions. Personal data and secrets are masked before anything is stored, and a
-  call delivered twice is recorded once. Spoken numbers are not masked yet.
-- **A tool call a person approved goes through when the platform retries it.** Vapi,
-  Retell, Copilot Studio and AgentCore Gateway never send an approval id back, so an
-  approved call used to be held again on every retry. `POST /v1/guard/tool_call` now
-  accepts `redeem_approved: true`: with no `approval_id`, it finds an approval granted
-  for exactly this agent, tool and arguments, unexpired and unspent, and spends it
-  once. The platform hooks and the AgentCore interceptor turn it on; any other caller
-  keeps the old behaviour unless it asks.
-- **Tool calls from Vapi, Retell, Copilot Studio and AgentCore Gateway are governed
-  before they run.** Each platform calls a URL before a tool runs; pointed at
-  AgentFox, the call gets `/v1/guard/tool_call`'s decision and an answer in the
-  platform's own format.
-  - **Vapi** (`/v1/hooks/vapi/{id}`): each call in a `tool-calls` message is decided.
-    Refusals come back as an `error` the assistant voices. Allowed calls are forwarded
-    to the customer's tool server.
-  - **Retell** (`/v1/hooks/retell/{id}`): calls are decided after `X-Retell-Signature`
-    verifies (HMAC with the Retell API key, 5-minute replay window). Allowed calls are
-    forwarded with Retell's own body and signature.
-  - **Copilot Studio**: the external threat detection endpoint
-    (`/v1/hooks/copilot-studio/{id}/analyze-tool-execution` and `/validate`) answers
-    `blockAction`. It first verifies the Entra app token: the RS256 signature against
-    the tenant's keys, plus tenant, issuer, app id, audience and expiry.
-  - **AgentCore Gateway**: a REQUEST-interceptor Lambda with a SAM template
-    (`deploy/aws-agentcore-interceptor/`). Blocked calls never reach the target.
-    Fail-closed by default.
-
-  An operator registers each connection with
-  `POST /api/agents/{slug}/platform-connections`; the change is audited and the
-  secret is stored encrypted and included in key rotation. The server allowed calls
-  are forwarded to is registered there, never taken from the request. It must be
-  `https` on a public host, and its address is checked again before each forward,
-  with redirects not followed.
-
-- **Discovery finds voice agents and agents built on hosted platforms.** `agentfox scan`,
-  `agentfox init` and a connected repository now report:
-  - Voice agents written in code: a LiveKit `class X(Agent)` with its `@function_tool`
-    methods, a Pipecat `Pipeline` with the functions its LLM service registers, and
-    OpenAI's `RealtimeAgent`, each with the model it is built with.
-  - Agents of Pydantic AI, Strands, Agno, smolagents, LlamaIndex, Semantic Kernel,
-    Microsoft Agent Framework, Haystack, DSPy and the Claude Agent SDK. These were
-    already found by shape at medium confidence; they are now high confidence under
-    their own name, as are TypeScript agents of Mastra, VoltAgent, Strands and LiveKit.
-  - Agents with no code, read from the files a platform exports
-    (`discovery/platforms.py`): Vapi assistants and squads, Retell agents and LLMs,
-    ElevenLabs agents, Bland pathways, n8n workflows with an AI Agent node, Dify apps,
-    Flowise and Langflow flows, Voiceflow projects, Dialogflow CX and ES exports,
-    Copilot Studio agents, Agentforce metadata and Agent Script, Bedrock Agents,
-    AgentCore runtimes and Lex bots in CloudFormation or Terraform, and Genesys
-    Architect bot flows. Each comes with its tools and model where the file names them.
-
-  A platform is named in the stack when code calls its API (Synthflow, Telnyx, Smallest
-  AI, Agora, Bedrock Agents and others). A file counts as a platform's agent only when
-  it has several of that platform's own keys together. Files in test and fixture
-  directories are not read.
-- **The share of checks answered without a detector is visible.** Counted per process
-  on the request path: `/metrics` has `agentfox_checks_total`,
-  `agentfox_checks_degraded_total{detector,cause}`, `agentfox_checks_degraded_ratio`
-  (over `degraded_window_seconds`, 60 by default),
-  `agentfox_classifier_backstop_shed_total` and `agentfox_inference_abandoned_total`;
-  `/api/health` reports them under `degradation.checks` and turns
-  `governance_healthy` false while the share is above `degraded_warn_ratio` (5%, with at
-  least `degraded_warn_min_checks` checks in the window), and the gateway logs a warning
-  once per window saying what `fail_mode` did with those checks (`open` answered them on
-  the other detectors' findings; `closed` blocked them).
-
-- **`scan --json` says more about each agent**: its `model` (read from a literal, a
-  module constant, an f-string of constants, an `os.getenv` default or a chat-model
-  object, and `null` when only running the code would tell), a `ref` (module, name and
-  whether it is the agent, a factory or a loop function) for a local runner, and
-  `tool_details` (each tool's description and argument names). The report gains
-  `unassigned_tools`, the tools found that no agent is handed. None of this is added to
-  what `scan --submit` sends.
-
-## [0.5.0] - 2026-10-17
-
-### Added
-
-- **`unicode.tags`, a default detector for text hidden in Unicode tag characters**
-  (U+E0000 to U+E007F, "ASCII smuggling"): invisible to a person, read by a model. It
-  reports `INJECTION.HIDDEN_TAG_TEXT`, so the baseline injection rules act on it, and
-  skips the England, Scotland and Wales flag emoji, the block's one legitimate use (#15).
-- **A Fly.io guide for the control-plane UI**, `deploy/FLY.md` (#11).
-  `fly.dashboard.toml` now sets `HOSTNAME=0.0.0.0`, as `render.yaml` does.
-- **A scanned multi-agent system comes out as its agents.** The repository scan reads
-  each agent the code defines, the tools it is handed and which agent hands work to
-  which (OpenAI Agents SDK handoffs and `as_tool`, LangGraph supervisors, swarms and
-  `StateGraph` agent nodes, CrewAI crews and delegation, AutoGen teams and group chats,
-  Google ADK `sub_agents`), statically. `scan --json` gains `agents` and `agent_edges`.
-  A repository with two or more agents is proposed as one draft per agent with its own
-  tools, joined by declared delegation edges, so the guardrail map shows sub-agents
-  ("From code, no calls yet") and the agent that calls each one, and "apply to
-  sub-agents" reaches them, before any traffic. The Proposed list groups a system under
-  its orchestrator with an "Add all" action. A re-scan updates the drafts in place and
-  never turns an agent someone added back into a proposal.
-- **`agentfox up`, the guided setup.** One command from a fresh install to a governed
-  project: it scans the repository, asks where AgentFox runs (this machine; self-hosted,
-  either started here with Docker Compose and a first operator, or an existing server;
-  or AgentFox Cloud with an API key), what to cover and how strict to start, then sets up
-  the Claude Code and Codex hooks, `agentfox.auto()` in your entry point, the gateway
-  environment for any language, the tools it found (impact inferred, never overwriting
-  a declaration), your MCP servers, the scan in the dashboard, Enterprise monitoring and
-  compliance where available, and the dashboard. It starts in observe by default. Each
-  question has a recommended answer (`--yes` takes them all); answers are saved in
-  `.agentfox/up.json` and credentials in `.agentfox/agentfox.env` (0600, git-ignored).
-  `up` takes `demo`'s place in the Start panel; `agentfox demo` still works.
-  Its scan step also reads the AI tools set up on this machine (`agentfox scan
-  machine`, skipped with `--skip-machine`) and the repository's own skills, and a
-  coding agent configured only at user level is offered too. It can add the AgentFox
-  GitHub Action as `.github/workflows/agentfox.yml`, never over an existing one.
-- `exposure.declared_mcp_servers()`: the servers a repository's MCP configs declare,
-  once each by name, shared by `agentfox scan mcp` and `agentfox up`.
-
-- **Delivery policies for coding agents** (`capabilities/delivery`). The hook now
-  also catches an agent that is about to lose work it already got right: a service
-  the task needs left attached to the session (including a harness background task),
-  a damaged database opened before it was copied with its sidecars, deployed state
-  torn down after a successful check, a closed replacement map with no diff check
-  after the last write, one answer where every answer was asked for, and a stated
-  numeric bar never measured. Each policy reads the task text once and intervenes at
-  most once or twice per session. On by default; `AGENTFOX_DELIVERY=off` disables
-  them, and `AGENTFOX_DELIVERY=only` runs them without the daemon.
-- The Claude Code adapter binds **Stop**, probed live at 2.1.292: a refusal keeps
-  the agent working with the reason as its next instruction. Existing installs get
-  it by rerunning `agentfox admin hooks install --write`.
-- **`messages` (and `trust`) on `/v1/guard/tool_call`.** The conversation that led to the
-  call; an undeclared argument's provenance is inferred from it. Without it, or a
-  declared `provenance`, nothing is inferred (now documented). The TypeScript SDK's
-  `guardToolCall` options take `messages` and `trust`.
-- **Built-in validators.** About seventy checks ported from the Guardrails AI validators
-  (Apache-2.0) as native code, so none needs a separate install: system-prompt leaks,
-  forbidden SQL and unknown columns, unsafe HTML, internal domains, fuzzy word lists,
-  drug names, price quotes, format checks, local-model classifiers (jailbreak,
-  toxicity, NSFW, bias, gibberish) and LLM judges routed through the judgment tier.
-  Pick one under Policies → Add rule → **Use a built-in check**, give it its settings,
-  and try it on a sample; it is watched and enforced like any other rule. Ones that
-  need no settings can also be switched on as `validator.*` checks.
-- Your own validators register through the `agentfox.validators` entry point.
-- Importing a Guardrails AI guard maps each validator onto its port with the same
-  settings, so `ValidLength`, `RegexMatch` and the rest import instead of being skipped.
-
-### Changed
-
-- **Open core and AgentFox Enterprise.** The repository is now an Apache-2.0 open core
-  plus a source-available enterprise package in `ee/` (Business Source License 1.1: free
-  in production for one workspace with up to four agents; each release becomes
-  Apache-2.0 three years after it ships). Enterprise holds compliance status, reviews
-  and sign-off, the risk register and board view, auditor evidence packages, fleet
-  monitoring with Slack alerts, and external access checks. Everything else, including
-  enforcement, containment, every detector and validator, custom rules, packs, data
-  retention and legal holds, stays in the open core, which runs on its own.
-- The open core finds the enterprise package through the `agentfox.extensions` entry
-  point and never imports it; an import contract enforces that. CI runs the open core's
-  suite without `ee/` and both suites with it.
-- The dashboard shows enterprise areas only where the deployment has them
-  (`/api/version` now reports `edition` and `features`). Retention moved to
-  Settings → Retention; the Reports summary reads the new open-core `/api/overview`.
-- The `rails.hub.*` detectors, which needed a `pip install` per validator, are replaced
-  by the ports. `rails.guardrails_ai` stays for running your own Guard.
-
-### Fixed
-
 - **Dashboard actions no longer land on `localhost`.** Add project, Add all and every
   other form action, and the sign-in and `/app/agents` redirects, came back on the
   server's own hostname. Opened at `127.0.0.1` or behind a proxy, that is another origin
@@ -344,7 +354,6 @@ the file it came from.
 - Value checks could not be saved from the dashboard ("a condition rule needs
   `condition`"), and trying one on a tool call ignored the tool: the dashboard's proxy
   dropped both fields. Suggested argument names for a value check now load too.
-
 ## [0.4.0] - 2026-10-12
 
 ### Added

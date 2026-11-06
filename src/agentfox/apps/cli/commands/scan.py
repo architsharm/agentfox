@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import typer
+from rich.markup import escape
 from rich.panel import Panel
 
 from agentfox.apps.cli._style import SEVERITY_COLOUR
@@ -112,6 +113,18 @@ def scan_machine_cmd(
             raise typer.Exit(1)
         return
 
+    # The detail first, then the answer last: in a terminal the end of the output is
+    # what stays on screen, so that is where what was checked, what needs a look and
+    # what to run next go.
+    all_issues = [i for e in report.servers for i in e["issues"]] + [
+        i for s in report.skills for i in s["issues"]
+    ]
+    urgent = sum(1 for i in all_issues if i["severity"] in ("critical", "high"))
+    review = sum(1 for i in all_issues if i["severity"] == "medium")
+    scripts_only = [
+        s for s in report.skills if s["issues"] and all(i["severity"] == "low" for i in s["issues"])
+    ]
+    script_names = sorted({s["skill"] for s in scripts_only})
     for sentence in report.trifectas:
         console.print(
             Panel(
@@ -143,7 +156,7 @@ def scan_machine_cmd(
         console.print(
             f"\n[bold]Skills[/]  [dim]{', '.join(report.skill_dirs) or 'no skill directories'}[/]"
         )
-        flagged = [s for s in report.skills if s["issues"]]
+        flagged = [s for s in report.skills if s["issues"] and s not in scripts_only]
         for result in flagged:
             console.print(f"  [bold]{result['skill']}[/]  [dim]{result['path']}[/]")
             for issue in result["issues"]:
@@ -153,22 +166,41 @@ def scan_machine_cmd(
                     f"    [{colour}]{issue['severity']}[/] {issue['type']}"
                     + (f" — {extra}" if extra else "")
                 )
-        console.print(
-            f"  {len(report.skills)} skill(s), {len(flagged)} with issues"
-            if report.skills
-            else "  [dim]no SKILL.md files found[/]"
-        )
+                if issue.get("excerpt"):
+                    excerpt = " ".join(issue["excerpt"].split())[:160]
+                    console.print(f"      [dim]{escape(excerpt)}[/]")
+        if scripts_only:
+            names = ", ".join(script_names)
+            console.print(
+                f"  [dim]Ship scripts nothing here has read (low): {names}. Paths: --json.[/]"
+            )
+        if not report.skills:
+            console.print("  [dim]no SKILL.md files found[/]")
 
-    servers = len(report.servers)
-    issues = sum(len(e["issues"]) for e in report.servers) + report.skill_issues
     console.print(
-        f"\n  {len(report.configs)} config(s) · {servers} MCP server(s) · "
-        f"{len(report.trifectas)} lethal trifecta(s) · {issues} issue(s)"
-    )
-    console.print(
-        "  [dim]Static: servers were not started, so tool descriptions were not read. "
+        "\n  [dim]Static: servers were not started, so tool descriptions were not read. "
         "For one server's tools:[/] [cyan]agentfox scan mcp NAME --file tools.json[/]"
     )
+    checked = f"{len(report.servers)} MCP server(s) in {len(report.configs)} config(s)"
+    if skills:
+        checked += f" and {len(report.skills)} skill(s)"
+    console.print(f"\n[bold]Checked {checked}.[/] [dim]Nothing left this machine.[/]")
+    if report.trifectas:
+        console.print(f"  [red]{len(report.trifectas)} lethal trifecta(s)[/]")
+    console.print(
+        f"  [red]{urgent} need a look[/] [dim](critical or high)[/]"
+        if urgent
+        else "  [green]nothing critical or high[/]"
+    )
+    if review:
+        console.print(f"  [yellow]{review} to review[/] [dim](medium)[/]")
+    if scripts_only:
+        console.print(f"  [dim]{len(script_names)} skill(s) only ship scripts (low)[/]")
+    console.print(
+        "  Next, to check each call your coding agent makes before it runs, in a project:\n"
+        "  [cyan]agentfox up --with coding-agents[/]"
+    )
+
     if report.critical:
         raise typer.Exit(1)
 

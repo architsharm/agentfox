@@ -332,7 +332,7 @@
   {
    "type": "skill_bundled_code",
    "title": "Skill bundles code",
-   "severity": "high",
+   "severity": "low",
    "description": "A skill ships executable code alongside its instructions.",
    "owner": "discovery"
   },

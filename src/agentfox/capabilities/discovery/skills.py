@@ -44,7 +44,12 @@ from agentfox.capabilities.detection.actions import analyse_shell
 _PLANTED_DIRECTIVE = [
     re.compile(r"\b(?:ignore|disregard)\s+(?:all\s+)?(?:previous|prior)\b", re.I),
     re.compile(r"\byou\s+must\s+(?:always|first|before)\b", re.I),
-    re.compile(r"\b(?:do\s+not|don'?t|never)\s+(?:tell|inform|mention\s+to)\s+the\s+user\b", re.I),
+    # Not "don't tell the user to ...": that is advice on what to say, not something
+    # kept from them. "Don't tell the user what you did" still matches.
+    re.compile(
+        r"\b(?:do\s+not|don'?t|never)\s+(?:tell|inform|mention\s+to)\s+the\s+user\b(?!\s+to\b)",
+        re.I,
+    ),
     re.compile(r"<\s*(?:system|important|instructions?)\s*>", re.I),
     re.compile(
         r"\bbefore\s+(?:using|calling)\s+this\s+(?:tool|skill),?\s+(?:you\s+)?(?:must|should)\b",
@@ -107,8 +112,45 @@ _SHELL_FENCE = re.compile(r"```(?:sh|bash|zsh|shell|console|terminal)?\n(.*?)```
 #: Files beside a skill that are code rather than documentation.
 _EXECUTABLE_SUFFIXES = {".sh", ".bash", ".zsh", ".py", ".js", ".ts", ".rb", ".pl", ".ps1", ".exe"}
 
-#: Tool grants in frontmatter that are not a grant at all.
-_WILDCARD = re.compile(r"[*]|\ball\b", re.I)
+#: Tool grants in frontmatter that are not a grant at all: `*`, `all`, or a tool
+#: whose whole argument is a wildcard (`Bash(*)`, `Bash`'s any-command form). A
+#: wildcard after a named command (`Bash(ls *)`, `Bash(git *)`) scopes the grant
+#: to that command and is not one.
+_WILDCARD = re.compile(r"^\s*(?:\*|all)\s*$|^\s*[\w.-]+\(\s*\*\s*\)\s*$", re.I)
+
+#: Quote marks a phrase can be quoted in.
+_QUOTES = "\"'“‘«"
+
+
+def _grants(raw: Any) -> list[str]:
+    """`allowed-tools` as a list, whether YAML gave a list or one comma-joined string.
+
+    Commas inside a tool's parentheses (`Bash(a, b)`) do not split it.
+    """
+    items = raw if isinstance(raw, list) else [raw]
+    out: list[str] = []
+    for item in items:
+        depth, start, text = 0, 0, str(item)
+        for i, ch in enumerate(text):
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth = max(0, depth - 1)
+            elif ch == "," and depth == 0:
+                out.append(text[start:i].strip())
+                start = i + 1
+        out.append(text[start:].strip())
+    return [g for g in out if g]
+
+
+def _only_quoted(text: str, patterns: list[str]) -> bool:
+    """Every match sits right after a quote mark: the skill names the phrase, e.g. as
+    an example of injected text to refuse, rather than saying it to the model."""
+    for pattern in patterns:
+        for match in re.finditer(pattern, text, re.I):
+            if match.start() == 0 or text[match.start() - 1] not in _QUOTES:
+                return False
+    return True
 
 
 def _issue(kind: str, severity: str, **detail: Any) -> dict[str, Any]:
@@ -137,17 +179,25 @@ def analyse_skill(
     for where, text in (("description", description), ("body", body)):
         hits = [p.pattern for p in _PLANTED_DIRECTIVE if p.search(text)]
         if hits:
+            # The description is worse than the body: a model reads every
+            # available skill's description to decide what to invoke, so a
+            # directive there fires without the skill ever being chosen. A phrase
+            # only ever quoted is still reported, lower: the model reads quoted
+            # text too, but a skill warning about "ignore previous instructions"
+            # is the common case.
+            quoted = _only_quoted(text, hits)
+            if where == "description":
+                severity = "high" if quoted else "critical"
+            else:
+                severity = "medium" if quoted else "high"
             issues.append(
                 _issue(
                     "skill_poisoning",
-                    # The description is worse than the body: a model reads
-                    # every available skill's description to decide what to
-                    # invoke, so a directive there fires without the skill
-                    # ever being chosen.
-                    "critical" if where == "description" else "high",
+                    severity,
                     skill=name,
                     location=where,
                     patterns=hits,
+                    quoted=quoted,
                     excerpt=_first_hit(text, hits)[:300],
                 )
             )
@@ -185,12 +235,15 @@ def analyse_skill(
             )
 
     # --- 3. capability the description does not mention -------------------
+    # Low, not high: most real skills ship scripts, so this is an inventory of
+    # code nobody here has read, not evidence of harm. At high it buried the
+    # findings that are.
     executables = sorted(f for f in sibling_files if Path(f).suffix.lower() in _EXECUTABLE_SUFFIXES)
     if executables:
         issues.append(
             _issue(
                 "skill_bundled_code",
-                "high",
+                "low",
                 skill=name,
                 files=executables,
                 detail=(
@@ -214,10 +267,8 @@ def analyse_skill(
         )
 
     # --- 4. a tool grant that is not one ----------------------------------
-    grants = frontmatter.get("allowed-tools") or frontmatter.get("allowed_tools") or []
-    if isinstance(grants, str):
-        grants = [grants]
-    wildcards = [g for g in grants if _WILDCARD.search(str(g))]
+    grants = _grants(frontmatter.get("allowed-tools") or frontmatter.get("allowed_tools") or [])
+    wildcards = [g for g in grants if _WILDCARD.search(g)]
     if wildcards:
         issues.append(
             _issue(

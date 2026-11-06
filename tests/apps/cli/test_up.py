@@ -617,10 +617,52 @@ def test_the_files_up_runs_from_are_kept_out_of_git(project, monkeypatch):
 
     monkeypatch.setattr(subprocess, "Popen", popen)
     monkeypatch.setattr("agentfox.hooks.ping", lambda: False)
+    monkeypatch.setattr("time.sleep", lambda seconds: None)
     result = runner.invoke(app, ["up", str(project), "--yes", "--with", "coding-agents"])
     assert result.exit_code == 0, result.output
     ignored = (project / ".gitignore").read_text().split()
     assert ".agentfox/logs/" in ignored and ".agentfox/*.pid" in ignored
+
+
+def _fake_daemon(monkeypatch, answers_after: int | None) -> None:
+    """`up` starts a daemon that answers its ping after `answers_after` tries, or never."""
+    import subprocess
+
+    real = subprocess.Popen
+
+    class Started:
+        pid = 4242
+
+    def popen(args, *a, **k):
+        return Started() if "agentfox.apps.cli.main" in args else real(args, *a, **k)
+
+    pings = iter(range(10_000))
+
+    def ping() -> bool:
+        tried = next(pings)
+        # The first ping is `up` asking whether one is already running.
+        return answers_after is not None and tried > answers_after
+
+    monkeypatch.setattr(subprocess, "Popen", popen)
+    monkeypatch.setattr("agentfox.hooks.ping", ping)
+    monkeypatch.setattr("time.sleep", lambda seconds: None)
+
+
+def test_the_daemon_is_called_started_only_once_it_answers(project, monkeypatch):
+    """A hook that runs before the daemon answers goes unchecked, so `up` waits."""
+    _fake_daemon(monkeypatch, answers_after=3)
+    result = runner.invoke(app, ["up", str(project), "--yes", "--with", "coding-agents"])
+    assert result.exit_code == 0, result.output
+    assert "hook daemon started" in result.output
+    assert "still starting" not in result.output
+
+
+def test_a_daemon_that_never_answers_is_not_called_started(project, monkeypatch):
+    _fake_daemon(monkeypatch, answers_after=None)
+    result = runner.invoke(app, ["up", str(project), "--yes", "--with", "coding-agents"])
+    assert result.exit_code == 0, result.output
+    assert "hook daemon started" not in result.output
+    assert "still starting" in result.output
 
 
 def test_a_busy_port_is_named_before_docker_starts(project, monkeypatch):

@@ -58,6 +58,11 @@ export default function Page() {
 pip install agentfox
 agentfox --version`}</Code>
       <Output>{`agentfox 0.5.0`}</Output>
+      <p>
+        For the Claude Code and Codex hooks, install it as a tool instead, so{" "}
+        <code>agentfox</code> is on the PATH in every directory your coding agent starts in:
+      </p>
+      <Code>{`uv tool install agentfox      # or: pipx install agentfox`}</Code>
       <p>With uv, in a project:</p>
       <Code>{`uv add agentfox`}</Code>
       <p>From source, for the latest commit:</p>
