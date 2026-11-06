@@ -210,3 +210,22 @@ def test_quickscan_reports_this_machine(tmp_path, monkeypatch):
 
     skipped = json.loads(runner.invoke(app, [*args, "--skip-machine"]).output)
     assert skipped["machine"] is None
+
+
+def test_cli_ends_with_the_summary_and_the_next_command(tmp_path, monkeypatch):
+    """The end of the output is what stays on screen, so the answer goes there."""
+    _write(tmp_path / ".claude" / "skills" / "evil" / "SKILL.md", POISONED_SKILL)
+    _write(tmp_path / ".claude" / "skills" / "tool" / "SKILL.md", "---\nname: tool\n---\nBody.")
+    _write(tmp_path / ".claude" / "skills" / "tool" / "run.py", "print(1)")
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+
+    result = runner.invoke(app, ["scan", "machine"])
+
+    tail = result.output[result.output.index("Checked ") :]
+    assert "and 2 skill(s)" in tail
+    assert "need a look" in tail
+    assert "1 skill(s) only ship scripts (low)" in tail
+    assert tail.rstrip().endswith("agentfox up --with coding-agents")
+    # A skill whose only issue is shipping scripts is named once, not listed in full.
+    assert "Ship scripts nothing here has read (low): tool." in result.output

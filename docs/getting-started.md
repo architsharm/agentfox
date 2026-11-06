@@ -38,12 +38,19 @@ those steps is and how to check it worked.
 ## Step 1. Install (2 minutes)
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install agentfox
+uv tool install agentfox      # or: pipx install agentfox
 agentfox --help
 ```
 
-AgentFox is on PyPI (from 0.3.1). The core install is deliberately light: it pulls
+A tool install puts `agentfox` on your PATH in every directory, which the Claude Code and Codex
+hooks need: they run `agentfox` from wherever your coding agent starts. A virtualenv works too
+(`python3 -m venv .venv && source .venv/bin/activate && pip install agentfox`) as long as that
+`agentfox` is on the PATH your coding agent starts with.
+
+To see what it finds before setting anything up, `agentfox scan machine` checks the MCP servers
+and skills your AI tools load, in about two seconds, and ends with the command to run next.
+
+AgentFox is on PyPI. The core install is deliberately light: it pulls
 no model weights and no detector frameworks. Optional extras (`[pii]`, `[classifiers]`, `[redteam]`,
 `[langgraph]`, `[sql]`, `[otel]`, `[postgres]`, or `[all]` for everything permissive) add wrapped
 third-party engines later, as configuration rather than as a prerequisite.

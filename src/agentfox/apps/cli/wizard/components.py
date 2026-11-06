@@ -360,7 +360,21 @@ def _coding_apply(run: Run) -> None:
     if ping():
         run.say("[dim]hook daemon already running[/]")
     elif run.start and _spawn(run, "hooks-daemon", ["admin", "hooks", "daemon"]):
-        run.say("[green]hook daemon started[/]")
+        # Said only once it answers: a hook that runs before then reports the call
+        # unchecked, so "started" on a daemon still loading would be untrue.
+        import time
+
+        for _ in range(40):
+            if ping():
+                run.say("[green]hook daemon started[/]")
+                break
+            time.sleep(0.25)
+        else:
+            run.say(
+                "[yellow]hook daemon is still starting[/] — calls go unchecked until it "
+                "answers; `agentfox admin hooks status` says when, "
+                "`.agentfox/logs/hooks-daemon.log` says why not"
+            )
     else:
         run.next_steps.append(
             (

@@ -395,7 +395,7 @@ BUILTIN: tuple[FindingType, ...] = (
     _t(
         "skill_bundled_code",
         "Skill bundles code",
-        "high",
+        "low",
         "discovery",
         "A skill ships executable code alongside its instructions.",
     ),

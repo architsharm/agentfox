@@ -108,7 +108,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-319 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+322 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -186,6 +186,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/agents/{slug}/breaker` | The agent's circuit breaker: settings, state, and the current window's rate. |
 | `PUT` | `/api/agents/{slug}/breaker` | Change when the breaker trips and what it does. The same role as the kill |
 | `POST` | `/api/agents/{slug}/breaker/reset` | Close the breaker now and let the agent's calls through. |
+| `GET` | `/api/agents/{slug}/control` | One agent's pause/stop state (who, when, why) and its control history, newest |
 | `POST` | `/api/agents/{slug}/enforcement` | Switch everything that protects this agent from watching to enforcing. |
 | `POST` | `/api/agents/{slug}/enforcement/preview` | What turning enforcement on for this agent switches, and what it would stop. |
 | `GET` | `/api/agents/{slug}/features` | Get Agent Features |
@@ -328,6 +329,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/evidence/{package_id}/download` | Download Evidence |
 | `GET` | `/api/export/siem` | Export Siem |
 | `POST` | `/api/legal-holds` | Place Hold |
+| `POST` | `/api/legal-holds/{hold_id}/release` | Lift a hold, so the purge reaches what it preserved. Audited like placing one. |
 | `GET` | `/api/retention` | Every data class with its period, the last purge, the next one, and legal holds. |
 | `POST` | `/api/retention/purge` | Run the retention purge now, through the same job the daily schedule runs. |
 | `GET` | `/api/retention/runs` | Retention Runs |
@@ -481,6 +483,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/judgment/posture` | What is in force, what may be changed, and what the deployment forbids. |
 | `PUT` | `/api/judgment/posture` | Replace the posture, refusing anything the deployment does not permit. |
 | `GET` | `/api/library/packs` | List Packs |
+| `GET` | `/api/library/packs/{pack_id}/contents` | What a library holds, rule by rule, and what its last simulation on these agents |
 | `POST` | `/api/library/packs/{pack_id}/install` | Install Pack |
 | `GET` | `/api/overview` | Agents, their risk tiers and open issues: the Reports summary. |
 | `GET` | `/api/projects` | Every project: a multi-agent system (a root agent and every agent it hands work |

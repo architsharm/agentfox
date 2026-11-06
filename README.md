@@ -44,51 +44,55 @@ can verify without trusting us.
 
 ## Quickstart
 
-```bash
-pip install agentfox
-agentfox up
-```
-
-`up` scans the repository, then asks a few questions, each with a recommended answer:
-where AgentFox runs (this machine, your own server, or AgentFox Cloud), what to cover
-(Claude Code and Codex hooks, your Python agent, the gateway for any language, the tools
-and MCP servers it found, the GitHub Action, monitoring, compliance, the dashboard) and how strict to start.
-Then it does all of it in one pass, starting in observe so nothing is blocked until you
-say so. `agentfox up --yes` takes every recommended answer; run it again any time and it
-picks up where you left off.
-
-To look around first instead:
+Python 3.11 or newer. Install it as a tool, so the coding-agent hooks find `agentfox` from
+any directory:
 
 ```bash
-agentfox init && agentfox demo
+uv tool install agentfox      # or: pipx install agentfox
 ```
 
-`init` creates a SQLite database and loads 43 controls and the policy packs, in about a
-second. `demo` runs a thirteen-step walkthrough in about five. Both are offline: no API key, no
-downloaded weights, no network egress. Or scan the directory you are in without installing:
+`pip install agentfox` into a virtualenv works too; the hooks then need that environment's
+`agentfox` on the PATH your coding agent starts with.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/architsharm/agentfox/main/scripts/quickscan.sh | bash
-```
-
-To check the MCP servers and skills that Claude Code, Cursor, Claude Desktop, VS Code,
-Windsurf, Gemini CLI and Codex load on your machine, with no setup:
+### 1. Check your machine (about 2 seconds)
 
 ```bash
 agentfox scan machine
 ```
 
-On every pull request, the GitHub Action annotates lethal trifectas, ungoverned model calls
-and poisoned skills, and fails the check on the kinds you list in `fail-on`:
+Reads the MCP configs and installed skills that Claude Code, Cursor, Claude Desktop, VS Code,
+Windsurf, Gemini CLI and Codex load. Nothing is started, written or sent anywhere, and no
+account or setup is needed. It ends with what needs a look and the command to run next. To try
+it without installing: `uvx agentfox scan machine`.
 
-```yaml
-- uses: actions/checkout@v4
-- uses: architsharm/agentfox@main
-  with:
-    fail-on: trifecta,skills
+### 2. Check every call your coding agent makes (about a minute)
+
+In a project where you use Claude Code or Codex:
+
+```bash
+agentfox up --with coding-agents
 ```
 
-Then govern your own agent with one line:
+It writes the hooks, grants the agent its built-in tools and starts the small local daemon the
+hooks ask. It starts in watch mode: calls are recorded, not blocked, except shapes such as
+`rm -rf ~/`, which are refused from the start. `agentfox admin hooks status` says whether the
+daemon is up; `agentfox policy enforce tool-containment` starts blocking when the decisions
+look right.
+
+### 3. Govern your own agent
+
+```bash
+agentfox up
+```
+
+With no flags, `up` scans the repository and asks a few questions, each with a recommended
+answer: where AgentFox runs (this machine, your own server, or AgentFox Cloud), what to cover
+(coding agents, your Python agent, the gateway for any language, the tools and MCP servers it
+found, the GitHub Action, monitoring, compliance, the dashboard) and how strict to start. It
+starts in observe, so nothing is blocked until you say so. `--yes` takes every recommended
+answer; run it again any time and it picks up where you left off.
+
+In your agent's code, one line:
 
 ```python
 import agentfox
@@ -99,6 +103,24 @@ Every OpenAI, Anthropic, LiteLLM and LangChain call in the process is traced, ev
 audited, and every tool call in a response is checked before your code can run it. Nothing is
 blocked by the line itself: content policies start in observe, and tool containment enforces
 after `agentfox init`, raising `agentfox.Blocked` for a refused call.
+
+### Other ways in
+
+- **Look around first:** `agentfox init && agentfox demo`. `init` creates a SQLite database
+  and loads 43 controls and the policy packs in about a second; `demo` runs a thirteen-step
+  walkthrough in about five. Both are offline: no API key, no downloaded weights, no network
+  egress.
+- **Scan this directory without installing:**
+  `curl -fsSL https://raw.githubusercontent.com/architsharm/agentfox/main/scripts/quickscan.sh | bash`
+- **On every pull request:** the GitHub Action annotates lethal trifectas, ungoverned model
+  calls and poisoned skills, and fails the check on the kinds you list in `fail-on`:
+
+  ```yaml
+  - uses: actions/checkout@v4
+  - uses: architsharm/agentfox@main
+    with:
+      fail-on: trifecta,skills
+  ```
 
 ## Contain a tool call
 
