@@ -451,12 +451,10 @@ def runner_connect(
         "agents": len(structure["agents"]),
         "tools": len(structure["tools"]),
         "proposed": [a["slug"] for a in structure["agents"] if a.get("registry") == "proposed"],
-        # Which file each agent is defined in, so `agentfox init` can add the one line
-        # that connects the app's traffic under the right agent.
+        # Each agent's slug by its name, so `agentfox init` (which knows the files; the
+        # server keeps no paths) adds the one line under the name the dashboard uses.
         "registered": [
-            {"slug": a["slug"], "name": a.get("name"), "file": a.get("file")}
-            for a in structure["agents"]
-            if a.get("slug")
+            {"slug": a["slug"], "name": a.get("name")} for a in structure["agents"] if a.get("slug")
         ],
         "skipped": [a["name"] for a in structure["agents"] if a.get("registry") == "skipped"],
     }

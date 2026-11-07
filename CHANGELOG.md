@@ -60,6 +60,10 @@ the file it came from.
 
 ### Fixed
 
+- **`agentfox init` no longer stops right after connecting** when it offers to add
+  `agentfox.auto()`: the server keeps no file paths, so `init` now finds each agent's
+  file in its own map instead of the server's reply.
+
 - **A rule you write can be switched on from the UI.** Policies → Libraries shows
   **Your rules** (the rules you wrote, and your business rules) with the same
   simulate-then-block switch as any library, and "Add a rule". A new rule's
