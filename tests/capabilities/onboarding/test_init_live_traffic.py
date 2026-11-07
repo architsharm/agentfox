@@ -92,6 +92,10 @@ def test_connect_finds_the_agents_file_itself_and_names_it_as_the_dashboard_does
 
     key = client.get("/api/onboarding/key", headers=as_user("admin@example.com")).json()["value"]
     root = _repo(tmp_path)
+    from agentfox.frameworks.autoguard import ATTACK_TEST_ENV
+
+    # connect() marks its own process as running the attack test; undo that after.
+    monkeypatch.setenv(ATTACK_TEST_ENV, "")
     monkeypatch.setattr(init_client, "_Api", Api)
     monkeypatch.setattr(init_client.time, "sleep", stop)
     console = Console(record=True, width=200)
