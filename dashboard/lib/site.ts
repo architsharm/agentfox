@@ -42,8 +42,8 @@ export const SITE_DESCRIPTION =
   "Open source control plane for AI agents: discover what is running, least privilege on tool calls, and an audit trail you can check without us.";
 
 /**
- * The repository. Also spelled out in components/marketing/nav.tsx and
- * app/(marketing)/how-it-works/_public.tsx; those are rendered links and this is structured
+ * The repository. Also spelled out in components/marketing/nav.tsx, which is a
+ * rendered link where this is structured
  * data, and they are all the same string. Verified against LICENSE at the repo
  * root, which is the Apache License 2.0.
  */

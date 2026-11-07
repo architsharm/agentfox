@@ -37,6 +37,7 @@ const plex = IBM_Plex_Sans({
 import "./globals.css";
 import "./theme.css";
 import "./marketing.css";
+import "./lp.css";
 import "./tw.css";
 import "./af-theme.css";
 

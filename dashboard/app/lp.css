@@ -16,34 +16,39 @@
  * one mono (Geist Mono) for code and the product scene only.
  */
 
-.lp {
+/* `.lp` is a whole page. `.lp-x` is the shared header and footer, which also sit
+   on pages built with the older marketing stylesheet: same tokens, no page shell. */
+.lp, .lp-x {
   --lp-bg: var(--af-bg);
   --lp-alt: color-mix(in srgb, var(--af-subtle) 70%, var(--af-bg));
   --lp-ink: var(--af-fg);
   --lp-hair: var(--af-line);
   --lp-wrap: 1200px;
   --lp-gutter: 32px;
-  background: var(--lp-bg);
   color: var(--lp-ink);
   font-family: var(--af-sans);
   font-size: 15px;
   line-height: 1.6;
-  min-height: 100vh;
-  overflow-x: clip;
+  letter-spacing: normal;
   -webkit-font-smoothing: antialiased;
 }
-.lp *, .lp *::before, .lp *::after { box-sizing: border-box; }
-.lp :where(a) { color: inherit; text-decoration: none; }
-.lp :where(h1, h2, h3, p, ol, ul) { margin: 0; }
-.lp :where(a, button):focus-visible { outline: 2px solid var(--af-link); outline-offset: 3px; border-radius: 6px; }
+.lp {
+  background: var(--lp-bg);
+  min-height: 100vh;
+  overflow-x: clip;
+}
+:is(.lp, .lp-x) *, :is(.lp, .lp-x) *::before, :is(.lp, .lp-x) *::after { box-sizing: border-box; }
+:is(.lp, .lp-x) :where(a) { color: inherit; text-decoration: none; }
+:is(.lp, .lp-x) :where(h1, h2, h3, p, ol, ul) { margin: 0; }
+:is(.lp, .lp-x) :where(a, button):focus-visible { outline: 2px solid var(--af-link); outline-offset: 3px; border-radius: 6px; }
 .lp code, .lp pre { font-family: var(--af-mono); }
 .lp-wrap { width: 100%; max-width: var(--lp-wrap); margin: 0 auto; padding: 0 var(--lp-gutter); }
 .lp-muted { color: var(--af-muted); }
 
 /* ── Type ──────────────────────────────────────────────────────────────────── */
-.lp h1 { font-size: 64px; line-height: 1.05; font-weight: 500; letter-spacing: -0.03em; text-wrap: balance; }
-.lp h2 { font-size: 40px; line-height: 1.15; font-weight: 500; letter-spacing: -0.02em; text-wrap: balance; }
-.lp h3 { font-size: 18px; line-height: 1.35; font-weight: 600; letter-spacing: -0.01em; }
+:is(.lp, .lp-x) h1 { font-size: 64px; line-height: 1.05; font-weight: 500; letter-spacing: -0.03em; text-wrap: balance; }
+:is(.lp, .lp-x) h2 { font-size: 40px; line-height: 1.15; font-weight: 500; letter-spacing: -0.02em; text-wrap: balance; }
+:is(.lp, .lp-x) h3 { font-size: 18px; line-height: 1.35; font-weight: 600; letter-spacing: -0.01em; }
 .lp-lead { font-size: 18px; line-height: 1.55; color: var(--af-fg-2); text-wrap: balance; }
 .lp-note { margin-top: 24px; font-size: 13px; color: var(--af-muted); text-align: center; }
 .lp-pill {
@@ -85,6 +90,12 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
 .lp-nav-links { display: flex; gap: 28px; font-size: 14px; color: var(--af-fg-2); }
 .lp-nav-links a:hover { color: var(--lp-ink); }
 .lp-nav-cta { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.lp-menu { display: none; position: relative; }
+.lp-menu summary { list-style: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; color: var(--af-fg-2); }
+.lp-menu summary::-webkit-details-marker { display: none; }
+.lp-menu-panel { position: absolute; right: 0; top: 44px; min-width: 200px; padding: 8px; display: grid; background: var(--af-bg); border: 1px solid var(--lp-hair); border-radius: 10px; box-shadow: var(--af-shadow-2); }
+.lp-menu-panel a { padding: 10px 12px; border-radius: 6px; font-size: 15px; }
+.lp-menu-panel a:hover { background: var(--af-subtle); }
 
 /* ── Hero ──────────────────────────────────────────────────────────────────── */
 .lp-hero { position: relative; min-height: clamp(720px, calc(100vh - 64px), 900px); display: flex; flex-direction: column; justify-content: flex-end; }
@@ -144,7 +155,7 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
 .lp-foot-brand .lp-brand { color: var(--lp-ink); }
 .lp-foot-brand p { margin-top: 12px; max-width: 16rem; line-height: 1.55; }
 .lp-foot-mail { display: inline-block; margin-top: 12px; color: var(--af-fg-2); }
-.lp-foot-cols { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 24px; }
+.lp-foot-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 160px)); justify-content: end; gap: 48px; }
 .lp-foot-col { display: grid; align-content: start; gap: 9px; }
 .lp-foot-col span { font-size: 12px; font-weight: 600; color: var(--af-fg-2); margin-bottom: 2px; }
 .lp-foot-col a, .lp-foot-mail, .lp-foot-legal a { transition: color 120ms; }
@@ -346,31 +357,25 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
 .lp-reveal-on [data-reveal].is-in { opacity: 1; transform: none; }
 
 /* ── Review index ──────────────────────────────────────────────────────────── */
-.lp-index { padding: 96px 0; }
-.lp-index h1 { font-size: 40px; }
-.lp-index-grid { margin-top: 40px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-.lp-index-grid article { padding: 28px; border: 1px solid var(--lp-hair); border-radius: 12px; display: grid; gap: 10px; align-content: start; }
-.lp-index-grid p { color: var(--af-fg-2); }
-.lp-index-grid .lp-actions { justify-content: flex-start; margin-top: 8px; }
-.lp-comment { font-size: 12px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--af-brand); margin-bottom: 12px; }
 
 /* ── Responsive: the same scale, stepped down once per breakpoint ──────────── */
 @media (max-width: 960px) {
   .lp h1 { font-size: 48px; }
   .lp h2 { font-size: 32px; }
-  .lp-stats, .lp-cards, .lp-index-grid { grid-template-columns: minmax(0, 1fr); }
+  .lp-stats, .lp-cards { grid-template-columns: minmax(0, 1fr); }
   .lp-test { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .lp-foot-in { grid-template-columns: minmax(0, 1fr); }
-  .lp-foot-cols { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .lp-foot-cols { grid-template-columns: repeat(3, minmax(0, 1fr)); justify-content: start; }
     .lp-section, .lp-cta { padding: 80px 0; }
 }
 @media (max-width: 640px) {
-  .lp { --lp-gutter: 20px; }
+  .lp, .lp-x { --lp-gutter: 20px; }
   .lp h1 { font-size: 36px; }
   .lp h2 { font-size: 28px; }
   .lp-lead { font-size: 16px; }
   .lp-stat-n { font-size: 32px; }
   .lp-nav-links { display: none; }
+  .lp-menu { display: block; }
   .lp-hero { min-height: 0; padding-top: 320px; }
   .lp-hero .lp-art { bottom: auto; height: 320px; }
   .lp-hero-short { padding-top: 0; }
@@ -390,3 +395,22 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
 @media (prefers-reduced-motion: reduce) {
   .lp *, .lp *::before, .lp *::after { animation: none !important; transition: none !important; }
 }
+
+/* ── Text pages (security, support): one column, the same type scale ──────── */
+.lp-page { padding: 96px 0 112px; }
+.lp-page .lp-wrap { max-width: 800px; }
+.lp-page h1 { font-size: 48px; }
+.lp-page > .lp-wrap > .lp-lead { margin-top: 16px; text-wrap: pretty; }
+.lp-page section { margin-top: 56px; }
+.lp-page h2 { font-size: 24px; line-height: 1.3; letter-spacing: -0.01em; }
+.lp-page p, .lp-page li { color: var(--af-fg-2); }
+.lp-page section > p { margin-top: 12px; }
+.lp-page ul { margin-top: 12px; padding-left: 20px; display: grid; gap: 8px; }
+.lp-page :is(p, li, td) a { color: var(--af-brand); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.lp-page code { font-size: 13px; background: var(--af-subtle); padding: 1px 5px; border-radius: 4px; }
+.lp-page .lp-actions { justify-content: flex-start; margin-top: 24px; }
+.lp-page table { width: 100%; margin-top: 16px; border-collapse: collapse; font-size: 14px; }
+.lp-page th { text-align: left; font-size: 12px; font-weight: 600; color: var(--af-muted); padding: 0 16px 10px 0; border-bottom: 1px solid var(--lp-hair); }
+.lp-page td { padding: 12px 16px 12px 0; border-bottom: 1px solid var(--lp-hair); vertical-align: top; color: var(--af-fg-2); }
+.lp-page td:first-child { color: var(--lp-ink); }
+@media (max-width: 640px) { .lp-page { padding: 64px 0 80px; } .lp-page h1 { font-size: 36px; } }

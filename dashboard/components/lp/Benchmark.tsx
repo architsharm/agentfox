@@ -1,19 +1,19 @@
-import Link from "next/link";
-
 import { AGENTDOJO, AGENT_TIERS, FALSE_FLAGS, LATENCY_H2H, METHOD_NOTE, RERUN, SOURCES } from "@/lib/lp/proof";
-import type { Variant } from "@/lib/lp/variants";
 
 import { CopyChip, Reveal } from "./client";
 import { FlowArt } from "./FlowArt";
-import { Arrow, LpFooter, LpNav, SectionHead } from "./parts";
+import { Arrow, LpCta, LpFooter, LpNav, SectionHead } from "./parts";
 
-/** Page two: each comparison as one card, on the same type scale as page one. */
-export function Benchmark({ v }: { v: Variant }) {
-  const tests = v.benchmarkOrder.map((k) => TESTS[k]);
+type TestKey = "runtime" | "latency" | "falseflags" | "agents";
+const ORDER: TestKey[] = ["falseflags", "runtime", "latency", "agents"];
+
+/** /benchmark: each comparison as one card, on the home page's type scale. */
+export function Benchmark() {
+  const tests = ORDER.map((k) => TESTS[k]);
   return (
     <div className="lp">
       <Reveal />
-      <LpNav slug={v.slug} />
+      <LpNav />
       <main>
         <section className="lp-hero lp-hero-short">
           <FlowArt mode="ribbon" />
@@ -92,22 +92,9 @@ export function Benchmark({ v }: { v: Variant }) {
           </div>
         </section>
 
-        <section className="lp-cta">
-          <div className="lp-wrap lp-cta-in">
-            <h2>Try AgentFox on your own agent</h2>
-            <p className="lp-lead">Starts in watch mode. Nothing is blocked until you say so.</p>
-            <div className="lp-actions">
-              <Link href="/docs/quickstart" className="lp-btn lp-btn-primary">
-                Get started <Arrow />
-              </Link>
-              <Link href={`/lp/${v.slug}`} className="lp-btn lp-btn-ghost">
-                Back to overview
-              </Link>
-            </div>
-          </div>
-        </section>
+        <LpCta />
       </main>
-      <LpFooter slug={v.slug} />
+      <LpFooter />
     </div>
   );
 }
@@ -122,7 +109,7 @@ type Test = {
   source: string;
 };
 
-const TESTS: Record<Variant["benchmarkOrder"][number], Test> = {
+const TESTS: Record<TestKey, Test> = {
   runtime: {
     q: "Does the attack still run?",
     n: "0 / 588",

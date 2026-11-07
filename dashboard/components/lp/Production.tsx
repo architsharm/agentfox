@@ -4,7 +4,7 @@ import { FALSE_FLAGS } from "@/lib/lp/proof";
 
 import { CopyChip, Reveal } from "./client";
 import { FlowArt } from "./FlowArt";
-import { Arrow, LpFooter, LpNav, SectionHead, WORKS_WITH } from "./parts";
+import { Arrow, LpCta, LpFooter, LpNav, SectionHead, WORKS_WITH } from "./parts";
 
 /**
  * The "guardrails that don't block your real customers" page. Each section
@@ -62,12 +62,11 @@ const EXAMPLES = [
 ] as const;
 
 export function Production() {
-  const slug = "production" as const;
   const benchmark = "/benchmark";
   return (
     <div className="lp">
       <Reveal />
-      <LpNav slug={slug} home="/" />
+      <LpNav />
       <main>
         <section className="lp-hero">
           <FlowArt mode="production" />
@@ -308,11 +307,6 @@ export function Production() {
                 </div>
               ))}
             </div>
-            <p className="lp-center-link">
-              <Link href="/compare">
-                How we compare, including where others are ahead <Arrow />
-              </Link>
-            </p>
           </div>
         </section>
 
@@ -346,7 +340,7 @@ export function Production() {
               <Link href={benchmark}>
                 All results, and the scripts to rerun them <Arrow />
               </Link>
-              <Link href="/how-it-works#limits" className="lp-link-quiet">
+              <Link href="/docs/limits" className="lp-link-quiet">
                 Known gaps
               </Link>
             </p>
@@ -374,25 +368,9 @@ export function Production() {
           </div>
         </section>
 
-        <section className="lp-cta">
-          <div className="lp-wrap lp-cta-in">
-            <h2>Try AgentFox on your own agent</h2>
-            <p className="lp-lead">One command finds your agents. It starts in watch mode, so nothing is blocked until you say so.</p>
-            <div className="lp-start">
-              <CopyChip text="uvx agentfox scan" />
-            </div>
-            <div className="lp-actions">
-              <Link href="/docs/quickstart" className="lp-btn lp-btn-primary">
-                Get started <Arrow />
-              </Link>
-              <a href="https://github.com/architsharm/agentfox" className="lp-btn lp-btn-ghost" target="_blank" rel="noreferrer">
-                View on GitHub
-              </a>
-            </div>
-          </div>
-        </section>
+        <LpCta />
       </main>
-      <LpFooter slug={slug} />
+      <LpFooter />
     </div>
   );
 }

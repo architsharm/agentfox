@@ -99,34 +99,24 @@ export function Editions({
   return (
     <section id="editions" className="mk-section">
       <div className="mk-wrap">
-        <div className="mk-narrow mk-up">
-          <span className="mk-eyebrow">Editions</span>
-          <h2 className="mk-h2" style={{ marginTop: 14 }}>
-            Two ways to run it. Both free today</h2>
-          <p className="mk-lede" style={{ marginTop: 14 }}>
-            The same control plane either way. Nothing is priced yet, and no card is taken anywhere on this site.
-          </p>
-        </div>
-
         {/* Two routes, not three tiers.
             Three equally-weighted bordered cards look like a paid SaaS ladder,
             which is exactly wrong for a page where nothing is priced. There are
             really only two decisions a visitor makes here — run it yourself, or
             let us run it — and supported rollout is a conversation, not an
             edition. It is a strip underneath. */}
-        <div className="ed-routes" style={{ marginTop: 36 }}>
+        <div className="ed-routes">
           <div className="ed-route mk-up mk-d1">
             <div className="ed-head">
               <h3 className="mk-h3">Run it yourself</h3>
               <span className="mk-chip mk-chip-go">Free forever</span>
             </div>
             <p className="mk-body">
-              The open core is Apache-2.0, with no licence key and no limit on agents: enforcement,
-              containment, every detector and the dashboard. Runs offline: no API key, no
-              downloaded weights, no network egress. Compliance, evidence packages, monitoring and
-              access checks are AgentFox Enterprise: source-available, free in production for up to
-              four agents, and each release becomes Apache-2.0 after three years.{" "}
-              <Link href="/docs">Install and the demo are in the docs.</Link>
+              Apache-2.0, with no licence key and no limit on agents: enforcement, every detector and
+              the dashboard, running offline. Compliance, evidence packages, monitoring and access
+              checks are AgentFox Enterprise, source-available and free in production for up to four
+              agents.{" "}
+              <Link href="/docs/quickstart">Install guide</Link>.
             </p>
             <a
               className="mk-btn mk-btn-outline"
@@ -144,14 +134,12 @@ export function Editions({
               <span className="mk-chip mk-chip-accent">Free while in preview</span>
             </div>
             <p className="mk-body">
-              The same control plane with AgentFox Enterprise included, operated by us, with
-              upgrades and backups handled. Sign in with GitHub and you have a workspace of your own in
-              about ten seconds.
+              AgentFox with Enterprise included, run by us. Sign in with GitHub to get a workspace.
             </p>
             <ul className="ed-terms">
-              <li>No card, and nothing to pay today</li>
+              <li>No card</li>
               <li>When paid plans arrive, your first 14 days on one are free</li>
-              <li>We will tell you before anything changes</li>
+              <li>We&apos;ll tell you before anything changes</li>
             </ul>
             <a className="mk-btn mk-btn-primary" href="/login">
               Start free
@@ -162,8 +150,8 @@ export function Editions({
         {/* Supported rollout: a service conversation, not a third tier. */}
         <div className="ed-support mk-up mk-d3">
           <p>
-            <strong>Putting this in front of an auditor?</strong> We help with rollout
-            and give you priority on fixes. Not priced yet — we agree it with you.
+            <strong>Rolling out to production?</strong> We help with the rollout and prioritise
+            your fixes. Not priced yet.
           </p>
           <a className="mk-btn mk-btn-outline" href={SUPPORTED_HREF}>
             Talk to us
@@ -183,10 +171,7 @@ export function Editions({
             <>
               <div>
                 <h3 className="mk-h3">Tell me when pricing is announced</h3>
-                <p className="mk-body">
-                  One email, before any plan or paywall exists. Not a queue for
-                  access — that is open now.
-                </p>
+                <p className="mk-body">One email, before any paid plan exists.</p>
                 {error ? (
                   <p className="wl-error" role="alert">
                     {error}
@@ -259,47 +244,3 @@ const OSS_FACTS: { label: string; body: string; where: string }[] = [
 ];
 
 /* --- WhyOpen ------------------------------------------------------------ */
-
-const WHY_OPEN: { title: string; body: string }[] = [
-  {
-    title: "You cannot audit a black box",
-    body: "This software decides what your agent is allowed to do. That decision is only worth trusting if you can read the code that makes it.",
-  },
-  {
-    title: "Auditors should not have to trust us",
-    body: "Every evidence package carries verify_chain.py, a stdlib-only script that re-derives the hash chain from the exported rows. It runs without us and without our API.",
-  },
-  {
-    title: "The unreviewed parts say so",
-    body: "Compliance mappings were produced from framework texts by engineers, not reviewed by counsel. They ship labelled DRAFT rather than being quietly left out.",
-  },
-];
-
-export function WhyOpen() {
-  return (
-    <section id="why-open" className="mk-section mk-band">
-      <div className="mk-wrap">
-        <div className="mk-up" >
-          <span className="mk-eyebrow">Why open</span>
-          <h2 className="mk-h2" style={{ marginTop: 14 }}>
-            The core is open, and stays open</h2>
-        </div>
-
-        <div className="mk-grid mk-grid-3" style={{ marginTop: 36 }}>
-          {WHY_OPEN.map((w, i) => (
-            <div
-              key={w.title}
-              className={`mk-card mk-up mk-d${Math.min(i + 1, 5)}`}
-              style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}
-            >
-              <h3 className="mk-h3">{w.title}</h3>
-              <p className="mk-body" style={{ margin: 0, fontSize: "var(--t-small)" }}>
-                {w.body}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}

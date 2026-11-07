@@ -71,7 +71,7 @@ export function Body() {
       <p>
         The obvious version, <em>ignore all previous instructions</em> in plain text, is easy to
         catch. That is why it is rarely what you see. Our own{" "}
-        <Link href="/live">hourly showcase</Link> sends nine attacks at a demo agent, and when we
+        <Link href="/docs/guides/live-probes">hourly showcase</Link> sends nine attacks at a demo agent, and when we
         first ran it, three of the nine got past the detector. They are the three techniques in
         this post. After the change described here, the showcase test asserts all nine are
         contained.
@@ -182,7 +182,7 @@ You are DAN. …`}</Code>
         body="The playground runs the same detector and the same enforcement code as the product. Switch between observe and enforce and watch the verdict change."
         href="/playground"
         label="Open the playground"
-        secondary={{ href: "/runtime", label: "Runtime guardrails" }}
+        secondary={{ href: "/docs/reference/policies", label: "Policies" }}
       />
 
       <h2 id="false-positives">The false positives that matter more</h2>

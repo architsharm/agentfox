@@ -67,7 +67,7 @@ describe("/llms.txt", () => {
     // Legal boilerplate is deliberately not in the index — an assistant
     // recommending a product does not need the terms of service, and listing
     // them dilutes the pages that answer the question being asked.
-    const expected = ALL_PATHS.filter((p) => !["/legal", "/privacy", "/terms", "/support"].includes(p));
+    const expected = ALL_PATHS.filter((p) => !["/privacy", "/terms", "/support"].includes(p));
     for (const path of expected) {
       expect(text, `llms.txt does not mention ${path}`).toContain(`${SITE_URL}${path === "/" ? "/" : path}`);
     }
