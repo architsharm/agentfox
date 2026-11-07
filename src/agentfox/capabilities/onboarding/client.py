@@ -139,7 +139,14 @@ class _Results:
 
 
 def connect(key: str, server: str, path: str | Path = ".", console: Console | None = None) -> None:
+    import os
+
+    from agentfox.frameworks.autoguard import ATTACK_TEST_ENV
+
     console = console or Console()
+    # The attack test imports the app; the agentfox.auto() line in it must not report
+    # the attacks as the app's traffic.
+    os.environ[ATTACK_TEST_ENV] = "1"
     root = Path(path).resolve()
     api = _Api(server, key)
 
