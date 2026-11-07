@@ -163,7 +163,9 @@ AGENTFOX_API_URL=http://127.0.0.1:8080 npm run dev`}</Code>
         </li>
         <li>
           The GitHub access token is stored encrypted against your workspace for repository
-          scans, and you land on <Link href="/docs/app/start">Start here → Connect</Link>.
+          scans. You land on Agents, which shows the{" "}
+          <Link href="/docs/app/start#first-agent">Connect your first agent</Link> card until
+          the workspace has a project.
         </li>
       </ol>
       <ul>
@@ -533,7 +535,7 @@ AGENTFOX_API_URL=http://127.0.0.1:8080 npm run dev`}</Code>
         items={[
           { href: "/docs/app/start", label: "Start here and connect", why: "the checklist, repository scans and API tokens" },
           { href: "/docs/app/findings", label: "Findings", why: "the queue Overview summarises" },
-          { href: "/docs/self-host", label: "Self-hosting", why: "the full stack, not just the web app" },
+          { href: "/docs/self-host", label: "Self-hosting", why: "the gateway and database as well as the web app" },
           { href: "/docs/app/playground", label: "Playground", why: "try enforcement without an account" },
         ]}
       />

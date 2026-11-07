@@ -447,7 +447,7 @@ agentfox test action "$CMD" --kind shell`}</Code>
 
       <h2>Limits of this page</h2>
       <ul>
-        <li>The coverage column is a judgement over the whole item; read the section, not just the word.</li>
+        <li>The coverage column is a judgement over the whole item; the word alone can mislead, so read the section.</li>
         <li>&quot;Enforced&quot; means enforced for calls AgentFox sees, against tools you declared.</li>
         <li>Anything named as observe-mode records what it would have done and blocks nothing until you promote it.</li>
       </ul>

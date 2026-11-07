@@ -101,11 +101,42 @@ export function NextSteps({ items }: { items: { href: string; label: string; why
         {items.map((item) => (
           <li key={item.href}>
             <Link href={item.href}>{item.label}</Link>
-            {item.why && <span> — {item.why}</span>}
+            {item.why && <span>: {item.why}</span>}
           </li>
         ))}
       </ul>
     </nav>
+  );
+}
+
+/**
+ * A screenshot of the product, bordered and captioned. Files live under
+ * public/docs/screens/; give the image's real pixel size so the page does not jump
+ * while it loads. Use one per step that changes what the reader sees, no more.
+ */
+export function Screenshot({
+  src,
+  alt,
+  caption,
+  width,
+  height,
+}: {
+  /** Under /docs/screens/, e.g. "/docs/screens/setup-key.png" */
+  src: string;
+  /** What the image shows, for someone who cannot see it. */
+  alt: string;
+  /** One line under the image. */
+  caption?: ReactNode;
+  width: number;
+  height: number;
+}) {
+  return (
+    <figure className="docs-shot">
+      {/* A plain <img>: these are static files, shown at their own size. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt={alt} width={width} height={height} loading="lazy" decoding="async" />
+      {caption && <figcaption>{caption}</figcaption>}
+    </figure>
   );
 }
 

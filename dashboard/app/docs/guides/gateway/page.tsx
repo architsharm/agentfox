@@ -635,6 +635,45 @@ email.send     (no grant)               {"verdict": "block", "reason": "no capab
         from, and treats it as untainted.
       </p>
       <p>
+        Three more fields are for a caller that applies the verdict itself, as{" "}
+        <code>agentfox.auto()</code> does when it reports to an account:
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>What it does</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>in_process</code></td>
+            <td>
+              What you will do with the verdict: <code>&quot;enforced&quot;</code> (the
+              default), <code>&quot;all&quot;</code> (strict) or <code>&quot;none&quot;</code>{" "}
+              (observe). A containment finding then says whether the call was really stopped.
+            </td>
+          </tr>
+          <tr>
+            <td><code>waive_ungranted</code></td>
+            <td>
+              <code>true</code>: while nobody has granted this agent any tool, a missing grant
+              is recorded but not applied, so adding AgentFox to an existing app does not
+              refuse every tool it already uses. The response lists what was waived in{" "}
+              <code>waived_rules</code>.
+            </td>
+          </tr>
+          <tr>
+            <td><code>declare</code></td>
+            <td>
+              The tool&apos;s declaration as your request to the model carried it (name,
+              description, parameters). A tool seen for the first time is registered with an
+              inferred impact for a person to confirm.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
         An <code>escalate</code> here means: do not run the tool yet. The{" "}
         <code>approval_id</code> is what a person decides on; see{" "}
         <Link href="/docs/guides/approvals">Approvals and the kill switch</Link> for polling

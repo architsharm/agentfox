@@ -87,66 +87,68 @@ def run(message: str) -> str:
 }`}</Code>
       <p>From the repository root:</p>
       <Code>{`agentfox scan`}</Code>
-      <Output>{`╭─ CRITICAL · lethal trifecta ─────────────────────────────────────────────────────────╮
-│ support_triage/agent.py: can read CRM records (crm_lookup), reads untrusted web      │
-│ pages (web_fetch), and can send email (email_send). An instruction hidden in a web   │
-│ page could send CRM data out.                                                        │
-│                                                                                      │
-│ Contain it: \`agentfox permit grant <agent> email_send --max-taint user\` (anything    │
-│ derived from untrusted content needs an approval before it reaches email_send), or   │
-│ run with \`agentfox.auto(mode="observe")\` to watch it happen without blocking         │
-│ anything.                                                                            │
-╰─ private data + untrusted content + a way out ───────────────────────────────────────╯
-╭─ CRITICAL · lethal trifecta ─────────────────────────────────────────────────────────╮
-│ .mcp.json: reads private repositories and tickets (github), reads issues and         │
-│ comments anyone can write (github) or reads untrusted web pages (fetch), and can     │
-│ send data out in the URLs it requests (fetch) or can create issues, comments and     │
-│ pull requests (github). An instruction hidden in an issue comment could send private │
-│ data out.                                                                            │
-│                                                                                      │
-│ Contain it: don't load these servers together in one client, or put the agent behind │
-│ AgentFox and run \`agentfox permit grant <agent> mcp:fetch/* --max-taint user\` so     │
-│ nothing read from the web reaches 'fetch' without an approval.                       │
-╰─ private data + untrusted content + a way out ───────────────────────────────────────╯
+      <Output>{`╭─ CRITICAL · lethal trifecta ─────────────────────────────────────────────────────────────────────╮
+│ support_triage/agent.py: can read CRM records (crm_lookup), reads untrusted web pages            │
+│ (web_fetch), and can send email (email_send). An instruction hidden in a web page could send CRM │
+│ data out.                                                                                        │
+│                                                                                                  │
+│ Contain it: \`agentfox permit grant <agent> email_send --max-taint user\` (anything derived from   │
+│ untrusted content needs an approval before it reaches email_send), or run with                   │
+│ \`agentfox.auto(mode="observe")\` to watch it happen without blocking anything.                    │
+╰─ private data + untrusted content + a way out ───────────────────────────────────────────────────╯
+╭─ CRITICAL · lethal trifecta ─────────────────────────────────────────────────────────────────────╮
+│ .mcp.json: reads private repositories and tickets (github), reads issues and comments anyone can │
+│ write (github) or reads untrusted web pages (fetch), and can send data out in the URLs it        │
+│ requests (fetch) or can create issues, comments and pull requests (github). An instruction       │
+│ hidden in an issue comment could send private data out.                                          │
+│                                                                                                  │
+│ Contain it: don't load these servers together in one client, or put the agent behind AgentFox    │
+│ and run \`agentfox permit grant <agent> mcp:fetch/* --max-taint user\` so nothing read from the    │
+│ web reaches 'fetch' without an approval.                                                         │
+╰─ private data + untrusted content + a way out ───────────────────────────────────────────────────╯
 Scanned 2 files in …/repo
   built on: OpenAI SDK
+
+  Found 1 agent
+    support_triage  OpenAI SDK · gpt-4o-mini · 3 tools  support_triage/agent.py:40
 
   1 of 1 model call sites are ungoverned  (0% covered)
   can reach: 3 tools · 2 MCP servers (github, fetch)
      crm_lookup    support_triage/agent.py  private data
      web_fetch     support_triage/agent.py  untrusted input
      email_send    support_triage/agent.py  sends out / irreversible
-     github (MCP)  .mcp.json                private data, untrusted input, sends out /
-                                            irreversible
+     github (MCP)  .mcp.json                private data, untrusted input, sends out / irreversible
      fetch (MCP)   .mcp.json                untrusted input, sends out / irreversible
 
- severity  where                                         what
- high      .mcp.json:1                                   MCP server 'github' — reads
-                                                         private repositories and
-                                                         tickets; reads issues and
-                                                         comments anyone can write; can
-                                                         create issues, comments and
-                                                         pull requests. No version
-                                                         pinned, so its tools can
-                                                         change after you review them
- high      .mcp.json:1                                   MCP server 'fetch' — reads
-                                                         untrusted web pages; can send
-                                                         data out in the URLs it
-                                                         requests. No version pinned,
-                                                         so its tools can change after
-                                                         you review them
- high      support_triage/agent.py:43                    client.chat.completions.create
-                                                         (...)
+ severity  where                                               what
+ high      .mcp.json:1                                         MCP server 'github' — reads private
+                                                               repositories and tickets; reads
+                                                               issues and comments anyone can
+                                                               write; can create issues, comments
+                                                               and pull requests. No version
+                                                               pinned, so its tools can change
+                                                               after you review them
+ high      .mcp.json:1                                         MCP server 'fetch' — reads untrusted
+                                                               web pages; can send data out in the
+                                                               URLs it requests. No version pinned,
+                                                               so its tools can change after you
+                                                               review them
+ high      support_triage/agent.py:40                          client.chat.completions.create(...)
 
-╭─ Next ───────────────────────────────────────────────────────────────────────────────╮
-│ 2 place(s) in this repository can be steered by an instruction hidden in content     │
-│ they read into sending private data out. Contain those first — each lethal-trifecta  │
-│ finding names the command. Then add \`import agentfox; agentfox.auto()\` to your entry │
-│ point to see every model and tool call as it happens.                                │
-╰──────────────────────────────────────────────────────────────────────────────────────╯`}</Output>
+╭─ Next ───────────────────────────────────────────────────────────────────────────────────────────╮
+│ Start watching this agent: agentfox up                                                           │
+│ It registers your agents, declares their tools, adds \`agentfox.auto()\` to your entry point, and  │
+│ starts in watch mode: nothing is blocked until you say so.                                       │
+│                                                                                                  │
+│ 2 place(s) in this repository can be steered by an instruction hidden in content they read into  │
+│ sending private data out. Contain those first — each lethal-trifecta finding names the command.  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯`}</Output>
       <p>
         <code>agentfox scan</code> is <code>agentfox scan repo .</code>; pass a path to scan
-        another directory. The scanned path is shortened to <code>…/repo</code> here.
+        another directory. The scanned path is shortened to <code>…/repo</code> here. The agent
+        is named <code>support_triage</code>, as its package is, and <code>agentfox up</code>,{" "}
+        <code>agentfox init</code> and the <code>agentfox.auto()</code> line they add all use
+        that same name.
       </p>
 
       <h2>Reading the output</h2>
@@ -182,6 +184,15 @@ Scanned 2 files in …/repo
             so and draws no conclusion, rather than reporting clean.
           </p>
         </Step>
+        <Step title="Found N agents">
+          <p>
+            One line per agent: its name, framework, model, how many tools it holds, and the
+            file and line where it is defined. Agents are recognised in the OpenAI and
+            Anthropic SDKs, LangGraph, LangChain, CrewAI and AutoGen, among others. The name
+            is the one its code gives it; an unnamed agent in a top-level <code>main.py</code>{" "}
+            is named after the repository.
+          </p>
+        </Step>
         <Step title="Model call sites and coverage">
           <p>
             Each call into a model SDK, and whether it is governed. A call counts as
@@ -207,6 +218,14 @@ Scanned 2 files in …/repo
             Everything else, worst first: ungoverned call sites, unpinned MCP servers, and
             when present hard-coded secrets, shell calls, and SQL built near model output.{" "}
             <code>--limit N</code> shows more rows (default 15).
+          </p>
+        </Step>
+        <Step title="Next">
+          <p>
+            One command: <code>agentfox up</code> registers these agents, declares their tools,
+            adds <code>agentfox.auto()</code> to the entry point and starts in watch mode (
+            <Link href="/docs/quickstart#cli">Quickstart</Link>). When the scan found a lethal
+            trifecta, contain it first with the command its panel names.
           </p>
         </Step>
       </Steps>

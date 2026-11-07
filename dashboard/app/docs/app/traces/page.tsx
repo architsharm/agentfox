@@ -115,11 +115,11 @@ for arguments derived from it rather than relaxing the detector.`}</Output>
         tool. An empty trace is not a pass.
       </p>
 
-      <h2>Was this right? Feedback and what it feeds</h2>
+      <h2>Feedback, and what it feeds</h2>
       <p>
-        On each detector run tied to a decision, pick <strong>correct — true positive</strong>,{" "}
-        <strong>wrong — false positive</strong> or <strong>missed something</strong> and press{" "}
-        <strong>file feedback</strong>. The <strong>File as a false positive</strong> button in
+        On each detector run that found something and is tied to a decision, press{" "}
+        <strong>Correct</strong> (a true positive) or <strong>Wrong</strong> (a false
+        positive). The <strong>File as a false positive</strong> button in
         a Why panel does the same with a note. Both send{" "}
         <code>POST /api/guardrails/feedback</code> with the decision, detector and entity, and
         return you to the trace with &quot;feedback recorded&quot;.

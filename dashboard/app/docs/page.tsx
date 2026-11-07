@@ -104,8 +104,9 @@ export default function DocsOverview() {
       <h2>The path: see, watch, contain, prove</h2>
       <p>
         Four steps, in this order. Each is one command or one line, and each has a guide.
-        The <Link href="/docs/quickstart">Quickstart</Link> walks all four against a sample
-        agent in about ten minutes.
+        The <Link href="/docs/quickstart">Quickstart</Link> connects your own repository in a
+        few minutes; the <Link href="/docs/guides/walkthrough">Offline walkthrough</Link> runs
+        all four by hand against a sample agent.
       </p>
       <table>
         <thead>
@@ -187,7 +188,7 @@ agentfox init && agentfox demo`}</Code>
         <code>init</code> creates a local database and loads the controls and policy packs.{" "}
         <code>demo</code> runs a thirteen-step walkthrough against three seeded agents in
         about five seconds. Use a scratch state directory for it; see{" "}
-        <Link href="/docs/quickstart#demo">Quickstart</Link>.
+        <Link href="/docs/guides/walkthrough#demo">Offline walkthrough</Link>.
       </p>
 
       <h2>What you can do</h2>
@@ -230,6 +231,18 @@ agentfox init && agentfox demo`}</Code>
               Every model call in the process, and every tool call in a response before your
               code runs it. Not the OpenAI Responses API, and not tools your code calls
               without the model asking.
+            </td>
+          </tr>
+          <tr>
+            <td>Agents behind a LiteLLM proxy</td>
+            <td>
+              <Link href="/docs/guides/litellm">
+                <code>AgentFoxGuardrail</code> in the proxy config
+              </Link>
+            </td>
+            <td>
+              Every agent that calls models through the proxy: inputs and tool results, each
+              tool call the model asks for, and the reply. No change to the agents&apos; code.
             </td>
           </tr>
           <tr>
@@ -303,7 +316,7 @@ agentfox init && agentfox demo`}</Code>
 
       <NextSteps
         items={[
-          { href: "/docs/quickstart", label: "Quickstart", why: "scan, watch, contain and report a sample agent in ten minutes" },
+          { href: "/docs/quickstart", label: "Quickstart", why: "connect your repository and see your agents tested" },
           { href: "/docs/concepts", label: "Concepts", why: "the vocabulary every other page uses" },
           { href: "/docs/install", label: "Install and configure", why: "extras, where state lives, agentfox.toml" },
         ]}
