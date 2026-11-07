@@ -88,7 +88,7 @@ export default function Page() {
               agent&apos;s protections and basic guardrails, the blocked words and topics, and
               the <code>baseline</code> pack (injection, PII, safety) where it is installed.
             </td>
-            <td>The same <strong>Start enforcing</strong> control as Policies, which simulates first.</td>
+            <td>The same <strong>Start blocking</strong> control as Policies → Libraries, which simulates first.</td>
           </tr>
         </tbody>
       </table>

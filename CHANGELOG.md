@@ -13,6 +13,17 @@ the file it came from.
 
 ### Fixed
 
+- **A rule you write can be switched on from the UI.** Policies → Libraries shows
+  **Your rules** (the rules you wrote, and your business rules) with the same
+  simulate-then-block switch as any library, and "Add a rule". A new rule's
+  confirmation, and its own page, link straight there.
+- Libraries applied to every agent (Baseline, Tool containment, EU AI Act, Agent
+  integrity) get their watch/block switch on the Libraries page.
+- One word for one thing: "Start blocking" everywhere (was also "Start enforcing"),
+  "Apply a library" on New rule (was "Turn on a ready-made pack"); a watching
+  library's drawer says what its rules *would* do.
+- With no project chosen, pages show a project with an agent someone added, not a
+  scan's proposals.
 - **`agentfox test redteam` says what live traffic gets.** An attack stopped only by a
   rule that watches is shown as "would block (watching)" and counted on its own line,
   instead of as blocked; the command refuses an agent that doesn't exist (it used to

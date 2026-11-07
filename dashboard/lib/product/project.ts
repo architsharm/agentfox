@@ -30,6 +30,15 @@ export const MAP_PROJECT_COOKIE = "agentfox_map_project";
  */
 export const NEW_PROJECT = "__new__";
 
+/**
+ * The project shown when none is chosen: the first with an agent someone added, so a
+ * scan's proposals (drafts nobody has accepted) never stand in for the real agent.
+ * Falls back to the first project. Takes GET /api/projects rows.
+ */
+export function defaultProject<T extends { project: string; members?: { status?: string }[] }>(projects: T[]): T | undefined {
+  return projects.find((p) => (p.members ?? []).some((m) => m.status && m.status !== "draft")) ?? projects[0];
+}
+
 /** The views of one project, in the order the page offers them. */
 export const PROJECT_VIEWS = [
   { key: "canvas", label: "Canvas" },
