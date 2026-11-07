@@ -13,6 +13,12 @@ the file it came from.
 
 ### Changed
 
+- **`agentfox scan` names the agents it found** (one line each: framework, model,
+  tools, file), single-agent repositories included, and its Next panel leads with one
+  command, `agentfox up`, instead of advice to edit code by hand.
+- **`agentfox up` instruments framework apps.** A LangGraph, LangChain, CrewAI or
+  AutoGen app calls the model through a client `agentfox.auto()` patches, so `up` now
+  offers to add it even when the scan counts no direct model call.
 - **One key.** "Create a key" on the setup card makes a workspace API key: the key
   `agentfox init` connects with, and the key your app sends its calls with. Old
   `afi_` setup keys keep working at `init`.
