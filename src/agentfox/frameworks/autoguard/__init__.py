@@ -96,6 +96,7 @@ import contextvars
 import functools
 import json
 import logging
+import os
 import sys
 import time
 from collections.abc import Callable
@@ -397,6 +398,9 @@ def _record_turn(
             _IN_AGENTFOX.reset(token)
     except Exception as exc:  # pragma: no cover - observability must not break the call
         log.debug("agentfox: turn capture skipped: %s", exc)
+
+
+from agentfox.core.vocab import ATTACK_TEST_ENV  # noqa: E402 - re-exported
 
 
 class _SkipLocalSetup(Exception):
@@ -2015,6 +2019,11 @@ def auto(
     global _STATE
     if mode not in MODES:
         raise ValueError("mode must be 'policy' (default), 'observe' or 'enforce'")
+    if os.environ.get(ATTACK_TEST_ENV):
+        # Loaded by `agentfox init`'s attack test, which checks each call itself with
+        # every tool faked: governing it here too would record the attacks as the
+        # app's own traffic.
+        return AutoState(agent=agent or default_agent_slug(), mode=mode, environment="test")
     if tool_refusals not in ("message", "raise"):
         raise ValueError("tool_refusals must be 'message' (default) or 'raise'")
 

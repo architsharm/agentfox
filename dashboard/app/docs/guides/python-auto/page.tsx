@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Callout, Code, NextSteps, Output, Step, Steps } from "@/components/docs/blocks";
+import { Callout, Code, NextSteps, Output, Screenshot, Step, Steps } from "@/components/docs/blocks";
+import { SCREENS } from "@/lib/docs/screens";
 import { publicPageMetadata } from "@/lib/site";
 
 export const metadata: Metadata = publicPageMetadata({
@@ -41,10 +42,42 @@ agentfox.auto(
     intent="Triage a customer's support ticket and reply to the customer by email.",
 )`}</Code>
       <p>
-        Call it once, at startup, before the code that makes model calls runs. Run{" "}
+        Call it once, at startup, before the code that makes model calls runs. Locally, run{" "}
         <code>agentfox init</code> once in the project first; without it there are no
         policy packs bound and the banner says a fallback is deciding (see{" "}
         <a href="#banner">The banner</a>).
+      </p>
+
+      <h2 id="account">Send the calls to your AgentFox account</h2>
+      <p>
+        With an account key configured, every check <code>auto()</code> makes goes to your
+        workspace&apos;s gateway, and the calls appear on the agent&apos;s{" "}
+        <strong>Activity</strong> tab. The key is a workspace API key (<code>nom_api_…</code>)
+        or an agent key (<code>nom_agt_…</code>). <code>auto()</code> takes the first it finds:
+      </p>
+      <ol>
+        <li><code>agentfox.auto(server=&quot;https://…&quot;, key=&quot;nom_api_…&quot;)</code>;</li>
+        <li>
+          <code>AGENTFOX_URL</code> and <code>AGENTFOX_API_KEY</code> in the environment (
+          <code>AGENTFOX_API_URL</code> and <code>AGENTFOX_API_TOKEN</code> also work);
+        </li>
+        <li>
+          <code>.agentfox/agentfox.env</code> in the working directory, which{" "}
+          <code>agentfox init --key</code> writes (<Link href="/docs/quickstart">Quickstart</Link>).
+        </li>
+      </ol>
+      <p>
+        With none of them, nothing changes: the checks run in your process against the local
+        database. With one, the banner adds &quot;Every check goes to your AgentFox account
+        at …; the calls show up on its dashboard.&quot; The account registers the agent on its
+        first call, so no local <code>init</code> is needed.
+      </p>
+      <Screenshot {...SCREENS.activity} caption="The agent's Activity tab: each run from the app, with its checks and verdict." />
+      <p>
+        The gateway makes the same decisions <code>auto()</code> makes in process: the same
+        modes, the same allowance while an agent has no tool granted yet, provenance read
+        from the conversation, and approvals spent on the retry. Two things a remote check
+        does not do: budget charging, and the check across the conversation window.
       </p>
 
       <h2>Worked example: observe, then policy</h2>
@@ -340,7 +373,10 @@ OTEL_SERVICE_NAME=billing-svc python worker.py # prints: billing-svc`}</Code>
       <p>
         where <code>worker.py</code> is <code>import agentfox; print(agentfox.auto(quiet=True).agent)</code>.
         Pass <code>agent=</code> explicitly in anything you will grant permissions to; a
-        renamed file should not become a different agent.
+        renamed file should not become a different agent. The line that{" "}
+        <code>agentfox init</code> and <code>agentfox up</code> add does this, with the name{" "}
+        <code>agentfox scan</code> printed for the agent: the one its code gives it, or the
+        repository&apos;s name for an unnamed agent in a top-level <code>main.py</code>.
       </p>
 
       <h2>What is patched, and what is governed</h2>

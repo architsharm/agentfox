@@ -1,22 +1,68 @@
 # Getting started
 
-A linear first hour with AgentFox, from an empty directory to one of your own agents under
-enforcement. Every command here was run before it was written down. Each step says what it proves,
-because a governance tool that you cannot check is a governance tool you should not trust.
+The short path first: your repository connected and its agents tested in a few minutes. The
+same steps, with screenshots, are at <https://useagentfox.com/docs/quickstart>. After it comes a
+longer first hour, offline, that shows what each piece does and how to check it.
 
-If you would rather see the product work before installing anything, the hosted playground needs no
-account: <https://useagentfox.com/playground>.
+You need Python 3.11 or newer.
 
-**You need:** Python 3.11 or newer, and a terminal. Nothing else. Every step below runs offline:
-no API key, no model weights, no network egress. The built-in `echo` model provider makes the whole
-enforcement path demonstrable with nothing installed.
+## The short path: with the dashboard
 
-**The fast way.** `agentfox up` in your own repository does the setup half of this page in
-one command: it scans, asks where AgentFox runs and what to cover, and then installs the
-coding-agent hooks, adds `agentfox.auto()`, declares the tools it found, registers your MCP
-servers and starts everything in observe. `agentfox up --yes` takes the recommended answers;
-`agentfox up --dry-run` shows the plan without changing anything. Read on for what each of
-those steps is and how to check it worked.
+1. Sign up at <https://useagentfox.com/login>. The Agents page opens on **Connect your first
+   agent**. Press **Create a key**: a workspace API key (`nom_api_…`), shown once.
+2. In your repository, run the command the card shows, with your key and server filled in:
+
+   ```bash
+   pip install agentfox
+   agentfox init --key nom_api_… --server https://…
+   ```
+
+   `init` reads your code without running it and reports the agents and tools it found. It
+   asks *Add one line to main.py so your app's calls show up in AgentFox? [Y/n]*. Yes adds
+   `agentfox.auto("<agent>")` to the file that runs the agent and saves the key in
+   `.agentfox/agentfox.env` (owner-only, git-ignored). Leave `init` running: it runs the attack
+   tests on your machine.
+3. Press **Add N agents to AgentFox**. Each agent is allowed the tools its own code hands it:
+   a read tool whatever its arguments came from, a tool that changes something or sends data
+   out only with values from what the user asked.
+4. The first attack test runs by itself, with no guardrails. **Add and test again** adds the
+   basic guardrails (four rules: prompt attacks in what users send, instructions hidden in tool
+   results and documents, personal data in replies, secrets in replies) and shows what got
+   through before and after. For a new agent with no real traffic they go live blocking;
+   otherwise they watch until you switch them on under Policies → Libraries.
+5. Run your app. Its calls show up on the agent's **Activity** tab.
+
+## The short path: command line only
+
+```bash
+pip install agentfox
+agentfox scan        # names every agent it found, and ends with: agentfox up
+agentfox up          # registers them, declares their tools, adds agentfox.auto()
+python main.py       # run your app as usual
+agentfox findings    # what it saw, and what it would have stopped
+```
+
+`up` registers your agents under the names the code gives them (the names `scan` printed),
+declares the tools it found, and adds `agentfox.auto()` to Python apps, LangGraph, LangChain,
+CrewAI and AutoGen included. Every question has a recommended answer: `agentfox up --yes` takes
+them all, `agentfox up --dry-run` changes nothing. It starts in watch mode.
+
+## One key everywhere
+
+`agentfox.auto()` takes the first account key it finds: `auto(server=..., key=...)`, then
+`AGENTFOX_URL` and `AGENTFOX_API_KEY` in the environment, then `.agentfox/agentfox.env` in the
+working directory. With one, every check goes to that account's gateway and the calls appear on
+its dashboard. Without one, checks run in your process against a local database. Set the two
+variables wherever your app is deployed and its calls show up the same way.
+
+---
+
+# The long way: a first hour, offline
+
+Every command here was run before it was written down, and each step says what it proves. No
+API key, no model weights, no network egress: the built-in `echo` model provider makes the
+whole enforcement path work with nothing else installed. To see the product before installing
+anything, the hosted playground needs no account: <https://useagentfox.com/playground>.
 
 **Vocabulary used throughout:**
 
@@ -132,15 +178,15 @@ Scanned 2 files in /path/to/your/project
      ...
 ```
 
-It is a static read of the source. It finds every place the code calls a model, every tool —
-decorated functions, OpenAI function schemas (`tools=[{"type": "function", ...}]`, inline or in a
-list passed later) and Anthropic tool dicts (`name` + `input_schema`) — every MCP server your client
+It is a static read of the source. It finds every place the code calls a model, every tool
+(decorated functions, OpenAI function schemas (`tools=[{"type": "function", ...}]`, inline or in a
+list passed later) and Anthropic tool dicts (`name` + `input_schema`)), every MCP server your client
 configs declare, hard-coded credentials, and shell and SQL construction near model output. It writes
 nothing to your project and sends nothing anywhere.
 
 Each tool and MCP server is classified by what it can do: read private data, read content someone
-outside can write, or send data out / act irreversibly. Where one agent has all three — tools grouped
-by directory, MCP servers by the config file that loads them together — that is the **lethal
+outside can write, or send data out / act irreversibly. Where one agent has all three (tools grouped
+by directory, MCP servers by the config file that loads them together), that is the **lethal
 trifecta** (Simon Willison's term), and it is printed first, as a sentence you can forward, with the
 command that contains it. The classification comes from names and descriptions, so a tool named
 `do_thing` is left unflagged rather than guessed at, and an MCP server AgentFox does not recognise is
@@ -375,7 +421,7 @@ agentfox.auto()
 It governs more than the gateway does from the same position: besides the request and the response
 text, every tool call in the response (OpenAI `tool_calls`, Anthropic `tool_use`, streamed or not)
 goes through the tool-call check before the response is handed back, with argument provenance read
-from the conversation. A tool it has not seen before is registered with an inferred impact —
+from the conversation. A tool it has not seen before is registered with an inferred impact:
 `agentfox declare list tools` marks it `(inferred)` until you confirm it with `agentfox declare tool`. In
 the default mode a refused tool call raises `agentfox.Blocked`, except that capability default-deny
 only applies once the agent holds a grant; `auto(mode="observe")` records and never raises. An
@@ -423,7 +469,7 @@ agentfox doctor
 
 `findings` is the list of things a person should look at: shadow agents, agents with no accountable
 owner, stale identities, every detection that led to a block or a redaction, and every tool call a
-permission, provenance or blast-radius rule stopped — titled by what actually stopped it, e.g.
+permission, provenance or blast-radius rule stopped, titled by what actually stopped it, e.g.
 `support-triage tried to email.send with data that came from a web page (contained)`.
 
 For the one-page version to forward to whoever signs off, run `agentfox report` (add
@@ -479,7 +525,10 @@ Fires the built-in adversarial probe suite (mapped to OWASP LLM Top 10 and MITRE
 deployment's actual capability grants and policy bindings, and reports what got through. It
 includes benign controls, so a configuration that blocks everything scores badly rather than
 perfectly. The probes are a dry run: their tool calls are evaluated without writing decisions, so
-they never appear in your findings or in what `policy simulate` replays. It exits 1 when any attack
+they never appear in your findings or in what `policy simulate` replays. An attack stopped only by a rule
+that still watches is shown as `would block (watching)` and counted on its own line, because
+live traffic would get through; an agent name that does not exist is refused with the list of
+those that do. It exits 1 when any attack
 got through (`--allow-escapes` to report without failing). Read the result as configuration
 regression testing: it tells you whether *this deployment* got weaker, and it is not a robustness
 certificate.

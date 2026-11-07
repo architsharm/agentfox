@@ -44,68 +44,75 @@ can verify without trusting us.
 
 ## Quickstart
 
-Python 3.11 or newer. Install it as a tool, so the coding-agent hooks find `agentfox` from
-any directory:
+Python 3.11 or newer.
+
+### With the dashboard
+
+1. Sign up at [useagentfox.com](https://useagentfox.com/login). The Agents page opens on
+   **Connect your first agent**. Press **Create a key**: a workspace API key
+   (`nom_api_…`), shown once.
+2. In your repository, run the command the card shows, with your key and server filled in:
+
+   ```bash
+   pip install agentfox
+   agentfox init --key nom_api_… --server https://…
+   ```
+
+   `init` reads your code without running it and reports the agents and tools it found.
+   It then asks *Add one line to main.py so your app's calls show up in AgentFox?* Yes
+   adds `agentfox.auto("<agent>")` to the file that runs the agent and saves the key in
+   `.agentfox/agentfox.env` (owner-only, git-ignored). Leave it running: it runs the
+   attack tests on your machine.
+3. Press **Add N agents to AgentFox**. Each agent is allowed the tools its own code
+   hands it: read tools with any arguments, tools that change something or send data out
+   only with values from what the user asked.
+4. The first attack test runs by itself. **Add and test again** adds the basic
+   guardrails (prompt attacks in what users send, instructions hidden in tool results and
+   documents, personal data and secrets in replies) and shows what got through before and
+   after. On a new agent they go live blocking; on one with real traffic they watch until
+   you switch them on.
+5. Run your app. Its calls show up on the agent's **Activity** tab.
+
+### From the command line only
 
 ```bash
-uv tool install agentfox      # or: pipx install agentfox
+pip install agentfox
+agentfox scan        # names every agent it found, ends with: agentfox up
+agentfox up          # registers them, declares their tools, adds agentfox.auto()
+python main.py       # run your app as usual
+agentfox findings    # what it saw, and what it would have stopped
 ```
 
-`pip install agentfox` into a virtualenv works too; the hooks then need that environment's
-`agentfox` on the PATH your coding agent starts with.
+`up` uses the names the code gives your agents, the same names `scan` printed, and adds
+`agentfox.auto()` to Python apps, LangGraph, LangChain, CrewAI and AutoGen included. It
+starts in watch mode. Everything stays on your machine.
 
-### 1. Check your machine (about 2 seconds)
+### One key everywhere
 
 ```bash
-agentfox scan machine
+export AGENTFOX_URL=https://…
+export AGENTFOX_API_KEY=nom_api_…
 ```
 
-Reads the MCP configs and installed skills that Claude Code, Cursor, Claude Desktop, VS Code,
-Windsurf, Gemini CLI and Codex load. Nothing is started, written or sent anywhere, and no
-account or setup is needed. It ends with what needs a look and the command to run next. To try
-it without installing: `uvx agentfox scan machine`.
-
-### 2. Check every call your coding agent makes (about a minute)
-
-In a project where you use Claude Code or Codex:
-
-```bash
-agentfox up --with coding-agents
-```
-
-It writes the hooks, grants the agent its built-in tools and starts the small local daemon the
-hooks ask. It starts in watch mode: calls are recorded, not blocked, except shapes such as
-`rm -rf ~/`, which are refused from the start. `agentfox admin hooks status` says whether the
-daemon is up; `agentfox policy enforce tool-containment` starts blocking when the decisions
-look right.
-
-### 3. Govern your own agent
-
-```bash
-agentfox up
-```
-
-With no flags, `up` scans the repository and asks a few questions, each with a recommended
-answer: where AgentFox runs (this machine, your own server, or AgentFox Cloud), what to cover
-(coding agents, your Python agent, the gateway for any language, the tools and MCP servers it
-found, the GitHub Action, monitoring, compliance, the dashboard) and how strict to start. It
-starts in observe, so nothing is blocked until you say so. `--yes` takes every recommended
-answer; run it again any time and it picks up where you left off.
-
-In your agent's code, one line:
-
-```python
-import agentfox
-agentfox.auto()
-```
-
-Every OpenAI, Anthropic, LiteLLM and LangChain call in the process is traced, evaluated and
-audited, and every tool call in a response is checked before your code can run it. Nothing is
-blocked by the line itself: content policies start in observe, and tool containment enforces
-after `agentfox init`, raising `agentfox.Blocked` for a refused call.
+With these set (or `.agentfox/agentfox.env`, or `agentfox.auto(server=…, key=…)`),
+every check `agentfox.auto()` makes goes to your account's gateway and the calls appear
+on the dashboard. Without a key it checks and records locally. Every OpenAI, Anthropic,
+LiteLLM and LangChain call in the process is checked, and every tool call in a response
+is checked before your code can run it; a refused one raises `agentfox.Blocked`.
 
 ### Other ways in
 
+- **Check your machine (about 2 seconds):** `agentfox scan machine` reads the MCP configs
+  and skills that Claude Code, Cursor, Claude Desktop, VS Code, Windsurf, Gemini CLI and
+  Codex load. Nothing is started, written or sent. Without installing:
+  `uvx agentfox scan machine`.
+- **Your coding agent:** in a project where you use Claude Code or Codex,
+  `agentfox up --with coding-agents` writes the hooks, grants the agent its built-in tools
+  and starts in watch mode, except shapes such as `rm -rf ~/`, which are refused from the
+  start. Install AgentFox with `uv tool install agentfox` (or `pipx`) so the hooks find it
+  from any directory.
+- **Behind a LiteLLM proxy:** one block in the proxy's `config.yaml` checks every agent
+  behind it ([guide](https://useagentfox.com/docs/guides/litellm)).
 - **Look around first:** `agentfox init && agentfox demo`. `init` creates a SQLite database
   and loads 43 controls and the policy packs in about a second; `demo` runs a thirteen-step
   walkthrough in about five. Both are offline: no API key, no downloaded weights, no network

@@ -50,7 +50,11 @@ export default function Page() {
         <strong>Needs attention</strong> lists unregistered and unowned ones;{" "}
         <strong>Proposed</strong> lists the drafts a repository scan found, with{" "}
         <strong>Add project</strong> (<code>POST /api/agents/&#123;id&#125;/approve</code>) and{" "}
-        <strong>Dismiss</strong>. A draft is inert until it is added. A multi-agent system
+        <strong>Dismiss</strong>. A draft is inert until it is added. Adding it allows it
+        the tools its own code hands it: read tools whatever their arguments came from, and
+        tools that change something or send data out only with values from what the user
+        asked. A tool the code does not hand it stays refused, and a grant someone already
+        made is left as it is. A multi-agent system
         (OpenAI Agents SDK, LangGraph, CrewAI, AutoGen, Google ADK) is proposed as one
         project per agent, each with its own tools, listed under the agent that hands it
         work; <strong>Add all</strong> adds the whole system
@@ -230,8 +234,8 @@ agentfox agents resume research-bot --reason "incident closed"`}</Code>
 
       <h2>Owners and shadow agents</h2>
       <p>
-        An agent with no owner shows <strong>unowned — assign</strong> on the list and an{" "}
-        <code>unowned</code> tag; assign one on its Settings view. An unregistered
+        An agent with no owner raises an <code>unowned_agent</code> finding; assign one on its
+        Settings view. An unregistered
         agent is one the gateway saw in traffic under a slug nobody registered. It raises a
         high-severity attention item (&quot;&apos;slug&apos; is running and was never
         registered&quot;) and a finding. Register it with the same slug, give it an owner,

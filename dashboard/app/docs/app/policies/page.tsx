@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Callout, Code, InTheApp, NextSteps, Output, Step, Steps, TaskTable } from "@/components/docs/blocks";
+import { Callout, Code, InTheApp, NextSteps, Output, Screenshot, Step, Steps, TaskTable } from "@/components/docs/blocks";
+import { SCREENS } from "@/lib/docs/screens";
 import { publicPageMetadata } from "@/lib/site";
 
 export const metadata: Metadata = publicPageMetadata({
@@ -74,6 +75,44 @@ export default function Page() {
 baseline               v1       observe  13
 eu-ai-act-high-risk    v1       observe  7
 tool-containment       v1       enforce  25`}</Output>
+
+      <h2 id="libraries">Libraries</h2>
+      <InTheApp path="/app/policies?tab=libraries">Policies → Libraries</InTheApp>
+      <p>
+        A library is a set of rules you switch on together, for the agents of the project
+        chosen in the sidebar. Each card says what it covers, how many rules it has, and
+        where it stands for that project: not applied, watching (it records what it would
+        stop) or blocking. Click a card for its rules and its last simulation.
+      </p>
+      <Screenshot {...SCREENS.libraries} />
+      <ul>
+        <li>
+          <strong>Your rules</strong> comes first. It holds every rule you wrote (from New
+          rule, a rail on an agent&apos;s map, or an import) and your{" "}
+          <Link href="/docs/guides/business-rules">business rules</Link>. A new rule is saved
+          watching; this is where you switch it on.
+        </li>
+        <li>
+          The other libraries ship with AgentFox: the basic guardrails, prompt attacks, the
+          EU AI Act controls and more. Applying one puts it on the project&apos;s agents,
+          watching first.
+        </li>
+        <li>
+          Libraries that reach every agent in the workspace (Baseline, Tool containment, EU
+          AI Act, Agent integrity) have their own watching/blocking switch on the card.
+        </li>
+      </ul>
+      <p>
+        <strong>Start blocking</strong> goes through the same gate as any policy: it needs a
+        simulation of exactly these rules against recorded traffic first, by anyone, and
+        someone allowed to change production policy to start it. If the server refuses, the
+        reason shows beside the button. <strong>Back to watching</strong> undoes it.
+      </p>
+      <Screenshot {...SCREENS.yourRules} caption="The Your rules drawer: each rule with what it reads and what it does, then your business rules." />
+      <p>
+        On <strong>New rule</strong>, <strong>Apply a library</strong> leads to the same
+        cards.
+      </p>
 
       <h2 id="editor">A policy: rules, editor, versions, canary</h2>
       <InTheApp path="/app/policies/baseline">Policies → a policy → Review &amp; edit</InTheApp>

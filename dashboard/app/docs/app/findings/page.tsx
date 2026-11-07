@@ -152,11 +152,11 @@ PII.US_SSN       0.95   123-*******             LLM02  AML.T0057`}</Output>
       <p>An open finding has two actions, each with its own required text:</p>
       <ul>
         <li>
-          <strong>Mark resolved</strong> — &quot;The underlying problem is actually fixed.&quot;
+          <strong>Mark resolved</strong>: &quot;The underlying problem is actually fixed.&quot;
           Needs a note on what you did. The gateway refuses a resolve without one.
         </li>
         <li>
-          <strong>Suppress</strong> — &quot;Not acting on it right now.&quot; Needs the reason
+          <strong>Suppress</strong>: &quot;Not acting on it right now.&quot; Needs the reason
           you are accepting it. The finding stays visible under <code>status=suppressed</code>{" "}
           as a known, accepted issue rather than looking fixed.
         </li>

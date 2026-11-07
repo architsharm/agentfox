@@ -19,6 +19,45 @@ the file it came from.
   the conversation, so copied-in arguments are tainted) and the reply after it,
   streamed tool calls included. Refuses when the gateway is unreachable unless
   `fail_open: true`. Guide: `/docs/guides/litellm`.
+- **`agentfox.auto()` reports to your AgentFox account when a key is configured.**
+  With `AGENTFOX_URL` and `AGENTFOX_API_KEY` set (or `auto(server=, key=)`, or the
+  `.agentfox/agentfox.env` that `agentfox init` writes), every check goes to the
+  account's gateway and the calls show up on its dashboard; without one, nothing
+  changes. Same decisions as in process: the mode rules, the no-grants carve-out,
+  argument taint from the conversation, approvals spent on the retry.
+- `POST /v1/guard/tool_call` takes `in_process`, `waive_ungranted` and `declare`, so
+  a remote caller gets the same containment record, carve-out and tool registration
+  as `auto()` in process.
+
+### Changed
+
+- **Adding an agent allows the tools its own code hands it.** Every tool `agentfox
+  init` or a repo scan found used to start "Not allowed", so the app's own calls were
+  refused on the first run and no rule could be tested until each tool was allowed by
+  hand. Now a read tool is allowed whatever its arguments came from, and a tool that
+  changes something or sends data out is allowed for what the user asked: an argument
+  copied out of a tool result or a page is still stopped. A tool the code doesn't hand
+  the agent stays refused; a grant someone already made is left as it is.
+- **`agentfox scan` names the agents it found** (one line each: framework, model,
+  tools, file), single-agent repositories included, and its Next panel leads with one
+  command, `agentfox up`, instead of advice to edit code by hand.
+- **`agentfox up` instruments framework apps.** A LangGraph, LangChain, CrewAI or
+  AutoGen app calls the model through a client `agentfox.auto()` patches, so `up` now
+  offers to add it even when the scan counts no direct model call.
+- **One key.** "Create a key" on the setup card makes a workspace API key: the key
+  `agentfox init` connects with, and the key your app sends its calls with. Old
+  `afi_` setup keys keep working at `init`.
+- **`agentfox init` connects your app's traffic.** Once connected it saves the key
+  in `.agentfox/agentfox.env` (owner-only, git-ignored) and, with your yes, adds
+  `agentfox.auto("<agent>")` to the file that runs the agent, so its calls show up
+  under Activity.
+- **Basic guardrails stop what they find.** They gain a fourth rule, instructions
+  hidden in what the agent reads (tool results, documents), where most of the
+  onboarding attack test's injections arrive. Adding them runs a simulation against
+  the agent's real traffic: with nothing they would change (a new agent), they go
+  live blocking, so the test run again shows what they stop; otherwise they watch
+  until promoted, as before.
+
 ### Fixed
 
 - **`agentfox init` no longer stops right after connecting** when it offers to add
@@ -43,17 +82,6 @@ the file it came from.
 - **`agentfox doctor` no longer says no model call can leave the machine** when the
   gateway has no provider: that is true of the gateway's own proxy routes, not of the
   calls an app makes itself through `agentfox.auto()` or the SDK.
-### Changed
-
-- **Adding an agent allows the tools its own code hands it.** Every tool `agentfox
-  init` or a repo scan found used to start "Not allowed", so the app's own calls were
-  refused on the first run and no rule could be tested until each tool was allowed by
-  hand. Now a read tool is allowed whatever its arguments came from, and a tool that
-  changes something or sends data out is allowed for what the user asked: an argument
-  copied out of a tool result or a page is still stopped. A tool the code doesn't hand
-  the agent stays refused; a grant someone already made is left as it is.
-### Fixed
-
 - **One agent, one name.** The scan, `agentfox init`, `agentfox up` and the
   `agentfox.auto()` line it writes now all name an agent as its code does
   (`support-triage`, not `app-support-triage` in one place and `main` in another), so
@@ -62,39 +90,6 @@ the file it came from.
   existing scan's agents keep their slugs. An unnamed agent in a top-level `main.py`
   is named after the repository. A single-agent repository no longer gets a second,
   phantom agent for its top-level files.
-### Changed
-
-- **`agentfox scan` names the agents it found** (one line each: framework, model,
-  tools, file), single-agent repositories included, and its Next panel leads with one
-  command, `agentfox up`, instead of advice to edit code by hand.
-- **`agentfox up` instruments framework apps.** A LangGraph, LangChain, CrewAI or
-  AutoGen app calls the model through a client `agentfox.auto()` patches, so `up` now
-  offers to add it even when the scan counts no direct model call.
-- **One key.** "Create a key" on the setup card makes a workspace API key: the key
-  `agentfox init` connects with, and the key your app sends its calls with. Old
-  `afi_` setup keys keep working at `init`.
-- **`agentfox init` connects your app's traffic.** Once connected it saves the key
-  in `.agentfox/agentfox.env` (owner-only, git-ignored) and, with your yes, adds
-  `agentfox.auto("<agent>")` to the file that runs the agent, so its calls show up
-  under Activity.
-- **Basic guardrails stop what they find.** They gain a fourth rule, instructions
-  hidden in what the agent reads (tool results, documents), where most of the
-  onboarding attack test's injections arrive. Adding them runs a simulation against
-  the agent's real traffic: with nothing they would change (a new agent), they go
-  live blocking, so the test run again shows what they stop; otherwise they watch
-  until promoted, as before.
-
-### Added
-
-- **`agentfox.auto()` reports to your AgentFox account when a key is configured.**
-  With `AGENTFOX_URL` and `AGENTFOX_API_KEY` set (or `auto(server=, key=)`, or the
-  `.agentfox/agentfox.env` that `agentfox init` writes), every check goes to the
-  account's gateway and the calls show up on its dashboard; without one, nothing
-  changes. Same decisions as in process: the mode rules, the no-grants carve-out,
-  argument taint from the conversation, approvals spent on the retry.
-- `POST /v1/guard/tool_call` takes `in_process`, `waive_ungranted` and `declare`, so
-  a remote caller gets the same containment record, carve-out and tool registration
-  as `auto()` in process.
 
 ## [0.5.0] - 2026-11-06
 

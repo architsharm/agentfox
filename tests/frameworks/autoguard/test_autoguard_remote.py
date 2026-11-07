@@ -159,3 +159,13 @@ def test_without_a_key_nothing_changes(fake_openai, monkeypatch):
 
     completions().create(model="gpt-4o", messages=[{"role": "user", "content": "hi"}])
     assert governed.remote is None
+
+
+def test_inside_inits_attack_test_auto_stands_down(fake_openai, monkeypatch):
+    """`agentfox init` runs the attack test by importing the app; the auto() line init
+    added must not report every attack as the app's own traffic."""
+    from agentfox.frameworks.autoguard import ATTACK_TEST_ENV
+
+    monkeypatch.setenv(ATTACK_TEST_ENV, "1")
+    governed = auto(agent="support-bot", quiet=True)
+    assert not governed.active and governed.environment == "test"

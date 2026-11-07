@@ -9,7 +9,7 @@ Add it to the proxy's ``config.yaml``; no change to the agents behind it::
           mode: [pre_call, post_call]
           default_on: true
           api_base: os.environ/AGENTFOX_URL        # your gateway
-          api_key: os.environ/AGENTFOX_API_TOKEN
+          api_key: os.environ/AGENTFOX_API_KEY
 
 What it checks:
 
@@ -84,7 +84,9 @@ class AgentFoxGuardrail(CustomGuardrail):
         self.api_base = (
             api_base or os.environ.get("AGENTFOX_URL") or "http://localhost:8080"
         ).rstrip("/")
-        self.api_key = api_key or os.environ.get("AGENTFOX_API_TOKEN")
+        self.api_key = (
+            api_key or os.environ.get("AGENTFOX_API_KEY") or os.environ.get("AGENTFOX_API_TOKEN")
+        )
         self.agent = agent
         self.fail_open = fail_open
         self._client = httpx.AsyncClient(timeout=timeout, transport=transport)

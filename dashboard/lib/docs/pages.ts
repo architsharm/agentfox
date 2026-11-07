@@ -17,7 +17,7 @@ export const DOC_NAV: DocSection[] = [
     heading: "Start",
     items: [
       { href: "/docs", label: "Overview", description: "What AgentFox does, and the path through it." },
-      { href: "/docs/quickstart", label: "Quickstart", description: "Scan, watch, contain and report in ten minutes." },
+      { href: "/docs/quickstart", label: "Quickstart", description: "Connect your repository: one key, agentfox init, your agents tested and visible." },
       { href: "/docs/concepts", label: "Concepts", description: "Agents, tools, grants, provenance, policies and findings." },
       { href: "/docs/install", label: "Install and configure", description: "Extras, where state lives, agentfox.toml." },
     ],
@@ -25,6 +25,7 @@ export const DOC_NAV: DocSection[] = [
   {
     heading: "Guides",
     items: [
+      { href: "/docs/guides/walkthrough", label: "Offline walkthrough", description: "A sample agent from ungoverned to contained, step by step, no account." },
       { href: "/docs/guides/scan-a-repo", label: "Audit a repository", description: "Inventory, the lethal trifecta, and a CI gate." },
       { href: "/docs/guides/monitoring", label: "Monitor connected sources", description: "Rescan repos, APIs and MCP servers on a schedule and on push." },
       { href: "/docs/guides/python-auto", label: "One line in Python", description: "agentfox.auto(): observe, then enforce." },

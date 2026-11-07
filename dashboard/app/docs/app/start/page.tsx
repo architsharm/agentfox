@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Callout, Code, InTheApp, NextSteps, Output, TaskTable } from "@/components/docs/blocks";
+import { Callout, Code, InTheApp, NextSteps, Output, Screenshot, TaskTable } from "@/components/docs/blocks";
+import { SCREENS } from "@/lib/docs/screens";
 import { publicPageMetadata } from "@/lib/site";
 
 export const metadata: Metadata = publicPageMetadata({
   title: "Start here and connect",
   description:
-    "The Start here checklist and what completes each step, connecting a GitHub repository or a hosted API, and minting, copying and revoking API tokens.",
+    "The Connect your first agent card, the Get started checklist, connecting a GitHub repository or a hosted API, and minting, copying and revoking API keys.",
   path: "/docs/app/start",
 });
 
@@ -17,20 +18,60 @@ export default function Page() {
       <p className="docs-kicker">Web app</p>
       <h1>Start here and connect</h1>
       <p className="docs-lede">
-        Get started walks a new workspace from an empty dashboard to an enforcing one, all in
-        the browser. Settings → Connections lists every way in, and Settings → API keys holds
-        the keys for agents, the CLI, the SDK and scripts.
+        A new workspace opens on the Connect your first agent card. Get started then walks it
+        from an empty dashboard to an enforcing one. Settings → Connections lists every way
+        in, and Settings → API keys holds the keys for agents, the CLI, the SDK and scripts.
       </p>
-      <InTheApp path="/app/start">Get started</InTheApp>
 
       <h2>When to use this</h2>
       <ul>
-        <li>On a new workspace, to see what is not set up yet. GitHub sign-in lands you on Connect.</li>
+        <li>On a new workspace, to connect the agents in a repository.</li>
+        <li>To see what is not set up yet.</li>
         <li>To find the agents already in a repository or behind an API, without running anything.</li>
         <li>To get a token for a CI job or a script that calls the gateway.</li>
       </ul>
 
+      <h2 id="first-agent">Connect your first agent</h2>
+      <InTheApp path="/app/map">Agents</InTheApp>
+      <p>
+        With no project yet, every page shows this card. It has three steps; the{" "}
+        <Link href="/docs/quickstart">Quickstart</Link> walks through them with the command
+        line side.
+      </p>
+      <ol>
+        <li>
+          <strong>Create a key</strong> makes a workspace API key (<code>nom_api_…</code>) and
+          shows it once. <code>agentfox init</code> connects with it, and your app sends its
+          calls with it. With a key already made, the card shows its first characters;{" "}
+          <strong>Make a new key</strong> replaces it, and the old one stops working, including
+          in a running <code>init</code>.
+        </li>
+        <li>
+          <strong>Run AgentFox where your agents live</strong> shows{" "}
+          <code>pip install</code> and <code>agentfox init --key … --server …</code> with your
+          key and server filled in.
+        </li>
+        <li>
+          <strong>Your agents arrive</strong> lists what <code>init</code> found.{" "}
+          <strong>Add N agents to AgentFox</strong> adds them, each allowed the tools its own
+          code hands it: a read tool with any arguments, a tool that changes something or
+          sends data out only with values from what the user asked.
+        </li>
+      </ol>
+      <Screenshot {...SCREENS.agentsArrive} />
+      <p>
+        The agent map opens next, with the first attack test running in its panel.{" "}
+        <strong>Add and test again</strong> adds the basic guardrails and runs the test again;
+        each attack set then shows how many got through before and after.
+      </p>
+      <Screenshot {...SCREENS.attackTest} />
+      <p>
+        <strong>Skip for now</strong> hides the card on a first workspace.{" "}
+        <strong>Scan a repository instead</strong> leads to the GitHub scan below.
+      </p>
+
       <h2>Get started</h2>
+      <InTheApp path="/app/start">Get started</InTheApp>
       <p>
         <code>/app/start</code>. Six steps, each finished in the browser, with the same step
         from the command line underneath. Every step is computed from the database on each

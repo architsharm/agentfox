@@ -46,6 +46,12 @@ export default function Page() {
         ]}
       />
 
+      <p>
+        In the web app, business rules sit in the <strong>Your rules</strong> library under
+        Policies → Libraries, each with its mode and its own <strong>Start blocking</strong>{" "}
+        switch (<Link href="/docs/app/policies#libraries">Libraries</Link>).
+      </p>
+
       <h2>A credit approval ladder, end to end</h2>
       <p>
         The agent is <code>billing-ops</code>. It credits customer accounts through a tool

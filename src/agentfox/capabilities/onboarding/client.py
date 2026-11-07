@@ -4,6 +4,7 @@ the onboarding's attack tests when the dashboard asks for them.
 
 from __future__ import annotations
 
+import re
 import threading
 import time
 from pathlib import Path
@@ -138,10 +139,34 @@ class _Results:
 
 
 def connect(key: str, server: str, path: str | Path = ".", console: Console | None = None) -> None:
-    console = console or Console()
-    root = Path(path).resolve()
-    api = _Api(server, key)
+    import os
 
+    from agentfox.core.vocab import ATTACK_TEST_ENV
+
+    console = console or Console()
+    # The attack test imports the app; the agentfox.auto() line in it must not report
+    # the attacks as the app's traffic. Only while this runs.
+    previous = os.environ.get(ATTACK_TEST_ENV)
+    os.environ[ATTACK_TEST_ENV] = "1"
+    try:
+        root = Path(path).resolve()
+        api = _Api(server, key)
+        mapped = report(api, console, root, server, key)
+        console.print(
+            "[dim]Keep this running: it runs the attack tests on this machine when you "
+            "start them. Ctrl-C to stop.[/dim]\n"
+        )
+        _poll_forever(api, console, root, mapped, mapped["structure"])
+    finally:
+        if previous is None:
+            os.environ.pop(ATTACK_TEST_ENV, None)
+        else:
+            os.environ[ATTACK_TEST_ENV] = previous
+
+
+def report(api: Any, console: Console, root: Path, server: str, key: str) -> dict[str, Any]:
+    """Map the repository, report it to the account, and connect the app's traffic.
+    Returns the map."""
     console.print(f"\n[bold]AgentFox[/bold] · mapping [cyan]{root.name}[/cyan]\n")
     mapped = map_repository(root)
     structure = mapped["structure"]
@@ -164,10 +189,17 @@ def connect(key: str, server: str, path: str | Path = ".", console: Console | No
         console.print(
             "[green]●[/green] Connected. Open AgentFox to add the agents it found and see them."
         )
-        # The server keeps no file paths; which file each agent is in is known here.
-        files = {a.get("name"): a.get("file") for a in structure["agents"]}
+        # The server keeps no file paths; which file each agent is in, and its name in
+        # that file, are known here.
+        attrs = {r["agentId"]: r.get("attr") for r in mapped.get("agents") or []}
+        local = {a.get("name"): a for a in structure["agents"]}
         registered = [
-            {**a, "file": files.get(a.get("name"))} for a in connected.get("registered") or []
+            {
+                **a,
+                "file": (local.get(a.get("name")) or {}).get("file"),
+                "attr": attrs.get((local.get(a.get("name")) or {}).get("id")),
+            }
+            for a in connected.get("registered") or []
         ]
         connect_live_traffic(console, root, server, key, registered)
     else:
@@ -177,11 +209,13 @@ def connect(key: str, server: str, path: str | Path = ".", console: Console | No
             "to set up yet. Fix that (see below), then run this again."
         )
     _print_missing_help(console)
-    console.print(
-        "[dim]Keep this running: it runs the attack tests on this machine when you start "
-        "them. Ctrl-C to stop.[/dim]\n"
-    )
+    return mapped
 
+
+def _poll_forever(
+    api: Any, console: Console, root: Path, mapped: dict[str, Any], structure: dict[str, Any]
+) -> None:
+    """Stay connected, and run each attack test the dashboard starts."""
     agents: dict[tuple[str, str], Any] = {}
     try:
         while True:
@@ -232,8 +266,7 @@ def connect_live_traffic(
     """
     import sys
 
-    from agentfox.apps.cli.wizard.components import insert_auto
-    from agentfox.apps.cli.wizard.detect import write_env
+    from agentfox.capabilities.onboarding.project_files import insert_auto, write_env
     from agentfox.platform.identity.operators import API_KEY_PREFIX
 
     if not key.startswith(API_KEY_PREFIX):
@@ -287,17 +320,26 @@ def connect_live_traffic(
 
 def _entry_file(root: Path, registered: list[dict[str, Any]]) -> tuple[Path, str] | None:
     """The Python file that defines (and, best, runs) an agent, and that agent's slug."""
-    from agentfox.apps.cli.wizard.detect import _MAIN_GUARD
+    from agentfox.capabilities.onboarding.project_files import _MAIN_GUARD
 
     candidates = [
-        (root / a["file"], a["slug"])
+        (root / a["file"], a["slug"], a.get("attr"))
         for a in registered
         if (a.get("file") or "").endswith(".py") and (root / a["file"]).is_file()
     ]
     if not candidates:
         return None
-    runs = [c for c in candidates if _MAIN_GUARD.search(c[0].read_text(errors="ignore"))]
-    return (runs or candidates)[0]
+
+    def rank(candidate: tuple[Path, str, str | None]) -> tuple[bool, bool]:
+        """The agent the file runs comes first: named under `if __name__ == "__main__"`."""
+        text = candidate[0].read_text(errors="ignore")
+        guard = _MAIN_GUARD.search(text)
+        name = candidate[2]
+        runs = bool(guard and name and re.search(rf"\b{re.escape(name)}\b", text[guard.end() :]))
+        return (not runs, not guard)
+
+    path, slug, _attr = sorted(candidates, key=rank)[0]
+    return path, slug
 
 
 def _print_coverage(console: Console, mapped: dict[str, Any]) -> None:
