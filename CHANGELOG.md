@@ -11,6 +11,15 @@ the file it came from.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`agentfox test redteam` says what live traffic gets.** An attack stopped only by a
+  rule that watches is shown as "would block (watching)" and counted on its own line,
+  instead of as blocked; the command refuses an agent that doesn't exist (it used to
+  run and file a finding for it) and lists the ones that do.
+- **`agentfox doctor` no longer says no model call can leave the machine** when the
+  gateway has no provider: that is true of the gateway's own proxy routes, not of the
+  calls an app makes itself through `agentfox.auto()` or the SDK.
 ### Changed
 
 - **Adding an agent allows the tools its own code hands it.** Every tool `agentfox

@@ -737,8 +737,9 @@ def doctor(
         add(
             "ok",
             "providers",
-            "offline only (echo). No model call can leave this machine — set "
-            "AGENTFOX_ALLOW_EGRESS=1 and a key to change that.",
+            "offline only (echo) for the gateway's own proxy routes. Calls your app "
+            "makes itself (agentfox.auto(), the SDK) still go to its provider; set "
+            "AGENTFOX_ALLOW_EGRESS=1 and a key to let the gateway proxy calls too.",
         )
     else:
         add("ok", "providers", f"{', '.join(sorted(providers))}")
