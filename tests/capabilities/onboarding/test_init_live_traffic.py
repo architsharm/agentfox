@@ -87,19 +87,10 @@ def test_connect_finds_the_agents_file_itself_and_names_it_as_the_dashboard_does
             response.raise_for_status()
             return response.json()
 
-    def stop(_seconds):
-        raise KeyboardInterrupt
-
     key = client.get("/api/onboarding/key", headers=as_user("admin@example.com")).json()["value"]
     root = _repo(tmp_path)
-    from agentfox.frameworks.autoguard import ATTACK_TEST_ENV
-
-    # connect() marks its own process as running the attack test; undo that after.
-    monkeypatch.setenv(ATTACK_TEST_ENV, "")
-    monkeypatch.setattr(init_client, "_Api", Api)
-    monkeypatch.setattr(init_client.time, "sleep", stop)
     console = Console(record=True, width=200)
-    init_client.connect(key, "http://testserver", root, console=console)
+    init_client.report(Api("http://testserver", key), console, root, "http://testserver", key)
 
     out = console.export_text()
     # No terminal in tests, so the line is shown rather than added, under the slug the

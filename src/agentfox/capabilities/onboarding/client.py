@@ -149,7 +149,18 @@ def connect(key: str, server: str, path: str | Path = ".", console: Console | No
     os.environ[ATTACK_TEST_ENV] = "1"
     root = Path(path).resolve()
     api = _Api(server, key)
+    mapped = report(api, console, root, server, key)
+    structure = mapped["structure"]
+    console.print(
+        "[dim]Keep this running: it runs the attack tests on this machine when you start "
+        "them. Ctrl-C to stop.[/dim]\n"
+    )
+    _poll_forever(api, console, root, mapped, structure)
 
+
+def report(api: Any, console: Console, root: Path, server: str, key: str) -> dict[str, Any]:
+    """Map the repository, report it to the account, and connect the app's traffic.
+    Returns the map."""
     console.print(f"\n[bold]AgentFox[/bold] · mapping [cyan]{root.name}[/cyan]\n")
     mapped = map_repository(root)
     structure = mapped["structure"]
@@ -192,11 +203,13 @@ def connect(key: str, server: str, path: str | Path = ".", console: Console | No
             "to set up yet. Fix that (see below), then run this again."
         )
     _print_missing_help(console)
-    console.print(
-        "[dim]Keep this running: it runs the attack tests on this machine when you start "
-        "them. Ctrl-C to stop.[/dim]\n"
-    )
+    return mapped
 
+
+def _poll_forever(
+    api: Any, console: Console, root: Path, mapped: dict[str, Any], structure: dict[str, Any]
+) -> None:
+    """Stay connected, and run each attack test the dashboard starts."""
     agents: dict[tuple[str, str], Any] = {}
     try:
         while True:
