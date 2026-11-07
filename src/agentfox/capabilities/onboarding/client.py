@@ -4,6 +4,7 @@ the onboarding's attack tests when the dashboard asks for them.
 
 from __future__ import annotations
 
+import re
 import threading
 import time
 from pathlib import Path
@@ -164,10 +165,17 @@ def connect(key: str, server: str, path: str | Path = ".", console: Console | No
         console.print(
             "[green]●[/green] Connected. Open AgentFox to add the agents it found and see them."
         )
-        # The server keeps no file paths; which file each agent is in is known here.
-        files = {a.get("name"): a.get("file") for a in structure["agents"]}
+        # The server keeps no file paths; which file each agent is in, and its name in
+        # that file, are known here.
+        attrs = {r["agentId"]: r.get("attr") for r in mapped.get("agents") or []}
+        local = {a.get("name"): a for a in structure["agents"]}
         registered = [
-            {**a, "file": files.get(a.get("name"))} for a in connected.get("registered") or []
+            {
+                **a,
+                "file": (local.get(a.get("name")) or {}).get("file"),
+                "attr": attrs.get((local.get(a.get("name")) or {}).get("id")),
+            }
+            for a in connected.get("registered") or []
         ]
         connect_live_traffic(console, root, server, key, registered)
     else:
@@ -290,14 +298,23 @@ def _entry_file(root: Path, registered: list[dict[str, Any]]) -> tuple[Path, str
     from agentfox.apps.cli.wizard.detect import _MAIN_GUARD
 
     candidates = [
-        (root / a["file"], a["slug"])
+        (root / a["file"], a["slug"], a.get("attr"))
         for a in registered
         if (a.get("file") or "").endswith(".py") and (root / a["file"]).is_file()
     ]
     if not candidates:
         return None
-    runs = [c for c in candidates if _MAIN_GUARD.search(c[0].read_text(errors="ignore"))]
-    return (runs or candidates)[0]
+
+    def rank(candidate: tuple[Path, str, str | None]) -> tuple[bool, bool]:
+        """The agent the file runs comes first: named under `if __name__ == "__main__"`."""
+        text = candidate[0].read_text(errors="ignore")
+        guard = _MAIN_GUARD.search(text)
+        name = candidate[2]
+        runs = bool(guard and name and re.search(rf"\b{re.escape(name)}\b", text[guard.end() :]))
+        return (not runs, not guard)
+
+    path, slug, _attr = sorted(candidates, key=rank)[0]
+    return path, slug
 
 
 def _print_coverage(console: Console, mapped: dict[str, Any]) -> None:

@@ -32,7 +32,7 @@ export default function Page() {
         card, or a new one under Settings → API keys.
       </p>
       <Code>{`export AGENTFOX_URL=https://…
-export AGENTFOX_API_TOKEN=nom_api_…`}</Code>
+export AGENTFOX_API_KEY=nom_api_…`}</Code>
 
       <h2>Configure</h2>
       <Code lang="yaml" title="config.yaml">{`guardrails:
@@ -42,7 +42,7 @@ export AGENTFOX_API_TOKEN=nom_api_…`}</Code>
       mode: [pre_call, post_call]
       default_on: true
       api_base: os.environ/AGENTFOX_URL
-      api_key: os.environ/AGENTFOX_API_TOKEN
+      api_key: os.environ/AGENTFOX_API_KEY
       # agent: support-bot     # optional; see "Which agent" below
       # fail_open: true        # let calls through if AgentFox is unreachable`}</Code>
 
