@@ -441,6 +441,8 @@ def test_check_still_promises_exactly_what_it_did_before(tmp_path):
     )
     output = flat(runner.invoke(app, ["scan", "repo", str(tmp_path), "--no-submit"]).output)
     assert "model call sites are ungoverned" in output
+    # One command that does it, and what it will change in the code.
+    assert "agentfox up" in output
     assert "agentfox.auto()" in output
 
 
@@ -605,3 +607,17 @@ def test_doctor_still_volunteers_its_own_failure_modes():
     assert checks["authentication"]["state"] in ("warn", "bad")
     assert "anyone who can reach this port" in checks["authentication"]["detail"]
     assert checks["containment"]["state"] in ("warn", "bad")
+
+
+def test_scan_names_each_agent_it_found_even_when_there_is_one(tmp_path):
+    (tmp_path / "graph.py").write_text(
+        "from langgraph.prebuilt import create_react_agent\n"
+        "from langchain_core.tools import tool\n\n"
+        "@tool\ndef lookup(q: str) -> str:\n    '''Look up.'''\n    return q\n\n"
+        "support = create_react_agent(model='openai:gpt-4o', tools=[lookup], name='support')\n"
+    )
+    output = flat(runner.invoke(app, ["scan", "repo", str(tmp_path), "--no-submit"]).output)
+    assert "Found 1 agent" in output
+    assert "support" in output and "LangGraph" in output
+    assert "Start watching these 1 agent" not in output  # the count reads naturally
+    assert "agentfox up" in output

@@ -219,6 +219,17 @@ def approve_drafts(session: Session, agents: list[Agent], *, actor: str) -> list
     return approved
 
 
+def _spec_slug(session: Session, key: str, repo_short: str, name: str) -> str:
+    """One agent's slug: its own name, unless that belongs to another repository."""
+    prefixed = repo_short if key == repo_short else slugify(f"{repo_short}-{key}")
+    if session.scalar(select(Agent.id).where(Agent.slug == prefixed)) is not None:
+        return prefixed  # scanned before: keep landing on the same row
+    existing = session.scalar(select(Agent).where(Agent.slug == key))
+    if existing is None or existing.name == name:
+        return key
+    return prefixed
+
+
 def _propose_agent_specs(
     session: Session,
     *,
@@ -231,16 +242,21 @@ def _propose_agent_specs(
 ) -> list[str]:
     """One draft per agent a multi-agent scan found, and its declared delegations.
 
-    The slug is the repository plus the agent's own scan key (its name in code), so a
-    re-scan lands on the same rows. A delegation the code no longer declares is removed
+    The slug is the agent's own name in code, as `agentfox init` and the scan output
+    name it, so one agent has one name everywhere. The repository goes in front only
+    when another repository's agent already has that name, and a repository scanned
+    before agents were named this way keeps its old slugs, so a re-scan lands on the
+    same rows. A delegation the code no longer declares is removed
     from the edges, unless traffic has also seen it: a declared edge is a reading of
     the code, and the code changed.
     """
     slug_of: dict[str, str] = {}
     created: list[str] = []
     for spec in specs:
-        key = slugify(str(spec.get("key") or spec.get("name") or ""))
-        slug = repo_short if key == repo_short else f"{repo_short}-{key}"
+        key = slugify(str(spec.get("name") or spec.get("key") or ""))
+        slug = _spec_slug(
+            session, key, repo_short, f"{repo_display_name}/{spec.get('name') or key}"
+        )
         slug_of[str(spec.get("key"))] = slugify(slug)
         tools = [str(t) for t in spec.get("tools") or [] if t]
         agent = _propose_draft(
@@ -336,7 +352,9 @@ def propose_from_scan(
 
     created_agents: list[str] = []
     specs = agents or []
-    if len(specs) >= 2:
+    # One draft per agent the code defines, named as the code names it; a single agent
+    # included, so `agentfox up`, `agentfox init` and the scan output agree.
+    if specs:
         created_agents += _propose_agent_specs(
             session,
             run_id=run_id,
@@ -360,7 +378,11 @@ def propose_from_scan(
             {s["name"] for s in group_sites if s.get("kind") == "tool" and s.get("name")}
         )
         group_slug = slugify(group_key)
-        slug = repo_short if group_slug == repo_short else f"{repo_short}-{group_slug}"
+        slug = (
+            repo_short
+            if group_slug == repo_short or group_key == "root"
+            else f"{repo_short}-{group_slug}"
+        )
         agent = _propose_draft(
             session,
             slug=slug,

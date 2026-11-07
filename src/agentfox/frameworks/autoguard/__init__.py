@@ -225,6 +225,9 @@ class AutoState:
     #: What a refused LangChain tool call does: "message" hands the agent the refusal
     #: as the tool's result and the run carries on; "raise" raises `Blocked`.
     tool_refusals: str = "message"
+    #: The account this process reports to (`remote.Remote`), or None when it enforces
+    #: against the local database. See `agentfox.frameworks.autoguard.remote`.
+    remote: Any = None
 
     @property
     def active(self) -> bool:
@@ -259,6 +262,11 @@ class AutoState:
         lines = [
             f"AgentFox is governing '{self.agent}' in {self.mode} mode ({self.environment}).",
         ]
+        if self.remote is not None:
+            lines.append(
+                f"Every check goes to your AgentFox account at {self.remote.url}; "
+                "the calls show up on its dashboard."
+            )
         # Found by installing 0.3.1 from PyPI into a third-party project and
         # calling auto() without running `agentfox init` first, which is exactly
         # what adding one line to an existing app looks like: the banner said
@@ -391,6 +399,10 @@ def _record_turn(
         log.debug("agentfox: turn capture skipped: %s", exc)
 
 
+class _SkipLocalSetup(Exception):
+    """`auto()` reports to an account: no local database to create or register in."""
+
+
 class Blocked(AgentFoxError, RuntimeError):
     """Raised when a governed call is refused in-process.
 
@@ -486,6 +498,8 @@ def _run_preflight(
 ) -> tuple[_Call, EnforcementResult, bool, bool]:
     """The pre-flight itself. Returns (call, worst result, enforced, effective)."""
     messages = _messages_from(kwargs)
+    if state.remote is not None:
+        return _remote_preflight(state, kwargs, evidence, messages)
     with session_scope() as session:
         enforcer = Enforcer(session)
         # The real pre-flight path — kill-switch/quarantine, hard budget caps, the
@@ -608,7 +622,9 @@ def _postflight(
     refusal: Blocked | None = None
     tool_failure: Exception | None = None
     try:
-        if text or usage or tool_calls:
+        if (text or usage or tool_calls) and state.remote is not None:
+            refusal, text = _remote_postflight(call, text, usage, tool_calls, response)
+        elif text or usage or tool_calls:
             token = _IN_AGENTFOX.set(True)
             try:
                 with session_scope() as session:
@@ -680,7 +696,8 @@ def _postflight(
     # turns, and nothing was recording them. Session grouping falls back to the trace
     # when the caller has no session concept.
     try:
-        _record_turn(state, call.messages, text, call.trace_id)
+        if state.remote is None:
+            _record_turn(state, call.messages, text, call.trace_id)
     except Exception as exc:  # pragma: no cover - defence in depth
         # Guarded here as well as inside, so that a future change to turn capture
         # cannot become a change to whether the caller's request succeeds.
@@ -1530,6 +1547,8 @@ def _lc_tool_decide(
     state: AutoState, name: str, arguments: dict[str, Any]
 ) -> tuple[bool, EnforcementResult, str | None]:
     """Authorise one LangChain tool call. Returns (may run, decision, trace id)."""
+    if state.remote is not None:
+        return _remote_tool_decide(state, name, arguments)
     from agentfox.platform.ledger.trace import start_trace
 
     token = _IN_AGENTFOX.set(True)
@@ -1584,6 +1603,8 @@ def _lc_tool_result(state: AutoState, trace_id: str | None, text: str) -> Enforc
     when it withholds the result, else None."""
     if not text:
         return None
+    if state.remote is not None:
+        return _remote_tool_result(state, trace_id, text)
     from agentfox.core.models import Trace
 
     token = _IN_AGENTFOX.set(True)
@@ -1616,6 +1637,221 @@ def _lc_tool_result(state: AutoState, trace_id: str | None, text: str) -> Enforc
             )
     finally:
         _IN_AGENTFOX.reset(token)
+
+
+# ---------------------------------------------------------------------------
+# Reporting to an account (`remote.Remote`): the same decisions, made by its gateway
+# ---------------------------------------------------------------------------
+
+_IN_PROCESS = {"observe": "none", "enforce": "all"}
+
+
+def _stops(body: dict[str, Any]) -> bool:
+    return body.get("verdict") in ("block", "escalate")
+
+
+def _remote_preflight(
+    state: AutoState,
+    kwargs: dict[str, Any],
+    evidence: dict[str, Any],
+    messages: list[dict[str, Any]],
+) -> tuple[_Call, EnforcementResult, bool, bool]:
+    """Pre-flight on the account's gateway: what is new in this request (the user's
+    turn and any tool results since the model last spoke), each checked as an input."""
+    last_reply = max(
+        (i for i, m in enumerate(messages) if str(m.get("role")) == "assistant"), default=-1
+    )
+    fresh = [
+        m
+        for m in messages[last_reply + 1 :]
+        if str(m.get("role")) in ("user", "tool") and str(m.get("content") or "")
+    ]
+    trace_id: str | None = None
+    worst: dict[str, Any] = {"verdict": "allow"}
+    for message in fresh:
+        body = state.remote.post(
+            "/v1/guard/input",
+            {
+                "agent": state.agent,
+                "content": str(message.get("content")),
+                "taint_source": "tool_result" if message.get("role") == "tool" else "user",
+                "environment": state.environment,
+                **{
+                    k: v
+                    for k, v in (
+                        ("session_id", state.session_id),
+                        ("intent", state.intent),
+                        ("trace_id", trace_id),
+                    )
+                    if v
+                },
+            },
+        )
+        trace_id = trace_id or body.get("trace_id")
+        # The worst decision leads: an applied stop, else a would-be block.
+        if _stops(body) and not _stops(worst):
+            worst = body
+        elif not _stops(worst) and worst.get("effective_verdict") != "block":
+            worst = body
+    result = _remote_module().result(worst)
+    enforced = _stops(worst)
+    effective = enforced or worst.get("effective_verdict") == "block"
+    tracker, prior_tools = _provenance_of(kwargs)
+    tracker.trace_id = trace_id
+    call = _Call(
+        state=state,
+        model=str(kwargs.get("model") or ""),
+        messages=messages,
+        trace_id=trace_id or "",
+        evidence=evidence,
+        tracker=tracker,
+        prior_tools=prior_tools,
+        tool_specs=_tool_specs(kwargs),
+    )
+    return call, result, enforced, effective
+
+
+def _remote_module() -> Any:
+    from agentfox.frameworks.autoguard import remote
+
+    return remote
+
+
+def _remote_tool_body(
+    state: AutoState, name: str, arguments: dict[str, Any], **extra: Any
+) -> dict[str, Any]:
+    body = state.remote.post(
+        "/v1/guard/tool_call",
+        {
+            "agent": state.agent,
+            "tool": name,
+            "arguments": arguments,
+            "environment": state.environment,
+            # A retry of a call a person approved goes through once; the process has
+            # no approval id to send back.
+            "redeem_approved": True,
+            "in_process": _IN_PROCESS.get(state.mode, "enforced"),
+            "waive_ungranted": state.mode == "policy",
+            **{k: v for k, v in (("session_id", state.session_id), ("intent", state.intent)) if v},
+            **extra,
+        },
+    )
+    return body
+
+
+def _remote_tool_verdict(
+    state: AutoState, body: dict[str, Any]
+) -> tuple[EnforcementResult, bool, bool]:
+    """(result, raised, effective) under the same rules as a local tool decision."""
+    result = _remote_module().result(body)
+    enforced = _stops(body)
+    effective = enforced or body.get("effective_verdict") in ("block", "escalate")
+    if enforced and body.get("waived_rules") and _capability_only(result):
+        enforced = False  # the no-grants carve-out, applied by the gateway
+    return result, _raises(state.mode, enforced=enforced, effective=effective), effective
+
+
+def _remote_postflight(
+    call: _Call,
+    text: str,
+    usage: dict[str, int],
+    tool_calls: list[_ToolCall],
+    response: Any,
+) -> tuple[Blocked | None, str]:
+    """Post-flight on the account's gateway. Returns (refusal, text to hand on)."""
+    state = call.state
+    refusal: Blocked | None = None
+    trace = {"trace_id": call.trace_id} if call.trace_id else {}
+    session = {"session_id": state.session_id} if state.session_id else {}
+    if text:
+        body = state.remote.post(
+            "/v1/guard/output",
+            {
+                "agent": state.agent,
+                "content": text,
+                "surface": "output",
+                "environment": state.environment,
+                **trace,
+                **session,
+                **({"usage": {"model": call.model, **usage}} if usage else {}),
+            },
+        )
+        outbound = _remote_module().result(body)
+        enforced = _stops(body)
+        effective = enforced or body.get("effective_verdict") == "block"
+        if _raises(state.mode, enforced=enforced, effective=effective):
+            refusal = Blocked(outbound)
+        else:
+            rewrite = _applied_rewrite(state.mode, outbound)
+            if rewrite is not None:
+                refusal = _apply_redaction(outbound, rewrite, response)
+                if refusal is None:
+                    text = rewrite
+            elif effective:
+                call.flagged = call.flagged or outbound.reason or "flagged by policy"
+    if tool_calls and not (state.lc_tools and _FROM_LANGCHAIN.get()):
+        prior = list(call.prior_tools)
+        for tool_call in tool_calls:
+            body = _remote_tool_body(
+                state,
+                tool_call.name,
+                tool_call.arguments,
+                # The conversation, so the gateway infers which arguments came from
+                # a tool result.
+                messages=call.messages,
+                prior_tools=list(prior),
+                declare=call.tool_specs.get(tool_call.name) or {},
+            )
+            prior.append(tool_call.name)
+            result, raised, effective = _remote_tool_verdict(state, body)
+            if raised and refusal is None:
+                refusal = Blocked(
+                    result,
+                    "agentfox: " + _describe_tool_refusal(tool_call, result, [], applied=True),
+                    tool_call=tool_call,
+                )
+            elif effective and not raised:
+                call.flagged = call.flagged or _describe_tool_refusal(
+                    tool_call, result, [], applied=False
+                )
+    return refusal, text
+
+
+def _remote_tool_decide(
+    state: AutoState, name: str, arguments: dict[str, Any]
+) -> tuple[bool, EnforcementResult, str | None]:
+    """`_lc_tool_decide` on the account's gateway."""
+    body = _remote_tool_body(state, name, arguments, declare={})
+    result, raised, effective = _remote_tool_verdict(state, body)
+    state.calls_governed += 1
+    if raised:
+        state.calls_blocked += 1
+    elif effective:
+        state.would_have_blocked += 1
+    return not raised, result, body.get("trace_id")
+
+
+def _remote_tool_result(
+    state: AutoState, trace_id: str | None, text: str
+) -> EnforcementResult | None:
+    """`_lc_tool_result` on the account's gateway."""
+    body = state.remote.post(
+        "/v1/guard/input",
+        {
+            "agent": state.agent,
+            "content": text,
+            "surface": "tool_result",
+            "taint_source": "tool_result",
+            "environment": state.environment,
+            **({"trace_id": trace_id} if trace_id else {}),
+            **({"session_id": state.session_id} if state.session_id else {}),
+        },
+    )
+    enforced = _stops(body)
+    effective = enforced or body.get("effective_verdict") == "block"
+    if not _raises(state.mode, enforced=enforced, effective=effective):
+        return None
+    return _remote_module().result(body)
 
 
 def _lc_tool_method(state: AutoState, *, is_async: bool) -> Callable[[Any], Any]:
@@ -1733,6 +1969,8 @@ def auto(
     register: bool = True,
     quiet: bool = False,
     tool_refusals: str = "message",
+    server: str | None = None,
+    key: str | None = None,
 ) -> AutoState:
     """Govern this process. One line, no code changes anywhere else.
 
@@ -1766,6 +2004,11 @@ def auto(
     held for a person runs once when made again after they approve; what a tool
     returns is checked before the model reads it.
 
+    With an account key configured (``server=``/``key=``, ``AGENTFOX_URL`` and
+    ``AGENTFOX_API_KEY``, or the ``.agentfox/agentfox.env`` that ``agentfox init``
+    writes), every check goes to that account's gateway and the calls show up on its
+    dashboard; see `agentfox.frameworks.autoguard.remote`.
+
     Returns the state, so a developer can assert on it in a test rather than trusting
     that it worked.
     """
@@ -1785,8 +2028,14 @@ def auto(
         intent=intent,
         tool_refusals=tool_refusals,
     )
+    from agentfox.frameworks.autoguard import remote as _remote
+
+    state.remote = _remote.configured(server, key)
 
     try:
+        if state.remote is not None:
+            # The account registers the agent on its first call; nothing local to set up.
+            raise _SkipLocalSetup
         init_db()
         if register:
             with session_scope() as session:
@@ -1815,6 +2064,8 @@ def auto(
             from agentfox.platform.policy import active_policies
 
             state.policies_bound = len(active_policies(session))
+    except _SkipLocalSetup:
+        pass
     except Exception as exc:
         # Registration is a convenience; failing it must not stop governance, and
         # hiding the failure would leave the developer wondering why the agent never
