@@ -470,8 +470,11 @@ class ScanReport:
         """
 
         def top_dir(rel_path: str) -> str:
+            # The same rule as `AgentSpec.top_dir`: a file at the top level is "root",
+            # so a site there groups with the agent defined there, not under its own
+            # file name as a second agent.
             parts = Path(rel_path).parts
-            return parts[0] if parts else "root"
+            return parts[0] if len(parts) > 1 else "root"
 
         return {
             "source": source,
@@ -504,11 +507,12 @@ class ScanReport:
             "agent_edges": [e.to_json() for e in self.agent_edges] if self.multi_agent else [],
         }
 
-    def next_step(self) -> str:
+    def next_step(self, suggest_auto: bool = True) -> str:
         """One sentence telling the operator what to do next.
 
         A report that ends without a next action makes the reader do the synthesis,
-        and most readers will not.
+        and most readers will not. ``suggest_auto=False`` leaves out the advice to add
+        ``agentfox.auto()``, for a caller that offers a command doing it instead.
         """
         if self.trifectas and not self.inconclusive:
             first = (
@@ -516,6 +520,8 @@ class ScanReport:
                 "instruction hidden in content they read into sending private data out. "
                 "Contain those first — each lethal-trifecta finding names the command."
             )
+            if not suggest_auto:
+                return first
             if self.ungoverned or not self.governable:
                 return (
                     f"{first} Then add `import agentfox; agentfox.auto()` to your entry "
@@ -552,6 +558,8 @@ class ScanReport:
                 "was not examined. If this repo calls a model through a wrapper we don't "
                 "recognise, govern it explicitly with the SDK."
             )
+        if self.ungoverned and not suggest_auto:
+            return f"{len(self.ungoverned)} model call(s) are ungoverned."
         if self.ungoverned:
             return (
                 f"{len(self.ungoverned)} model call(s) are ungoverned. Add "
@@ -559,6 +567,19 @@ class ScanReport:
                 "in the codebase has to change."
             )
         return "Every model call is governed. Run `agentfox doctor` to check the runtime config."
+
+
+def _name_unnamed_root_agents(specs: list[AgentSpec], root: Path) -> None:
+    """An agent the code gives no name, in a top-level file called main.py, app.py and
+    the like, is named after the repository rather than "main": the name the scan,
+    `agentfox init` and `agentfox up` all use for it."""
+    from agentfox.capabilities.discovery.agents import _GENERIC_STEMS
+
+    repo = root.resolve().name
+    for spec in specs:
+        path = Path(spec.file)
+        if repo and len(path.parts) == 1 and path.stem in _GENERIC_STEMS and spec.name == path.stem:
+            spec.name = repo
 
 
 def _attribute_path(node: ast.AST) -> str:
@@ -1327,6 +1348,7 @@ def scan(
                 report.sites.append(site)
 
     report.agents, report.agent_edges = agents.finish()
+    _name_unnamed_root_agents(report.agents, root_path)
     hosted = platforms.detect(platform_files, root_path)
     frameworks |= hosted.platforms
     hosted_agents, hosted_edges = _platform_agents(hosted, {a.key for a in report.agents})

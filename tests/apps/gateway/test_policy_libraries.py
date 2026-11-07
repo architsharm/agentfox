@@ -83,14 +83,17 @@ def _lib(client, action, pack="baseline", headers=ADMIN, **body):
 
 
 def test_basic_guardrails_from_the_library_watch_until_simulated_then_block(client):
+    """For an agent with real traffic they would change. (A new agent, with nothing
+    real to block, gets them blocking straight away: see the onboarding tests.)"""
     _connect(client)
+    _traffic()
     r = _lib(client, "apply", pack="basic")
     assert r.status_code == 200, r.text
     assert r.json()["added"] == [SLUG] and r.json()["mode"] == "observe"
     assert _mode(service.basic_key(SLUG)) == "observe"
 
-    # The same gate as any policy: a simulation of these rules, then blocking.
-    assert _lib(client, "mode", pack="basic", mode="enforce").status_code == 409
+    # The same gate as any policy: a simulation of these rules (applying them ran
+    # one, which found real traffic they would change), then blocking.
     assert _lib(client, "simulate", pack="basic").status_code == 200
     assert _lib(client, "mode", pack="basic", mode="enforce").status_code == 200
     assert _mode(service.basic_key(SLUG)) == "enforce"
