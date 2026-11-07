@@ -145,17 +145,23 @@ def connect(key: str, server: str, path: str | Path = ".", console: Console | No
 
     console = console or Console()
     # The attack test imports the app; the agentfox.auto() line in it must not report
-    # the attacks as the app's traffic.
+    # the attacks as the app's traffic. Only while this runs.
+    previous = os.environ.get(ATTACK_TEST_ENV)
     os.environ[ATTACK_TEST_ENV] = "1"
-    root = Path(path).resolve()
-    api = _Api(server, key)
-    mapped = report(api, console, root, server, key)
-    structure = mapped["structure"]
-    console.print(
-        "[dim]Keep this running: it runs the attack tests on this machine when you start "
-        "them. Ctrl-C to stop.[/dim]\n"
-    )
-    _poll_forever(api, console, root, mapped, structure)
+    try:
+        root = Path(path).resolve()
+        api = _Api(server, key)
+        mapped = report(api, console, root, server, key)
+        console.print(
+            "[dim]Keep this running: it runs the attack tests on this machine when you "
+            "start them. Ctrl-C to stop.[/dim]\n"
+        )
+        _poll_forever(api, console, root, mapped, mapped["structure"])
+    finally:
+        if previous is None:
+            os.environ.pop(ATTACK_TEST_ENV, None)
+        else:
+            os.environ[ATTACK_TEST_ENV] = previous
 
 
 def report(api: Any, console: Console, root: Path, server: str, key: str) -> dict[str, Any]:

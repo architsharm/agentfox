@@ -433,3 +433,19 @@ def test_init_does_not_claim_agents_were_set_up_when_none_were_found(tmp_path, m
     assert "Your agents are set up" not in text
     assert "no agents were found" in text
     assert "has no other files were present" not in text
+
+
+def test_connect_leaves_no_attack_test_flag_behind(tmp_path):
+    """connect() marks its process as running the attack test only while it runs: a
+    failed connect must not leave agentfox.auto() standing down in the same process."""
+    import os
+
+    import pytest
+    from rich.console import Console
+
+    from agentfox.capabilities.onboarding import client as init_client
+    from agentfox.core.vocab import ATTACK_TEST_ENV
+
+    with pytest.raises(SystemExit):
+        init_client.connect("nom_api_x", "http://127.0.0.1:1", path=tmp_path, console=Console())
+    assert ATTACK_TEST_ENV not in os.environ
