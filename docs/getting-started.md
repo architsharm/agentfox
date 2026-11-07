@@ -2,7 +2,8 @@
 
 The short path first: your repository connected and its agents tested in a few minutes. The
 same steps, with screenshots, are at <https://useagentfox.com/docs/quickstart>. After it comes a
-longer first hour, offline, that shows what each piece does and how to check it.
+longer first hour, offline, that shows what each piece does and how to check it. This page teaches;
+the [product tour](product-tour.md) is the reference for every integration surface and command.
 
 You need Python 3.11 or newer.
 
@@ -49,11 +50,11 @@ them all, `agentfox up --dry-run` changes nothing. It starts in watch mode.
 
 ## One key everywhere
 
-`agentfox.auto()` takes the first account key it finds: `auto(server=..., key=...)`, then
-`AGENTFOX_URL` and `AGENTFOX_API_KEY` in the environment, then `.agentfox/agentfox.env` in the
-working directory. With one, every check goes to that account's gateway and the calls appear on
-its dashboard. Without one, checks run in your process against a local database. Set the two
-variables wherever your app is deployed and its calls show up the same way.
+With an account key, `agentfox.auto()` sends every check to that account's gateway and the calls
+appear on its dashboard; without one, checks run in your process against a local database. Set
+`AGENTFOX_URL` and `AGENTFOX_API_KEY` wherever your app is deployed and its calls show up the same
+way. The lookup order is in the
+[product tour](product-tour.md#python--one-line).
 
 ---
 
@@ -424,17 +425,10 @@ import agentfox
 agentfox.auto()
 ```
 
-It governs more than the gateway does from the same position: besides the request and the response
-text, every tool call in the response (OpenAI `tool_calls`, Anthropic `tool_use`, streamed or not)
-goes through the tool-call check before the response is handed back, with argument provenance read
-from the conversation. A tool it has not seen before is registered with an inferred impact:
-`agentfox declare list tools` marks it `(inferred)` until you confirm it with `agentfox declare tool`. In
-the default mode a refused tool call raises `agentfox.Blocked`, except that capability default-deny
-only applies once the agent holds a grant; `auto(mode="observe")` records and never raises. An
-enforced output redaction (for example baseline's `pii.outbound_redact`, once baseline enforces)
-rewrites the text in the response object you get back; a streamed response cannot be rewritten
-after its chunks were sent, so it raises `agentfox.Blocked` at the end instead. The OpenAI
-Responses API is not patched.
+Besides the request and the response text, it checks every tool call in the response before the
+response is handed back, with argument provenance read from the conversation. What it covers, what
+it raises and what it does not patch:
+[the product tour](product-tour.md#python--one-line).
 
 **What this proves:** enforcement is a property of the deployment, not of your codebase, and an
 undeclared agent is refused before anybody writes a rule about it.
@@ -458,11 +452,9 @@ expiry. `agentfox admin auth status` tells you whether this deployment is actual
 development environment it accepts an `X-AgentFox-User` header instead, which is fine locally and
 unacceptable anywhere else.
 
-Outside development (`AGENTFOX_ENVIRONMENT` set to anything but `development`, `dev`, `test`,
-`testing` or `local`), `/api` requires a token, and the gateway refuses to start until two secrets
-have real values: `AGENTFOX_SERVICE_AUTH_SECRET` and `AGENTFOX_AUDIT_SIGNING_KEY`. Their defaults are
-published in this repository, so they are no secret at all. `openssl rand -hex 32` makes either one;
-keep a copy of the signing key outside the database.
+Outside development, `/api` requires a token, and the gateway refuses to start until two secrets
+have real values. Which two, and how to make them:
+[the product tour's self-hosting section](product-tour.md#self-hosting).
 
 ---
 

@@ -19,14 +19,14 @@ commit; `scripts/check/plugins.py` fails if a repo `.md` file is unclassified.
 | `README.md` | the pitch, quickstart, one contained tool call, headline numbers, honest limits | Entry point for humans; numbers bound in `benchmarks/claims.yaml` |
 | `ee/README.md` | what AgentFox Enterprise adds (compliance, evidence, monitoring, access checks), its licence, how it plugs into the open core | Source-available, BSL 1.1 (`ee/LICENSE`); the open core never imports it |
 | `ARCHITECTURE.md` | the domain model, one tool call traced through `auto()` and the gateway, the code map, invariants, where to start for a change | Start here before changing code; names functions, not line numbers |
-| `docs/product-tour.md` | every integration surface (auto, gateway, LangGraph, OpenAI Agents SDK, TypeScript, MCP, Claude Code hooks), commands grouped by task, demo output, self-hosting | Moved out of the README; the website guides cover the same ground |
-| `docs/design/PRD.md` | *why* a feature exists, requirement IDs, roadmap, non-goals | 1,200 lines — jump to §5 pillars, §6 integrations, §9 roadmap, §10.3 non-goals, §12 shipped since |
-| `docs/architecture/high-level-design.md` | architecture, request path, deployment topology | Derived from code; code wins |
-| `docs/architecture/low-level-design.md` | which module implements what, class internals, CLI tree | Derived from code; code wins |
+| `docs/product-tour.md` | every integration surface (auto, gateway, LangGraph, OpenAI Agents SDK, LiteLLM, hosted platforms, TypeScript, MCP, coding-agent hooks) and what each governs, commands grouped by task, demo output, self-hosting | The reference view; the website guides split the same ground; teaching is in `docs/getting-started.md` |
+| `docs/design/PRD.md` | *why* a feature exists, requirement IDs (pillars in §5, platform `PL-*` in §8.1), roadmap, non-goals | Long; jump to §5 pillars, §6 integrations, §9 roadmap, §10.3 non-goals, §12 to §14 shipped since |
+| `docs/architecture/high-level-design.md` | design principles, pillars, integration surfaces (design view), fail modes, work outside the request, deployment topology | Derived from code; code wins |
+| `docs/architecture/low-level-design.md` | subsystem internals: enforcer, approvals, detectors, audit chain, `auto()`, policy engine, gateway, monitoring | Derived from code; code wins; package layout and request path are in `ARCHITECTURE.md` |
 | `docs/design/traceability.md` | requirement → module → control → test | Hand-maintained |
-| `docs/design/failure-modes.md` | how deployed agents fail (F1–F9) and which are covered | Living scorecard |
+| `docs/design/failure-modes.md` | how deployed agents fail (F1–F9) and which are covered on the live path | Hand-checked scorecard, stricter than the generated `docs/status.md` |
 | `docs/design/gap-analysis.md` | what is still open: engineering, coding-agent and docs gaps, procurement, the settings production must decide, what is deferred | Canonical gap register; re-verified at each release |
-| `docs/architecture/judgment-tiers.md` | what each optional judgment tier (Jev, hosted LLM, local LLM) may decide, and the routing table | Read before enabling a tier |
+| `docs/architecture/judgment-tiers.md` | how the optional judgment tiers work: what each (Jev, hosted LLM, local LLM) may decide, the routing table, the admin posture | Read before enabling a tier; measurements are in `docs/evaluation/judgment/` |
 | `docs/architecture/judgment-egress.md` | what leaves the boundary when a hosted judgment tier is on; the PII block/redact/allow choice | Read before enabling a hosted tier on regulated data |
 | `docs/design/competitor-analysis.md` | market landscape and where competitors win; source for the public /compare page | Positioning; cite primary benchmark docs for numbers |
 | `docs/design/architecture-differentiation.md` | the architecture-vs-competitor pitch: where each vendor sits and what it can see (sourced from their docs and code), primitive → benchmark → claim id, objection handling, proof gaps | Sales-facing; numbers bound in `benchmarks/claims.yaml`; competitor facts labelled [code]/[docs]/[ND] with access date |
@@ -40,7 +40,7 @@ commit; `scripts/check/plugins.py` fails if a repo `.md` file is unclassified.
 | `docs/adr/*.md` | why the repository is shaped the way it is: one decision per record, with the alternatives that lost | `docs/adr/README.md` indexes them; a record is superseded, never rewritten |
 | `docs/design/oss-register.md` | why an OSS project is (not) used, licences | Check before adding a dependency |
 | `docs/README.md` | the index of docs/: what each document is for and who it is for | Start here when you do not know which document answers a question |
-| `docs/getting-started.md` | a linear first hour for a new user, ending with their own agent governed | Written for a newcomer, not for an agent; each step says what it proves |
+| `docs/getting-started.md` | the short path, then a linear first hour for a new user, ending with their own agent governed | Teaches; each step says what it proves; reference detail is in `docs/product-tour.md` |
 | `docs/deployment/systemd.md` | running the Python gateway as a reboot-persistent systemd user service, with separate database, evidence and signing-key storage | Self-hosters on Linux |
 | `docs/deployment/key-rotation.md` | rotating the token encryption and audit signing keys: `*_PREVIOUS` settings, `agentfox admin keys rotate`/`status`, the automatic `keys.rotate` job, what to do when rotation cannot finish | Anyone running a deployment |
 | `docs/evaluation/evidence-standards.md` | how to read any number in this repo, and the limits that apply before it | Read before quoting a benchmark |

@@ -14,10 +14,10 @@ be checkable:
   - **[vendor page]**: a vendor product or press page. These are primary sources but not technical documentation, so they are weaker.
   - **[ND]**: not publicly documented. It means we could not find the fact, not that the capability is absent.
 
-Read with [competitor-analysis.md](competitor-analysis.md) (market camps, who wins where) and
+Read with [competitor-analysis.md](competitor-analysis.md) (market camps, who wins where, and
+which of our claims are unclaimed or contested) and
 [evidence-standards.md](../evaluation/evidence-standards.md) (what each kind of number can and
-cannot establish). Where this page and competitor-analysis.md disagree, this page is the newer
-read, and §5 says where it narrows an older claim.
+cannot establish). This page does not repeat the market view.
 
 ---
 
@@ -467,9 +467,7 @@ This is not a point product. It is the risk that the platform owner gives the ca
   - Every AgentFox containment on that benchmark came from provenance.
 - **Stacking costs utility.** llm-guard + AgentFox containment completes only 11/97 benign tasks (`head_to_head.llm_guard_plus_containment`). Containment alone already contains every pair, so the classifier adds false positives and nothing else.
 - **Compliance mappings are DRAFT**, not reviewed by counsel.
-- **Corrections to [competitor-analysis.md](competitor-analysis.md) §4.**
-  - **Argument-provenance taint is not unclaimed.** Zenity Boundaries has deterministic, conversation-scoped taint rules over tool calls. Our shipped default is also session-level. Say "per-value provenance with grant ceilings, measured with detectors off", not "nobody tracks taint".
-  - **The audit chain is not unique.** AWS CloudTrail is tamper-evident, and ServiceNow claims it. Our claim is a self-hosted chain with an offline, stdlib-only verifier.
+- **Two claims are narrower than they look.** Session-level taint is not unclaimed (Zenity Boundaries has it), and a tamper-evident audit chain is not unique (AWS CloudTrail, ServiceNow). What to say instead is in [competitor-analysis.md §4](competitor-analysis.md#4-what-to-highlight--genuinely-differentiated-evidence-checked).
 
 ---
 

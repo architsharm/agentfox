@@ -1,6 +1,6 @@
 # AgentFox: A Governance Control Plane for AI Agents, and What We've Proven About It
 
-**Date:** 2026-08-29, updated 2026-08-31; product descriptions re-checked against release 0.5.0 on 2026-11-07, numbers unchanged · **Status:** first edition, revised — added PII detection (§4.2), destructive-action/blast-radius (§4.4), and entitlement (§4.5) benchmark results once those datasets were built; F1 answerability is intentionally not cited with a benchmark number here (see §4.6) because its strongest measured category doesn't clear this document's own 65%-precision-and-recall bar — full numbers, not filtered, are in [`benchmarks/answerability/README.md`](../../benchmarks/answerability/README.md).
+**Date:** 2026-08-29, updated 2026-08-31; product descriptions re-checked against release 0.5.0 on 2026-11-07, numbers unchanged. F1 answerability is not cited with a benchmark number here (see §4.6) because its strongest measured category does not clear this document's 65%-precision-and-recall bar; the full numbers are in [`benchmarks/answerability/README.md`](../../benchmarks/answerability/README.md). Read [evidence-standards.md](evidence-standards.md) first: it says what each kind of number here can and cannot establish.
 
 **How to read this document:** it's organized around the product, not around benchmark runs. For every capability, we say what it does, why it matters, how we know it works, and how it differs from what else is on the market. The rule we hold ourselves to throughout: every number we cite as "benchmarked" has a public, licensed dataset and a script anyone can re-run — link included.
 
@@ -33,14 +33,14 @@ The seven capabilities below are how that holds up, each real, tested, and — a
 competitive research could find — not offered together by any single competitor:
 
 1. **Argument-provenance taint tracking.** Every tool-call argument carries where its value actually came from — a user, a retrieved document, another tool's output — and capability checks can be conditioned on that provenance, not just the argument's face value. The closest public competitor claim (Zenity's "intent-based detection examines the full execution path") doesn't go this granular. This is what lets containment hold **after** a content-detector fails — the tool call itself is still checked against what its arguments are actually made of.
-2. **A tamper-evident audit chain with a standalone, stdlib-only verifier.** A self-hosted, hash-chained audit log an auditor can verify themselves, offline, without trusting our software to tell the truth about itself. Tamper-evident logs alone are not unique (AWS CloudTrail has them, and ServiceNow claims them; see [architecture-differentiation.md](../design/architecture-differentiation.md) §5); the offline, vendor-free verification is the point. Mutation, deletion, reorder, and checkpoint forgery are all independently detectable — a 60-second live demo for a regulated buyer.
+2. **A tamper-evident audit chain with a standalone, stdlib-only verifier.** A self-hosted, hash-chained audit log an auditor can verify themselves, offline, without trusting our software to tell the truth about itself. Tamper-evident logs alone are not unique (AWS CloudTrail has them, and ServiceNow claims them; see [competitor-analysis.md §4.2](../design/competitor-analysis.md#42-contested-but-defensible--real-but-a-competitor-could-plausibly-claim-adjacency)); the offline, vendor-free verification is the point. Mutation, deletion, reorder, and checkpoint forgery are all independently detectable — a 60-second live demo for a regulated buyer.
 3. **Control status computed from telemetry, not attested.** Most of the AI-governance category (per Gartner's own MQ commentary) collects self-reported attestations. Ours computes control status from what actually happened — a broken audit chain forces the audit control to `failing`, automatically, not on a schedule someone remembers to run.
 4. **Declared gaps per framework, published rather than hidden.** Every one of 44 controls across 7 compliance frameworks ships with an explicit list of what it does *not* cover. This is unusual, and disproportionately credible in an audit conversation.
 5. **Policy simulation before enforcement.** New policy versions replay against real recorded traffic and report what would newly break, before anyone turns enforcement on.
 6. **Self-host by default, zero required egress.** The main SaaS governance platforms (Zenity, Credo AI, OneTrust) are SaaS-only. For a regulated buyer that can't send its traffic to a third party, this is a structural, not incremental, difference.
 7. **Governing correctness as part of governance, not as a separate eval product.** Silent-failure detection (a 6-signal ensemble that discriminates "confidently wrong" from "correctly abstained") lives in the same enforcement path as the security controls, not bolted on from a separate observability tool.
 
-Section 6 has the fuller competitive-landscape breakdown; the full audit is in [`docs/design/gap-analysis.md`](../design/gap-analysis.md).
+The competitive landscape is in [competitor-analysis.md](../design/competitor-analysis.md); what is still open is in [`docs/design/gap-analysis.md`](../design/gap-analysis.md).
 
 ## 4. Capability by capability: what it does, what we proved, what's real insight
 
@@ -218,20 +218,17 @@ bugs/gaps found and fixed while building this (a policy threshold silently disca
 
 ## 5. Competitive landscape — where AgentFox sits
 
-Four camps exist in this market, and AgentFox doesn't fit cleanly into any one of them — which is a fair way to describe both its opportunity and its risk:
-
-| Camp | Examples | Runtime enforcement | Compliance depth | What they have that we don't |
-|---|---|---|---|---|
-| Agent-security pure-plays | Zenity, Noma, Arthur, WitnessAI | Strong | Thin | Estate-scale discovery, adaptive red-team, market maturity |
-| Security suites | Palo Alto, Cisco AI Defense, Check Point+Lakera | Strong, network-integrated | Medium | Distribution, SOC integration |
-| AI governance platforms (Gartner MQ) | IBM, ServiceNow, Credo AI, OneTrust | Mostly none — Gartner's own finding | Deep | Workflow/assessment engines, analyst recognition, installed base |
-| Eval / observability | Braintrust, Arize, LangSmith | N/A | N/A | Eval UX depth, dataset tooling |
-
-Gartner's own read on the governance camp is that it largely lacks runtime enforcement, and the security camp largely lacks compliance depth. AgentFox's bet is the combination — runtime enforcement *and* audit-grade compliance depth, in one product, self-hosted. The full gap register, including where we still fall short of category table stakes (estate-scale connectors, a general workflow engine, third-party certifications), is in [`docs/design/gap-analysis.md`](../design/gap-analysis.md).
+The camps, who wins where, and which of our claims are unclaimed or contested are in
+[competitor-analysis.md](../design/competitor-analysis.md). AgentFox's bet is the combination
+the governance camp and the security camp each lack: runtime enforcement *and* audit-grade
+compliance depth, in one product, self-hosted.
 
 ## 6. Methodology discipline (the rules every number above follows)
 
-A capability counts as "benchmarked" in this document only if: it's scored against a public, licensed dataset (named and linked, or fetched by a re-runnable script); the scoring runs the real shipping code, not a reimplementation; per-example predictions are saved, not just an aggregate; and negative and inconclusive results are reported alongside positive ones (three appear in Section 4.1 alone).
+Every "benchmarked" number above follows the four rules in
+[evidence-standards.md](evidence-standards.md): a public, licensed dataset; the real shipping
+code; per-example predictions saved; and negative results reported next to positive ones
+(three appear in Section 4.1 alone).
 
 ---
 

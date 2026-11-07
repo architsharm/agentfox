@@ -1,11 +1,11 @@
 # Product tour
 
-Everything the top-level README used to carry beyond the pitch: each place the policy
-binds, the commands grouped by what you are trying to do, what the demo prints, how to
-self-host, and what is wrapped open source versus built here. The website docs
-([useagentfox.com/docs](https://useagentfox.com/docs)) cover the same ground as guides and
-reference; this page is the one-file version for reading in the repository. For how the
-code is put together, read [ARCHITECTURE.md](../ARCHITECTURE.md).
+The reference view of the product on one page: each place the policy binds and what it
+governs there, the commands grouped by task, what the demo prints, and how to self-host. The
+website docs ([useagentfox.com/docs](https://useagentfox.com/docs)) split the same material into
+separate guides. To learn the product step by step, with what each step proves, read
+[Getting started](getting-started.md) instead; this page does not repeat its explanations. For
+how the code is put together, read [ARCHITECTURE.md](../ARCHITECTURE.md).
 
 ## Use it with your agent
 
@@ -312,11 +312,11 @@ agentfox policy proposals approve <id> --actor you@example.com --note "matches i
 agentfox policy proposals apply <id> --actor you@example.com    # rollback <id> undoes it
 ```
 
-Each proposal reads like "Let support-triage call tickets.close with priority one of low, normal
-(seen 14 times)". Limits and the provenance ceiling come only from clean calls: ones nothing flagged and
-that carried no untrusted content, or that a person approved in the approval queue. An injected
-call is held like any untrusted one, so an attacker's amount or recipient never becomes a limit. Nothing is applied without a person, and tool
-declarations, which are org-wide, need two. Or write them by hand:
+Limits and the provenance ceiling are learned only from clean calls, so an attacker's amount or
+recipient never becomes a limit. Nothing is applied without a person, and tool declarations, which
+are org-wide, need two. What is learned from and what is held:
+[Getting started, step 5b](getting-started.md#5b-let-it-propose-the-grants-learned-permissions). Or
+write them by hand:
 
 ```bash
 agentfox declare tool billing.export --impact write    # read | write | high_impact | irreversible
@@ -330,13 +330,11 @@ agentfox permit revoke <capability-id>
 `--max-taint` is the worst provenance an argument may carry and still go through without an
 approval: `none`, `user`, `retrieved`, `tool_result`, `subagent`, `memory`. Within it, the taint
 rules defer to the grant; `composition.escalation` (one tool's output fed into a higher-impact tool)
-does not, unless the producing tool's output is declared trusted. `permit grant` is the only
-command that widens least privilege, so it confirms before it writes and records the result in the
-audit chain. `--yes` skips the prompt in CI. `agentfox agents register <slug> --owner you@example.com` turns a
+does not, unless the producing tool's output is declared trusted. `permit grant` confirms before it
+writes; `--yes` skips the prompt in CI. `agentfox agents register <slug> --owner you@example.com` turns a
 shadow agent into an owned one, and `agentfox agents budget` sets the caps `budget.exceeded` blocks on.
-Whether provenance is read per run or per argument is
-one setting, `taint_scope` (`session`, the default and what every number here was measured under,
-or `argument`); see [Getting started](getting-started.md#5b-let-it-propose-the-grants-learned-permissions).
+Whether provenance is read per run or per argument is one setting, `taint_scope` (`session`, the
+default, or `argument`); see [Getting started, step 5b](getting-started.md#5b-let-it-propose-the-grants-learned-permissions).
 
 **Decide what is held for a person**
 
@@ -362,11 +360,9 @@ agentfox report verify                 # re-derive the chain; exits 1 if broken
 agentfox report evidence --agent support-triage --from 2026-08-01 --to 2026-09-30   # Enterprise
 ```
 
-A refused tool call is a finding in its own right, titled by what refused it — `support-bot tried
-to send_email with data that came from a web page (contained)` — and one a rule in observe mode
-only recorded reads `would have been contained`. The evidence zip opens on the same one-page
-`SUMMARY.md` (and `.html`) that `agentfox report` prints; its framework-coverage section is a
-draft mapping and says so in its heading.
+A refused tool call that a rule in observe mode only recorded is titled `would have been
+contained`. The evidence zip opens on the same one-page `SUMMARY.md` (and `.html`) that
+`agentfox report` prints; its framework-coverage section is a draft mapping and says so.
 
 **Test before you trust**
 
@@ -379,14 +375,8 @@ agentfox policy validate candidate.yaml          # parse, lint and compile witho
 agentfox policy simulate --file candidate.yaml   # replay recorded traffic; non-zero if it newly blocks
 ```
 
-Red-team probes are a dry run: their tool calls are evaluated without writing decisions, so they
-never show up in findings or in what `policy simulate` replays. `--allow-escapes` reports without
-failing.
-
-Saving a policy and putting it in force are separate. A version saved in the dashboard's editor or
-with `POST /api/policies` sits next to the live one and changes nothing until it is promoted;
-promoting it to enforce over HTTP needs a recorded simulation of that exact version (409 otherwise).
-`agentfox policy enforce <key>` and `observe <key>` change the live version's mode from the CLI.
+What each of these proves, and why saving a policy and putting it in force are separate steps:
+[Getting started, steps 7 and 8](getting-started.md#step-7-test-before-you-trust-10-minutes).
 
 **Run it**
 
@@ -472,16 +462,11 @@ The running container never does this itself. A gateway that should not hold wei
 (serverless, no GPU) can send model-backed detection to a model server, `agentfox serve models`,
 with `AGENTFOX_MODEL_SERVER_URL` ([`deploy/model-server/`](../deploy/model-server/)).
 
-## Architecture, and what is ours
+## Validators
 
-Five jobs: discover the agents, tools, MCP servers and skills you have; govern what each may do
-(least-privilege grants); protect them at runtime (injection, personal data, secrets, unsafe
-actions); test them with attack suites; and prove what happened (a verifiable audit trail and
-compliance evidence).
-
-Roughly 20% of the engineering integrates OSS primitives — OPA/Rego, Presidio, Granite Guardian,
-NeMo/Guardrails AI, promptfoo, Garak, PyRIT, OpenTelemetry — and 80% is the logic above them. Every
-wrapped project sits behind a swappable adapter. The [high-level design](architecture/high-level-design.md) has the full design.
+What is wrapped open source and what is built here is in the
+[high-level design](architecture/high-level-design.md#9-whats-proprietary-vs-wrapped-oss) and the
+[OSS register](design/oss-register.md).
 
 About seventy [Guardrails AI](https://github.com/guardrails-ai) validators are ported in as native
 code (`detection/validators/`, Apache-2.0, credited in `THIRD_PARTY_NOTICES.md`), so none needs a

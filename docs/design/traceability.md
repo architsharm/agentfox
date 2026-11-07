@@ -1,7 +1,9 @@
 # Traceability — requirement → implementation → test
 
-Every functional requirement in the [PRD](PRD.md), the module that implements it, the
-control it evidences, and the test that proves it.
+**Hand-maintained map from requirement to code to test.** Every functional requirement in the
+[PRD](PRD.md), the module that implements it, the control it evidences, and the test that
+proves it. Whether a capability is built is computed in [../status.md](../status.md); what is
+still open is in [gap-analysis.md](gap-analysis.md).
 
 **Status:** ✅ built · ◐ partial · ✗ specified, not built. Live, probe-computed status is in
 [../status.md](../status.md). Module paths are relative to `src/agentfox/`; one that starts
@@ -134,7 +136,7 @@ release 0.5.0 (2026-11-07).
 | **NFR-9** Offline operation | ✅ | full suite passes with no network |
 | **NFR-10** Determinism & replay | ✅ | `test_determinism`, simulation replay |
 
-## Tranche 0 — delivered 2026-08-18
+## Tranche 0: platform hardening and the first integrations
 
 | ID | Requirement | Status | Implementation | Test |
 |---|---|---|---|---|
@@ -160,11 +162,5 @@ release 0.5.0 (2026-11-07).
 
 ## Known gaps
 
-Live IdP (OIDC/SAML) integration · billing · cross-org benchmarking · partner marketplace ·
-non-text modalities · credential brokerage (P2-6) · framework-mapping diff engine (P6-8) ·
-load testing (NFR-3). The full register is [gap-analysis.md](gap-analysis.md).
-
-**All 324 framework mappings are `review_status: draft`** and ship in evidence packages
-chip-labeled `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` until a qualified reviewer completes
-the gate in [Appendix B §B.6](control-catalog.md#b6-mapping-review-gate) — see
-`ee/src/agentfox_ee/evidence/package.py` for the chip-labeling logic.
+The open register is [gap-analysis.md](gap-analysis.md). Every framework mapping is still a
+draft; the review gate is [Appendix B §B.6](control-catalog.md#b6-mapping-review-gate).

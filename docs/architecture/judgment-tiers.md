@@ -1,5 +1,11 @@
 # Capabilities: enable more, get better, never worse
 
+**How the judgment tiers work:** which tiers exist, what each may decide, and who may change
+that. How the numbers behind the routing table were measured is in
+[evaluation/judgment/](../evaluation/judgment/results.md) (the study) and
+[vs-shipping.md](../evaluation/judgment/vs-shipping.md) (against the shipping detectors). What
+leaves the machine when a hosted tier is on is in [judgment-egress.md](judgment-egress.md).
+
 The product is a stack of evaluators an operator switches on. The design
 problem is not making it better when everything is enabled — it is making sure
 that **enabling everything cannot make anything worse**, because that is the
@@ -72,18 +78,9 @@ when either gate says no:
 Local tiers keep working in both cases, so the capability degrades instead of
 failing.
 
-For personal data specifically there is an explicit three-way choice, because
-the right answer differs by deployment:
-
-| `judgment_pii_egress` | behaviour |
-|---|---|
-| `block` | Nothing with detected PII leaves, redacted or not. The remote judgment is simply not made. **The only setting under which a subject's data cannot reach a vendor.** |
-| `redact` (default) | Mask what the local detector finds, send the rest. Costs ~1 point of the recall gain; ~82% of PII is not found locally and still leaves. |
-| `allow` | Send as-is. A deliberate downgrade, logged at warning. |
-
-That residual is why `block` exists and why the default is not `allow`:
-redaction can only mask what the local detector found, measured at 17.8% of it
-on presidio-research.
+For personal data there is an explicit three-way choice (`judgment_pii_egress`:
+`block`, `redact` or `allow`), described with what each one sends in
+[judgment-egress.md](judgment-egress.md#the-design).
 
 ## What this is worth
 
@@ -149,17 +146,10 @@ With no row stored, settings apply exactly as they did before any of this
 existed — which is what keeps the published numbers comparable.
 
 **On a judge outage.** The posture's `fail_closed` ("On a judge outage: deny
-the request") is read by the enforcer. A judge that was asked and did not
-answer (unreachable, an error, a timeout) is a degraded detector, so the
-deployment's and the packs' `fail_mode` apply to it as to any other. With
-`fail_closed` on, an enforcing decision is also blocked as
-`pipeline.judge_outage` when an enforcing pack has a rule on that surface that
-the silent judge's findings could fire; a rule about something else, or no
-detection rule, is not affected. It is off by default, like `fail_mode`.
-`judgment_fail_closed = true` turns it on for the deployment and stops a
-workspace turning it off; posture can add a block, never remove one. A
-payload the egress gate refused to send is not an outage. Validator judges
-report the same way as the built-in judges.
+the request") is off by default, like `fail_mode`. `judgment_fail_closed = true`
+turns it on for the deployment and stops a workspace turning it off; posture can
+add a block, never remove one. How the enforcer treats a silent judge is in
+[low-level-design.md §9](low-level-design.md#9-policy-engine--srcagentfoxplatformpolicy).
 
 ## Tests
 

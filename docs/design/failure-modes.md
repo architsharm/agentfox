@@ -1,15 +1,10 @@
 # Business Failure-Mode Analysis — where deployed agents actually break
 
-**Companion to [gap-analysis.md](gap-analysis.md)**, the register of what is still open. This document measures AgentFox against **how enterprise agents actually fail in production** rather than against vendor feature lists.
+**The failure-mode catalogue, and the hand-checked score against it.** It measures AgentFox against **how enterprise agents actually fail in production** rather than against vendor feature lists. What is still open is in [gap-analysis.md](gap-analysis.md); the probe-computed view is in [../status.md](../status.md) (generated); an independent, architecture-derived view is [coverage-map.md](coverage-map.md) (generated).
 
-**Status, re-checked against `main` at release 0.5.0 (2026-11-07).** Every status below is a passing test, a code citation, or an import check. Of the 57 catalogued modes, 48 are covered on the live request path, 7 are partial and 2 are absent (F7.7 cross-turn self-contradiction, F8.3 stale index). This hand count is stricter than the generated one in [../status.md](../status.md), whose probe only checks that each mode's code exists; the row notes below say where the two differ and why. Module paths are relative to `src/agentfox/`.
+**Status, re-checked against `main` at release 0.5.0 (2026-11-07).** Every status below is a passing test, a code citation, or an import check. Of the 57 catalogued modes, 48 are covered on the live request path, 7 are partial and 2 are absent (F7.7 cross-turn self-contradiction, F8.3 stale index). This hand count is stricter than the generated one in [../status.md](../status.md), whose probe only checks that each mode's code exists; the coverage summary says where the two differ and why. Module paths are relative to `src/agentfox/`.
 
-How it got here, in short (the full narration is in git history):
-
-- **2026-08-18:** the taxonomy was written; 1 of 50 modes was covered.
-- **2026-08-29:** 40 of 50 covered after a re-audit. F8 (context and retrieval integrity, from the PRD) and F9 (five modes found by the independent [coverage-map.md](coverage-map.md) audit) were added, bringing the total to 57. Several F6 and F8 checks were found to be built and tested but never called on the request path.
-- **2026-08-30:** F3.8 (composed privilege escalation) built (`capabilities/detection/composition.py`); F3 fully covered.
-- **2026-09-16:** the F6 and F8 checks were wired onto the request path as registered checks (`capabilities/grounding/checks.py`), proven end to end by `tests/runtime/test_commitment_and_context_wiring.py`. F9.2 (sycophancy) and F9.4 (crescendo) were built, and so was control-flow integrity (`capabilities/containment/control_flow.py`), which catches an injected *step* rather than a poisoned *value*. Their findings are recorded and never block on their own; a policy rule on the `action_risk` condition makes them block, which is the observe-first default.
+The F6, F8 and F9 checks (commitments, context integrity, sycophancy, crescendo) and control-flow integrity, which catches an injected *step* rather than a poisoned *value*, record findings and never block on their own; a policy rule on the `action_risk` condition makes them block, which is the observe-first default.
 
 ---
 
@@ -25,9 +20,7 @@ A study of **10,000+ AI failure events** (ChatSee, published Jul 2026) found:
 
 Supporting figures: **88% of organisations had at least one AI agent security incident in 2025**; only **~10% of agent pilots reach production**; **fewer than 25%** of enterprises running multi-agent pilots report confidence in reliability or governance.
 
-**What this meant for us at the time (2026-08-18):** our Pillar 4 flagship — silent-failure detection — was aimed at the **smallest** slice of the problem, while we had **nothing at all** for the 31% (escalation breakdown) or the fastest-growing category (execution/action). That gap is now closed for F3 and F5 — see the coverage summary — but the taxonomy itself, and the reasoning for why it's the right one to govern against, hasn't changed.
-
-The rest of this document is the failure taxonomy we should actually be governing.
+Silent-failure detection is aimed at the **smallest** slice of this problem; escalation breakdown (31%) and execution and action failures (fastest-growing) are the large ones. The rest of this document is the failure taxonomy we govern against.
 
 ---
 
@@ -213,7 +206,7 @@ F9's five modes are tracked separately below (F9.2 and F9.4 built, F9.3 partial,
 
 **Where the generated count differs.** [../status.md](../status.md) counts a mode as covered when its code exists. It therefore counts F4.7, F5.4, F6.5, F7.6, F7.7 and F8.4 as covered, where this table does not: F4.7 has no legal-hold or blackout class proven end to end, F5.4 measures an abstention proxy rather than quality per turn, F6.5 is not a per-request check, F7.6 detects timezone ambiguity rather than a verified date shift, F7.7's only marker is an offline self-consistency scorer, and F8.4 is not run automatically. Quote the generated figure as "code exists for", and this table as "covered on the live path".
 
-The pillars built earlier (taint containment, audit chain, policy engine, computed control status) turned out to be genuine substrate: F1–F5 and most of F7 were built as detectors, policy conditions and scorers inside that architecture. F6 and F8 were the cautionary tale: building the detector was not the hard part, and the last step (one call site) was skipped until 2026-09-16.
+The pillars built earlier (taint containment, audit chain, policy engine, computed control status) turned out to be genuine substrate: F1–F5 and most of F7 were built as detectors, policy conditions and scorers inside that architecture. F6 and F8 were the cautionary tale: building the detector was not the hard part, and the last step (one call site) was skipped at first.
 
 ---
 
@@ -291,22 +284,8 @@ Megabytes of filler before the real instruction, diluting or displacing the syst
 
 ## When AgentFox itself fails — platform failure modes
 
-F1–F9 are how the *governed agent* fails. This section is the other side: how AgentFox
-degrades when one of its own parts cannot do its job. The rule throughout is that "could not
-check" is never recorded as "nothing there", and that every degradation is either visible in
-a decision, a finding or a refusal, never silent. Each row is verified against the code named.
-
-| Failure | What happens | Where |
-|---|---|---|
-| **A stored policy version no longer validates** (saved before a rule became mandatory, or before a field was tightened) | Every stored version loads through one function. A missing protected rule is restored from the shipped pack, with a warning once per version. Anything else raises `UnloadablePolicyVersion`; the other packs are still evaluated, and the decision records a `policy.unloadable` rule. A pack bound in observe never blocks; one bound in enforce blocks if the deployment's `fail_mode` or the pack's declared `fail_mode` is `closed`, and otherwise the call is allowed with the gap named. Promoting an unloadable version answers 422. | `platform/policy/store.py:load_version_document`, `runtime/enforcement/enforcer.py` |
-| **Detectors time out or error** | Recorded per run on `detector_runs.status`. A detector that raised or reported `status="error"` is degraded exactly like one that timed out (and also listed in `errored`), so the decision is taken under the same two fail-mode sources and says so: `pipeline.fail_closed` names each degraded detector and why (`timeout`, `error: <cause>`). | `capabilities/detection/pipeline.py`, `runtime/availability.py` |
-| **A monitor run fails** (GitHub down, token revoked, spec unreachable, URL refused by the outbound guard) | The run is recorded `failed` with its error; it closes no finding and keeps the previous baseline. After `monitor_failure_threshold` (default 3) consecutive failures one `monitor_failing` finding opens (medium), and the next successful run closes it. A run that read nothing it understood (an empty spec where there were operations, a repository scan that was inconclusive) is `inconclusive`: baseline kept, nothing closed. | `ee/src/agentfox_ee/monitoring/service.py:run_monitor`, `_record_failure` |
-| **A probe target is unreachable or does not speak the contract** | Each probe is scored `error`, never `contained`: errors are counted in the campaign and neither open nor close a finding. A target whose URL host no longer matches the host registered at opt-in, or that resolves to a refused address, is refused before anything is sent. A deleted target fails its monitor run; a target not opted in, or live probes turned off, makes the run `inconclusive`. | `capabilities/evaluation/live_probes.py`, `ee/src/agentfox_ee/monitoring/service.py:_run_deployed_agent` |
-| **The cron is not configured** | `/api/internal/jobs/run` answers 503 until `AGENTFOX_CRON_SECRET` or `CRON_SECRET` is set, and nothing periodic runs: no monitors, probes, canary advancement, drift checks or escalation scans. The GitHub Actions workflow without its two secrets says so and exits successfully. The Vercel cron alone fires once a day. Self-hosted deployments run `agentfox admin jobs run-due` from their own scheduler. | `apps/gateway/routes/jobs.py`, `.github/workflows/monitors.yml`, `platform/jobs/scheduler.py` |
-| **Slack is configured but egress is off** | Nothing is sent, and the gateway logs once that a channel is configured while `AGENTFOX_ALLOW_EGRESS=false`. A delivery that fails is retried once on a 5xx, timeout or connection error, then logged and dropped; a full queue (500) drops the message; a tenant channel that cannot be decrypted is skipped. None of this fails the run that raised the finding. | `ee/src/agentfox_ee/monitoring/alerts.py` |
-| **The GitHub push webhook cannot be verified** | No secret configured: 503 and nothing queued. A bad signature: 401. A verified push whose rescan cannot run after the response (a host that freezes the process) leaves a queued job the next cron run picks up. | `apps/gateway/routes/integrations.py:github_webhook` |
-| **The gateway is started without real secrets** | Outside a development environment the process refuses to start while `AGENTFOX_SERVICE_AUTH_SECRET` or `AGENTFOX_AUDIT_SIGNING_KEY` is unset or a published value, naming the variable to set. Failing loudly at boot is the intended mode: running degraded would mean an owner token anyone can mint, or an audit chain anyone can forge. | `core/config.py:assert_production_secrets`, `apps/gateway/app.py:create_app` |
-| **A retry presents an approval that does not fit** (used, expired, denied, another agent's, different arguments) | The call escalates again, as it would have without the approval, and the decision's reason says why the approval was not used. An approval is never treated as a broader permission than the call a person saw. | `platform/identity/service.py:redeem_approval` |
+F1–F9 are how the *governed agent* fails. How AgentFox degrades when one of its own parts cannot
+do its job is in the [high-level design §6.2](../architecture/high-level-design.md#62-fail-modes).
 
 ---
 

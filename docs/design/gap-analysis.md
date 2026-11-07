@@ -1,15 +1,9 @@
 # Gap analysis: what is still open
 
-**Re-verified against `main` at release 0.5.0 (2026-11-07).** This is the one register of
-what AgentFox does not do yet. Each open item names the code that shows its state. It
-replaces three earlier documents, whose open items are merged here and whose closed items
-are listed once at the end:
-
-- the enterprise-readiness audit kept in this file from 2026-08-18 to 2026-10-06;
-- `production-readiness-review.md` (2026-09-04, addendum 2026-10-06);
-- `competitor-failproof-docs-and-product.md` (2026-10-07).
-
-Their full text is in git history. The competitive field itself is in
+**The one register of what AgentFox does not do yet.** Re-verified against `main` at release
+0.5.0 (2026-11-07). Each open item names the code that shows its state; closed items are
+removed rather than kept here (git history has the earlier editions). The competitive field
+itself is in
 [competitor-analysis.md](competitor-analysis.md); failure-mode coverage is in
 [failure-modes.md](failure-modes.md) and [coverage-map.md](coverage-map.md); live
 capability status is generated into [../status.md](../status.md).
@@ -173,31 +167,6 @@ authentication, secrets and key rotation.
 
 Decided since the last edition: AgentFox stays horizontal (the PRD's positioning), and
 promptfoo stays off the critical path as an optional reference (`oss-register.md`).
-
----
-
-## 6. Closed since the earlier editions
-
-For readers arriving from an old link. Each was re-checked against the code.
-
-- **Production blockers:** SSE streaming on both proxy routes; Alembic migrations; the kill
-  switch on every guard surface; tool-loop governance on the proxy routes; the job queue;
-  pooled persistence; service-level degradation with `fail_mode` (detector errors now count
-  as degraded, as timeouts do); and the proxy authorising every tool call a model asks for
-  before returning it.
-- **Security review:** tenant isolation enforced at the session (`core/tenancy.py`);
-  operator actions on the same hash chain, with a structural check for unaudited privileged
-  surfaces; an authenticated, writable dashboard; startup refusal on published secrets;
-  revoking sign-out; a first operator from the CLI; key rotation.
-- **Deployment integrity:** the Dockerfile builds (CI's `docker-smoke` job); vendored wheels
-  are kept fresh by a pre-commit hook and CI; the dashboard has a vitest suite run in CI.
-- **Capabilities once "built but not wired":** commitment, register and context-integrity
-  checks run on the request path (`tests/runtime/test_commitment_and_context_wiring.py`).
-- **Other items:** adaptive red teaming (`capabilities/evaluation/adaptive.py`); draft
-  mappings shipped with a chip rather than excluded; retention that deletes by
-  `retain_days` and respects legal holds (`capabilities/compliance/retention.py::purge`,
-  the `retention.purge` job); the annotation queue; rule authoring without code
-  (Policies → Add rule); a kill-switch control in the catalog (`NOM-RTG-14`).
 
 ---
 
