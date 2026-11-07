@@ -109,3 +109,8 @@ VERDICT_RANK = {"allow": 0, "alter": 1, "redact": 1, "mask": 1, "escalate": 2, "
 CAPABILITY_REFUSAL_RULE_IDS = frozenset(
     {"capability.denied", "capability.default_deny", "capability.constraint_violated"}
 )
+
+
+#: Set by `agentfox init` while its process runs the attack test, which imports the
+#: app: `agentfox.auto()` stands down, so the attacks are not reported as its traffic.
+ATTACK_TEST_ENV = "AGENTFOX_ATTACK_TEST"

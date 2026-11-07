@@ -141,7 +141,7 @@ class _Results:
 def connect(key: str, server: str, path: str | Path = ".", console: Console | None = None) -> None:
     import os
 
-    from agentfox.frameworks.autoguard import ATTACK_TEST_ENV
+    from agentfox.core.vocab import ATTACK_TEST_ENV
 
     console = console or Console()
     # The attack test imports the app; the agentfox.auto() line in it must not report
@@ -247,8 +247,7 @@ def connect_live_traffic(
     """
     import sys
 
-    from agentfox.apps.cli.wizard.components import insert_auto
-    from agentfox.apps.cli.wizard.detect import write_env
+    from agentfox.capabilities.onboarding.project_files import insert_auto, write_env
     from agentfox.platform.identity.operators import API_KEY_PREFIX
 
     if not key.startswith(API_KEY_PREFIX):
@@ -302,7 +301,7 @@ def connect_live_traffic(
 
 def _entry_file(root: Path, registered: list[dict[str, Any]]) -> tuple[Path, str] | None:
     """The Python file that defines (and, best, runs) an agent, and that agent's slug."""
-    from agentfox.apps.cli.wizard.detect import _MAIN_GUARD
+    from agentfox.capabilities.onboarding.project_files import _MAIN_GUARD
 
     candidates = [
         (root / a["file"], a["slug"], a.get("attr"))

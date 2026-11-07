@@ -35,6 +35,7 @@ from agentfox.apps.cli.wizard.backend import BackendError, Edition, Local
 from agentfox.apps.cli.wizard.detect import STATE_DIR, Context, git_ignore
 from agentfox.apps.cli.wizard.prompt import Choice, Prompter
 from agentfox.apps.cli.wizard.targets import Target
+from agentfox.capabilities.onboarding.project_files import _AUTO_MARK, insert_auto  # noqa: F401
 
 IMPACTS = ("read", "write", "high_impact", "irreversible")
 
@@ -393,8 +394,6 @@ def _coding_apply(run: Run) -> None:
 # A Python agent: agentfox.auto()
 # ---------------------------------------------------------------------------
 
-_AUTO_MARK = "agentfox.auto("
-
 
 def _python_unavailable(run: Run) -> str:
     if run.target.remote:
@@ -449,42 +448,6 @@ def _python_ask(run: Run) -> None:
 def _auto_lines(run: Run) -> str:
     mode = ', mode="observe"' if run.mode == "observe" else ""
     return f'import agentfox\n\nagentfox.auto("{run.agent}"{mode})  # added by `agentfox up`\n'
-
-
-def insert_auto(path: Path, block: str) -> bool:
-    """Put ``block`` after the module docstring and ``from __future__`` imports, before
-    the model clients are imported. False when the file already calls auto()."""
-    text = path.read_text()
-    if _AUTO_MARK in text:
-        return False
-    import ast
-
-    lines = text.splitlines(keepends=True)
-    at = 0
-    try:
-        module = ast.parse(text)
-    except SyntaxError:
-        module = None
-    if module is not None:
-        for node in module.body:
-            docstring = (
-                isinstance(node, ast.Expr)
-                and isinstance(node.value, ast.Constant)
-                and isinstance(node.value.value, str)
-                and node is module.body[0]
-            )
-            future = isinstance(node, ast.ImportFrom) and node.module == "__future__"
-            if docstring or future:
-                at = node.end_lineno or at
-            else:
-                break
-    elif lines and lines[0].startswith("#!"):
-        at = 1
-    head, tail = "".join(lines[:at]), "".join(lines[at:]).lstrip("\n")
-    if head and not head.endswith("\n"):
-        head += "\n"
-    path.write_text(f"{head}\n{block}\n{tail}" if head else f"{block}\n{tail}")
-    return True
 
 
 def _python_apply(run: Run) -> None:

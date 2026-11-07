@@ -400,8 +400,7 @@ def _record_turn(
         log.debug("agentfox: turn capture skipped: %s", exc)
 
 
-#: Set by `agentfox init` while it runs the attack test: `auto()` stands down.
-ATTACK_TEST_ENV = "AGENTFOX_ATTACK_TEST"
+from agentfox.core.vocab import ATTACK_TEST_ENV  # noqa: E402 - re-exported
 
 
 class _SkipLocalSetup(Exception):
