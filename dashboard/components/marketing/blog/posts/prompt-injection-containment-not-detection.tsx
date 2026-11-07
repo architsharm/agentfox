@@ -136,7 +136,7 @@ export function Body() {
 
       <h3>1. Capability grants: default deny</h3>
       <p>
-        Each agent holds explicit <Link href="/grants">capability grants</Link>: which tools it
+        Each agent holds explicit <Link href="/docs/guides/contain-tool-calls">capability grants</Link>: which tools it
         may call, with limits on the arguments (<code>amount</code> below 1000,{" "}
         <code>to</code> matching your own domain), how tainted the inputs may be, whether a
         person must approve, and when the grant expires. Anything not granted is refused. That
@@ -254,7 +254,7 @@ with fox.session(intent="Triage a support ticket and reply to the customer.") as
         body="Five benchmarks with their result files committed. A nightly job fails if a published number no longer matches its source."
         href="/benchmark"
         label="See the benchmarks"
-        secondary={{ href: "/coverage", label: "Coverage and gaps" }}
+        secondary={{ href: "/docs/limits", label: "Known gaps" }}
       />
 
       <h2 id="the-cost">The cost, honestly</h2>

@@ -83,8 +83,7 @@ export default function Page() {
               ))}
             </div>
             <p className="mk-fine" style={{ marginTop: 32 }}>
-              Subscribe with the <a href="/blog/feed.xml">RSS feed</a>, or{" "}
-              <Link href="/live">watch our own agent get attacked every hour</Link>.
+              Subscribe with the <a href="/blog/feed.xml">RSS feed</a>.
             </p>
           </div>
         </section>

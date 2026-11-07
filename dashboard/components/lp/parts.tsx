@@ -7,12 +7,12 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 
-import { FLAT, GROUPS, SECONDARY } from "@/lib/marketing/nav";
+import { FOOTER, HEADER, HEADER_CTA } from "@/lib/marketing/nav";
 import { SESSION_COOKIE } from "@/lib/product/api";
 
 import { Logo } from "@/components/product/Logo";
+import { CopyChip } from "./client";
 import { REPO_URL, SUPPORT_EMAIL } from "@/lib/site";
-import type { VariantSlug } from "@/lib/lp/variants";
 
 
 const GITHUB_PATH =
@@ -34,15 +34,23 @@ export function Arrow() {
   );
 }
 
-export async function LpNav({ slug, home }: { slug: VariantSlug; home?: string }) {
+/** The header on every public page: the home page, the marketing pages, the docs and the blog. */
+export async function LpNav() {
   const signedIn = Boolean((await cookies()).get(SESSION_COOKIE)?.value);
   return (
-    <header className="lp-nav">
+    <header className="lp-nav lp-x">
       <div className="lp-nav-in">
-        <Link href={home ?? `/lp/${slug}`} className="lp-brand" aria-label="AgentFox home">
+        <Link href="/" className="lp-brand" aria-label="AgentFox home">
           <Logo size={22} />
           <span>AgentFox</span>
         </Link>
+        <nav className="lp-nav-links" aria-label="Main">
+          {HEADER.map((it) => (
+            <Link key={it.href} href={it.href}>
+              {it.label}
+            </Link>
+          ))}
+        </nav>
         <div className="lp-nav-cta">
           <a href={REPO_URL} target="_blank" rel="noreferrer" aria-label="Source on GitHub" className="lp-iconbtn">
             <GitHubIcon />
@@ -50,9 +58,24 @@ export async function LpNav({ slug, home }: { slug: VariantSlug; home?: string }
           <Link href={signedIn ? "/app" : "/login"} className="lp-nav-text">
             {signedIn ? "Dashboard" : "Sign in"}
           </Link>
-          <Link href="/docs/quickstart" className="lp-btn lp-btn-primary lp-btn-sm">
-            Get started <Arrow />
+          <Link href={HEADER_CTA.href} className="lp-btn lp-btn-primary lp-btn-sm">
+            {HEADER_CTA.label}
           </Link>
+          <details className="lp-menu">
+            <summary aria-label="Menu">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+                <path d="M4 7h16M4 12h16M4 17h16" />
+              </svg>
+            </summary>
+            <div className="lp-menu-panel">
+              {HEADER.map((it) => (
+                <Link key={it.href} href={it.href}>
+                  {it.label}
+                </Link>
+              ))}
+              <Link href={signedIn ? "/app" : "/login"}>{signedIn ? "Dashboard" : "Sign in"}</Link>
+            </div>
+          </details>
         </div>
       </div>
     </header>
@@ -85,29 +108,23 @@ export const WORKS_WITH = [
   "LiteLLM",
 ];
 
-/**
- * The footer carries the whole site map (lib/marketing/nav.ts, the same source as
- * the sitemap and llms.txt), quietly, so the top of the page can stay minimal.
- */
-export function LpFooter({ slug: _slug }: { slug: VariantSlug }) {
-  const columns = GROUPS.flatMap((g) =>
-    g.sections.map((sec) => ({ heading: sec.heading || g.label, items: sec.items })),
-  );
+/** The footer on every public page. */
+export function LpFooter() {
   return (
-    <footer className="lp-foot">
+    <footer className="lp-foot lp-x">
       <div className="lp-wrap lp-foot-in">
         <div className="lp-foot-brand">
           <span className="lp-brand">
             <Logo size={22} />
             <span>AgentFox</span>
           </span>
-          <p>Runtime guardrails for AI agents. Open source under Apache-2.0, by Nometria.</p>
+          <p>Runtime guardrails for AI agents. Open source under Apache-2.0.</p>
           <a href={`mailto:${SUPPORT_EMAIL}`} className="lp-foot-mail">
             {SUPPORT_EMAIL}
           </a>
         </div>
         <div className="lp-foot-cols">
-          {columns.map((c) => (
+          {FOOTER.map((c) => (
             <div key={c.heading} className="lp-foot-col">
               <span>{c.heading}</span>
               {c.items.map((it) => (
@@ -115,31 +132,41 @@ export function LpFooter({ slug: _slug }: { slug: VariantSlug }) {
                   {it.label}
                 </Link>
               ))}
+              {c.heading === "Resources" && (
+                <a href={REPO_URL} target="_blank" rel="noreferrer">
+                  GitHub
+                </a>
+              )}
             </div>
           ))}
-          <div className="lp-foot-col">
-            <span>Try it</span>
-            {FLAT.map((it) => (
-              <Link key={it.href} href={it.href}>
-                {it.label}
-              </Link>
-            ))}
-            <a href={REPO_URL} target="_blank" rel="noreferrer">
-              GitHub
-            </a>
-          </div>
         </div>
       </div>
       <div className="lp-wrap lp-foot-legal">
         <span>© 2026 Nometria, Inc.</span>
-        <span className="lp-foot-legal-links">
-          {SECONDARY.map((it) => (
-            <Link key={it.href} href={it.href}>
-              {it.label}
-            </Link>
-          ))}
-        </span>
       </div>
     </footer>
+  );
+}
+
+/** The closing block on the home page, the benchmark and the blog. */
+export function LpCta() {
+  return (
+    <section className="lp-cta lp-x">
+      <div className="lp-wrap lp-cta-in">
+        <h2>Try AgentFox on your own agent</h2>
+        <p className="lp-lead">One command finds your agents. It starts in watch mode, so nothing is blocked until you say so.</p>
+        <div className="lp-start">
+          <CopyChip text="uvx agentfox scan" />
+        </div>
+        <div className="lp-actions">
+          <Link href="/docs/quickstart" className="lp-btn lp-btn-primary">
+            Read the quickstart <Arrow />
+          </Link>
+          <a href={REPO_URL} className="lp-btn lp-btn-ghost" target="_blank" rel="noreferrer">
+            View on GitHub
+          </a>
+        </div>
+      </div>
+    </section>
   );
 }

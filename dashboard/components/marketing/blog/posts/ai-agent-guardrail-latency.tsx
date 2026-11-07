@@ -102,7 +102,7 @@ export function Body() {
       <p>
         A whole single-agent turn, four guard calls, adds 179 ms at the median with the default
         layer. The full tables, per step and per scenario, are on the{" "}
-        <Link href="/benchmark/latency">latency benchmark</Link> page.
+        <Link href="/benchmark">benchmark</Link> page.
       </p>
 
       <h2 id="drivers">What moves latency, and what does not</h2>
@@ -127,7 +127,7 @@ export function Body() {
         body="The playground runs AgentFox's checks on text you paste, with no account."
         href="/playground"
         label="Open the playground"
-        secondary={{ href: "/benchmark/latency", label: "Latency benchmark" }}
+        secondary={{ href: "/benchmark", label: "Benchmark" }}
       />
 
       <h2 id="others">Against other guards, on one machine</h2>

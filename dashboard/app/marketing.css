@@ -3478,28 +3478,28 @@
    Those backgrounds and the light-on-navy type are hardcoded, so a
    token swap does not reach them. Dark mode is unchanged. */
 :root[data-theme="light"] .mk-ink-act {
-  --mk-bg: #f3f4f7;
-  --mk-surface: #ffffff;
-  --mk-surface-2: #e7e9ee;
-  --mk-border: #d5d9e0;
-  --mk-border-strong: #c3c8d1;
-  --mk-text: #1d1d1f;
-  --mk-muted: #6e6e73;
-  --mk-faint: #6e6e73;
-  --mk-accent: #c23600;
-  --mk-accent-soft: #fff0e9;
-  --mk-cta: #c23600;
-  --mk-cta-hover: #a32d00;
-  --mk-cta-fg: #ffffff;
-  --mk-good: #1a7f52;
-  --mk-good-soft: #e9f5ef;
-  --mk-stop: #b3261e;
-  --mk-stop-soft: #fceceb;
-  --text: #1d1d1f;
-  --muted: #6e6e73;
-  --border: #d5d9e0;
-  --surface: #ffffff;
-  --bg: #f3f4f7;
+  --mk-bg: var(--af-bg);
+  --mk-surface: var(--af-surface);
+  --mk-surface-2: var(--af-subtle);
+  --mk-border: var(--af-line);
+  --mk-border-strong: var(--af-line-2);
+  --mk-text: var(--af-fg);
+  --mk-muted: var(--af-muted);
+  --mk-faint: var(--af-muted);
+  --mk-accent: var(--af-brand);
+  --mk-accent-soft: color-mix(in srgb, var(--af-brand) 9%, var(--af-bg));
+  --mk-cta: var(--af-brand);
+  --mk-cta-hover: var(--af-brand-press);
+  --mk-cta-fg: var(--af-on-brand);
+  --mk-good: var(--af-ok);
+  --mk-good-soft: color-mix(in srgb, var(--af-ok) 10%, var(--af-bg));
+  --mk-stop: var(--af-err);
+  --mk-stop-soft: color-mix(in srgb, var(--af-err) 10%, var(--af-bg));
+  --text: var(--af-fg);
+  --muted: var(--af-muted);
+  --border: var(--af-line);
+  --surface: var(--af-surface);
+  --bg: var(--af-bg);
   background: var(--mk-bg);
   color: var(--mk-text);
 }
@@ -3511,9 +3511,7 @@
 :root[data-theme="light"] .mk-hero-act,
 :root[data-theme="light"] .cap-hero,
 :root[data-theme="light"] .mk-page-hero {
-  background:
-    radial-gradient(80% 70% at 100% 0%, rgba(253, 73, 1, 0.07), transparent 46%),
-    var(--mk-bg);
+  background: var(--af-bg);
   color: var(--mk-text);
 }
 :root[data-theme="light"] .mk-hero-act .mk-h1,
@@ -3522,7 +3520,7 @@
 :root[data-theme="light"] .pg-h1 { color: var(--mk-text); }
 :root[data-theme="light"] .mk-hero-act .mk-h1 em,
 :root[data-theme="light"] .mk-page-hero .mk-h1 em,
-:root[data-theme="light"] .cap-hero .mk-h1 em { color: var(--mk-accent); }
+:root[data-theme="light"] .cap-hero .mk-h1 em { color: var(--af-muted); }
 :root[data-theme="light"] .mk-hero-act .mk-lede,
 :root[data-theme="light"] .mk-page-hero .mk-lede,
 :root[data-theme="light"] .cap-hero .mk-lede,
@@ -4025,3 +4023,81 @@
 .dg text.dg-t-stop { fill: var(--mk-stop); }
 .dg text.dg-t-good { fill: var(--mk-good); }
 .dg text.dg-t-hold { fill: var(--mk-hold); }
+
+/* ========================================================================
+   The home page's look, on every page that still uses this stylesheet.
+   ========================================================================
+   The home page (app/lp.css) is built on the product's own tokens
+   (af-theme.css): white ground, IBM Plex Sans, rose for the one primary
+   action. These pages were orange and navy on grey, in Archivo, so moving
+   from the home page to the docs felt like moving to another site. Remapping
+   the tokens here restyles every page and component that reads them.
+*/
+.mk {
+  --mk-bg: var(--af-bg);
+  --mk-surface: var(--af-surface);
+  --mk-surface-2: var(--af-subtle);
+  --mk-border: var(--af-line);
+  --mk-border-strong: var(--af-line-2);
+  --mk-text: var(--af-fg);
+  --mk-muted: var(--af-muted);
+  --mk-faint: var(--af-muted);
+  --mk-paper: color-mix(in srgb, var(--af-subtle) 70%, var(--af-bg));
+  --mk-brand: var(--af-brand);
+  --mk-navy: var(--af-fg);
+  --mk-accent: var(--af-brand);
+  --mk-accent-hover: var(--af-brand-press);
+  --mk-accent-fg: var(--af-on-brand);
+  --mk-accent-soft: color-mix(in srgb, var(--af-brand) 9%, var(--af-bg));
+  --mk-cta: var(--af-brand);
+  --mk-cta-hover: var(--af-brand-press);
+  --mk-cta-fg: var(--af-on-brand);
+  --mk-good: var(--af-ok);
+  --mk-good-soft: color-mix(in srgb, var(--af-ok) 10%, var(--af-bg));
+  --mk-stop: var(--af-err);
+  --mk-stop-soft: color-mix(in srgb, var(--af-err) 10%, var(--af-bg));
+  --mk-hold: var(--af-warn);
+  --mk-hold-soft: color-mix(in srgb, var(--af-warn) 10%, var(--af-bg));
+  --mk-ink: #0e0f13;
+  --mk-ink-2: #15161c;
+  --mk-ink-text: #ecedf1;
+  --mk-ink-muted: #b4b8c5;
+  --mk-sans: var(--af-sans);
+  --mk-display: var(--af-sans);
+  --mk-code: var(--af-mono);
+  --mk-shadow-card: none;
+  /* The shared header's column, so page content lines up under the logo. */
+  --wrap: 1200px;
+  --wrap-pad: 32px;
+  letter-spacing: normal;
+}
+.mk-ink-act { --mk-accent: #f0668d; --mk-cta: #f0668d; --mk-cta-hover: #f388a6; --mk-cta-fg: #0e0f13; }
+
+.mk :is(.mk-h1, .mk-h2, .mk-display, .pg-h1) {
+  font-family: var(--af-sans);
+  font-variation-settings: normal;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.mk .mk-h1, .mk .pg-h1 { letter-spacing: -0.03em; line-height: 1.05; }
+.mk :is(.mk-h1, .mk-h2) em { color: var(--af-muted); font-weight: inherit; }
+.mk .mk-btn { border-radius: 8px; font-weight: 500; }
+.mk .mk-btn-outline { color: var(--af-fg); border-color: var(--af-line-2); }
+.mk .mk-btn-outline:hover { background: var(--af-subtle); border-color: var(--af-line-2); }
+.mk .mk-eyebrow, .mk .mk-kicker { color: var(--af-brand); }
+
+/* Page heroes were a dark band with an orange glow. The home page opens on
+   white, so they do too. */
+.mk :is(.mk-page-hero, .cap-hero) { background: var(--af-bg); color: var(--af-fg); border-bottom: 1px solid var(--af-line); }
+.mk :is(.mk-page-hero, .cap-hero) .mk-h1 { color: var(--af-fg); }
+.mk :is(.mk-page-hero, .cap-hero) .mk-h1 em { color: var(--af-muted); }
+.mk :is(.mk-page-hero, .cap-hero) :is(.mk-lede, .mk-fine) { color: var(--af-fg-2); }
+.mk :is(.mk-page-hero, .cap-hero) :is(.mk-kicker, .mk-eyebrow) { color: var(--af-brand); }
+.mk :is(.mk-page-hero, .cap-hero) .mk-btn-outline { color: var(--af-fg); border-color: var(--af-line-2); }
+.mk :is(.mk-wash, .mk-hero-glow) { display: none; }
+
+/* The shared header and footer (components/lp/parts.tsx) keep their own link
+   colours; `.mk a` would otherwise paint them rose. */
+.mk .lp-x a { color: inherit; text-decoration: none; }
+.mk .lp-x .lp-btn-primary { color: var(--af-on-brand); }
+.mk .lp-x .lp-btn-ghost { color: #eceef2; }

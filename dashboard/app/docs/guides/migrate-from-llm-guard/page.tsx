@@ -449,7 +449,7 @@ CHAIN INTACT — 44 entries verified (seq 1..44)`}</Output>
         of three more false positives. Twenty cases is a small sample, so read it as a
         trade-off, not a ranking. The method and the other tiers are on the{" "}
         <Link href="/benchmark">benchmark page</Link>, and where we lose to other tools is
-        on <Link href="/compare">the comparison page</Link>.
+        on <Link href="/benchmark">the benchmark</Link>.
       </p>
 
       <h2 id="limits">What you lose</h2>

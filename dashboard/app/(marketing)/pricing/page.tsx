@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { publicPageMetadata, SUPPORT_EMAIL } from "@/lib/site";
 import { MarketingNav } from "@/components/marketing/nav";
 import { Footer } from "@/components/marketing/sections";
-import { Editions, OpenSourcePromise, WhyOpen } from "@/components/marketing/editions";
+import { Editions, OpenSourcePromise } from "@/components/marketing/editions";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +10,7 @@ export const dynamic = "force-dynamic";
  * /pricing exists because a visitor and a crawler both look for it, and a site with
  * no such URL reads as a site hiding the answer.
  *
- * Deliberately almost no copy of its own. `Editions` and `WhyOpen` in
+ * Deliberately almost no copy of its own. `Editions` in
  * components/marketing/editions.tsx are the single source of truth for every
  * commercial claim, and the homepage renders the same two components. Writing a
  * second set of words here is how the homepage and this page end up disagreeing
@@ -45,21 +44,15 @@ export default async function Pricing({
       <main>
         <section className="mk-section mk-page-hero mk-ink-act">
           <div className="mk-wrap">
-            <h1 className="mk-h1 mk-up mk-d1">
-              Free to self-host, <em>forever</em></h1>
+            <h1 className="mk-h1 mk-up mk-d1">Pricing</h1>
             <p className="mk-lede mk-up mk-d2" style={{ marginTop: 20 }}>
-              Free to self-host, under Apache-2.0. The hosted preview is free while
-              it lasts, and nothing on this site is priced.
-            </p>
-            <p className="mk-fine mk-up mk-d3" style={{ marginTop: 18 }}>
-              Questions about a rollout? <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>, or
-              see <Link href="/support">how to get help</Link>.
+              Free to self-host under Apache-2.0. The hosted preview is free too. Questions?{" "}
+              <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
             </p>
           </div>
         </section>
         <Editions notice={waitlist_notice} error={waitlist_error} />
         <OpenSourcePromise />
-        <WhyOpen />
       </main>
       <Footer />
     </div>
