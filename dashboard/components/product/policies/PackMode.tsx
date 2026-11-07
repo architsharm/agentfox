@@ -73,7 +73,7 @@ export function PackMode({
             })
           }
         >
-          {busy ? "Checking…" : "Start enforcing"}
+          {busy ? "Checking…" : "Start blocking"}
         </button>
       ) : (
         <span className="k-preview k-preview-inline">
@@ -91,7 +91,7 @@ export function PackMode({
               })
             }
           >
-            Enforce
+            Start blocking
           </button>
           <button className="k-btn-ghost" onClick={() => setSim(null)}>
             Cancel

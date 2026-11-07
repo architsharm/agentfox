@@ -732,3 +732,19 @@ def test_the_download_size_is_read_from_the_registry_not_written_down(monkeypatc
     # No registry, no Docker: a phrase that is never wrong.
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: types.SimpleNamespace(stdout=""))
     assert targets.image_download_size("img") == "several GB"
+
+
+def test_up_adds_auto_to_a_framework_agent_with_no_direct_model_call(tmp_path):
+    """A LangGraph app calls the model through LangChain, so the scan counts no model
+    call; auto() still governs it, and `up` must offer it rather than skip it."""
+    root = tmp_path / "graph-bot"
+    root.mkdir()
+    (root / ".git").mkdir()
+    (root / "main.py").write_text(
+        "from langgraph.prebuilt import create_react_agent\n\n"
+        "support = create_react_agent(model='openai:gpt-4o', tools=[], name='support')\n\n"
+        "if __name__ == '__main__':\n    support.invoke({'messages': []})\n"
+    )
+    result = _up(str(root), "--yes")
+    assert result.exit_code == 0, result.output
+    assert "agentfox.auto(" in (root / "main.py").read_text()

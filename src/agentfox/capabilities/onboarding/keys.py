@@ -1,6 +1,12 @@
-"""The setup key `agentfox init --key` presents.
+"""The key `agentfox init --key` presents.
 
-It is an operator token in everything but reach (``platform/identity/operators``):
+The card makes a workspace API key (``nom_api_``): the one key that connects a
+repository, sends its app's traffic (`agentfox.auto()` reads it from the
+``.agentfox/agentfox.env`` init writes) and works for the CLI, as a Sentry DSN does.
+Any live workspace key whose owner may change the registry is accepted, and so is a
+setup key from before (``afi_``), which only ever reached the runner routes.
+
+The older setup key is an operator token in everything but reach (``platform/identity/operators``):
 stored as a hash with a findable prefix, shown in full once when it is made, expiring
 (``onboarding_key_ttl_days``), revocable from the token list or by rotating it, and
 written to the audit log when it is issued or revoked. Its ``afi_`` prefix keeps it
@@ -25,6 +31,7 @@ from agentfox.core.models import ApiToken, OnboardingSession, User, utcnow
 from agentfox.core.tenancy import system_scope
 from agentfox.platform.identity.keyhash import hash_key
 from agentfox.platform.identity.operators import (
+    API_KEY_PREFIX,
     _token_is_live,
     issue_token,
     prefix_length,
@@ -33,6 +40,8 @@ from agentfox.platform.identity.operators import (
 )
 
 SETUP_KEY_PREFIX = "afi_"
+#: What the card makes now: a workspace key. `SETUP_KEY_PREFIX` keys still work.
+KEY_PREFIXES = (API_KEY_PREFIX, SETUP_KEY_PREFIX)
 #: The ``ApiToken.name`` every setup key carries: how they are told from operator tokens.
 SETUP_KEY_NAME = "agentfox init setup key"
 
@@ -73,7 +82,7 @@ def mint(
         ttl_days=get_settings().onboarding_key_ttl_days or None,
         actor=actor,
         reason=reason,
-        prefix=SETUP_KEY_PREFIX,
+        prefix=API_KEY_PREFIX,
     )
     row.init_key = token.id
     session.flush()
@@ -135,6 +144,8 @@ def resolve(
     Raises ``LookupError`` for a key that matches nothing live, ``SetupKeyRefused``
     for one whose user may no longer use it.
     """
+    if raw.startswith(API_KEY_PREFIX):
+        return _resolve_workspace_key(session, raw, allowed_roles=allowed_roles)
     if not raw.startswith(SETUP_KEY_PREFIX):
         raise LookupError(raw)
     token = resolve_token_record(session, raw, prefix=SETUP_KEY_PREFIX)
@@ -158,4 +169,29 @@ def resolve(
         )
     if row is None:  # a token named like a setup key, minted some other way
         raise LookupError(raw)
+    return token, user, row
+
+
+def _resolve_workspace_key(
+    session: Session, raw: str, *, allowed_roles: Collection[str]
+) -> tuple[ApiToken, User, OnboardingSession]:
+    """A workspace key at the runner routes: its owner, held to the same rules."""
+    from agentfox.capabilities.onboarding import sessions
+
+    token = resolve_token_record(session, raw, prefix=API_KEY_PREFIX)
+    if token is None:
+        raise LookupError(raw)
+    with system_scope("onboarding key owner", routine=True):
+        user = session.get(User, token.user_id)
+    if user is None or not user.active:
+        raise SetupKeyRefused(
+            "The account this key belongs to is no longer active. Ask an admin for access."
+        )
+    if user.role not in allowed_roles:
+        raise SetupKeyRefused(
+            f"This key's owner has the '{user.role}' role, which can't add agents. "
+            "Ask someone who can to make a new key."
+        )
+    with system_scope("onboarding key owner", routine=True):
+        row = sessions.ensure(session, user)
     return token, user, row

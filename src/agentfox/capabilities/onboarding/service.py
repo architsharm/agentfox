@@ -442,7 +442,8 @@ def impact_for(tool: dict[str, Any], kinds: dict[str, str]) -> str:
 
 
 #: The basic guardrails, added with one click after the first attack test: what users
-#: send and what goes back to them, nothing on tools. The test run again checks the
+#: send, what the agent reads from its tools and documents, and what goes back to
+#: them. Not tool permissions; those are set up from the map. The test run again checks the
 #: project's real policies, these among them, through the server's enforcement path
 #: (``redteam.dry_run_check``); a rule that only watches is reported as one that would
 #: stop the attack once it blocks. In production they watch until simulated and
@@ -457,6 +458,17 @@ BASIC: tuple[tuple[str, str, tuple[str, ...], str, float, str], ...] = (
         ("input",),
         "INJECTION",
         0.7,
+        "block",
+    ),
+    (
+        # The baseline pack's `injection.indirect`: an instruction hidden in a page or
+        # a tool result is where most real attacks arrive, and the input rule above
+        # never sees it.
+        "basic.read.attacks",
+        "Block instructions hidden in what the agent reads (tool results, documents)",
+        ("tool_result", "retrieved"),
+        "INJECTION",
+        0.6,
         "block",
     ),
     (
@@ -528,8 +540,14 @@ def basic_guardrails(session: Any, slug: str, *, actor: str, may_enforce: bool) 
     They go live the way any policy does (``routes/policy.py`` ``change_mode``): saved
     and bound watching, and switched to blocking only for a caller who may change
     production policy (``may_enforce``) and only once these exact rules have been
-    simulated against recorded traffic (``simulation_for``). Otherwise they watch, and
-    the Policies page's simulate-then-promote finishes the job.
+    simulated against recorded traffic (``simulation_for``).
+
+    With no simulation yet, this runs one, as the Policies page would: replayed
+    against the agent's recorded production traffic. When that traffic has nothing
+    the rules would stop or hide (a new agent has none), there is no real user for
+    them to block and they go live blocking, so the test run again shows what they
+    stop. When they would change something a real user sent, they watch, and the
+    Policies page's simulate-then-promote finishes the job.
     """
     from sqlalchemy import select
 
@@ -561,8 +579,15 @@ def basic_guardrails(session: Any, slug: str, *, actor: str, may_enforce: bool) 
             PolicyVersion.policy_id == policy.id, PolicyVersion.version == published.version
         )
     )
-    if version is None or simulation_for(session, version) is None:
+    if version is None:
         return "observe"
+    if simulation_for(session, version) is None:
+        from agentfox.platform.policy.simulate import record_simulation, simulate
+
+        diff = simulate(session, doc, agent_slug=slug)
+        record_simulation(session, doc, diff, run_by=actor, scope={"agent": slug})
+        if diff.would_stop or diff.would_hide or diff.newly_blocked or diff.newly_escalated:
+            return "observe"
     set_mode(session, doc.key, "enforce", version=published.version)
     return "enforce"
 

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import typer
 from rich.console import Console
@@ -27,6 +28,11 @@ from rich.table import Table
 from agentfox.apps.cli._style import SEVERITY_COLOUR, short_id
 
 console = Console()
+
+
+def plural(n: int, word: str) -> str:
+    return f"{n} {word}{'' if n == 1 else 's'}"
+
 
 _CONFIG_TEMPLATE = """# AgentFox configuration.
 # Everything here has a safe default; this file exists so the defaults are visible
@@ -354,12 +360,32 @@ def check(
     console.print(f"[bold]Scanned[/] {report.files_scanned} files in [dim]{report.root}[/]")
     if report.frameworks:
         console.print(f"  [dim]built on:[/] {', '.join(report.frameworks)}")
-    # A multi-agent system is proposed as one agent per agent; say so here, with who
-    # hands work to whom, so the proposals it produces are not a surprise.
+    # The agents by name, one line each, single-agent repos included: "we found your
+    # agent" is the first thing a newcomer wants confirmed. A multi-agent system is
+    # proposed as one agent per agent, so who hands work to whom follows.
     from rich.markup import escape
 
-    for i, line in enumerate(report.agent_summary()):
-        console.print(f"  [dim]{'agents:' if i == 0 else '       '}[/] {escape(line)}")
+    if report.agents:
+        console.print(f"\n  [bold]Found {plural(len(report.agents), 'agent')}[/]")
+        for spec in report.agents[:8]:
+            detail = " · ".join(
+                part
+                for part in (
+                    spec.framework,
+                    spec.model,
+                    plural(len(spec.tools), "tool") if spec.tools else "",
+                )
+                if part
+            )
+            console.print(
+                f"    [bold]{escape(spec.name)}[/]  {escape(detail)}  "
+                f"[dim]{escape(spec.file)}:{spec.line}[/]"
+            )
+        if len(report.agents) > 8:
+            more = len(report.agents) - 8
+            console.print(f"    [dim]... and {more} more; `--json` lists them all[/]")
+        for line in report.agent_summary()[1:]:
+            console.print(f"    [dim]{escape(line)}[/]")
 
     calls = len(report.model_calls)
     ungoverned = len(report.ungoverned)
@@ -445,13 +471,37 @@ def check(
 
     console.print()
     console.print(
-        Panel(report.next_step(), border_style="cyan", title="[bold]Next[/]", title_align="left")
+        Panel(_next_action(report), border_style="cyan", title="[bold]Next[/]", title_align="left")
     )
 
     maybe_submit_report(report, source="check", explicit=submit, console=console)
 
     if fail_on_ungoverned and report.ungoverned:
         raise typer.Exit(1)
+
+
+def _next_action(report: Any) -> str:
+    """The scan's Next panel: one command that acts on what was found, then the why.
+
+    A scan that ends in advice ("add auto() to your entry point") leaves the reader
+    to work out the steps; `agentfox up` already does them, in watch mode.
+    """
+    if report.inconclusive or not (report.agents or report.tools or report.governable):
+        return report.next_step()
+    why = report.next_step(suggest_auto=False)
+    count = len(report.agents)
+    what = "this agent" if count == 1 else f"these {count} agents" if count else "this repository"
+    # Said only when `up` will offer it: Python call sites auto() patches.
+    auto = (
+        " adds `agentfox.auto()` to your entry point,"
+        if any(site.file.endswith(".py") for site in report.ungoverned)
+        else ""
+    )
+    return (
+        f"Start watching {what}: [bold cyan]agentfox up[/]\n"
+        f"[dim]It registers your agents, declares their tools,{auto} and starts in watch "
+        "mode: nothing is blocked until you say so.[/]\n\n" + why
+    )
 
 
 def doctor(
@@ -687,8 +737,9 @@ def doctor(
         add(
             "ok",
             "providers",
-            "offline only (echo). No model call can leave this machine — set "
-            "AGENTFOX_ALLOW_EGRESS=1 and a key to change that.",
+            "offline only (echo) for the gateway's own proxy routes. Calls your app "
+            "makes itself (agentfox.auto(), the SDK) still go to its provider; set "
+            "AGENTFOX_ALLOW_EGRESS=1 and a key to let the gateway proxy calls too.",
         )
     else:
         add("ok", "providers", f"{', '.join(sorted(providers))}")
