@@ -245,7 +245,7 @@ export function AttackTests({ project, paused }: { project: string; paused?: str
         <div className="at-next">
           <div>
             <strong>Add basic guardrails</strong>
-            <p>Blocks attacks in what users send; hides personal data and secrets in replies. Nothing on tools.</p>
+            <p>Blocks attacks in what users send and in what the agent reads; hides personal data and secrets in replies.</p>
           </div>
           <button type="button" className="at-btn" onClick={addBasic} disabled={busy || !here || Boolean(paused)} title={paused || undefined}>
             Add and test again

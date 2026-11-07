@@ -164,7 +164,12 @@ def connect(key: str, server: str, path: str | Path = ".", console: Console | No
         console.print(
             "[green]●[/green] Connected. Open AgentFox to add the agents it found and see them."
         )
-        connect_live_traffic(console, root, server, key, connected.get("registered") or [])
+        # The server keeps no file paths; which file each agent is in is known here.
+        files = {a.get("name"): a.get("file") for a in structure["agents"]}
+        registered = [
+            {**a, "file": files.get(a.get("name"))} for a in connected.get("registered") or []
+        ]
+        connect_live_traffic(console, root, server, key, registered)
     else:
         # Connected, but nothing to show: saying "your agents are set up" here was false.
         console.print(
@@ -287,7 +292,7 @@ def _entry_file(root: Path, registered: list[dict[str, Any]]) -> tuple[Path, str
     candidates = [
         (root / a["file"], a["slug"])
         for a in registered
-        if a.get("file", "").endswith(".py") and (root / a["file"]).is_file()
+        if (a.get("file") or "").endswith(".py") and (root / a["file"]).is_file()
     ]
     if not candidates:
         return None

@@ -61,3 +61,46 @@ def test_an_old_setup_key_changes_nothing(tmp_path):
         connect_live_traffic(Console(), root, "https://gw", "afi_old", REGISTERED, ask=True) is None
     )
     assert not (root / ".agentfox").exists()
+
+
+def test_connect_finds_the_agents_file_itself_and_names_it_as_the_dashboard_does(
+    client, tmp_path, monkeypatch
+):
+    """Through the real connect route: the server keeps no file paths, so `init` looks up
+    the file of each agent the server registered, by name, in its own map. (It crashed
+    on the missing path when the server's reply was trusted for it.)"""
+    from sqlalchemy import select
+
+    from agentfox.capabilities.onboarding import client as init_client
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Agent
+    from tests.conftest import as_user
+
+    class Api:
+        def __init__(self, server, key):
+            self.key = key
+
+        def post(self, path, body):
+            response = client.post(
+                f"/api/onboarding{path}", json=body, headers={"Authorization": f"Bearer {self.key}"}
+            )
+            response.raise_for_status()
+            return response.json()
+
+    def stop(_seconds):
+        raise KeyboardInterrupt
+
+    key = client.get("/api/onboarding/key", headers=as_user("admin@example.com")).json()["value"]
+    root = _repo(tmp_path)
+    monkeypatch.setattr(init_client, "_Api", Api)
+    monkeypatch.setattr(init_client.time, "sleep", stop)
+    console = Console(record=True, width=200)
+    init_client.connect(key, "http://testserver", root, console=console)
+
+    out = console.export_text()
+    # No terminal in tests, so the line is shown rather than added, under the slug the
+    # server registered for the agent init mapped.
+    with session_scope() as session:
+        slugs = list(session.scalars(select(Agent.slug).where(Agent.status == "draft")))
+    assert any(f'agentfox.auto("{slug}")' in out for slug in slugs), out
+    assert (root / ".agentfox" / "agentfox.env").is_file()
