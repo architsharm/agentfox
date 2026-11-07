@@ -11,6 +11,14 @@ the file it came from.
 
 ## [Unreleased]
 
+### Added
+
+- **LiteLLM proxy guardrail.** One block in a LiteLLM proxy's `config.yaml`
+  (`agentfox.frameworks.litellm_guardrail.AgentFoxGuardrail`) checks every agent behind
+  the proxy: inputs and tool results before the model, each requested tool call (with
+  the conversation, so copied-in arguments are tainted) and the reply after it,
+  streamed tool calls included. Refuses when the gateway is unreachable unless
+  `fail_open: true`. Guide: `/docs/guides/litellm`.
 ### Fixed
 
 - **A rule you write can be switched on from the UI.** Policies → Libraries shows

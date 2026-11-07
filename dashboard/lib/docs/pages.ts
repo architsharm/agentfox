@@ -30,6 +30,7 @@ export const DOC_NAV: DocSection[] = [
       { href: "/docs/guides/python-auto", label: "One line in Python", description: "agentfox.auto(): observe, then enforce." },
       { href: "/docs/guides/contain-tool-calls", label: "Contain tool calls", description: "Declarations, grants, provenance, learned permissions." },
       { href: "/docs/guides/langgraph", label: "LangGraph", description: "Guard the retrieval, model and tool nodes." },
+      { href: "/docs/guides/litellm", label: "LiteLLM proxy", description: "One config block; every agent behind the proxy is checked." },
       { href: "/docs/guides/mcp", label: "MCP servers", description: "Scan configs, pin tools, govern calls." },
       { href: "/docs/guides/coding-agents", label: "Coding agents", description: "Claude Code hooks and the coding-agent pack." },
       { href: "/docs/guides/codex", label: "Codex CLI", description: "Codex hooks: what is governed and what is not." },
