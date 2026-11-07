@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
-import { MAP_PROJECT_COOKIE, NEW_PROJECT, PROJECT_COOKIE_AGE } from "@/lib/product/project";
+import { MAP_PROJECT_COOKIE, NEW_PROJECT, PROJECT_COOKIE_AGE, defaultProject } from "@/lib/product/project";
 
 /** A project: one repository `agentfox init` mapped, and how many agents are in it. */
-export type ProjectOption = { project: string; agents: number; slugs?: string[] };
+export type ProjectOption = { project: string; agents: number; slugs?: string[]; members?: { status?: string }[] };
 
 /**
  * The project at the top of the sidebar. The dashboard is always in exactly one:
@@ -51,7 +51,7 @@ export function ProjectSwitcher({ projects, current }: { projects: ProjectOption
   }, [open]);
 
   const adding = current === NEW_PROJECT;
-  const here = adding ? undefined : (projects.find((p) => p.project === current) ?? projects[0]);
+  const here = adding ? undefined : (projects.find((p) => p.project === current) ?? defaultProject(projects));
   const agents = (n: number) => (n === 1 ? "1 agent" : `${n} agents`);
 
   const go = (project: string) => {

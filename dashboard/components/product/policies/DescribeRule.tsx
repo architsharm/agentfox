@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { callJson } from "@/components/kit/Act";
@@ -124,7 +125,12 @@ export function DescribeRule({ agent, tools = [] }: { agent?: string; tools?: st
               )}
               <div>
                 {added.includes(r.key) ? (
-                  <span className="k-pill k-pill-ok">Added · watching</span>
+                  <span className="k-pills" style={{ gap: 8 }}>
+                    <span className="k-pill k-pill-ok">Added · watching</span>
+                    <Link className="k-btn" href="/app/policies?tab=libraries&open=custom">
+                      Start blocking in Your rules
+                    </Link>
+                  </span>
                 ) : r.kind === "threshold_ladder" ? (
                   <button className="k-btn-primary" disabled={busy} onClick={() => add(r)}>
                     Add rule

@@ -211,6 +211,12 @@ export function CustomRule({
           <span className="k-pill k-pill-ok">
             {editing ? "Saved" : "Added"} · {saved.mode === "enforce" ? "enforcing" : "watching"}
           </span>
+          {saved.mode !== "enforce" && (
+            // New rules join the Your rules library, watching; it is switched on there.
+            <Link className="k-btn-primary" href="/app/policies?tab=libraries&open=custom">
+              Start blocking in Your rules
+            </Link>
+          )}
           <Link className="k-btn" href={`/app/policies/rules/${encodeURIComponent(saved.ruleId)}`}>
             Open rule
           </Link>

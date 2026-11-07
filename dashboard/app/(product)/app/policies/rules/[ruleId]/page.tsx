@@ -66,9 +66,17 @@ export default async function RulePage({ params, searchParams }: { params: Promi
           </>
         }
         actions={
-          <Link className="k-btn" href={tabHref("tune")}>
-            Change
-          </Link>
+          <>
+            {/* A rule you wrote is switched on with its library, Your rules. */}
+            {mode !== "enforce" && rule?.packs.some((p) => p.key === "custom") && (
+              <Link className="k-btn-primary" href="/app/policies?tab=libraries&open=custom">
+                Start blocking
+              </Link>
+            )}
+            <Link className="k-btn" href={tabHref("tune")}>
+              Change
+            </Link>
+          </>
         }
       />
       <Tabs items={tabs.map((t) => ({ ...t, href: tabHref(t.key) }))} active={tab} />
