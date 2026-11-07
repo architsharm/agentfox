@@ -3,25 +3,33 @@
 **Status: derived documentation, not source of truth.** This document explains the system
 architecture in HLD form for engineers, reviewers and prospective adopters who want the
 shape of the system before the detail. It is synthesized from the codebase (ground-truthed
-by direct inspection, last re-checked 2026-10-06) and from [docs/design/PRD.md](../design/PRD.md), which remains the
+by direct inspection, last re-checked 2026-11-07) and from [docs/design/PRD.md](../design/PRD.md), which remains the
 canonical product document — if the two disagree, re-run the check this document describes
 and trust the code. Companion documents: [docs/architecture/low-level-design.md](low-level-design.md) (module/class/API/schema
-detail), [docs/design/production-readiness-review.md](../design/production-readiness-review.md) (gaps),
+detail), [docs/design/gap-analysis.md](../design/gap-analysis.md) (what is still open),
 [docs/design/competitor-analysis.md](../design/competitor-analysis.md) (market position).
 
 ---
 
 ## 1. What this system is
 
-AgentFox is a **governance and assurance layer for AI agents that runs inline, enforces
-policy, and proves what happened** — installed as a library into an agent's own process
-(`pip install agentfox` + `agentfox.auto()`, or a LangGraph decorator), not procured as a
-platform a team integrates against from the outside. A self-hosted control plane (gateway +
-API + dashboard) is what a team graduates to once it has enough agents that "check the logs"
-stops working — not the starting point.
+AgentFox is a **governance and security control plane for AI agents**. It does five jobs:
+**discover** the agents, tools, MCP servers and skills a team has; **govern** what each may do
+with least-privilege grants; **protect** them at runtime (prompt injection, personal data,
+secrets, unsafe actions); **test** them with attack suites; and **prove** what happened with a
+verifiable audit trail and compliance evidence. Its lead promise is guardrails that do not block
+real customers: everything starts by watching, and a rule blocks only after its effect on recorded
+traffic has been simulated.
 
-It answers six questions, each owned by a **pillar**, each pillar's data flowing into the
-next:
+It runs inline, in the agent's own process (`agentfox.auto()`, a framework adapter) or in front of
+it (the gateway, a LiteLLM proxy, a platform's tool webhook), against a control plane (gateway,
+API and dashboard) that is self-hosted or AgentFox Cloud. The usual first step is the dashboard's
+setup card and `agentfox init --key`, which maps a repository statically, adds its agents and runs
+an attack test on the developer's machine before and after the basic guardrails.
+
+The engineering is organised by **pillar**. The first six answer six questions, each pillar's data
+flowing into the next (discover is pillar 1; govern is 2 and 12; protect is 3, 9 and 10; test is
+4; prove is 5 and 6):
 
 | # | Pillar | Question it answers | Built on |
 |---|---|---|---|
@@ -119,18 +127,18 @@ Four deployable units, one shared Python package:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  src/agentfox/  (the package — subpackages only: core, jobs,         │
-│  discovery, registry, runtime, containment, grounding, detection,    │
-│  policy, business, identity, prove, evaluation, improvement,         │
-│  monitoring, gateway, cli, hooks, integrations, sdk, providers —     │
-│  see low-level-design.md §1 and ARCHITECTURE.md's code map)          │
+│  src/agentfox/  (one package in layers: core < platform <           │
+│  capabilities < runtime < frameworks, harnesses, hooks, exporters   │
+│  < apps; see low-level-design.md §1 and ARCHITECTURE.md's code map) │
+│  + ee/src/agentfox_ee/  (AgentFox Enterprise, plugged in through    │
+│  the agentfox.extensions entry point; never imported by the core)   │
 └─────────────────────────────────────────────────────────────────────┘
         │ imported by all four of:
         ▼
 ┌───────────────┐  ┌────────────────────┐  ┌──────────────────┐  ┌───────────────────┐
 │  CLI           │  │  Gateway process    │  │  Client library   │  │  Dashboard          │
 │  `agentfox`    │  │  FastAPI app        │  │  agentfox.auto()  │  │  (Next.js)          │
-│  binary        │  │  (gateway/app.py)   │  │  or AgentFoxGuard │  │                     │
+│  binary        │  │  (apps/gateway/app) │  │  or AgentFoxGuard │  │                     │
 │  (Typer);      │  │  serves BOTH the    │  │  monkey-patches   │  │  Client of the API, │
 │                │  │  inline proxy       │  │  the agent's own  │  │  no privileged      │
 │  wraps every   │  │  (/v1/*) and the    │  │  process in-place │  │  back-channel       │
@@ -187,8 +195,8 @@ framework and no client-state library — plain CSS and hand-built components
 
 ## 5. Integration surfaces
 
-Three ways to adopt, explicitly designed to be additive and to meet a team where it already is
-(`docs/design/PRD.md` §7.1):
+Several ways to adopt, each additive and each meeting a team where it already is
+(`docs/design/PRD.md` §7.1 named the first four):
 
 | Surface | How it's used | What it gives you | Cost to adopt |
 |---|---|---|---|
@@ -196,11 +204,17 @@ Three ways to adopt, explicitly designed to be additive and to meet a team where
 | **LangGraph decorators** (`AgentFoxGuard`) | `guard.model_node(...)`, `guard.retrieval_node(...)`, `guard.tool_node(...)` wrap existing graph nodes | Same enforcement, plus tool-call gating *before* the wrapped function body runs, and indirect-injection scanning on retrieval output specifically | Named **the primary adoption path** — 11/11 surveyed senior AI engineers use LangGraph |
 | **Inline gateway proxy** | Point an OpenAI/Anthropic client's `base_url` at the gateway's `/v1/chat/completions` or `/v1/messages` | Works for non-Python stacks and teams that can't touch application code at all | Config change only |
 | **OTel ingestion** (`POST /v1/traces`) | Passive, zero-integration — the gateway just observes spans already being emitted | Pillars 1 (discovery) and 5 (audit) for free, no enforcement | Zero code change, but no blocking capability |
+| **Guard API** (`/v1/guard/*`, the TypeScript SDK) | Ask before each tool call or about a piece of content, from any language | The same decision as in process; `auto()` with an account key uses these routes | A call per check |
+| **OpenAI Agents SDK** | `agentfox_input_guardrail`, `agentfox_output_guardrail`, `guarded_function_tool` | The SDK's own guardrail objects; a stopped tool call returns a refusal to the model | A few lines |
+| **LiteLLM proxy guardrail** | One block in the proxy's `config.yaml` (`frameworks/litellm_guardrail.py`) | Every agent behind the proxy: inputs, each requested tool call (with taint from the conversation) and the reply | Config change only |
+| **Platform hooks** (`/v1/hooks/vapi`, `/retell`, `/copilot-studio`; the AgentCore interceptor Lambda) | Point the platform's pre-tool URL at the gateway | Tool calls of hosted voice and agent platforms decided before they run, answered in the platform's format; allowed calls forwarded to the registered tool server | Register a connection |
+| **Coding-agent hooks** (Claude Code, Codex) | `agentfox admin hooks install --write` | Each prompt and tool call of the coding agent, through a warm local daemon | One command |
+| **MCP governor** | `McpGovernor` or `POST /v1/mcp/call` | Each MCP tool call, with the listing pinned against its reviewed definition | Wrap the client |
 
 The SDK and LangGraph paths converge on one call: both eventually call
 `Enforcer.preflight()` (`src/agentfox/runtime/enforcement/completion.py`), and every surface
-(the gateway, the SDK, the MCP governor, the coding-agent hook daemon) ends in
-`Enforcer.evaluate()`. This matters architecturally: there is exactly one enforcement code
+(the gateway and its platform hooks, the SDK, the MCP governor, the coding-agent hook daemon)
+ends in `Enforcer.evaluate()`. This matters architecturally: there is exactly one enforcement code
 path, not two parallel implementations that could silently drift (a bug that was fixed once,
 not designed in from the start).
 
@@ -286,7 +300,8 @@ runner, so that a change nobody routed through the gateway still surfaces as a f
                                          Slack, if configured      ◄────────────┘
 ```
 
-- **Monitors** (`capabilities/monitoring/`). A `Monitor` watches one connected source: a GitHub repository,
+- **Monitors** (AgentFox Enterprise, `ee/src/agentfox_ee/monitoring/`; snapshot diffs and the
+  GitHub helpers stay in `capabilities/monitoring/`). A `Monitor` watches one connected source: a GitHub repository,
   a hosted API's OpenAPI spec, a remote MCP server's tool listing, or a deployed agent (live
   probes). Each run re-reads the source, diffs it against the previous run's snapshot, raises
   findings for what appeared (a new tool or MCP server, removed governance, a lethal trifecta, a
@@ -304,8 +319,8 @@ runner, so that a change nobody routed through the gateway still surfaces as a f
   thing against the demo agent in its own tenant, and is off unless `AGENTFOX_SHOWCASE_ENABLED`
   is set.
 - **Scheduled jobs** (`platform/jobs/`). Per-tenant `JobSchedule` rows fill the queue (canary
-  advancement, compliance recompute, drift, escalation scan, learned-permission proposals,
-  monitors, probes); the runner recovers stuck jobs and drains what is due. Nothing periodic
+  advancement, drift, escalation scan, learned-permission and tuning proposals, live probes,
+  retention, and with Enterprise compliance recompute and monitors); the runner recovers stuck jobs and drains what is due. Nothing periodic
   runs unless something calls the runner: without a configured cron secret the endpoint
   answers 503, and on a self-hosted install `agentfox admin jobs run-due` belongs in the host's
   own scheduler.
@@ -330,7 +345,7 @@ deployment allows private hosts, bodies read under a size cap.
 | Policy engine | Native deterministic evaluator (default) or OPA/Rego (optional sidecar, falls back to native if unreachable) | `platform/policy/engine.py`, `platform/policy/opa.py` |
 | PII/secrets detection | Native regex/NER, Presidio (Microsoft, MIT) | `capabilities/detection/adapters/presidio.py` |
 | Safety/injection classifiers | Native lexicon (default, zero-weights), Granite Guardian (IBM, Apache-2.0), a two-model ensemble (`leolee99/PIGuard` + `protectai/deberta` backstop) | Model weights are an opt-in download, not bundled |
-| Rails / structured validation | NeMo Guardrails (NVIDIA), Guardrails AI and its Hub validators — all optional | `capabilities/detection/adapters/rails.py`, `capabilities/detection/adapters/hub.py` |
+| Rails / structured validation | About seventy Guardrails AI validators ported as native code (Apache-2.0, no install); NeMo Guardrails (NVIDIA) and your own Guardrails AI Guard as optional adapters | `capabilities/detection/validators/`, `capabilities/detection/adapters/rails.py`, `capabilities/detection/adapters/hub.py` |
 | Evaluation | Native runner (primary), Ragas adapter (optional) | promptfoo demoted to reference-only after its acquisition by OpenAI, Mar 2026 |
 | Red-teaming | 22 native probes (OWASP LLM Top 10 / MITRE ATLAS mapped), Garak (NVIDIA) and PyRIT (Microsoft) as optional wrapped runners | `capabilities/evaluation/redteam.py` |
 | SQL/action analysis | sqlglot (MIT, zero-dependency) | `capabilities/detection/actions.py` |
@@ -338,9 +353,9 @@ deployment allows private hosts, bodies read under a size cap.
 | Auth (credentials) | argon2-cffi (password/credential hashing), `cryptography` (Fernet, at-rest encryption of connected-integration tokens) | Core deps, not optional — same reasoning as each other |
 | Model providers | `echo` (offline default), OpenAI, Anthropic, Azure OpenAI, Bedrock, Vertex, LiteLLM | `platform/providers/` — the `ModelProvider` seam (§2) |
 | Frontend | Next.js 15, React 19, TypeScript 5.7 | No CSS framework, no state-management library |
-| Deployment | Docker Compose (self-host, default), Vercel serverless (`api/`, hosted trial path) | See §10 for the architectural risk in running both |
+| Deployment | Docker Compose or Render blueprint (self-host), Vercel serverless (`api/`, the AgentFox Cloud gateway) with the dashboard on Render; an optional model server for model-backed detectors (`agentfox serve models`, `deploy/model-server/`) | See §10 for the architectural risk in running both |
 | Observability export | Prometheus (`/metrics`, unauthenticated by design), SIEM export (OTLP/JSONL/CEF/LEEF/webhook) | `exporters/prometheus.py`, `exporters/siem.py` |
-| Scheduling & alerting | In-process job queue persisted in the database; triggered by a cron call or `agentfox admin jobs run-due`; signed finding webhook and Slack incoming webhooks | `platform/jobs/`, `capabilities/monitoring/`, `core/webhooks.py` — no external queue backend |
+| Scheduling & alerting | In-process job queue persisted in the database; triggered by a cron call or `agentfox admin jobs run-due`; signed finding webhook, and Slack incoming webhooks (Enterprise) | `platform/jobs/`, `core/webhooks.py`, `ee/src/agentfox_ee/monitoring/alerts.py` — no external queue backend |
 | Outbound fetches | httpx through `core/outbound.py` (address vetting, pinned connection, size caps) | Used by monitors, live probes, hosted-API discovery and provenance fetches |
 
 ---
@@ -370,8 +385,8 @@ runtime egress by default, explicitly "the default and only MVP deployment mode"
 (`docs/architecture/low-level-design.md` §14 has the full compose file breakdown). This is the deployment the product's
 compliance and self-host-vs-SaaS competitive claims are actually built for.
 
-**Secondary path — Vercel serverless (`api/`), for a hosted trial/demo:** `api/index.py`
-re-exports the gateway app; dependencies install from a **git-committed prebuilt wheel**
+**AgentFox Cloud: Vercel serverless (`api/`) plus the dashboard on Render
+(`deploy/render.yaml`):** `api/index.py` re-exports the gateway app; dependencies install from a **git-committed prebuilt wheel**
 (`api/vendor/agentfox-<version>-py3-none-any.whl`) because Vercel's Root Directory for this
 function is `api/`, so a relative import against `../src` doesn't ship. **This is an
 architecturally significant risk, not a packaging footnote**: the wheel must be rebuilt
@@ -385,8 +400,9 @@ rebuilds both vendored wheels whenever `src/agentfox/` changes, and CI's
 
 A related consequence: the serverless deployment cannot run `alembic upgrade head` through
 normal channels. The wheel now ships the migrations (`agentfox/_migrations`), but nothing on
-Vercel runs them, so each schema change reaches the hosted database as a hand-applied
-catch-up script (`deploy/neon-catchup-*.sql`). This is a deployment-model limitation, not a
+Vercel runs them. `create_app()` calls `init_db()`, which creates new tables on startup, so an
+additive change needs nothing more; any other schema change reaches the hosted database as a
+hand-applied catch-up script (`deploy/neon-catchup-*.sql`). This is a deployment-model limitation, not a
 code defect, and any future schema change needs the same treatment or an alternative.
 
 **Both paths refuse to start on published secrets.** Outside a development environment
@@ -413,10 +429,13 @@ The project does not build, and does not intend to build (`docs/design/PRD.md` �
 - A replacement for LangSmith/Langfuse-style execution tracing — it consumes and enriches
   traces, it doesn't compete on trace UX.
 - Sandboxed code execution (that's E2B/Modal/Daytona's job).
-- Business-platform coverage — Microsoft Copilot Studio, Power Platform, Salesforce
-  Agentforce are explicitly out of scope today (this cedes real ground to Zenity).
+- Full business-platform coverage. What exists is narrower: discovery reads the files Copilot
+  Studio, Agentforce, Bedrock and other platforms export, and Copilot Studio, Vapi, Retell and
+  AgentCore Gateway tool calls are governed through their pre-tool hooks. There is no tenant-wide
+  connector to Power Platform or Salesforce, which still cedes ground to Zenity.
 - Network-level agent discovery (as opposed to code/config-based discovery).
-- Non-text modalities.
+- Non-text modalities. Voice agents are governed at their tool calls and their call transcripts
+  are recorded as text; audio itself is never inspected, and spoken numbers are not yet masked.
 
 ---
 
@@ -425,7 +444,7 @@ The project does not build, and does not intend to build (`docs/design/PRD.md` �
 - **The code map and one tool call traced through the code**: [ARCHITECTURE.md](../../ARCHITECTURE.md)
 - **Module-by-module detail, class signatures, DB schema, API endpoints**: [docs/architecture/low-level-design.md](low-level-design.md)
 - **What is built, partial and absent**: [docs/status.md](../status.md)
-- **Is this actually production-ready, and what's missing**: [docs/design/production-readiness-review.md](../design/production-readiness-review.md)
+- **Is this actually production-ready, and what's missing**: [docs/design/gap-analysis.md](../design/gap-analysis.md)
 - **How this compares to the market**: [docs/design/competitor-analysis.md](../design/competitor-analysis.md)
 - **The optional judgment tiers, and what they send off the machine**: [docs/architecture/judgment-tiers.md](judgment-tiers.md), [docs/architecture/judgment-egress.md](judgment-egress.md)
 - **The full product reasoning this HLD condenses**: [docs/design/PRD.md](../design/PRD.md)

@@ -114,7 +114,7 @@ is checked before your code can run it; a refused one raises `agentfox.Blocked`.
 - **Behind a LiteLLM proxy:** one block in the proxy's `config.yaml` checks every agent
   behind it ([guide](https://useagentfox.com/docs/guides/litellm)).
 - **Look around first:** `agentfox init && agentfox demo`. `init` creates a SQLite database
-  and loads 43 controls and the policy packs in about a second; `demo` runs a thirteen-step
+  and loads 44 controls and the policy packs in about a second; `demo` runs a thirteen-step
   walkthrough in about five. Both are offline: no API key, no downloaded weights, no network
   egress.
 - **Scan this directory without installing:**

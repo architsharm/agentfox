@@ -13,11 +13,16 @@ by probe).
 
 ## What AgentFox is
 
-AgentFox is a Python library and a self-hosted control plane that decides, at runtime,
-whether an AI agent may make the call it is about to make. It sits on the agent's model and
-tool calls (in-process via `agentfox.auto()`, or over HTTP via a gateway), evaluates each call
-against declared tools, capability grants, argument provenance, detectors and policy, writes
-the decision to a hash-chained audit log, and raises a finding when something was stopped.
+AgentFox is a governance and security control plane for AI agents: a Python package, a
+gateway with the control-plane API, and a dashboard, run self-hosted or as AgentFox Cloud. It
+discovers the agents, tools, MCP servers and skills a team has, governs what each may do
+(least-privilege grants), protects them at runtime, tests them with attack suites, and proves
+what happened. At runtime it decides whether an agent may make the call it is about to make.
+It sits on the agent's model and tool calls (in-process via `agentfox.auto()`, over HTTP via
+the gateway, or through a framework adapter, a LiteLLM proxy, a hosted platform's tool webhook
+or a coding agent's hooks), evaluates each call against declared tools, capability grants,
+argument provenance, detectors and policy, writes the decision to a hash-chained audit log,
+and raises a finding when something was stopped.
 Its central idea is that **containment does not depend on detection**: a transfer whose
 recipient came out of a retrieved document is refused because of where the value came
 from, even when no detector recognised the payload.
@@ -28,10 +33,14 @@ order:
 
 | Step | Question | Where it lives |
 |---|---|---|
-| **See** | What agents, tools and MCP servers do I have, and what changed? | `capabilities/discovery/`, `platform/registry/`, `capabilities/monitoring/` (`agentfox scan`, `agentfox scan monitors`, `agentfox agents`) |
+| **See** | What agents, tools and MCP servers do I have, and what changed? | `capabilities/discovery/`, `capabilities/onboarding/`, `platform/registry/`, `ee/…/monitoring/` (`agentfox scan`, `agentfox init --key`, `agentfox scan monitors`, `agentfox agents`) |
 | **Watch** | What are they doing right now? | `runtime/`, `capabilities/detection/`, `apps/gateway/` (`agentfox serve`, `agentfox findings`) |
-| **Contain** | What may each one do? | `platform/identity/`, `platform/policy/`, `capabilities/containment/` (`agentfox permit`, `declare`, `policy`) |
-| **Prove** | Can I show what happened? | `platform/ledger/`, `capabilities/compliance/`, `apps/report/`, `capabilities/evaluation/` (`agentfox report`, `agentfox test`) |
+| **Contain** | What may each one do? | `platform/identity/`, `platform/policy/`, `capabilities/containment/`, `capabilities/protection/` (`agentfox permit`, `declare`, `policy`) |
+| **Prove** | Can I show what happened? | `platform/ledger/`, `capabilities/evaluation/`, `apps/report/`, `ee/…/compliance/` and `ee/…/evidence/` (`agentfox report`, `agentfox test`) |
+
+`agentfox up` (guided setup) and `agentfox init` sit in a **Start** panel above these, and
+`doctor` and `admin` in **Operate**. `ee/…` is `ee/src/agentfox_ee/`, AgentFox Enterprise
+(see the code map).
 
 ## Domain model
 
@@ -72,6 +81,9 @@ order:
 | **Decision, verdict** | One row per evaluated surface. `verdict` is what was applied; `effective_verdict` is what would have happened with every pack enforcing. Records every policy version in force, so it can be replayed. | `core/models/policy.py` (`Decision`), `runtime/enforcement/result.py` (`EnforcementResult`) |
 | **Finding** | A problem a person should look at, deduplicated by fingerprint and counted on recurrence. A refused tool call is a containment finding titled by what refused it. Its `type` is one of the registered finding types. | `core/models/registry.py` (`Finding`), `platform/ledger/findings.py` (`raise_finding`), `platform/ledger/finding_types.py` (the registry), `capabilities/containment/findings.py` (`raise_containment_findings`) |
 | **Approval** | A held call waiting for a human; `timeout_action` defaults to deny. Approved, it lets exactly one retry of the same call through, then reads `used`. | `core/models/identity.py` (`ApprovalRequest`), `platform/identity/service.py` (`request_approval`, `resolve_approval`, `redeem_approval`) |
+| **Project** | A multi-agent system: a root agent and every agent it hands work to (its `delegates_to` closure in lineage). What `agentfox init` reports and the dashboard's project pages show. `agents.project` only records which repository an agent came from. | `platform/registry/projects.py`, `capabilities/onboarding/` |
+| **Library** | A set of rules applied together to chosen agents (the basic guardrails, Baseline, EU AI Act, …). Each agent gets its own copy, `agent.<slug>.<library>`, at the agent level of the policy hierarchy; it watches first and blocks only through the simulate-then-promote gate. | `capabilities/protection/libraries.py`, `capabilities/protection/__init__.py` |
+| **Platform connection** | A hosted platform agent (Vapi, Retell, Copilot Studio) whose tool calls reach `/v1/hooks/…`: the agent it is governed as, the tool server allowed calls are forwarded to, and the encrypted secret that proves a delivery came from the platform. | `core/models/registry.py` (`PlatformConnection`), `platform/registry/platform_connections.py`, `apps/gateway/routes/platform_hooks.py` |
 | **Monitor** | A connected source re-checked on a schedule (a GitHub repo, a hosted API spec, a remote MCP server, a deployed agent). Each run is diffed against the last; what appeared becomes a finding, what cleared closes. | `core/models/registry.py` (`Monitor`, `AlertChannel`), `ee/src/agentfox_ee/monitoring/service.py` (`run_monitor`, `run_due`) |
 | **Probe target** | A deployed agent's endpoint that live red-team probes may be sent to, after an explicit, recorded opt-in. | `core/models/evaluation.py` (`ProbeTarget`), `capabilities/evaluation/live_probes.py` (`opt_in`, `run_target`) |
 | **Proposal** | A change the platform wants to make (a grant learned from traffic, a declaration, a tuning change), with evidence. Filed → proven → approved → applied → verified, or rolled back. Loosening is never applied automatically. | `core/models/improvement.py` (`ChangeProposal`), `capabilities/improvement/proposals.py`, `capabilities/improvement/traffic.py` (`propose_from_traffic`) |
@@ -159,6 +171,12 @@ recorded. New surfaces must call these methods, not reimplement them.
    applied/would-be verdict names) and returned: `verdict`, `effective_verdict`,
    `rules_fired`, `decision_id`, and `approval_id` when escalated.
 
+The platform hooks (`apps/gateway/routes/platform_hooks.py`) translate a Vapi, Retell or
+Copilot Studio delivery into a `GuardToolCallRequest` and call the same handler
+(`inline.py:authorise_tool_call`). `auto()` with an account key
+(`frameworks/autoguard/remote.py`), the LiteLLM guardrail (`frameworks/litellm_guardrail.py`)
+and the AgentCore interceptor (`deploy/aws-agentcore-interceptor/`) reach it over HTTP.
+
 The drop-in proxy routes (`/v1/chat/completions`, `/v1/messages`, same file) follow
 `Enforcer.run_completion` / `run_completion_stream`, which wrap the same `preflight`, a
 provider call through `platform/providers/` with the circuit breaker in `runtime/reliability.py`,
@@ -178,10 +196,11 @@ same layer may import each other. `lint-imports` checks this on every push (CI's
 job, `just lint`), against the contracts in `pyproject.toml`'s `[tool.importlinter]`.
 
 ```
-  L5  apps/          cli/  gateway/  mcp_server.py  report/  jobs.py  showcase.py
+  L5  apps/          cli/  gateway/  mcp_server.py  model_server.py  report/  jobs.py  showcase.py
         │
-  L4  frameworks/    sdk/  autoguard/  langgraph.py  fastapi.py  mcp.py      (ingress)
-      harnesses/     base.py  claude_code/  (coding agents we govern)        (ingress)
+  L4  frameworks/    sdk/  autoguard/  langgraph.py  openai_agents.py  litellm_guardrail.py
+                     fastapi.py  mcp.py                                      (ingress)
+      harnesses/     base.py  claude_code/  codex/  (coding agents we govern) (ingress)
       hooks/         protocol  client  daemon  run  (harness-neutral transport)
       exporters/     correlation.py  otel.py  siem.py  prometheus.py         (egress)
       fixtures/      the demo world
@@ -189,10 +208,11 @@ job, `just lint`), against the contracts in `pyproject.toml`'s `[tool.importlint
   L3  runtime/       enforcement/ (the Enforcer), availability, reliability, agent loop
         │
   L2  capabilities/  detection/  judgment/  grounding/  containment/  business/
-                     discovery/  evaluation/  improvement/  monitoring/  compliance/
+                     discovery/  onboarding/  protection/  evaluation/  improvement/
+                     delivery/  remediation/  workspace/  monitoring/  compliance/
       packs/         capability packs: data, plus optional checks (nothing imports them)
         │
-  L1  platform/      ledger/  policy/  registry/  identity/  providers/  jobs/
+  L1  platform/      ledger/  policy/  registry/  identity/  providers/  jobs/  keys/
                      packs/ (the pack loader)  checks.py (the check registry)
         │
   L0  core/          config, db, models, tenancy, ids, crypto, outbound, vocab, text
@@ -200,14 +220,17 @@ job, `just lint`), against the contracts in `pyproject.toml`'s `[tool.importlint
 
 `agentfox/__init__.py` (the lazy `auto`, `AgentFox`, `PolicyViolation` … re-exports) and
 `agentfox/errors.py` (the exception base every ingress raises) sit outside the layers.
+AgentFox Enterprise (`ee/src/agentfox_ee/`) is a separate package on top of all of them; see
+"Outside the package".
 
 | Package | What lives there | Start reading at |
 |---|---|---|
 | `core/` | Settings (`AGENTFOX_*` env, `agentfox.toml`), engine and sessions, ORM models for every table, tenancy, ids, the shared vocabulary (surfaces, taint order, effect ranks, comparators), the word tokenizer, outbound URL safety, finding webhooks. | `config.py:Settings`, `db.py:get_sessionmaker`, `models/`, `tenancy.py`, `vocab.py` |
 | `platform/ledger/` | The append-only audit chain, traces and spans, operator and system logs, findings and the finding-type registry (title, default severity, description and owner of every type; `raise_finding` checks against it). Everything that records what happened. | `chain.py`, `trace.py`, `findings.py`, `finding_types.py`, `operator_log.py` |
 | `platform/policy/` | The YAML policy model, the native engine and the OPA adapter, storage and binding, the stored-version loader (`load_version_document`, `UnloadablePolicyVersion`), hierarchy and lint, simulation, canaries. | `model.py`, `engine.py`, `store.py` |
-| `platform/registry/` | The agent and tool registry, observed lineage, kill switch and quarantine, tool impact (`impact.py:infer_impact`, the one place a tool's impact is guessed), delegation-graph attribution. | `service.py`, `control.py`, `impact.py` |
-| `platform/identity/` | Non-human identities, credentials, capability grants and their constraints, delegation, approvals; operators and their API tokens (`operators.py`). | `service.py:check_capability`, `operators.py` |
+| `platform/registry/` | The agent and tool registry, observed lineage, kill switch and quarantine, tool impact (`impact.py:infer_impact`, the one place a tool's impact is guessed), delegation-graph attribution, projects (`projects.py`), platform connections and their forward-target checks (`platform_connections.py`). | `service.py`, `control.py`, `impact.py` |
+| `platform/identity/` | Non-human identities, credentials, capability grants and their constraints, delegation, approvals; operators and their API tokens (`operators.py`); Entra app-token verification for Copilot Studio (`entra.py`). | `service.py:check_capability`, `operators.py` |
+| `platform/keys/` | Rotation of the token encryption key and the audit signing key (`rotation.py:ENCRYPTED_FIELDS`, `rotate`, `status`). | `rotation.py` |
 | `platform/providers/` | The `ModelProvider` seam: `echo` (offline default), OpenAI, Anthropic, Azure, Bedrock, Vertex, LiteLLM. | `base.py`, `echo.py` |
 | `platform/packs/` | The capability-pack loader: the `pack.yaml` schema (`PackManifest`), discovery from the built-in `packs/`, the `agentfox.packs` entry-point group and `<project>/.agentfox/packs/`, the maturity filter, vocabulary, fallback and control-file lookups, importing packs' `checks/*.py`. Returns paths and manifests; whoever reads a pack's files decides what they mean. | `loader.py`, `model.py` |
 | `platform/checks.py` | The check registry: `@check(key, surfaces=, order=, kind=)`, `CheckContext`, `merge_content`. Built-in checks register from their capability modules, others from the `agentfox.checks` entry-point group or a pack. | `checks.py` |
@@ -217,26 +240,30 @@ job, `just lint`), against the contracts in `pyproject.toml`'s `[tool.importlint
 | `capabilities/grounding/` | What an answer may say: answerability and abstention, provenance and source authority, entitlement filtering, commitments, numeric/temporal integrity, context integrity, tool contracts, sycophancy. | `answerability.py`, `entitlement.py` |
 | `capabilities/containment/` | What an agent may do beyond the grant: control-flow integrity, data-access scoping, effects that outlive a call, inter-agent message signing, escalation governance, containment findings. | `findings.py`, `control_flow.py` |
 | `capabilities/business/` | Business rules as guardrails: threshold ladders (and the ladder check, `checks.py`), compiling written policy into rules with the vocabulary packs declare (`tool_hints`, `roles`), merging rules from many authors, the guardrail catalogue. | `ladder.py`, `compile.py` |
-| `capabilities/discovery/` | Static scanning: repositories, OpenAPI specs, skill files, exposure (the lethal trifecta) and the MCP client config files it reads (`exposure.KNOWN_MCP_CONFIGS`), threat coverage. Each harness adapter scans its own local session transcripts into `sessions.py:SessionScanReport`. | `repo.py`, `exposure.py` |
+| `capabilities/discovery/` | Static scanning: repositories, the agents in them with their tools, models and hand-offs (`agents.py`), hosted-platform exports (`platforms.py`: Vapi, Retell, n8n, Copilot Studio, Bedrock and others), the AI tools set up on this machine (`machine.py`), OpenAPI specs, skill files, exposure (the lethal trifecta) and the MCP client config files it reads (`exposure.KNOWN_MCP_CONFIGS`), threat coverage. Each harness adapter scans its own local session transcripts into `sessions.py:SessionScanReport`. | `repo.py`, `agents.py`, `exposure.py` |
+| `capabilities/onboarding/` | `agentfox init --key`: map a repository through discovery (`mapper.py`, names and shapes only), report it, and stay connected to run the attack test on the user's machine with every tool faked at the framework (`client.py`, `runner.py`); attacks written per agent from its own tools (`attacks.py`); the server side of progress, runs and projects (`service.py`, `runs.py`, `projects.py`); the workspace key `init` accepts (`keys.py`). | `client.py`, `mapper.py`, `runner.py`, `service.py` |
+| `capabilities/protection/` | An agent's own policy layer (`agent.<slug>`): the protections a customer picks, libraries applied per agent, a rule changed for some agents only, which rules apply where, and the guardrail map the dashboard draws. | `__init__.py`, `libraries.py`, `map.py` |
+| `capabilities/delivery/`, `remediation/`, `workspace/`, `features.py` | Delivery policies for coding agents (keep an agent from losing work it already got right); remedies a finding offers, each re-checked; the workspace as one YAML file that never deletes; workspace and per-project feature switches. | `delivery/policies.py`, `remediation/remedies.py`, `workspace/__init__.py` |
 | `capabilities/evaluation/` | Eval runner and scorers, CI gating, drift, silent-failure sampling, red team (native probes, plus packs' `probes/`; adaptive campaigns, Garak/PyRIT adapters), live probes of deployed agents, Ragas, capability-pack cases and validation (`packs.py`). | `runner.py`, `gating.py`, `redteam.py`, `live_probes.py`, `packs.py` |
 | `capabilities/improvement/` | The governed improvement loop: proposals, the loops that file them, appliers that make and undo each change, learned permissions from traffic. | `contract.py`, `proposals.py`, `traffic.py` |
-| `capabilities/monitoring/` | Continuous monitoring of connected sources: run, diff against the last snapshot, raise and close findings, Slack alerts; GitHub push webhooks queue a rescan. | `service.py`, `snapshots.py`, `alerts.py` |
-| `capabilities/compliance/` | The control catalog (read from the compliance packs' `controls/`), computed control status, EU AI Act risk classification (its cues from the `eu-ai-act` pack). | `catalog.py`, `status.py`, `risk.py` |
+| `capabilities/monitoring/` | What the open core keeps of monitoring: snapshot diffs and the GitHub archive download and push-signature check. Running monitors and alerting are Enterprise (`ee/…/monitoring/`). | `snapshots.py`, `github.py` |
+| `capabilities/compliance/` | The control catalog (read from the compliance packs' `controls/`) and data retention with legal holds. Computed control status, risk and sign-off are Enterprise (`ee/…/compliance/`). | `catalog.py`, `retention.py` |
 | `runtime/` | The request path. `enforcement/` is the `Enforcer` split into mixins (`enforcer`, `tool_calls`, `surfaces`, `completion`, `streaming`, `limits`, `findings`, `rules`, `result`); `checks.py` names the modules whose registered checks it runs; plus availability (fail modes, admission), reliability (breaker, fallback), loop governance, and `trace_exporters.py`, the exporters it tells about each trace. | `enforcement/__init__.py` docstring, `enforcement/enforcer.py:evaluate` |
-| `frameworks/` | Ingress for application frameworks, each mapping its calls onto the `Enforcer`: `autoguard/` is `auto()`, `sdk/` the explicit SDK (`AgentFox`, `@fox.tool(impact=…)`), the LangGraph guard (`AgentFoxGuard`), FastAPI middleware, the MCP governor (`McpGovernor`). | `autoguard/__init__.py:auto`, `sdk/__init__.py`, `mcp.py` |
+| `frameworks/` | Ingress for application frameworks, each mapping its calls onto the `Enforcer`: `autoguard/` is `auto()` (`remote.py` sends its checks to an account's gateway when a key is configured), `sdk/` the explicit SDK (`AgentFox`, `@fox.tool(impact=…)`), the LangGraph guard (`AgentFoxGuard`), the OpenAI Agents SDK guardrails, the LiteLLM proxy guardrail (`AgentFoxGuardrail`, which calls a gateway over HTTP), FastAPI middleware, the MCP governor (`McpGovernor`). | `autoguard/__init__.py:auto`, `sdk/__init__.py`, `mcp.py` |
 | `exporters/` | Egress: LangSmith/Langfuse trace correlation (`correlation.py:TraceCorrelation`, which the runtime emits to), OTLP ingest and export, SIEM, Prometheus. | `correlation.py`, `otel.py` |
-| `harnesses/` | The coding agents AgentFox governs, one adapter each behind `base.py:HarnessAdapter`: parse a hook payload into an `AgentEvent`, render a `Decision` (allow, deny, ask, modify, context) into the exact stdout and exit code, install the hooks, find hooked agents, MCP configs and transcripts. Each adapter declares a per-event capability matrix (`EventCaps`) with its evidence; a decision the harness cannot honour is downgraded on purpose and recorded (`base.downgrade`). The registry (`get`, `known`, `all`) loads adapters from the `agentfox.harnesses` entry-point group. Claude Code is `claude_code/`, with payloads captured from the real tool in `fixtures/`. | `__init__.py`, `base.py`, `claude_code/adapter.py` |
+| `harnesses/` | The coding agents AgentFox governs, one adapter each behind `base.py:HarnessAdapter`: parse a hook payload into an `AgentEvent`, render a `Decision` (allow, deny, ask, modify, context) into the exact stdout and exit code, install the hooks, find hooked agents, MCP configs and transcripts. Each adapter declares a per-event capability matrix (`EventCaps`) with its evidence; a decision the harness cannot honour is downgraded on purpose and recorded (`base.downgrade`). The registry (`get`, `known`, `all`) loads adapters from the `agentfox.harnesses` entry-point group. Claude Code is `claude_code/`, with payloads captured from the real tool in `fixtures/`; Codex CLI is `codex/`, its rows read in Codex's source. | `__init__.py`, `base.py`, `claude_code/adapter.py` |
 | `hooks/` | The harness-neutral hook transport: a thin per-call client, a warm daemon on a Unix socket that calls the `Enforcer`, and `run.py` (`agentfox hooks run`), which goes through the harness registry. | `run.py`, `daemon.py`, `client.py` |
 | `fixtures/` | The deterministic demo world (agents, tools, grants, policies, an eval suite) that `agentfox demo`, the playground and the tests seed; the support and payments desks come from the `customer-support` and `payments/refunds` packs' `fixtures/world.yaml`. | `seed.py:seed` |
-| `apps/gateway/` | The FastAPI app (`agentfox.apps.gateway.app:app`): inline `/v1/*` enforcement and the `/api/*` control plane the dashboard calls; request authentication, RBAC, playground sandboxes. One router per file in `routes/`. | `app.py:create_app`, `routes/inline.py`, `deps.py` |
+| `apps/gateway/` | The FastAPI app (`agentfox.apps.gateway.app:app`): inline `/v1/*` enforcement (including the platform hooks, `routes/platform_hooks.py`) and the `/api/*` control plane the dashboard calls; request authentication, RBAC, playground sandboxes. One router per file in `routes/`; Enterprise routers are mounted from the extension. | `app.py:create_app`, `routes/inline.py`, `deps.py` |
 | `apps/cli/` | The `agentfox` binary (Typer, `agentfox.apps.cli.main:main`). Command bodies live in `commands/` and the `*_cli.py` modules; `layout.py` decides the visible tree. | `main.py`, `layout.py`, `commands/` |
-| `apps/` (the rest) | `mcp_server.py`, the read-only MCP server for AI clients; `report/`, the one-page summary and evidence packages; `jobs.py`, the job handler table; `showcase.py`, the public showcase run. | `mcp_server.py`, `report/summary.py`, `report/evidence.py` |
-| `packs/` | The built-in capability packs: `baseline`, `tool-containment`, `coding-agent` and `eu-ai-act` (the four shipped policies), `compliance/catalog` (controls, obligations, threats), `payments/refunds`, `customer-support`; `_template/` is what `agentfox policy packs new` copies. Data, plus optional checks; nothing imports it. | `<pack>/pack.yaml`, `<pack>/README.md` |
+| `apps/` (the rest) | `mcp_server.py`, the read-only MCP server for AI clients; `model_server.py`, the model-backed detectors for a gateway that should not hold weights (`agentfox serve models`); `report/`, the one-page summary; `jobs.py`, the job handler table; `showcase.py`, the public showcase run. | `mcp_server.py`, `report/summary.py` |
+| `packs/` | The built-in capability packs: `baseline`, `tool-containment`, `agent-integrity`, `eu-ai-act` and `coding-agent` (the shipped policies), `compliance/catalog` (controls, obligations, threats), `payments/refunds`, `customer-support`, and the `industry/` and `regional/` policy sets; `_template/` is what `agentfox policy packs new` copies. Data, plus optional checks; nothing imports it. | `<pack>/pack.yaml`, `<pack>/README.md` |
 
 Outside the package:
 
 | Path | What it is |
 |---|---|
+| `ee/` | AgentFox Enterprise, `agentfox_ee`, source-available under the Business Source License 1.1 (`ee/LICENSE`): compliance status, reviews and sign-off, risk and the board view (`compliance/`), auditor evidence packages (`evidence/package.py`, which ships `verify_chain.py`), fleet monitoring with Slack alerts (`monitoring/`), external access checks. It plugs in through the `agentfox.extensions` entry point (`core/extensions.py`: routers, jobs, schedules, CLI commands, RBAC families, MCP tools); the open core never imports it. Its tests are `ee/ee_tests/`. |
 | `tests/` | Mirrors the package (`tests/runtime/`, `tests/platform/policy/`, …). `tests/e2e/` runs the request path end to end across packages; `tests/repo/` checks the repository itself (claims, docs site, plugins, vendored wheels, install layout); `tests/harnesses/conformance.py` runs every registered harness adapter against its captured fixtures. |
 | `dashboard/` | The Next.js 15 app, three sites in one tree organised by route groups that do not change a URL: the signed-in product (`app/(product)/app/`, plus `/login`), the marketing site (`app/(marketing)/`; the home page and `app/blog/` sit at the app root so their Open Graph image URLs stay unhashed), and the website docs (`app/docs/`, sidebar in `lib/docs/pages.ts`). `components/` and `lib/` split the same way into `product/`, `marketing/` and `docs/`; `components/ui/` holds primitives used by more than one site, and `lib/generated/` holds the JSON the generators write. It is a client of the gateway API with no back channel. Tests with vitest. |
 | `benchmarks/` | Every published number: one directory per claim family, named as its claim ids in `claims.yaml` are prefixed (`containment/`, `agentdojo/`, `injection/`, `generalization/`, …), each with its runner, results and README; `claims.yaml` binds quoted numbers to result files. `_common/` holds the helpers scripts share (database reset, dataset download, PII span scoring). Scripts run as modules from the root: `python -m benchmarks.<family>.<script>`. |
@@ -244,7 +271,8 @@ Outside the package:
 | `docs/` | Design and contributor docs (`architecture/`, `design/`, `evaluation/`, `adr/` for decision records); index in [docs/README.md](docs/README.md). User docs are on the website. |
 | `scripts/` | `gen/` writes generated files (`api_routes.py`, `docs_reference.py`, `coverage.py`, and `new_harness.py` from `templates/`); `check/` holds the drift checks CI runs (`claims.py`, `plugins.py`, `demo_kit.py`) and the vendored-wheel pre-commit hook; `ops/` is for operating a deployment (`deploy_smoke.py`). `probe/` builds the coverage map and stays put because product code names its scenarios; `quickscan.sh` stays at the top because the README publishes its raw URL for `curl \| bash`. |
 | `migrations/` | Alembic revisions (also shipped inside the wheel as `agentfox/_migrations`). |
-| `deploy/` | Dockerfiles, `docker-compose.yml` (the reference self-host), the dashboard-only Render and Fly configs, the dashboard runbook, and the hand-applied Neon catch-up SQL. |
+| `deploy/` | Dockerfiles, `docker-compose.yml` (the reference self-host), the dashboard-only Render and Fly configs, the dashboard runbook, the model server's compose files (`model-server/`), the AgentCore Gateway interceptor (`aws-agentcore-interceptor/`), and the hand-applied Neon catch-up SQL. |
+| `sdk/typescript/` | `@agentfox/sdk`, the dependency-free TypeScript client for `/v1/guard/*`. |
 | `render.yaml` | The one-click self-host blueprint (database, gateway, dashboard). At the root because Render's deploy button reads only that path. |
 | `justfile` | The command surface: `just ci` runs what CI runs; `just new-harness <name>` scaffolds an adapter. |
 | `api/` | The Vercel deployment of the gateway: `api/index.py` re-exports `agentfox.apps.gateway.app:app`. It installs from a **wheel committed in `api/vendor/`**, because Vercel's root directory for this function is `api/` and `../src` would not ship. |
@@ -271,7 +299,10 @@ Outside the package:
 - `apps/cli` never imports `apps/gateway`: operator tokens live in
   `platform/identity/operators.py`, which both use.
 - Nothing outside `harnesses/` and `hooks/` imports a specific harness adapter
-  (`agentfox.harnesses.claude_code`); everyone asks the registry (`harnesses.get`, `all`).
+  (`agentfox.harnesses.claude_code`, `agentfox.harnesses.codex`); everyone asks the registry
+  (`harnesses.get`, `all`).
+- The open core never imports `agentfox_ee`. Enterprise contributes through
+  `core/extensions.py`, and a failing extension is logged and skipped.
 
 Two edges are known exceptions, listed by name in `pyproject.toml` with what removes
 each: evaluation's in-process red-team runner and live-probe adapter build an

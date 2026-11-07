@@ -4,15 +4,15 @@
 | | |
 |---|---|
 | **Version** | 3.1 — the single canonical PRD |
-| **Date** | 2026-08-18, merged 2026-08-29, statuses updated 2026-10-06 |
-| **Status** | Approved for build; large parts now shipped — see §12, §13 and [../status.md](../status.md) |
+| **Date** | 2026-08-18, merged 2026-08-29, statuses updated 2026-11-07 (release 0.5.0) |
+| **Status** | Approved for build; large parts now shipped — see §12 to §14 and [../status.md](../status.md) |
 | **History** | This file merges what was previously five separate PRD documents (v1, v2, a "consolidated" draft, this v3 base, and a v4 addendum) into one. Earlier versions are retired, not deleted from history — `git log -- docs/` has them. Keeping one file instead of five was a deliberate cleanup: a reader should never have to figure out which of five PRDs is current. |
 | **Positioning** | Horizontal (no vertical beachhead) · SDK-first · vendor-neutral · self-host default |
 
 > **Read this first if you are new.** This document is written to stand alone. It explains what
 > enterprises are building, how it fails, what already exists to solve it (open source and
 > commercial), what is genuinely missing, and what we are going to build. Sections 1–4 are the
-> argument; section 5 is the product; sections 6–11 are the plan; **§12 and §13 are what shipped
+> argument; section 5 is the product; sections 6–11 are the plan; **§12 to §14 are what shipped
 > after this document was written**, kept short and pointing at the live-computed sources of truth
 > ([../status.md](../status.md), [gap-analysis.md](gap-analysis.md), [failure-modes.md](failure-modes.md))
 > rather than re-describing them here, where they would immediately start going stale again.
@@ -41,6 +41,7 @@
 **Part IV — What shipped after this document was written**
 12. [Addendum (2026-08-26 proposal, delivered by 2026-08-29)](#12-addendum-2026-08-26-proposal-delivered-by-2026-08-29)
 13. [Addendum (2026-10-06): monitoring, live probing and hardening](#13-addendum-2026-10-06-monitoring-live-probing-and-hardening)
+14. [Addendum (2026-11-07): releases 0.4 and 0.5](#14-addendum-2026-11-07-releases-04-and-05)
 
 ---
 ---
@@ -145,13 +146,15 @@ fails the build if a mapped class escapes it; API-token authentication with the 
 header refused outside development; action assurance over a SQL AST; answerability and
 forced abstention; provenance and source authority; entitlement and disclosure control;
 context integrity from ingestion through assembly; failure attribution and handoff
-fidelity; commitment, AI-disclosure and fairness gates; idempotency, compensation and
-cascade analysis; business-rule ladders with a policy compiler that turns a written
+fidelity; commitment, AI-disclosure and fairness gates; cascade analysis (idempotency and
+compensation checks are built but not yet called on the request path); business-rule ladders with a policy compiler that turns a written
 document into executable rules; hash-chained per-tenant audit with an independent
 verifier, now including operator actions; loop governance over the run rather than the
-step; declared fail modes; admission control; 43 controls mapped to 7 frameworks;
+step; declared fail modes; admission control; 44 controls mapped to 7 frameworks;
 continuous monitoring of connected repositories, API specs and MCP servers; opt-in red-team
-probing of deployed agents (§13).
+probing of deployed agents (§13); coding-agent hooks for Claude Code and Codex CLI; tool
+calls governed on the gateway proxy, through a LiteLLM proxy guardrail and through the
+pre-tool hooks of Vapi, Retell, Copilot Studio and AgentCore Gateway (§14).
 
 **Not working, and worth stating plainly:**
 
@@ -161,9 +164,10 @@ probing of deployed agents (§13).
   against; KMS/Vault needs a deployment; HA scale-out needs load. Each is a declared
   seam rather than an implementation, and a declared seam is not a feature.
 * **Deliberately deferred.** Model-based detectors ship but their weights are an opt-in
-  download. The code restructure and new coding-agent harnesses are deferred too (§13.4).
-* **Genuinely hard and openly uncovered.** Sycophancy, invalid logical inference, and
-  answer quality in languages other than English. A deterministic checker cannot judge
+  download. Harnesses beyond Claude Code and Codex, and building the vendored wheels at
+  deploy time, are deferred too (§13.4).
+* **Genuinely hard and openly uncovered.** Invalid logical inference, and answer quality
+  in languages other than English (sycophancy against a grounded record is now covered). A deterministic checker cannot judge
   informal argument, and an LLM judge inherits the failure it is meant to catch. These
   are marked absent in the coverage map rather than papered over.
 * **Known limits of what is built.** Cascade analysis is exactly as good as the trigger
@@ -392,7 +396,7 @@ missing.
 |---|---|---|
 | Time to first enforcement | 4–8 engineer-weeks | an afternoon |
 | Hierarchical policy | rarely; Derrick's took real effort | built in |
-| Compliance mapping | never | 43 controls × 7 frameworks |
+| Compliance mapping | never | 44 controls × 7 frameworks |
 | Failure attribution | never | Pillar 13 |
 | Maintained as models/frameworks change | by whoever built it, until they leave | by us |
 | Cost | ~$150–300k of senior engineering | licence |
@@ -439,7 +443,7 @@ Status: ✅ built & tested · ◐ partial · ✗ not built.
 | **Commercial** | ServiceNow AI Control Tower (~30 discovery integrations), Kosmoy (4 cloud registries), OneTrust Agent Detection, Credo AI Agent Registry, Zenity (Copilot/Power Platform) |
 | **Their gap** | Registration- or connector-driven. None derive lineage from *observed* behaviour. |
 
-**Our status.** ✅ registry, shadow detection, ownership, framework auto-detection, observed lineage, MCP hygiene, and continuous monitoring of connected sources (`P1-9`, §13.1). ✗ **no cloud connectors** — we see only what crosses our gateway or OTel, plus the repositories, API specs and MCP servers someone connected.
+**Our status.** ✅ registry, shadow detection, ownership, framework auto-detection, observed lineage, MCP hygiene, and continuous monitoring of connected sources (`P1-9`, §13.1). ◐ discovery also reads the agents that hosted platforms export (Bedrock Agents, Copilot Studio, Agentforce, Vapi, n8n and others, §14), but ✗ **no live cloud connectors** (`P1-8`) — nothing enumerates an account; we see what crosses our gateway or OTel, plus the repositories, exports, API specs and MCP servers someone connected.
 
 **Requirements.** P1-1…P1-7 as v1. **New:** `P1-8` connector framework (Bedrock, Azure AI Foundry, Vertex, Salesforce, ServiceNow) — Gartner interoperability criterion and the estate-scale gap. `P1-9` continuous monitoring of connected sources (§13.1).
 
@@ -464,7 +468,7 @@ enforces, not only what `policy effective` prints; lint runs in `policy validate
 effective` shows each layer's mode; canary cohorts work. Saving a version never changes what
 is in force, and promoting to enforce over HTTP needs a recorded simulation. Stored versions
 load through one loader, and a bound version that no longer loads is handled under the fail
-mode and recorded as `policy.unloadable`. ✗ P12-7 non-developer authoring.
+mode and recorded as `policy.unloadable`. ✅ P12-7: Policies → Add rule in the dashboard writes word and topic lists, approval limits from a sentence, built-in checks and tool access without code, each tried on a sample first.
 
 | ID | Requirement |
 |---|---|
@@ -550,7 +554,7 @@ classification, stacked-statement rejection, unbounded-mutation and tautological
 detection, blast-radius and reversibility, environment binding, `requires_verified_state`, dry-run,
 plus shell deny-list and HTTP collection-mutation analysis. Exposed to policy as
 `action_operation` / `blast_radius_at_least` / `action_reversible` / `action_risk` conditions and
-to engineers as `agentfox analyse-action`. ◐ idempotency keys (P9-8) absent.
+to engineers as `agentfox test action`. ◐ idempotency keys (P9-8): `capabilities/containment/effects.py::assess_effects` derives a key and flags an effectful call without one, but nothing on the request path calls it yet.
 
 **Requirements.** P9-1 parse via sqlglot, **fail closed** on unparseable · P9-2 operation classification · P9-3 stacked-statement rejection · P9-4 unbounded-mutation detection (no `WHERE`, tautologies) · P9-5 blast-radius estimation · **P9-6 environment binding** · **P9-7 `requires_verified_state`** (read the record back from the SoR before an irreversible act — closes the HR incident) · P9-8 idempotency keys · P9-9 composed-privilege detection · P9-10 dry-run mode.
 
@@ -669,7 +673,7 @@ corrupt document, or a guard against context stuffing that pushes out the system
 | **Commercial** | **LangSmith** (7/11 — datasets with splits, experiments, pairwise comparison, annotation queues), **Langfuse** (4/11), Braintrust (CI/CD gating), Galileo (Cisco), Arize, Fiddler, Patronus, **Cleanlab TLM** |
 | **Their gap** | Evaluation is **offline/async** — you find out after. And the organisational layer is thin everywhere; LangSmith is the strongest and is engineering-centric. |
 
-**Our status.** ✅ runner, CI gate with direction-aware scorers that fails on errored cases, JUnit/SARIF, drift (PSI/KS), SLOs, static and adaptive red-team campaigns whose probe calls leave nothing in the production tables, silent-failure ensemble, Ragas adapter (`P4-9`), and opt-in live probing of deployed agents (`P4-13`, §13.2). ◐ model-based groundedness (`P4-10`) runs through a configured model provider alongside the lexical scorer rather than replacing it; **the default is still lexical and behind Cleanlab/Vectara/HHEM — a weakness, not a strength.** ✗ annotation queue (`P4-11`).
+**Our status.** ✅ runner, CI gate with direction-aware scorers that fails on errored cases, JUnit/SARIF, drift (PSI/KS), SLOs, static and adaptive red-team campaigns whose probe calls leave nothing in the production tables, silent-failure ensemble, Ragas adapter (`P4-9`), and opt-in live probing of deployed agents (`P4-13`, §13.2). ◐ model-based groundedness (`P4-10`) runs through a configured model provider alongside the lexical scorer rather than replacing it; **the default is still lexical and behind Cleanlab/Vectara/HHEM — a weakness, not a strength.** ✅ annotation queue (`P4-11`): results near a scorer's threshold, or where scorers disagree, are queued and annotated from the eval run page.
 
 **Requirements.** P4-1…P4-8 as v1. **New:** `P4-9` **Ragas adapter** (their vocabulary, 3/11) · `P4-10` **model-based groundedness** via Vectara HHEM (Apache-2.0) or Granite Guardian, replacing lexical as the default where weights are available · `P4-11` **annotation queue and human review surface** — the stated #1 reason eval programmes stall · `P4-12` **dataset health** (staleness, coverage, drift of the dataset itself) · `P4-13` **live probing of deployed agents** and `P4-14` **public showcase** (§13.2).
 
@@ -738,7 +742,7 @@ hourly as the `escalation.scan` job and hands off live only where the policy enf
 | **Commercial** | LangSmith, Datadog LLM Observability, Arize, Splunk/QRadar for SIEM |
 | **Their gap** | Traces are commoditised. The **evidentiary layer** — verifiable export an auditor can check without the vendor — is rare, but rarely demanded. |
 
-**Our status.** ✅ all of it, tested against four tamper modes with a standalone stdlib verifier. Evidence packages can be scoped to one agent; OTLP ingest accepts JSON and protobuf, gzipped or not.
+**Our status.** ✅ all of it, tested against four tamper modes with a standalone stdlib verifier. Evidence packages (Enterprise edition since 0.5.0; the chain and `agentfox report verify` stay in the open core) can be scoped to one agent; OTLP ingest accepts JSON and protobuf, gzipped or not.
 
 **Requirements.** P5-1…P5-7 as v1. **New:** `P5-8` **bidirectional LangSmith/Langfuse integration** — ingest their runs, correlate our decisions to their trace ids, push verdicts and scores back as feedback. **We do not replace their traces.**
 
@@ -756,9 +760,9 @@ hourly as the `escalation.scan` job and hands off live only where the policy enf
 | **Commercial** | Credo AI (Policy Packs incl. NYC LL144), IBM watsonx.governance, OneTrust, ModelOp, Holistic AI, Monitaur, ServiceNow |
 | **Their gap** | They **collect attestations**. We **compute status from telemetry** — a claim only an inline platform can make. That is real and defensible. |
 
-**Our status.** ✅ 43 controls × 7 frameworks, computed status with 9 rule kinds, risk classification, obligations, board view, declared gaps per framework, and an EU AI Act Art. 50 check for an agent claiming to be human. **⚠ all 317 mappings are DRAFT** — they ship in evidence packages chip-labelled `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` until a qualified reviewer signs them (Appendix B §B.6).
+**Our status.** ✅ 44 controls × 7 frameworks, computed status with 10 rule kinds, risk classification, obligations, board view, declared gaps per framework, reviews recorded as attestations with an outcome and an expiry, and an EU AI Act Art. 50 check for an agent claiming to be human. Since 0.5.0, computed status, reviews, the risk register, the board view and evidence packages are in the Enterprise edition (`ee/`); the catalog and the runtime checks stay in the open core. **⚠ all 324 mappings are DRAFT** — they ship in evidence packages chip-labelled `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` until a qualified reviewer signs them (Appendix B §B.6).
 
-**Requirements.** P6-1…P6-8 as v1. **New:** `P6-9` **dynamic risk scoring** (Gartner criterion, currently ✗ — static classification only) · `P6-10` **assessment/workflow engine** (Gartner criterion) · `P6-11` complete the mapping review gate with a qualified assessor.
+**Requirements.** P6-1…P6-8 as v1. **New:** `P6-9` **dynamic risk scoring** (Gartner criterion, currently ◐: a live categorical class, not a continuous score) · `P6-10` **assessment/workflow engine** (Gartner criterion) · `P6-11` complete the mapping review gate with a qualified assessor.
 
 ---
 
@@ -895,7 +899,7 @@ Built and tested end to end:
   evidence packages · SIEM export.
 - **Judge** — evaluation with direction-aware CI gating · silent-failure ensemble · red-team
   harness.
-- **Know/Prove** — registry with shadow-agent detection and observed lineage · 43 controls ×
+- **Know/Prove** — registry with shadow-agent detection and observed lineage · 44 controls ×
   7 frameworks with computed status · Next.js control plane.
 - **Tranche 0 (complete)** — `PL-1` streaming with inline enforcement in both OpenAI and
   Anthropic wire formats · `PL-2` Alembic migrations · `PL-3` kill switch and quarantine ·
@@ -922,7 +926,7 @@ Built and tested end to end:
 
 **Tranche 1 is complete.**
 
-- **Tranche 2 (in progress)** — `P9` **action assurance**, the first of the three genuinely
+- **Tranche 2 (complete)** — `P9` **action assurance**, the first of the three genuinely
   unclaimed capabilities. Everything else here governs the *call*; this governs the *artefact*.
   Deterministic sqlglot parsing (never a model on a deterministic question), **fail closed on
   unparseable**, stacked-statement rejection, unbounded-mutation and tautological-predicate
@@ -982,7 +986,7 @@ Built and tested end to end:
   it was that every integration asked the developer to change how they call the model, and the
   sum of small asks is why governance tooling sits in a proof-of-concept for six months.
   `agentfox.auto()` patches the client libraries in place so an existing codebase is governed by
-  one line, in observe mode, with no other file touched. `agentfox check` answers the question
+  one line, in observe mode, with no other file touched. `agentfox scan` answers the question
   a platform team has to answer first and nobody has written down — *where does this codebase
   actually talk to a model?* — statically, ranked, ending in one sentence saying what to do next.
   And the control plane now leads with what needs a human rather than an inventory, and
@@ -1004,12 +1008,12 @@ shipped after this section was written is in §12 and §13.
 
 | # | Gap | Evidence |
 |---|---|---|
-| 0.1 | **Streaming silently ignored** — `stream: true` returns non-streaming JSON | verified by execution |
-| 0.2 | **No DB migrations** — a deployed instance cannot be upgraded | verified absent |
-| 0.3 | **No kill switch / quarantine** | verified absent; every competitor has one |
-| 0.4 | ~~No LangGraph integration~~ — **closed.** `I-1` shipped (§6): node/edge hooks, checkpointer-aware state, `interrupt()` for HITL, per-node policy binding — this line contradicted §6's own I-1 status even at the time this document was first written, and stayed uncorrected until the 2026-08-29 merge caught it. See `integrations/langgraph.py`, 34 passing tests in `tests/runtime/test_streaming_kill_switch_and_langgraph.py`. | 34 tests |
+| 0.1 | ~~Streaming silently ignored~~ — **closed.** `PL-1` streams both wire formats with inline enforcement | Tranche 0 |
+| 0.2 | ~~No DB migrations~~ — **closed.** `PL-2` Alembic migrations, `agentfox admin db upgrade` | Tranche 0 |
+| 0.3 | ~~No kill switch / quarantine~~ — **closed.** `PL-3` on every guard surface, control `NOM-RTG-14` | Tranche 0 |
+| 0.4 | ~~No LangGraph integration~~ — **closed.** `I-1` shipped (§6): node/edge hooks, checkpointer-aware state, `interrupt()` for HITL, per-node policy binding — this line contradicted §6's own I-1 status even at the time this document was first written, and stayed uncorrected until the 2026-08-29 merge caught it. See `frameworks/langgraph.py`, 34 passing tests in `tests/runtime/test_streaming_kill_switch_and_langgraph.py`. | 34 tests |
 | 0.5 | ~~Agent tool-calling loop not governed~~ — **closed.** `PL-4` governs the run rather than the step: identical re-issued calls, alternating cycles, and steps producing no new observation | 18 tests |
-| 0.6 | ~~Everything synchronous~~ — **closed as an interface.** `PL-5` `JobQueue` with retries and a public dead letter; a Redis/SQS implementation belongs behind it | 6 tests |
+| 0.6 | ~~Everything synchronous~~ — **closed.** `PL-5` database-backed job queue with retries and a public dead letter, drained by a cron call; a Redis/SQS worker belongs behind it | `tests/platform/jobs/` |
 | 0.7 | ~~No HA validation~~ — **partly closed.** SQLite is now refused at startup for a multi-worker deployment rather than surfacing as intermittent latency; Postgres pools and pre-pings. Scale-out under real load is still untested | NFR-3 partly met |
 
 **Tier 1 — procurement blockers** (cannot pass security review)
@@ -1027,11 +1031,12 @@ against, as KMS/Vault needs a deployment that has one.
 
 **Tier 2 — Gartner MQ inclusion criteria**
 
-dynamic risk scoring ✗ · interoperability/connectors ✗ · workflow & approvals ◐ (runtime only).
+dynamic risk scoring ◐ (categorical) · interoperability/connectors ◐ (platform exports and pre-tool hooks, no live account connectors) · workflow & approvals ◐ (runtime approvals, escalation routing, risk reviews; no general workflow engine).
 Evidence collection ✅ and audit trail ✅ are strong.
 
-**Tier 3 — capability gaps** — Pillar 12's non-developer authoring (P12-7) remains; its canary
-and Pillar 15's LiteLLM adapter have shipped. Pillars 7, 9, 10, 13 and 14 are built and probed.
+**Tier 3 — capability gaps** — closed: Pillar 12's non-developer authoring (P12-7) and canary,
+and Pillar 15's LiteLLM adapter, have shipped. Pillars 7, 9, 10, 13 and 14 are built and probed.
+What is still open is kept in [gap-analysis.md](gap-analysis.md).
 
 **Tier 4 — found in review, absent from this register when it was written**
 
@@ -1076,8 +1081,8 @@ latency, false-positive loop ✅
 ### Tranche 3 — depth
 `P10` entitlement ✅ · `P14` context integrity ✅ · `P8` provenance ✅ (catalog ingestion still
 absent) · `P11` escalation ✅ (pulled forward — largest family) · `P4-9` Ragas adapter ✅ ·
-`P4-10` model-based groundedness ◐ · `P4-11` annotation queue ✗ · `P12-6` canary ✅ · `P12-7`
-non-developer authoring ✗ · `PL-4…PL-7` loop governance ✅, async ◐, HA ◐, service fail-open ✅ ·
+`P4-10` model-based groundedness ◐ · `P4-11` annotation queue ✅ · `P12-6` canary ✅ · `P12-7`
+non-developer authoring ✅ · `PL-4…PL-7` loop governance ✅, async ◐, HA ◐, service fail-open ✅ ·
 `P1-9` monitoring ✅ · `P4-13/14` live probing and showcase ✅ (added 2026-10-06)
 
 ### Tranche 4 — enterprise readiness
@@ -1086,8 +1091,9 @@ scoring, connectors, workflow engine) · SOC 2 programme (start the clock early 
 pole and it is organisational, not engineering)
 
 ### Explicitly not doing
-Sandboxing · business-platform coverage (Copilot Studio, Power Platform) · network-level discovery ·
-becoming the retrieval layer · building a model, vector DB, or agent framework.
+Sandboxing · business-platform coverage at depth (M365 Copilot, Power Platform; Copilot Studio is
+covered only through its pre-tool hook, §14) · network-level discovery · becoming the retrieval
+layer · building a model, vector DB, or agent framework.
 
 > XL effort, defended by well-funded incumbents, and **absent from the practitioner evidence entirely**
 > — not one of 11 engineers mentioned needing them.
@@ -1211,7 +1217,7 @@ declared-vs-observed comparison.
 ### 12.3 Declared hardening (extends existing pillars, not new ones)
 
 - **ASI04 supply-chain signing** — `scan_mcp_server()` computed a digest for drift comparison but
-  never verified a cryptographic signature. Extends `registry/service.py`, not a new pillar.
+  never verified a cryptographic signature. Extends `platform/registry/service.py`, not a new pillar.
 - **ASI10 behavioral attestation** — `attest_registry()` already did after-the-fact drift detection;
   periodic signed re-attestation is a parameter on existing machinery, not new architecture.
 - **ASI05 (unexpected code execution)** — declared explicitly as a non-goal in writing (§10.3):
@@ -1253,7 +1259,7 @@ until the next manual scan.
 |---|---|---|
 | P1-9 | Re-check every connected source on its own interval and, for GitHub, on a signed push webhook; raise findings from the difference between runs, close them when they clear, raise one when a monitor keeps failing; alert to Slack and the finding webhook; create the monitor when the source is connected or scanned | ✅ |
 
-Shipped as the `monitoring` package and the `monitors.run` job: `github_repo`, `hosted_api`,
+Shipped as the `monitoring` package (in the Enterprise edition since 0.5.0) and the `monitors.run` job: `github_repo`, `hosted_api`,
 `mcp_server` and `deployed_agent` monitor kinds, `/api/monitors` and `/api/alerts/slack`, and
 `agentfox scan monitors`. The job runner is driven by the cron endpoint, a 30-minute GitHub
 Actions workflow, or `agentfox admin jobs run-due`. Limits: GitHub is the only code host, and
@@ -1270,9 +1276,9 @@ attacks it contained last week, after a deploy, a prompt change or a model swap.
 | P4-13 | Send a fixed probe library to a deployed agent's own endpoint on a schedule, only after a recorded opt-in for that host; score on observed behaviour; open a finding when a contained attack escapes and close it once contained again; hard caps per target and per job, and one switch that turns every target off | ✅ |
 | P4-14 | Publish AgentFox probing its own demo agent, from a dedicated tenant, on a public page; off unless the deployment enables it | ✅ (off unless `AGENTFOX_SHOWCASE_ENABLED`) |
 
-Shipped as `evaluation.live_probes` (`/api/probes`, run as the `deployed_agent` monitor kind,
-with the `probes.run` job as fallback) and `evaluation.showcase` (`GET /api/public/showcase`,
-rendered at `/live`). The probe set is fixed, not adaptive; an http target must answer the
+Shipped as `capabilities/evaluation/live_probes.py` (`/api/probes`, run as the `deployed_agent`
+monitor kind, with the `probes.run` job as fallback) and `apps/showcase.py` (`GET
+/api/public/showcase`, rendered at `/live`). The probe set is fixed, not adaptive; an http target must answer the
 small JSON contract the adapter sends.
 
 ### 13.3 Hardening of existing pillars
@@ -1294,13 +1300,36 @@ small JSON contract the adapter sends.
 
 ### 13.4 Deferred, deliberately
 
-- The code restructure in [structure-proposal.md](structure-proposal.md), and with it new
-  coding-agent harnesses (Codex first, then Cursor).
 - Building the vendored wheels at deploy time instead of committing them.
+- Coding-agent harnesses beyond Claude Code and Codex CLI; Cursor is next.
+
+The code restructure that was deferred here is done: the layered layout, enforced by
+import-linter, is recorded in [ADR 0001](../adr/0001-repository-structure.md), and the Codex
+adapter shipped on it.
+
+
+## 14. Addendum (2026-11-07): releases 0.4 and 0.5
+
+As in §12 and §13, this keeps what shipped and its status; [CHANGELOG.md](../../CHANGELOG.md)
+has the detail and [gap-analysis.md](gap-analysis.md) what is still open.
+
+| Area | What shipped | Status |
+|---|---|---|
+| Repository and editions | The layered layout enforced by import-linter ([ADR 0001](../adr/0001-repository-structure.md)). Since 0.5.0, an Apache-2.0 open core plus a source-available Enterprise package in `ee/` (compliance status, reviews and sign-off, the risk register and board view, evidence packages, fleet monitoring, external access checks). | ✅ |
+| Capability packs (P6-7) | A use case or framework is one directory with a `pack.yaml`: baseline, tool containment, coding agent, agent integrity, EU AI Act, payments/refunds, customer support, industry and regional packs. Your own load from `.agentfox/packs/` or an entry point. | ✅ |
+| Coding-agent harnesses | Adapters behind one `HarnessAdapter` protocol (`src/agentfox/harnesses/`), tested against captured payloads: Claude Code (including **Stop**) and Codex CLI. Delivery policies steer an agent that is about to lose finished work. | ✅ two harnesses; others deferred |
+| Gateway proxy tool calls | `/v1/chat/completions` and `/v1/messages` authorise every tool call a model asks for before returning it (403 refused, 428 held), streamed calls included. | ✅ |
+| Hosted agent platforms | Pre-tool hooks for Vapi, Retell (signed), Copilot Studio (Entra token verified) and AgentCore Gateway (an interceptor Lambda), each answering in the platform's own format; an approval granted for exactly this call is spent once on the platform's retry. Vapi and Retell call records are stored as runs, masked first. | ✅ (spoken numbers not masked yet) |
+| LiteLLM proxy guardrail (I-10) | One `config.yaml` block checks every agent behind a LiteLLM proxy: inputs, tool results, each tool call and the reply. | ✅ |
+| Discovery | Voice agents in code (LiveKit, Pipecat, OpenAI Realtime), more agent frameworks by name, multi-agent systems with their hand-offs, and agents read from the files hosted platforms export. Still no live account connectors (`P1-8`). | ◐ |
+| Setup | `agentfox up`: one command from a fresh install to a governed project, observe by default. One workspace key shared by the CLI, `agentfox.auto()` and the dashboard. | ✅ |
+| Rules and validators (P12-7) | About seventy validators ported from Guardrails AI as native code, your own through an entry point, and rule authoring in the dashboard without code. | ✅ |
+| Platform security | Key rotation for both stored-data keys (`agentfox admin keys rotate`); a detector error now counts as degraded, as a timeout does; a judge outage can deny under the workspace's posture. | ✅ |
 
 ---
 
-*All framework mappings in this product are engineering drafts, not legal advice, and are excluded
-from evidence packages until reviewed by a qualified assessor. Coverage gaps are declared per
+*All framework mappings in this product are engineering drafts, not legal advice, and ship in
+evidence packages with a `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` chip until reviewed by a
+qualified assessor. Coverage gaps are declared per
 framework rather than hidden. Competitor capability claims come from 2026 public sources and shift
 quickly — re-verify before positioning against a named vendor.*

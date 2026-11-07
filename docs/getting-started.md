@@ -114,8 +114,9 @@ agentfox init
 ```
 Setting up AgentFox
   ✓ database ready  sqlite:///…/agentfox.db
-  ✓ 43 controls across 7 frameworks  v0.1.0-draft (draft)
-  ✓ 3 policy pack(s) loaded
+  ✓ 44 controls across 7 frameworks  v0.1.0-draft (draft)
+  ✓ 4 policy pack(s) loaded
+      agent-integrity          observe  recorded, nothing blocked
       baseline                 observe  recorded, nothing blocked
       eu-ai-act-high-risk      observe  recorded, nothing blocked
       tool-containment         enforce  violations are blocked now
@@ -128,15 +129,15 @@ This creates a SQLite database, loads the control catalogue and the policy packs
 `agentfox.toml` in the current directory if there isn't one. The database lives in
 `~/.agentfox/` (or `$XDG_DATA_HOME/agentfox/`), not in your project, so `agentfox findings` shows the
 same thing from whichever directory you type it in; set `AGENTFOX_STATE_DIR` to put it somewhere
-else. The coding-agent pack is bound only to agents whose Claude Code hooks are installed, so a plain
-repository gets three. It is idempotent and offline, so it is safe to run again.
+else. The coding-agent pack is bound only to agents whose Claude Code or Codex hooks are installed, so a plain
+repository gets four. It is idempotent and offline, so it is safe to run again.
 
-If the agent you want to govern is Claude Code itself, `agentfox admin hooks install --agent <slug>
---write` is the shortcut: besides writing the hooks, it registers the agent, declares Claude Code's
-built-in tools with their real impact and grants them to it, and binds the coding-agent pack in
+If the agent you want to govern is Claude Code or Codex itself, `agentfox admin hooks install --agent
+<slug> --write` (add `--harness codex` for Codex) is the shortcut: besides writing the hooks, it
+registers the agent, declares the harness's built-in tools with their real impact and grants them to it, and binds the coding-agent pack in
 observe, so ordinary work is not refused by default deny. Destructive commands are still refused.
 
-Read the mode column carefully, because it is the whole shape of the product. The three
+Read the mode column carefully, because it is the whole shape of the product. The
 detector-driven packs start in **observe**: they record what they would have done and block
 nothing. `tool-containment` starts in **enforce**, because it does not guess. It refuses calls that
 no capability grants, and calls that carry untrusted arguments into an irreversible tool. Those are
@@ -170,6 +171,9 @@ agentfox scan
 Scanned 2 files in /path/to/your/project
   built on: OpenAI SDK
 
+  Found 1 agent
+    project  OpenAI SDK · gpt-4o · 3 tools  bot.py:22
+
   1 of 1 model call sites are ungoverned  (0% covered)
   can reach: 3 tools · 0 MCP servers
      read_customer_record  bot.py  private data
@@ -178,7 +182,8 @@ Scanned 2 files in /path/to/your/project
      ...
 ```
 
-It is a static read of the source. It finds every place the code calls a model, every tool
+It is a static read of the source. It names each agent the code defines (its framework, model,
+tools and file; one per agent in a multi-agent system), every place the code calls a model, every tool
 (decorated functions, OpenAI function schemas (`tools=[{"type": "function", ...}]`, inline or in a
 list passed later) and Anthropic tool dicts (`name` + `input_schema`)), every MCP server your client
 configs declare, hard-coded credentials, and shell and SQL construction near model output. It writes
@@ -253,8 +258,9 @@ curl -s -X POST http://localhost:8080/v1/guard/tool_call \
 
 ```json
 { "verdict": "block",
-  "rules_fired": [{ "rule_id": "capability.denied",
-                    "reason": "no resolved identity for the caller, so it holds no grants (default deny). To have grants proposed from the calls this agent has made, run `agentfox policy proposals from-traffic` and approve them; to grant this one directly, `agentfox permit grant <agent> payments.transfer`." }] }
+  "rules_fired": [ …,
+    { "rule_id": "capability.denied", "effect": "block",
+      "reason": "'payments.transfer' has not been granted to this agent yet (default deny). Allow it in the dashboard (the agent's Access tab), or run `agentfox permit grant <agent> payments.transfer`." }] }
 ```
 
 Blocked, on a database you have never configured, for an agent that does not exist yet. That is
@@ -435,7 +441,8 @@ undeclared agent is refused before anybody writes a rule about it.
 
 ### 5e. A token for the control-plane API
 
-The `/v1/guard/*` endpoints above read no credential. The control-plane API under `/api` does:
+The `/v1/guard/*` endpoints above need no credential (a key, when sent, must verify, and it decides
+which workspace the call is recorded in). The control-plane API under `/api` does:
 
 ```bash
 agentfox admin users create you@example.com --role owner   # once, on a fresh database
@@ -473,8 +480,8 @@ permission, provenance or blast-radius rule stopped, titled by what actually sto
 `support-triage tried to email.send with data that came from a web page (contained)`.
 
 For the one-page version to forward to whoever signs off, run `agentfox report` (add
-`--format html --out summary.html` for a file). The same page is `SUMMARY.md` at the top of every
-`agentfox report evidence` zip.
+`--format html --out summary.html` for a file). With AgentFox Enterprise, the same page is
+`SUMMARY.md` at the top of every `agentfox report evidence` zip.
 
 `doctor` is the more interesting one, because it grades the configuration rather than the traffic:
 
@@ -582,6 +589,8 @@ seen what it will do.
 ## Where to go next
 
 - **[docs/README.md](README.md)**: what every other document in this directory is for.
+- **[The product tour](product-tour.md)**: every other place the policy binds (LangGraph, the
+  OpenAI Agents SDK, a LiteLLM proxy, Vapi, Retell, Copilot Studio, AgentCore, MCP, coding agents).
 - **[Appendix C](architecture/api-spec.md)**: the full API, including the routes the dashboard
   itself uses. There is no privileged back-channel.
 - **[The benchmarking white paper](evaluation/benchmarking-whitepaper.md)**: how each capability was measured,

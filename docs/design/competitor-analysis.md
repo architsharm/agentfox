@@ -1,7 +1,9 @@
 # Competitor Analysis & Positioning
 
-**Date: 2026-09-04; our side of each comparison updated 2026-10-06.** Synthesized from [docs/PRD.md](PRD.md) §1.4 and §4,
-[docs/gap-analysis.md](gap-analysis.md) Parts 3 and 5, and the raw research in
+**Date: 2026-09-04; our side of each comparison updated 2026-11-07 (release 0.5.0).**
+Competitor facts are as of 2026-09-04 unless a row says otherwise. Synthesized from
+[docs/PRD.md](PRD.md) §1.4 and §4, Parts 3 and 5 of the 2026-08-29 gap analysis (in git
+history; the current register is [gap-analysis.md](gap-analysis.md)), and the raw research in
 docs/research/ (kept outside this repository) (market-reality-check.md, enterprise-infrastructure-analysis.md,
 practitioner-evidence.md, practitioner-signal.md). Those research files are background
 inputs already synthesized into the PRD and gap-analysis — treat this document, in turn, as
@@ -127,17 +129,17 @@ Conceding ground precisely, with the specific competitor and the specific gap:
 
 | Competitor | Their strength | Our current position |
 |---|---|---|
-| **ServiceNow AI Control Tower** | ~30 discovery integrations, MCP gateway, per-agent kill switches | We have a kill switch that covers every guard surface, and inline MCP governance; discovery is repo/config-based (now re-checked on a schedule), nowhere near estate-scale connector breadth |
-| **Zenity** | Inline step-level prevention *inside Copilot Studio*; Gartner's "company to beat" | We have zero coverage of the low-code/Copilot agent surface — this is a deliberate non-goal today, not an oversight, but it's real ceded ground |
+| **ServiceNow AI Control Tower** | ~30 discovery integrations, MCP gateway, per-agent kill switches | We have a kill switch that covers every guard surface, and inline MCP governance. Discovery reads code and the files hosted platforms export (Bedrock Agents, Copilot Studio, Agentforce, Vapi, n8n and others), and connected sources are re-checked on a schedule. We have no live connector that enumerates an account, so this is nowhere near estate-scale connector breadth |
+| **Zenity** | Inline step-level prevention *inside Copilot Studio*; Gartner's "company to beat" | Since 0.5.0 we answer Copilot Studio's external threat-detection call, so a tool call is decided before it runs, and discovery reads exported Copilot Studio agents. That is one surface of theirs. We have nothing for M365 Copilot or Power Platform, and no depth of low-code coverage to compare |
 | **Kosmoy** | Kernel-enforced sandboxing, per-task credentials, air-gapped Kubernetes support | We do not sandbox at all — explicitly out of scope (that's E2B/Modal/Daytona's job), but a buyer asking for it gets a "no" |
 | **Noma** | Adaptive, learning red-team engine; $132M raised | We ship 22 static probes, an adaptive campaign engine that mutates attacks against this deployment's own grants and policies, and opt-in scheduled probing of deployed agents. Ours reports a change in posture against the last run, not a robustness score, and it does not learn |
-| **Credo AI** | Purpose-built Policy Packs (e.g. NYC Local Law 144), CE-marking support for EU AI Act filings | Our one framework pack (EU AI Act high-risk) and all 317 framework mappings remain **DRAFT** — unreviewed by compliance counsel |
+| **Credo AI** | Purpose-built Policy Packs (e.g. NYC Local Law 144), CE-marking support for EU AI Act filings | We ship one compliance-framework pack (EU AI Act high-risk) beside industry and regional policy packs, and all 324 framework mappings remain **DRAFT**, unreviewed by compliance counsel. No LL144 pack and no CE-marking support |
 | **OneTrust** | ~14,000-organization installed base, third-party AI vendor risk workflows | We have none of this — no vendor-risk module, no comparable market presence |
 | **IBM watsonx.governance** | AI Factsheets, SR 11-7 model-risk workflows, FedRAMP GovCloud | We have none of this — if the deal requires SR 11-7 (banking model risk) or FedRAMP, we're not in the conversation today |
 | **Cleanlab / Vectara / Galileo / Patronus** | Model-based hallucination/groundedness scoring, benchmarked ahead of our lexical scorer | Acknowledged directly above — don't contest this point in a technical eval |
 | **LangSmith** | Dataset splits, pairwise comparison, annotation queues; public **$39/seat** pricing | Our eval-suite tooling is comparably basic; **we have no published pricing at all** |
 | **WitnessAI** | Network-level capture of desktop apps and IDEs, not just API traffic | We tokenize PII once content reaches us; we don't capture at the network layer |
-| **Astrix + Microsoft Entra Agent ID** | Full NHI lifecycle, Conditional Access, ITSM/SIEM/SOAR integration | We model non-human identity but have no live IdP integration and no SOAR hooks; findings leave only through SIEM export, the finding webhook and (for monitor findings) Slack |
+| **Astrix + Microsoft Entra Agent ID** | Full NHI lifecycle, Conditional Access, ITSM/SIEM/SOAR integration | We model non-human identity but have no live IdP integration and no SOAR hooks; findings leave only through SIEM export, the finding webhook and (for monitor findings, in the Enterprise edition) Slack |
 | **Protect AI llm-guard** | Measured on AgentDojo ([`benchmarks/head_to_head/`](../../benchmarks/head_to_head/README.md)): at its defaults it completes 42/97 benign tasks to our 24/97, and its classifier flags injected tool outputs that our shipped heuristic misses entirely | It let 86/588 attack pairs through where containment let 0/588 through; chunked and tuned on the test set, it ties containment at 0/588 and 24/97 |
 | **Almost every named competitor** | AWS/Azure Marketplace listing | We have none |
 
@@ -145,9 +147,8 @@ Conceding ground precisely, with the specific competitor and the specific gap:
 unmet as of the last audit — SOC 2 Type II, ISO 27001, a pentest report, a filled SIG
 questionnaire, DPA/sub-processor register, published DR/RTO/RPO, an uptime SLA, and
 marketplace listings. All of these are organisational/legal work, not engineering gaps — see
-[docs/production-readiness-review.md](production-readiness-review.md) and gap-analysis.md
-Part 6 — but a buyer's security team will ask for all 14, and today's honest answer is "6 of
-14, in progress on the rest."
+[gap-analysis.md](gap-analysis.md) §3 — but a buyer's security team will ask for all 14, and
+today's honest answer is "6 of 14, in progress on the rest."
 
 ---
 
@@ -189,17 +190,15 @@ it — friction in a bake-off usually gets attributed to the newer, less-trusted
 - **Regulated-industry concentration in the evidence base**: banking/fintech, healthcare,
   legal, retail/CPG, consulting, telecom/autonomous-driving — a real signal about where the
   pain is most acute, not just where the PRD's authors happened to know people.
-- **Explicitly not our territory today**: low-code/Copilot-agent users (Microsoft Copilot
-  Studio, Power Platform, Salesforce Agentforce) — that's Zenity's ground and Microsoft's
-  own Purview/Entra stack; going after it without building the coverage first would be a
-  losing fight.
-- **Open, unresolved strategic question** (carried forward from gap-analysis.md, still
-  unresolved): vertical vs. horizontal. Staying horizontal keeps the addressable market
-  wide but caps how deep any one framework's coverage goes; picking a vertical (financial
-  services → SR 11-7, or HR/employment → bias-auditing depth) would sharpen the pitch to
-  exactly the buyers who most need it, at the cost of narrowing everyone else out. This
-  decision determines what the next engineering cycle should actually build, and it hasn't
-  been made.
+- **Not our territory yet**: low-code/Copilot-agent users at depth (Microsoft 365 Copilot,
+  Power Platform, Salesforce Agentforce at runtime) — that's Zenity's ground and Microsoft's
+  own Purview/Entra stack. We now read exported Copilot Studio and Agentforce agents and
+  govern Copilot Studio tool calls through its threat-detection hook, which is a foothold,
+  not coverage.
+- **Vertical vs. horizontal: decided horizontal** (the PRD's positioning). Staying horizontal
+  keeps the addressable market wide but caps how deep any one framework's coverage goes; the
+  cost is that SR 11-7 (financial services) and bias-auditing depth (HR/employment) stay
+  open gaps (see [gap-analysis.md](gap-analysis.md) §1.3).
 
 ---
 
@@ -222,8 +221,7 @@ it — friction in a bake-off usually gets attributed to the newer, less-trusted
    [docs/hld.md](../architecture/high-level-design.md) §2, not a hypothetical.
 4. **No published pricing, in a market where at least one direct competitor (LangSmith)
    publishes theirs.** This is a sales-motion gap as much as a competitive one — see
-   [docs/production-readiness-review.md](production-readiness-review.md) for the code-level
-   framing and gap-analysis.md item 3.16 for the standing recommendation.
+   [gap-analysis.md](gap-analysis.md) §3. The pricing page exists and prices nothing.
 
 ---
 
