@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Any
 
 import typer
 from rich.console import Console
@@ -59,6 +60,21 @@ def _keys(raw: str | None, option: str) -> set[str]:
             param_hint=option,
         )
     return keys
+
+
+def _agent_name(ctx: Any) -> str:
+    """The name to run under: the agent the code defines in the entry point (its root,
+    when one file defines several), as the scan prints it and `agentfox init` registers
+    it, so one agent has one name everywhere. The project's name when none is found."""
+    from agentfox.platform.registry.service import slugify
+
+    specs = [a for a in ctx.report.agents if a.file.endswith(".py")]
+    if not specs:
+        return ctx.project
+    entries = {str(p.relative_to(ctx.root)) for p in ctx.entry_points}
+    handed = {e.child for e in ctx.report.agent_edges}
+    ranked = sorted(specs, key=lambda a: (a.file not in entries, a.key in handed))
+    return slugify(ranked[0].name) or ctx.project
 
 
 def _step(number: int, title: str) -> None:
@@ -252,7 +268,7 @@ def up(
         target=chosen,
         prompter=prompter,
         console=console,
-        agent=agent or saved.get("agent") or ctx.project,
+        agent=agent or saved.get("agent") or _agent_name(ctx),
         start=start,
         interactive=interactive,
     )

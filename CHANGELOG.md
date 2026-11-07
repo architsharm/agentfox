@@ -11,6 +11,16 @@ the file it came from.
 
 ## [Unreleased]
 
+### Fixed
+
+- **One agent, one name.** The scan, `agentfox init`, `agentfox up` and the
+  `agentfox.auto()` line it writes now all name an agent as its code does
+  (`support-triage`, not `app-support-triage` in one place and `main` in another), so
+  the `permit grant` and other commands the CLI suggests name an agent that exists.
+  The repository goes in front only when another repository's agent has the name; an
+  existing scan's agents keep their slugs. An unnamed agent in a top-level `main.py`
+  is named after the repository. A single-agent repository no longer gets a second,
+  phantom agent for its top-level files.
 ### Changed
 
 - **`agentfox scan` names the agents it found** (one line each: framework, model,
