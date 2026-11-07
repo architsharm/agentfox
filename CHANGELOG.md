@@ -11,6 +11,18 @@ the file it came from.
 
 ## [Unreleased]
 
+### Added
+
+- **`agentfox.auto()` reports to your AgentFox account when a key is configured.**
+  With `AGENTFOX_URL` and `AGENTFOX_API_KEY` set (or `auto(server=, key=)`, or the
+  `.agentfox/agentfox.env` that `agentfox init` writes), every check goes to the
+  account's gateway and the calls show up on its dashboard; without one, nothing
+  changes. Same decisions as in process: the mode rules, the no-grants carve-out,
+  argument taint from the conversation, approvals spent on the retry.
+- `POST /v1/guard/tool_call` takes `in_process`, `waive_ungranted` and `declare`, so
+  a remote caller gets the same containment record, carve-out and tool registration
+  as `auto()` in process.
+
 ## [0.5.0] - 2026-11-06
 
 ### Added
