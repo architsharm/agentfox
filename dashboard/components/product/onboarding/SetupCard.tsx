@@ -287,8 +287,8 @@ export function SetupCard({
               <>
                 <p className="text-muted-foreground">
                   Your key. <strong className="font-medium text-foreground">Copy it now: it&apos;s shown only once.</strong>{" "}
-                  <code className="font-mono text-[12.5px]">agentfox init</code> uses it to send your agents&apos; map here. It can&apos;t read your data or
-                  change this workspace.
+                  <code className="font-mono text-[12.5px]">agentfox init</code> uses it to send your agents&apos; map here, and your app uses it to send its
+                  calls. It&apos;s a workspace key: keep it out of your code.
                 </p>
                 <Code text={key} className="mt-3" />
               </>
