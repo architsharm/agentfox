@@ -2,7 +2,7 @@
 
 Companion to [the PRD](PRD.md)'s [§7.4 OSS decisions](PRD.md#74-oss-decisions). Every project surveyed, with licence, health, verdict, the pillar it serves, and — critically — **our exposure** if it changes status.
 
-**Scan date:** Aug 2026. **Re-verify quarterly.** Two projects on this list changed status within the preceding twelve months, which is the whole reason the adapter seam in [the PRD's §7.2 The swappable seam](PRD.md#72-the-swappable-seam) exists.
+**Scan date:** Aug 2026; our side (what we use each project for) re-checked 2026-11-07, upstream licences and health not re-scanned since. **Re-verify quarterly.** Two projects on this list changed status within the preceding twelve months, which is the whole reason the adapter seam in [the PRD's §7.2 The swappable seam](PRD.md#72-the-swappable-seam) exists.
 
 Legend — **Verdict:** `REUSE` wrap it · `REUSE ★` best-in-class pick · `REUSE ⚠` usable but licence-restricted · `REFERENCE` study, do not depend · `ADOPT` taxonomy, not code.
 **Exposure:** what breaks for us if the project dies, changes licence, or is acquired.
@@ -21,8 +21,11 @@ Legend — **Verdict:** `REUSE` wrap it · `REUSE ★` best-in-class pick · `RE
 | **PyRIT** | Microsoft | MIT | Active | 4 | **REUSE** | Orchestrated, automated red-teaming of GenAI. | **Low.** Behind `RedTeamRunner`. | Built-in probe suite. |
 | **Giskard** | Giskard | Apache-2.0 | Active | 4 | **REUSE** | LLM testing/scan — vulnerabilities, bias, hallucination; framework-agnostic. | **Low.** Optional. | — |
 | **Granite Guardian** | IBM | Apache-2.0 | Active | 3, 4 | **REUSE ★** | Safety/risk classifier (harm, jailbreak, RAG hallucination). **The cleanest licence in the classifier group — true Apache-2.0 weights.** Default safety classifier. | **Low.** Behind `Detector`; weights not bundled. | Heuristic lexicon classifier (offline default). |
+| **PIGuard** (`leolee99/PIGuard`) | academic (InjecGuard paper) | MIT | Weights published | 3 | **REUSE** | Default prompt-injection classifier (`prompt_injection_classifier_model`), chosen on measured recall and false positives (`benchmarks/injection/model_choice/`). | **Low.** Behind `Detector`; needs `agentfox[classifiers]` and a weights download. | Lexical heuristic, which runs alone without it. |
+| **protectai/deberta-v3-base-prompt-injection-v2** | Protect AI (Palo Alto) | Apache-2.0 | Weights published | 3 | **REUSE** | Advisory backstop to PIGuard: its hits are recorded and seen by observing policies, never by enforcing ones. | **Low.** Optional (`prompt_injection_classifier_secondary_model`); competitor-owned, so never the primary. | PIGuard alone. |
+| **sqlglot** | community | MIT | Active | 9 | **REUSE ★** | SQL parsing to an AST for action assurance (P9); 31 dialects, zero dependencies. | **Low.** Behind the action analyser; unparseable SQL fails closed. | None; without it SQL is refused rather than guessed. |
 | **NeMo Guardrails** | NVIDIA | Apache-2.0 | Active | 3 | **REUSE** | Programmable rails (Colang) — topical, jailbreak, dialogue, fact-check; composes checks. | **Low.** Adapter; our pipeline is primary. | Native pipeline. |
-| **Guardrails AI** | Guardrails AI | Apache-2.0 (core) | Active | 3 | **REUSE** | I/O validation, structured output, Hub validators, auto-correction. | **Medium on Hub validators** — the core is Apache-2.0 but **individual Hub validators carry their own licences**; check per-validator before shipping any of them. | Native JSON-schema/format validator. |
+| **Guardrails AI** | Guardrails AI | Apache-2.0 (core) | Active | 3 | **REUSE** | Since 0.5.0, about seventy Hub validators (each Apache-2.0) are ported as native code (`capabilities/detection/validators/`), so none needs a separate install; importing a Guardrails AI guard maps each validator onto its port. `rails.guardrails_ai` still runs your own Guard. | **Low.** The ports are ours; attribution is in `THIRD_PARTY_NOTICES.md`. A validator not ported still carries its own licence; check it before shipping. | Native ports and JSON-schema/format validator. |
 | **Cedar** | AWS | Apache-2.0 | Active | 2 | **REUSE** | Fine-grained authz language; formally verified; sub-ms. | **Low.** Kept as a `PolicyEngine` seam, not currently on the path. | OPA / native. |
 | **Casbin** | community | Apache-2.0 | Active | 2 | **REUSE** | ACL/RBAC/ABAC across many languages. | **Low.** Optional for control-plane RBAC. | Native role matrix (current). |
 | **Helicone** | Helicone | Apache-2.0 | Active | 5 | **REUSE** | Proxy request logging, cost tracking, rate limiting. | **Low.** Optional export target. | Native. |
@@ -69,7 +72,7 @@ Directly from the catalog's coverage map — and it *is* the strategy:
 | Pillar | OSS coverage | Our split |
 |---|---|---|
 | 3 · Runtime guardrails (injection, PII, toxicity, tool-call) | ██████████ Well covered | Wrap ~70% / build ~30% (taint tracking, containment) |
-| 4 · Evaluation & reliability (red-team, eval, regression) | ███████░░░ Good primitives | Wrap ~40% / build ~60% (**silent-failure detection has no OSS equivalent**) |
+| 4 · Evaluation & reliability (red-team, eval, regression) | ███████░░░ Good primitives | Wrap ~40% / build ~60%. RAGAS and Vectara HHEM cover groundedness scoring, and do it better than our lexical default |
 | 2 · Identity & authorization (policy engines, RBAC/ABAC) | ██████░░░░ Engines yes, agent-native no | Wrap the engine / build the agent capability model |
 | 5 · Audit & traceability | ████░░░░░░ Tracing yes; immutable/evidence no | Wrap OTel / **build the evidentiary layer** |
 | 1 · Discovery & registry | ██░░░░░░░░ Thin, and what exists is competitor-owned | Build |
@@ -90,3 +93,4 @@ Target engineering split: **~20% integrating OSS, ~80% on the build column.**
 |---|---|
 | 2026-08-17 | Initial register from the OSS build-vs-reuse catalog scan. |
 | 2026-08-18 | **promptfoo reclassified REUSE ★ → REFERENCE ⚠** — acquired by OpenAI 9 Mar 2026 and embedded into OpenAI Frontier. Moved off the critical path per the A.6 rule. Also noted: Lakera → Check Point (~$300M), Galileo → Cisco, Weights & Biases → CoreWeave. The original scan missed all four. |
+| 2026-11-07 | Our side re-checked at release 0.5.0: added PIGuard (default injection classifier), its protectai backstop and sqlglot, which were in use but missing here; Guardrails AI validators are now native ports. Upstream licences not re-scanned. |

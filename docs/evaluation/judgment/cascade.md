@@ -1,5 +1,7 @@
 # A routed cascade: code → Jev → learned → LLM
 
+*Part of the judgment-tier study: how the numbers were measured. How the tiers work, and what each may decide, is in [judgment-tiers.md](../../architecture/judgment-tiers.md).*
+
 The earlier work asked which single representation was best and treated a miss
 as a verdict on the whole approach. That is the wrong frame. No rung here is
 good at everything, and the rungs fail in different places — so the question is

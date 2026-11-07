@@ -1,7 +1,8 @@
 # ADR 0001: Repository structure
 
-**Status:** Accepted, 2026-10-07. Records the decisions in
-[structure-proposal.md](../design/structure-proposal.md) §9 and what phases 0 to 5 built on them.
+**Status:** Accepted, 2026-10-07. Records the decisions in the structure proposal's §9
+(`docs/design/structure-proposal.md`, now in git history only) and what phases 0 to 5 built on
+them.
 
 ## Context
 
@@ -46,7 +47,8 @@ how other projects solved the same problems.
    building wheels at deploy time instead of committing them to `api/vendor/` and the demo's
    `vendor/`; the rest of the product rename (the pre-rename environment-variable fallback,
    console script and request headers), because production environments still set them.
-   The rename has since been finished: those fallbacks are gone.
+   The rename has since been finished: those fallbacks are gone, and the Codex harness has
+   been added (`harnesses/codex/`).
 
 ## Consequences
 

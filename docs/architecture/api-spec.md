@@ -11,7 +11,9 @@ Base: `http://localhost:8080` (self-host default). All control-plane routes unde
 | Credential | Header | Used by | Scope |
 |---|---|---|---|
 | **Agent key** (`nom_agt_…`) | `Authorization: Bearer <key>` | Agents calling the inline gateway | Bound to one `Identity`; binds the tenant. Optional: unauthenticated inline traffic is served in the default org and recorded as shadow traffic |
-| **API token** (`nom_api_…`) | `Authorization: Bearer <token>` | CLI, CI, scripts, integrations | Bound to a `User` + role. Mint with `agentfox admin auth issue` or `POST /api/tokens`; shown once |
+| **API token** (`nom_api_…`) | `Authorization: Bearer <token>` | CLI, CI, scripts, integrations; the workspace key the setup card makes, which `agentfox init --key`, `agentfox.auto()` and the LiteLLM guardrail send | Bound to a `User` + role. Mint with `agentfox admin auth issue`, `POST /api/tokens` or the setup card; shown once. On `/v1/*` it records the call in that workspace and names no agent, so the agent is the one in the body |
+| **Setup key** (`afi_…`) | `Authorization: Bearer <key>` | `agentfox init --key` from before the one-key change | Reaches only the onboarding runner routes; still accepted there |
+| **Platform credential** | Vapi: `Authorization: Bearer <secret>` (or `X-Vapi-Secret`); Retell: `X-Retell-Signature`; Copilot Studio: an Entra app token | Hosted platforms calling `/v1/hooks/*` | Checked against the platform connection: Vapi's secret, an HMAC of the body with the Retell API key (5-minute replay window), or the token's RS256 signature, tenant, issuer, app id, audience and expiry |
 | **Session cookie** | `agentfox_session` | Dashboard browser sessions | Holds an API token the dashboard forwards as `Bearer` |
 | **Development header** | `X-AgentFox-User: <email>` | Local development and tests | Accepted only when `AGENTFOX_AUTH_MODE=development`, or `auto` with a dev/test/local environment. `agentfox admin auth status` reports it |
 | **Service secret** | `X-AgentFox-Service-Secret` | Dashboard OAuth provisioning | `POST /api/auth/github/provision` only |
@@ -56,7 +58,7 @@ the same request with `X-AgentFox-Approval: <id>` — it runs once (P2-3).
 
 ### `POST /v1/guard/input` · `POST /v1/guard/output` · `POST /v1/guard/tool_call` · `POST /v1/guard/memory_write` · `POST /v1/guard/agent_message` · `POST /v1/mcp/call`
 
-Direct enforcement without proxying — for teams that keep their own provider calls (X-1b). `guard/input` and `guard/output` read no credential. `mcp/call` governs a call to an MCP server tool, including schema-drift detection. The example below is illustrative; field names match `EnforcementResult.to_json()`.
+Direct enforcement without proxying — for teams that keep their own provider calls (X-1b), and what `agentfox.auto()` calls when it reports to an account. None of these routes requires a credential; a key that is sent must verify (else `401`) and binds its tenant. `mcp/call` governs a call to an MCP server tool, including schema-drift detection. The example below is illustrative; field names match `EnforcementResult.to_json()`.
 
 ```jsonc
 // POST /v1/guard/tool_call
@@ -73,6 +75,16 @@ Undeclared arguments are inferred from `messages`, the conversation that led to 
 (OpenAI or Anthropic shape; `trust` vouches for messages by index, as `X-AgentFox-Trust`
 does). A value found in a tool's output is `tool_result`. With neither `provenance` nor
 `messages` the gateway has nothing to infer from, and the arguments count as untainted.
+
+Other optional fields: `approval_id` (the retry of a held call); `redeem_approved` (with no
+`approval_id`, spend one unexpired, unspent approval granted for exactly this agent, tool and
+arguments; the platform hooks set it, because those platforms never send an id back);
+`in_process` (`enforced`, `all` or `none`: what the caller will do with the verdict, so a
+containment finding says whether the call was really stopped); `waive_ungranted` (while the
+agent holds no grants, record a missing grant without applying it, as `auto()` does; the
+response lists `waived_rules`); `declare` (the tool's name, description and parameters, so a
+tool seen for the first time is registered with an inferred impact); `principal` (the end user
+the agent acts for); `prior_steps` (earlier tool calls, for loop governance).
 ```jsonc
 // 200
 {
@@ -91,6 +103,24 @@ does). A value found in a tool's output is `tool_result`. With neither `provenan
   "latency_ms": 11
 }
 ```
+
+### `/v1/hooks/*`: hosted platform tool calls
+
+Each route turns a platform's pre-tool call into the `/v1/guard/tool_call` decision for the agent
+its platform connection names, and answers in the platform's format. An operator registers the
+connection with `POST /api/agents/{slug}/platform-connections` (registry writers; audited; the
+secret is stored encrypted) and gets the URL to paste into the platform.
+
+| Route | Platform | Answer |
+|---|---|---|
+| `POST /v1/hooks/vapi/{connection_id}` | Vapi `tool-calls` and `end-of-call-report` messages | A refusal is an `error` the assistant speaks; allowed calls are forwarded to the registered tool server and its `results` returned. An end-of-call report is recorded as one run per call. |
+| `POST /v1/hooks/retell/{connection_id}` | Retell custom function | A refusal is a sentence the agent says; an allowed call is forwarded with Retell's body and signature. |
+| `POST /v1/hooks/retell/{connection_id}/webhook` | Retell `call_ended` / `call_analyzed` | Records the call's turns once, with personal data and secrets masked. |
+| `POST /v1/hooks/copilot-studio/{connection_id}/analyze-tool-execution`, `/validate` | Copilot Studio external threat detection | `blockAction` true or false; `/validate` is the health check. |
+
+The tool server is never taken from the request: it must be `https` on a public host when it is
+registered and is resolved and checked again before every forward, with redirects not followed.
+A body over 512,000 bytes is `413`. A refusal never says which rule fired; the reason is on the trace.
 
 ### `POST /v1/traces` — OTLP/HTTP ingest (X-1c)
 
@@ -543,6 +573,11 @@ Every authenticated role can read. Writes are gated per route family by `WRITE_R
 | `suppressions` (silence a detector) | ✓ | ✓ | ✓ | — | — | — |
 | `jobs` (retry dead-lettered work) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | `judgment_posture` (which judgment tiers run, and what leaves the box) | ✓ | ✓ | ✓ | — | — | — |
+| `monitors` (add, pause, run a monitor) | ✓ | ✓ | ✓ | — | ✓ | — |
+| `alerts` (where a tenant's alerts go) | ✓ | ✓ | ✓ | — | — | — |
+| `probes` (opt a deployed agent in to live probes) | ✓ | ✓ | ✓ | — | — | — |
+| `control_review` (attest a control) | ✓ | ✓ | — | ✓ | — | ✓ |
+| `retention` (retention settings, purge now) | ✓ | ✓ | — | ✓ | — | — |
 | `users` | ✓ | ✓ | — | — | — | — |
 
 Filing guardrail feedback (a false positive) is open to any reader; *acting* on it by

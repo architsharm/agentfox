@@ -1,21 +1,17 @@
 # Competitor Analysis & Positioning
 
-**Date: 2026-09-04; our side of each comparison updated 2026-10-06.** Synthesized from [docs/PRD.md](PRD.md) §1.4 and §4,
-[docs/gap-analysis.md](gap-analysis.md) Parts 3 and 5, and the raw research in
-docs/research/ (kept outside this repository) (market-reality-check.md, enterprise-infrastructure-analysis.md,
-practitioner-evidence.md, practitioner-signal.md). Those research files are background
-inputs already synthesized into the PRD and gap-analysis — treat this document, in turn, as
-the standalone competitive-positioning read: where the moat is real, where we concede ground
-honestly, and who we're actually selling against.
+**The market view: who we compete with, where the moat is real, where we concede ground, and
+who to sell to.** Competitor facts are as of 2026-09-04 unless a row says otherwise; our side
+was updated 2026-11-07 (release 0.5.0). Synthesized from [the PRD](PRD.md) §1.4 and §4 and from
+research notes kept outside this repository. The public /compare page cites this document's
+section numbers, so they stay stable.
 
-The single most important fact about this analysis: **it is self-correcting in its own
-source material.** Earlier drafts of the PRD overclaimed in several places (silent-failure
-detection as unique, the audit chain as a headline differentiator, "the governance camp has
-no runtime"), and those claims were explicitly retracted once checked against real competitor
-docs. That discipline is preserved here — every claim below is either evidence-backed or
-flagged as a concession.
+Every claim below is either evidence-backed or flagged as a concession. Earlier drafts
+overclaimed in places, and §4.3 keeps those retractions on record.
 
-For the architecture-level comparison (where each competitor sits, what it can see, and which of our measured results its design can or cannot reach), with corrections to two §4.1/§4.2 claims, see [architecture-differentiation.md](architecture-differentiation.md).
+For the architecture-level comparison (where each competitor sits in the stack, what it decides
+on, and which of our measured results its design can or cannot reach), see
+[architecture-differentiation.md](architecture-differentiation.md).
 
 ---
 
@@ -27,7 +23,7 @@ Before any vendor comparison, the most load-bearing finding in the whole researc
 > Accenture, Deloitte, Philips, Emirates NBD, Itaú, HP, Nvidia, Amazon) had already
 > hand-built a governance/guardrail/validation layer inside their employer before this
 > product existed. **We do not primarily compete with vendors. We compete with `git init`.**
-> The buyer's alternative is two engineer-quarters of internal work." — `docs/design/PRD.md:76-84`
+> The buyer's alternative is two engineer-quarters of internal work." — [PRD §1.3](PRD.md#13-the-finding-that-determines-our-strategy)
 
 This reframes every competitor comparison below: the realistic sales conversation is not
 "why us over Zenity," it's "why buy this instead of having your platform team build it again,
@@ -86,7 +82,7 @@ asking "show me a competitor that already does this."
 
 | Claim | Why it's real | Best competitor comparison point |
 |---|---|---|
-| **Per-value argument provenance with ceilings on the grant, measured with detectors off** | A tainted value can reach a low-impact tool freely but is structurally blocked from an irreversible one, independent of whether any individual detector fired — the containment is the backstop, not the detector | Corrected 2026-10-06: Zenity's public Boundaries templates already carry deterministic, conversation-scoped taint into later `forbid` rules, so session-level taint alone is *not* unclaimed. What stays ours is per-value provenance checked against a per-grant ceiling, and a published detectors-off number — see [architecture-differentiation.md](architecture-differentiation.md) §5 |
+| **Per-value argument provenance with ceilings on the grant, measured with detectors off** | A tainted value can reach a low-impact tool freely but is structurally blocked from an irreversible one, independent of whether any individual detector fired — the containment is the backstop, not the detector | Zenity's public Boundaries templates already carry deterministic, conversation-scoped taint into later `forbid` rules, so session-level taint alone is *not* unclaimed. What stays ours is per-value provenance checked against a per-grant ceiling, and a published detectors-off number — see the Zenity entry in [architecture-differentiation.md](architecture-differentiation.md#zenity) |
 | **Answerability enforcement against a declared knowledge boundary, forced *before* generation** | The model never generates a plausible-but-ungrounded answer in the first place — "I don't have that" is a gate, not a post-hoc score | Cleanlab/Vectara/Galileo/Patronus all score confidence *after* generation — genuinely different mechanism, not just a better number |
 | **Action semantics — deterministic parsing of generated SQL/artefacts for blast radius** | Statement-level analysis (unbounded DML, tautology WHERE clauses, DDL) against a real SQL parser, not a keyword deny-list | No agent-governance vendor surveyed performs this at the statement level |
 | **Failure attribution across a multi-step, multi-agent handoff** | A practitioner (unprompted) called it "a stack trace for agent systems" — pinpoints which step introduced a bad value, not just that the final output was wrong | Absent from LangSmith, Langfuse, and every eval/observability vendor surveyed — they show the trace, not the causal step |
@@ -99,7 +95,7 @@ asking "show me a competitor that already does this."
 | Entitlement-aware retrieval, done inline and cross-stack | Knostic addresses the same problem (RSA Innovation Sandbox / Launch Pad finalist, funded) — the differentiation is doing it inline across Azure/Bedrock/Vertex/Snowflake/Salesforce simultaneously, not owning a category no one else is in |
 | Control status computed from telemetry, not attested | A claim only an inline platform can make credibly — weakened somewhat now that OpenAI Frontier is also inline |
 | Self-host, zero-egress default | Real and valuable against SaaS-only competitors (Zenity, Credo AI, OneTrust are all SaaS-only) — but it's an architecture choice a competitor could make too, not IP |
-| Self-hosted tamper-evident audit chain with an offline, stdlib-only verifier | Corrected 2026-10-06: not unique — AWS CloudTrail log-file integrity validation gives Bedrock guardrail events signed, hash-linked logs, and ServiceNow's AI Gateway claims tamper-evident logs. Ours is the self-hosted chain an auditor can verify offline without our software; a closer for a regulated deal, not an opener |
+| Self-hosted tamper-evident audit chain with an offline, stdlib-only verifier | Not unique — AWS CloudTrail log-file integrity validation gives Bedrock guardrail events signed, hash-linked logs, and ServiceNow's AI Gateway claims tamper-evident logs. Ours is the self-hosted chain an auditor can verify offline without our software; a closer for a regulated deal, not an opener |
 | Approvals that complete the held call | Human-in-the-loop is table stakes. The narrower point: an approval is bound to the agent, tool and arguments it was asked for and redeemed once on retry, and none is granted while the agent is stopped |
 | Continuous re-checking of connected sources, and opt-in probing of deployed agents | Re-scanning on a schedule is ordinary posture-management practice, not IP. Ours is narrow: GitHub repositories, OpenAPI specs and remote MCP servers someone connected, plus a fixed probe set sent only to endpoints that opted in |
 
@@ -127,36 +123,33 @@ Conceding ground precisely, with the specific competitor and the specific gap:
 
 | Competitor | Their strength | Our current position |
 |---|---|---|
-| **ServiceNow AI Control Tower** | ~30 discovery integrations, MCP gateway, per-agent kill switches | We have a kill switch that covers every guard surface, and inline MCP governance; discovery is repo/config-based (now re-checked on a schedule), nowhere near estate-scale connector breadth |
-| **Zenity** | Inline step-level prevention *inside Copilot Studio*; Gartner's "company to beat" | We have zero coverage of the low-code/Copilot agent surface — this is a deliberate non-goal today, not an oversight, but it's real ceded ground |
+| **ServiceNow AI Control Tower** | ~30 discovery integrations, MCP gateway, per-agent kill switches | We have a kill switch that covers every guard surface, and inline MCP governance. Discovery reads code and the files hosted platforms export (Bedrock Agents, Copilot Studio, Agentforce, Vapi, n8n and others), and connected sources are re-checked on a schedule. We have no live connector that enumerates an account, so this is nowhere near estate-scale connector breadth |
+| **Zenity** | Inline step-level prevention *inside Copilot Studio*; Gartner's "company to beat" | Since 0.5.0 we answer Copilot Studio's external threat-detection call, so a tool call is decided before it runs, and discovery reads exported Copilot Studio agents. That is one surface of theirs. We have nothing for M365 Copilot or Power Platform, and no depth of low-code coverage to compare |
 | **Kosmoy** | Kernel-enforced sandboxing, per-task credentials, air-gapped Kubernetes support | We do not sandbox at all — explicitly out of scope (that's E2B/Modal/Daytona's job), but a buyer asking for it gets a "no" |
 | **Noma** | Adaptive, learning red-team engine; $132M raised | We ship 22 static probes, an adaptive campaign engine that mutates attacks against this deployment's own grants and policies, and opt-in scheduled probing of deployed agents. Ours reports a change in posture against the last run, not a robustness score, and it does not learn |
-| **Credo AI** | Purpose-built Policy Packs (e.g. NYC Local Law 144), CE-marking support for EU AI Act filings | Our one framework pack (EU AI Act high-risk) and all 317 framework mappings remain **DRAFT** — unreviewed by compliance counsel |
+| **Credo AI** | Purpose-built Policy Packs (e.g. NYC Local Law 144), CE-marking support for EU AI Act filings | We ship one compliance-framework pack (EU AI Act high-risk) beside industry and regional policy packs, and all 324 framework mappings remain **DRAFT**, unreviewed by compliance counsel. No LL144 pack and no CE-marking support |
 | **OneTrust** | ~14,000-organization installed base, third-party AI vendor risk workflows | We have none of this — no vendor-risk module, no comparable market presence |
 | **IBM watsonx.governance** | AI Factsheets, SR 11-7 model-risk workflows, FedRAMP GovCloud | We have none of this — if the deal requires SR 11-7 (banking model risk) or FedRAMP, we're not in the conversation today |
 | **Cleanlab / Vectara / Galileo / Patronus** | Model-based hallucination/groundedness scoring, benchmarked ahead of our lexical scorer | Acknowledged directly above — don't contest this point in a technical eval |
 | **LangSmith** | Dataset splits, pairwise comparison, annotation queues; public **$39/seat** pricing | Our eval-suite tooling is comparably basic; **we have no published pricing at all** |
 | **WitnessAI** | Network-level capture of desktop apps and IDEs, not just API traffic | We tokenize PII once content reaches us; we don't capture at the network layer |
-| **Astrix + Microsoft Entra Agent ID** | Full NHI lifecycle, Conditional Access, ITSM/SIEM/SOAR integration | We model non-human identity but have no live IdP integration and no SOAR hooks; findings leave only through SIEM export, the finding webhook and (for monitor findings) Slack |
+| **Astrix + Microsoft Entra Agent ID** | Full NHI lifecycle, Conditional Access, ITSM/SIEM/SOAR integration | We model non-human identity but have no live IdP integration and no SOAR hooks; findings leave only through SIEM export, the finding webhook and (for monitor findings, in the Enterprise edition) Slack |
 | **Protect AI llm-guard** | Measured on AgentDojo ([`benchmarks/head_to_head/`](../../benchmarks/head_to_head/README.md)): at its defaults it completes 42/97 benign tasks to our 24/97, and its classifier flags injected tool outputs that our shipped heuristic misses entirely | It let 86/588 attack pairs through where containment let 0/588 through; chunked and tuned on the test set, it ties containment at 0/588 and 24/97 |
 | **Almost every named competitor** | AWS/Azure Marketplace listing | We have none |
 
-**Procurement-bar honesty**: 8 of 14 standard enterprise procurement requirements remain
-unmet as of the last audit — SOC 2 Type II, ISO 27001, a pentest report, a filled SIG
-questionnaire, DPA/sub-processor register, published DR/RTO/RPO, an uptime SLA, and
-marketplace listings. All of these are organisational/legal work, not engineering gaps — see
-[docs/production-readiness-review.md](production-readiness-review.md) and gap-analysis.md
-Part 6 — but a buyer's security team will ask for all 14, and today's honest answer is "6 of
-14, in progress on the rest."
+**Procurement-bar honesty**: most standard enterprise procurement requirements (SOC 2 Type II,
+ISO 27001, a pentest report, a SIG questionnaire, a DPA, DR/RTO/RPO, an uptime SLA, marketplace
+listings) are unmet. They are organisational work, not engineering; the current list is
+[gap-analysis.md §3](gap-analysis.md#3-organisational-and-procurement-gaps).
 
 ---
 
 ## 6. Terminology and UX alignment — already done, worth knowing about
 
 The dashboard's information architecture was deliberately checked against real competitor
-products, not designed in isolation. Per `docs/design/PRD.md` §12.4: a user complaint ("we are over
-complex... they are much more cleaner") was validated **page-by-page against two competitor
-dashboards** (named internally as Decawork and EVO) rather than argued about, and held. Fixes
+products, not designed in isolation. A user complaint ("we are over complex... they are much
+more cleaner") was validated **page-by-page against two competitor dashboards** (named
+internally as Decawork and EVO) rather than argued about, and held. Fixes
 made directly from that comparison: the sidebar went from 16 flat items to 11 (folding
 Connect/tokens into Start Here; merging Guardrails→Policies, Escalation→Approvals, Board
 view→Compliance as tabs rather than standalone pages); table cells that printed raw backend
@@ -189,17 +182,15 @@ it — friction in a bake-off usually gets attributed to the newer, less-trusted
 - **Regulated-industry concentration in the evidence base**: banking/fintech, healthcare,
   legal, retail/CPG, consulting, telecom/autonomous-driving — a real signal about where the
   pain is most acute, not just where the PRD's authors happened to know people.
-- **Explicitly not our territory today**: low-code/Copilot-agent users (Microsoft Copilot
-  Studio, Power Platform, Salesforce Agentforce) — that's Zenity's ground and Microsoft's
-  own Purview/Entra stack; going after it without building the coverage first would be a
-  losing fight.
-- **Open, unresolved strategic question** (carried forward from gap-analysis.md, still
-  unresolved): vertical vs. horizontal. Staying horizontal keeps the addressable market
-  wide but caps how deep any one framework's coverage goes; picking a vertical (financial
-  services → SR 11-7, or HR/employment → bias-auditing depth) would sharpen the pitch to
-  exactly the buyers who most need it, at the cost of narrowing everyone else out. This
-  decision determines what the next engineering cycle should actually build, and it hasn't
-  been made.
+- **Not our territory yet**: low-code/Copilot-agent users at depth (Microsoft 365 Copilot,
+  Power Platform, Salesforce Agentforce at runtime) — that's Zenity's ground and Microsoft's
+  own Purview/Entra stack. We now read exported Copilot Studio and Agentforce agents and
+  govern Copilot Studio tool calls through its threat-detection hook, which is a foothold,
+  not coverage.
+- **Vertical vs. horizontal: decided horizontal** (the PRD's positioning). Staying horizontal
+  keeps the addressable market wide but caps how deep any one framework's coverage goes; the
+  cost is that SR 11-7 (financial services) and bias-auditing depth (HR/employment) stay
+  open gaps (see [gap-analysis.md](gap-analysis.md) §1.3).
 
 ---
 
@@ -219,11 +210,10 @@ it — friction in a bake-off usually gets attributed to the newer, less-trusted
    plus Weights & Biases→CoreWeave. Every one of these either removes a point of comparison
    or turns a former "reference" dependency into a competitor-owned one — this is the direct
    justification for the swappable-adapter architecture described in
-   [docs/hld.md](../architecture/high-level-design.md) §2, not a hypothetical.
+   [the high-level design §2](../architecture/high-level-design.md#2-architecture-principles), not a hypothetical.
 4. **No published pricing, in a market where at least one direct competitor (LangSmith)
    publishes theirs.** This is a sales-motion gap as much as a competitive one — see
-   [docs/production-readiness-review.md](production-readiness-review.md) for the code-level
-   framing and gap-analysis.md item 3.16 for the standing recommendation.
+   [gap-analysis.md](gap-analysis.md) §3. The pricing page exists and prices nothing.
 
 ---
 

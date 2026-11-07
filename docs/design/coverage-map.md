@@ -140,11 +140,11 @@ once in anger.
 | L8.1 | Provider outage becomes our outage | ✅ covered | P15-1 circuit breaker | state=open |
 | L8.2 | Silent model substitution on fallback | ✅ covered | P15-2 recorded degradation, empty default ladder | default ladder is empty — fail rather than serve from an unevaluated model |
 | L8.3 | Cost runaway | ✅ covered | P15-3 pre-flight budget caps | verdict=block |
-| L8.4 | A guardrail silently stops running | ✅ covered | P3-6 degradation recorded as a finding | degraded=['secrets.native', 'injection.heuristic', 'pii.native', 'safety.lexicon', 'schema.json'] |
+| L8.4 | A guardrail silently stops running | ✅ covered | P3-6 degradation recorded as a finding | degraded=['custom.lists', 'injection.classifier'] |
 | L8.5 | Model version changes underneath | ◐ partial | P4 drift + version recording | Versions are recorded per decision and drift is measured on scores. No alert on a version change itself. |
 | L8.6 | Prompt change regresses quality | ✅ covered | P4 CI gating with direction-aware scorers | passed=False, 1 absolute failure(s) |
 | L8.7 | Shadow agent in production | ✅ covered | P1-6 shadow detection | 2 shadow agent(s) |
-| L8.8 | Latency budget blown by the guardrails | ✅ covered | P3-13 request-level ledger + fast path | a detector overrunning 40 ms by 4x was degraded; call returned in 45 ms against a 300 ms budget |
+| L8.8 | Latency budget blown by the guardrails | ✅ covered | P3-13 request-level ledger + fast path | a detector overrunning 40 ms by 4x was degraded; call returned in 42 ms against a 300 ms budget |
 | L8.9 | Policy misconfiguration | ✅ covered | P12 lint with six codes | 3 finding(s): ['duplicate-id', 'illegal-loosening', 'unconditional'] |
 | L8.10 | Rate-limit or quota exhaustion | ✅ covered | P15-4 admission control that sheds work, never governance | over-limit traffic is refused rather than admitted unchecked, batch is shed before interactive, operator traff |
 | L8.11 | A guardrail is down and nobody can tell | ✅ covered | PL-7 declared fail modes — visible, bounded, and impossible for some controls | a fail-open request is allowed and recorded so it can be re-examined; after 300s past a 120s budget it convert |
@@ -157,5 +157,5 @@ once in anger.
 | L9.4 | Audit trail tampered with | ✅ covered | P5-2 hash chain, four tamper modes | valid before tampering=True, after=False |
 | L9.5 | The audit log becomes a PII liability | ✅ covered | P5-5 redaction at capture | stored as 'sk-p************************************' |
 | L9.6 | Right to erasure conflicts with the chain | ◐ partial | retention + legal hold | Retention policy and legal hold exist. Erasure against an append-only chain has no designed answer — a real an |
-| L9.7 | Nobody can prove what the policy was at decision time | ✅ covered | immutable policy versions recorded per decision | 3 policy version(s) recorded on the decision |
-| L9.8 | Operator action goes unrecorded | ✅ covered | operator actions recorded in the same hash-chained log as the decisions | 11 privileged operations declared, 0 unaudited; promoting a rule to enforce recorded with actor and reason ([' |
+| L9.7 | Nobody can prove what the policy was at decision time | ✅ covered | immutable policy versions recorded per decision | 4 policy version(s) recorded on the decision |
+| L9.8 | Operator action goes unrecorded | ✅ covered | operator actions recorded in the same hash-chained log as the decisions | 26 privileged operations declared, 0 unaudited; promoting a rule to enforce recorded with actor and reason ([' |

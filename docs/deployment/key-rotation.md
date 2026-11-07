@@ -24,6 +24,9 @@ the service secret; the gateway, Vercel's `CRON_SECRET` and the caller of
 | `alert_channels.url_encrypted` | A tenant's Slack incoming-webhook URL |
 | `probe_targets.auth_header_ciphertext` | The `Authorization` header live probes send |
 | `agent_signing_keys.key_encrypted` | An agent's inter-agent message-signing key |
+| `custom_models.auth_secret_encrypted` | The auth secret for a workspace's own classifier endpoint |
+| `external_authorizers.auth_secret_encrypted` | The auth secret for a customer's external authorizer |
+| `platform_connections.secret_encrypted` | A Vapi secret or Retell API key that proves a platform hook delivery |
 
 The list lives in `agentfox.platform.keys.rotation.ENCRYPTED_FIELDS`, and a test fails
 when an encrypted column is added without being listed there.
