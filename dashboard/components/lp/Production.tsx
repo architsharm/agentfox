@@ -2,20 +2,58 @@ import Link from "next/link";
 
 import { FALSE_FLAGS } from "@/lib/lp/proof";
 
-import { Reveal } from "./client";
+import { CopyChip, Reveal } from "./client";
 import { FlowArt } from "./FlowArt";
 import { Arrow, LpFooter, LpNav, SectionHead, WORKS_WITH } from "./parts";
 
 /**
  * The "guardrails that don't block your real customers" page. Each section
- * answers one question a buyer has, in order: what goes wrong today, how
- * AgentFox avoids it, the proof, who it is for.
+ * answers one question a buyer has, in order: how much work it is to start,
+ * what goes wrong today, how AgentFox avoids it, why not a toolkit, the proof,
+ * who it is for.
+ *
+ * The setup mocks are the real output of `agentfox scan` and `agentfox up --yes` on
+ * a two-agent LangGraph app (support-triage and billing), 2026-11-07, shortened.
  *
  * The example messages in "The problem" were run through the shipped default
  * on 2026-11-01: AgentFox's enforcing verdict (heuristic + PIGuard) allows the
  * first two, which LLM Guard's model (ProtectAI DeBERTa v2) scores 0.996 and
  * 1.0, above its 0.92 default. Both block the third.
  */
+
+/** What a governance toolkit leaves to the engineer, and what AgentFox does instead. */
+const TOOLKIT = [
+  {
+    need: "Know which agents you run",
+    toolkit: "List them by hand",
+    us: "Found in your repos, configs and agent platforms",
+  },
+  {
+    need: "Decide what each agent may do",
+    toolkit: "Write the policy yourself",
+    us: "Drafted from the tools each agent's code uses",
+  },
+  {
+    need: "Know a rule is safe to turn on",
+    toolkit: "Turn it on and see who complains",
+    us: "Watch it on live traffic and replay it on past conversations first",
+  },
+  {
+    need: "Stop an agent that was talked into something",
+    toolkit: "Score the prompt and hope",
+    us: "Check each tool call, and where its arguments came from",
+  },
+  {
+    need: "Let a person approve a risky action",
+    toolkit: "Build the approval flow",
+    us: "One approval releases exactly that call, once",
+  },
+  {
+    need: "Show an auditor what happened",
+    toolkit: "Collect the logs",
+    us: "A signed export, with a verifier that doesn't use our code",
+  },
+] as const;
 
 const EXAMPLES = [
   { text: "Can you cancel my order and refund the card?", them: "blocked", us: "allowed" },
@@ -70,8 +108,86 @@ export function Production() {
           </div>
         </section>
 
-        {/* 1. The problem */}
+        {/* 1. Setup */}
         <section className="lp-section">
+          <div className="lp-wrap">
+            <SectionHead
+              eyebrow="Setup"
+              title="Point it at your code. It does the setup."
+              sub="AgentFox reads your repository, finds every agent and the tools each one can reach, and drafts the rules from that. You review them. You don't write them."
+            />
+            <div className="lp-steps" data-reveal>
+              <article className="lp-step">
+                <div className="lp-step-ui lp-term">
+                  <div className="lp-term-cmd">agentfox scan</div>
+                  <div>Found 2 agents</div>
+                  <div>
+                    <b>support-triage</b> <span>LangGraph · 3 tools</span>
+                  </div>
+                  <div>
+                    <b>billing</b> <span>LangGraph · 1 tool</span>
+                  </div>
+                  <div className="lp-ui-row">
+                    <span className="lp-tag is-bad">risk</span>
+                    <span>reads web pages, and can send email</span>
+                  </div>
+                </div>
+                <span className="lp-step-n">1</span>
+                <h3>Find</h3>
+                <p>Every agent, tool and MCP server in your code, and the places where one hidden instruction could send data out.</p>
+              </article>
+
+              <article className="lp-step">
+                <div className="lp-step-ui">
+                  <div className="lp-ui-title">support-triage may use</div>
+                  <div className="lp-ui-row">
+                    <span className="lp-tag is-ok">read</span>
+                    <span>lookup_order</span>
+                  </div>
+                  <div className="lp-ui-row">
+                    <span className="lp-tag is-warn">untrusted input</span>
+                    <span>fetch_url</span>
+                  </div>
+                  <div className="lp-ui-row">
+                    <span className="lp-tag is-bad">sends out</span>
+                    <span>send_email</span>
+                  </div>
+                </div>
+                <span className="lp-step-n">2</span>
+                <h3>Draft</h3>
+                <p>Each agent is allowed the tools its code already uses, and nothing else. The risky ones are marked for you to confirm.</p>
+              </article>
+
+              <article className="lp-step">
+                <div className="lp-step-ui lp-term">
+                  <div className="lp-term-cmd">agentfox up</div>
+                  <div>
+                    <i>✓</i> main.py now calls agentfox.auto()
+                  </div>
+                  <div>
+                    <i>✓</i> 3 tools declared
+                  </div>
+                  <div>
+                    <i>✓</i> policies in watch mode
+                  </div>
+                  <div className="lp-term-dim">recorded, not blocked yet</div>
+                </div>
+                <span className="lp-step-n">3</span>
+                <h3>Watch</h3>
+                <p>One line in your entry point, or a hook for a coding agent. From the next run every call is recorded. Nothing is blocked until you say so.</p>
+              </article>
+            </div>
+            <div className="lp-start" data-reveal>
+              <CopyChip text="uvx agentfox scan" />
+              <Link href="/login">
+                Or connect GitHub and scan in the browser <Arrow />
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* 2. The problem */}
+        <section className="lp-section lp-section-alt">
           <div className="lp-wrap">
             <SectionHead
               eyebrow="The problem"
@@ -100,8 +216,8 @@ export function Production() {
           </div>
         </section>
 
-        {/* 2. How it works */}
-        <section className="lp-section lp-section-alt">
+        {/* 3. How it works */}
+        <section className="lp-section">
           <div className="lp-wrap">
             <SectionHead
               eyebrow="How it works"
@@ -170,7 +286,37 @@ export function Production() {
           </div>
         </section>
 
-        {/* 3. Proof */}
+        {/* 4. Why not a toolkit */}
+        <section className="lp-section lp-section-alt">
+          <div className="lp-wrap">
+            <SectionHead
+              eyebrow="Why AgentFox"
+              title="A toolkit gives you the parts. AgentFox does the work."
+              sub="Open-source governance toolkits are good libraries. They leave the inventory, the policy and the rollout to your engineers."
+            />
+            <div className="lp-compare lp-compare-text" data-reveal>
+              <div className="lp-compare-head">
+                <span>You need to</span>
+                <span>With a toolkit</span>
+                <span>With AgentFox</span>
+              </div>
+              {TOOLKIT.map((r) => (
+                <div key={r.need} className="lp-compare-row">
+                  <span className="lp-compare-msg">{r.need}</span>
+                  <span className="lp-compare-them">{r.toolkit}</span>
+                  <span className="lp-compare-us">{r.us}</span>
+                </div>
+              ))}
+            </div>
+            <p className="lp-center-link">
+              <Link href="/compare">
+                How we compare, including where others are ahead <Arrow />
+              </Link>
+            </p>
+          </div>
+        </section>
+
+        {/* 5. Proof */}
         <section className="lp-section">
           <div className="lp-wrap">
             <SectionHead
@@ -207,7 +353,7 @@ export function Production() {
           </div>
         </section>
 
-        {/* 4. Who it's for */}
+        {/* 6. Who it's for */}
         <section className="lp-section lp-section-alt">
           <div className="lp-wrap">
             <SectionHead eyebrow="Use cases" title="Built for assistants that serve customers" />
@@ -231,7 +377,10 @@ export function Production() {
         <section className="lp-cta">
           <div className="lp-wrap lp-cta-in">
             <h2>Try AgentFox on your own agent</h2>
-            <p className="lp-lead">It starts in watch mode. Nothing is blocked until you say so.</p>
+            <p className="lp-lead">One command finds your agents. It starts in watch mode, so nothing is blocked until you say so.</p>
+            <div className="lp-start">
+              <CopyChip text="uvx agentfox scan" />
+            </div>
             <div className="lp-actions">
               <Link href="/docs/quickstart" className="lp-btn lp-btn-primary">
                 Get started <Arrow />
