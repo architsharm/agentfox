@@ -138,7 +138,7 @@ def test_run_aggregates_and_explains_a_broken_model():
 def test_api_end_to_end(client):
     me = as_user("admin@example.com")
     key = client.get("/api/onboarding/key", headers=me).json()["value"]
-    assert key.startswith("afi_")
+    assert key.startswith("nom_api_")
     # Shown in full once; after that only its prefix.
     again = client.get("/api/onboarding/key", headers=me).json()
     assert again["value"] is None and key.startswith(again["prefix"])
@@ -446,18 +446,16 @@ def test_basic_guardrails_cover_what_users_send_and_get_back_then_the_test_runs_
             if rule["id"].startswith("basic."):
                 on[stage["key"]].add(rule["id"])
                 modes.add(rule["mode"])
-    # What users send and what goes back to them; nothing on tools. Watching until
-    # they are simulated and promoted, like any policy.
+    # What users send, what the agent reads and what goes back to them; nothing on
+    # tool permissions. A new agent has no real traffic to break, so they block.
     assert on["input"] == {"basic.input.attacks"}
     assert on["output"] == {"basic.reply.personal_data", "basic.reply.secrets"}
-    assert not on["tool_call"] and not on["tool_result"]
-    assert modes == {"observe"}
+    assert on["tool_result"] == {"basic.read.attacks"}  # instructions hidden in what it reads
+    assert not on["tool_call"]
+    assert modes == {"enforce"}
 
     tests = client.get("/api/onboarding/projects/watch/tests", headers=me).json()
     assert tests["basicOn"] is True and tests["first"]["status"] == "done"
-    assert tests["basicEnforcing"] is False
-    promote(client, service.basic_key("watch-agent"))
-    tests = client.get("/api/onboarding/projects/watch/tests", headers=me).json()
     assert tests["basicEnforcing"] is True
 
     started = client.post("/api/onboarding/projects/watch/tests", headers=me)
@@ -539,7 +537,7 @@ def test_the_setup_key_is_made_on_first_ask_and_the_same_after(client):
     first = client.get("/api/onboarding/key", headers=me)
     assert first.status_code == 200
     key = first.json()["value"]
-    assert key.startswith("afi_") and len(key) > 30
+    assert key.startswith("nom_api_") and len(key) > 30
     assert first.json()["createdNow"] is True
 
     again = client.get("/api/onboarding/key", headers=me).json()
@@ -644,7 +642,7 @@ def test_removing_a_project_lets_it_connect_again_as_new(client):
     assert client.get("/api/onboarding/projects/shop/tests", headers=me).json()["first"]
     added = client.post("/api/onboarding/projects/shop/basic-guardrails", headers=me).json()
     # Proposed as drafts, and the basic guardrails watch on them until simulated.
-    assert sorted(added["added"]) == ["refund-bot", "shop-bot"] and added["mode"] == "observe"
+    assert sorted(added["added"]) == ["refund-bot", "shop-bot"] and added["mode"] == "enforce"
     assert client.get("/api/agents/shop-bot", headers=me).json()["status"] == "draft"
     # The project is the system, keyed by its root; the repository still names it.
     assert {
@@ -700,7 +698,7 @@ def test_policies_page_shows_which_rules_apply_to_which_agents(client):
     applied, r = row()
     assert [(a["slug"], a["draft"]) for a in r["agents"]] == [("watch-agent", True)]
     assert {a["slug"]: a["draft"] for a in applied["agentList"]}["watch-agent"] is True
-    assert r["mode"] == "observe" and r["effect"] == "block"
+    assert r["mode"] == "enforce" and r["effect"] == "block"
     assert r["libraries"] == ["Basic guardrails"]
     assert r["all"] is (applied["agents"] == 1)
 
@@ -744,16 +742,15 @@ def test_basic_and_starter_rules_are_libraries(client):
         assert [r.id for r in own_layer(session, "watch-agent").rules] == ["mine.custom"]
 
     added = client.post("/api/policies/libraries/basic/apply", headers=me)
-    assert "watch-agent" in added.json()["added"] and added.json()["mode"] == "observe"
+    assert "watch-agent" in added.json()["added"] and added.json()["mode"] == "enforce"
 
     def basic():
         return client.get("/api/policies/applied", headers=me).json()["perAgent"][
             "Basic guardrails"
         ]
 
-    # Watching first; blocking once simulated, like any policy (on every agent, as
-    # it was applied).
-    assert basic()["agents"] >= 1 and basic()["blocking"] is False
+    # Blocking from the start: none of these agents has real traffic for them to break.
+    assert basic()["agents"] >= 1 and basic()["blocking"] is True
     client.post("/api/policies/libraries/basic/simulate", json={}, headers=me)
     blocking = client.post(
         "/api/policies/libraries/basic/mode", json={"mode": "enforce"}, headers=me

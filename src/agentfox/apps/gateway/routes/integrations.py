@@ -1053,21 +1053,12 @@ def approve_agent(
     agent_id: str, session: Session = Depends(db), user: User = Depends(require("registry"))
 ) -> dict[str, Any]:
     from agentfox.core.models import Agent
+    from agentfox.platform.registry.service import approve_drafts
 
     agent = session.get(Agent, agent_id)
     if agent is None or agent.status != "draft":
         raise HTTPException(404, "no draft agent with that id")
-    agent.status = "active"
-    agent.registered = True
-    session.flush()
-    chain.append(
-        session,
-        "agent.draft.approved",
-        actor_type="user",
-        actor_id=user.email or user.id,
-        subject_type="agent",
-        subject_id=agent.id,
-    )
+    approve_drafts(session, [agent], actor=user.email or user.id)
     session.commit()
     return {"id": agent.id, "status": agent.status}
 
@@ -1098,18 +1089,9 @@ def approve_agent_system(
         raise HTTPException(404, "nothing in this system is waiting to be added")
     actor = user.email or user.id
     drafts.sort(key=lambda a: slugs.index(a.slug))
-    for agent in drafts:
-        agent.status = "active"
-        agent.registered = True
-        session.flush()
-        chain.append(
-            session,
-            "agent.draft.approved",
-            actor_type="user",
-            actor_id=actor,
-            subject_type="agent",
-            subject_id=agent.id,
-        )
+    from agentfox.platform.registry.service import approve_drafts
+
+    approve_drafts(session, drafts, actor=actor)
     session.commit()
     return {"id": root.id, "approved": [a.slug for a in drafts]}
 

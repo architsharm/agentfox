@@ -66,7 +66,7 @@ def _connect(client, key, structure=None, project="shop"):
 def test_the_setup_key_is_stored_hashed_and_shown_once(client):
     first = client.get("/api/onboarding/key", headers=ADMIN).json()
     raw = first["value"]
-    assert raw.startswith("afi_") and first["createdNow"] is True
+    assert raw.startswith("nom_api_") and first["createdNow"] is True
     assert first["prefix"] == raw[: len(first["prefix"])] and first["expiresAt"]
 
     again = client.get("/api/onboarding/key", headers=ADMIN).json()

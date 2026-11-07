@@ -394,9 +394,9 @@ def runner_session(
     session: Session = Depends(db), authorization: Annotated[str | None, Header()] = None
 ) -> Runner:
     raw = (authorization or "").removeprefix("Bearer ").removeprefix("bearer ").strip()
-    if not raw.startswith(keys.SETUP_KEY_PREFIX):
+    if not raw.startswith(keys.KEY_PREFIXES):
         raise HTTPException(
-            401, "Send the setup key from the Connect screen: Authorization: Bearer afi_…"
+            401, "Send the key from the Connect screen: Authorization: Bearer nom_api_…"
         )
     try:
         _token, user, row = keys.resolve(session, raw, allowed_roles=WRITE_ROLES["registry"])
@@ -451,6 +451,13 @@ def runner_connect(
         "agents": len(structure["agents"]),
         "tools": len(structure["tools"]),
         "proposed": [a["slug"] for a in structure["agents"] if a.get("registry") == "proposed"],
+        # Which file each agent is defined in, so `agentfox init` can add the one line
+        # that connects the app's traffic under the right agent.
+        "registered": [
+            {"slug": a["slug"], "name": a.get("name"), "file": a.get("file")}
+            for a in structure["agents"]
+            if a.get("slug")
+        ],
         "skipped": [a["name"] for a in structure["agents"] if a.get("registry") == "skipped"],
     }
 
