@@ -10955,7 +10955,7 @@
    "section": "projects",
    "audience": "operator",
    "summary": "Add every agent `agentfox init` proposed for this project (\"Add all\").",
-   "description": "Add every agent `agentfox init` proposed for this project (\"Add all\").\n\nEach gets the same state change and ledger entry as approving it on its own\n(``POST /api/agents/{id}/approve``). Tool access is still granted per tool\n(``POST /api/agents/{slug}/access``): adding an agent does not grant it anything.",
+   "description": "Add every agent `agentfox init` proposed for this project (\"Add all\").\n\nEach gets the same state change and ledger entry as approving it on its own\n(``POST /api/agents/{id}/approve``), and is allowed the tools its own code hands\nit (``registry.service.grant_found_tools``); anything else is still granted per\ntool (``POST /api/agents/{slug}/access``).",
    "params": [
     {
      "name": "project",
