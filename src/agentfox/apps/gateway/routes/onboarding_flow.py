@@ -454,9 +454,7 @@ def runner_connect(
         # Each agent's slug by its name, so `agentfox init` (which knows the files; the
         # server keeps no paths) adds the one line under the name the dashboard uses.
         "registered": [
-            {"slug": a["slug"], "name": a.get("name")}
-            for a in structure["agents"]
-            if a.get("slug")
+            {"slug": a["slug"], "name": a.get("name")} for a in structure["agents"] if a.get("slug")
         ],
         "skipped": [a["name"] for a in structure["agents"] if a.get("registry") == "skipped"],
     }
