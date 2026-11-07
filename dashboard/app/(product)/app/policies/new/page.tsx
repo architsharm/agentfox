@@ -85,7 +85,7 @@ async function FromRun({ id }: { id: string }) {
       </Card>
 
       {unique.length > 0 && (
-        <Card title="Start enforcing a rule that only watched" flush>
+        <Card title="Start blocking with a rule that only watched" flush>
           <ul className="k-list">
             {unique.map((r) => (
               <li key={r.rule_id}>
@@ -184,7 +184,7 @@ const GOALS: { title: string; text: string; to: Record<string, string> | string 
   { title: "Only allow certain values", text: "Ship only to US or EU, pay only in USD.", to: { from: "custom", kind: "condition", op: "not_in" } },
   { title: "Stop a risky sequence", text: "After reading customer data, never email outside.", to: { from: "custom", kind: "sequence" } },
   { title: "Use a built-in check", text: "System prompt leaks, risky SQL, unsafe HTML, fuzzy word lists, LLM judges…", to: { from: "custom", kind: "validator" } },
-  { title: "Turn on a ready-made pack", text: "Prompt attacks, personal data, EU AI Act…", to: { from: "packs" } },
+  { title: "Apply a library", text: "Basic guardrails, prompt attacks, EU AI Act…", to: { from: "packs" } },
   { title: "Bring rules you already have", text: "From Guardrails AI, or a workspace file.", to: { from: "import" } },
 ];
 

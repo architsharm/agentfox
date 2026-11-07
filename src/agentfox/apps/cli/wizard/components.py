@@ -402,9 +402,33 @@ def _python_unavailable(run: Run) -> str:
     return ""
 
 
+#: Frameworks whose model calls go through a client auto() patches (LangChain chat
+#: models, LiteLLM, OpenAI chat completions), so an app built on one is governed by it
+#: even though the scan counts no direct model call. The OpenAI Agents SDK and ADK
+#: are not here: they call APIs auto() does not patch.
+_AUTO_FRAMEWORKS = frozenset({"LangGraph", "LangChain", "CrewAI", "AutoGen"})
+
+
+def _python_agents(run: Run) -> list[str]:
+    return [
+        a.name
+        for a in run.ctx.report.agents
+        if a.file.endswith(".py") and a.framework in _AUTO_FRAMEWORKS
+    ]
+
+
+def _python_recommended(run: Run) -> bool:
+    return run.ctx.python_calls > 0 or bool(_python_agents(run))
+
+
 def _python_note(run: Run) -> str:
     n = run.ctx.python_calls
-    return f"{plural(n, 'model call')} in Python" if n else "no Python model calls found"
+    if n:
+        return f"{plural(n, 'model call')} in Python"
+    agents = _python_agents(run)
+    if agents:
+        return f"{plural(len(agents), 'agent')} in Python ({', '.join(agents[:3])})"
+    return "no Python model calls found"
 
 
 def _python_ask(run: Run) -> None:
@@ -968,7 +992,7 @@ CATALOGUE: tuple[Component, ...] = (
         "Your Python agent — one line, agentfox.auto()",
         _python_note,
         _python_unavailable,
-        lambda r: r.ctx.python_calls > 0,
+        _python_recommended,
         _python_apply,
         _python_ask,
     ),

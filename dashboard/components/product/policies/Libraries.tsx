@@ -1,11 +1,92 @@
+import Link from "next/link";
 import { safeApi } from "@/lib/product/api";
+import { loadRules, type PackInfo } from "@/lib/product/rules";
 import { Act } from "@/components/kit/Act";
+import { ModePill } from "@/components/kit";
+import { PackMode } from "@/components/product/policies/PackMode";
 import { SimulateThenBlock } from "@/components/product/policies/SimulateLibrary";
 import { ApplyChoice, LibraryCard } from "@/components/product/policies/LibraryCard";
 import { LibraryDetail, type LibraryView } from "@/components/product/policies/LibraryDetail";
 import { libraryPath, libraryState, whereOn, type LibraryContents, type LibraryStatus as Status } from "@/lib/product/libraries";
 
 const NONE: Status = { agents: [], blocking: false, workspace: false };
+/** The pack every rule a person writes lands in (`custom_store.POLICY_KEY`). */
+const OWN = "custom";
+
+/** Watching ↔ blocking for packs that reach every agent: one switch per pack. */
+function PackSwitches({ packs }: { packs: PackInfo[] }) {
+  const live = packs.filter((p) => p.rules.length > 0);
+  if (!live.length) return null;
+  return (
+    <>
+      {live.map((p) => (
+        <PackMode key={p.key} packKey={p.key} mode={p.mode} body={p.liveBody} version={p.boundVersion} />
+      ))}
+    </>
+  );
+}
+
+/**
+ * Your rules: every rule you wrote (New rule, a rail on the map, an import) and your
+ * business rules, as one library. Saved watching; blocking goes through the same
+ * simulate-then-start as any library. This is where a new rule is switched on.
+ */
+function ownLibrary(own: PackInfo | undefined, business: any[], project: string): Library {
+  const n = (own?.rules.length || 0) + business.length;
+  const mode = own?.rules.length ? (own.mode === "enforce" ? "blocking" : own.mode ? "watching" : null) : null;
+  return {
+    id: OWN,
+    title: "Your rules",
+    className: "lib-own",
+    description: n
+      ? "The rules you wrote: from New rule, a rail on the map, or an import. Each starts by watching; start blocking here when the simulation looks right."
+      : "Rules you write land here, watching first. Add one from New rule or from a rail on an agent's map.",
+    rules: n,
+    on: n ? "Where each rule says (every agent, or the agents it names)" : "—",
+    mode,
+    contents: null,
+    ruleRows: (own?.rules || []).map((r: any) => ({ id: r.id, description: r.description, surfaces: r.when?.surface || [], effect: r.effect })),
+    project,
+    state: n
+      ? { text: `${n} ${n === 1 ? "rule" : "rules"}${mode ? ` · ${mode}` : ""}`, tone: mode === "blocking" ? "pol-on" : mode ? "pol-watch" : "" }
+      : { text: "No rules yet", tone: "" },
+    extra: business.length ? (
+      <table className="k-table lib-rules">
+        <thead>
+          <tr>
+            <th>Business rule</th>
+            <th>Mode</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {business.map((b: any) => (
+            <tr key={b.key}>
+              <td>
+                <Link className="k-name" href={`/app/policies/business/${encodeURIComponent(b.key)}`}>{b.name}</Link>
+                <span className="sub">{b.tool || "Any tool"}</span>
+              </td>
+              <td className="tight"><ModePill mode={b.enabled ? b.mode : null} /></td>
+              <td className="tight" style={{ textAlign: "right" }}>
+                <Act url={`/api/business/rules/${encodeURIComponent(b.key)}/mode`} body={{ mode: b.mode === "enforce" ? "observe" : "enforce" }} className={b.mode === "enforce" ? "k-btn" : "k-btn-primary"}>
+                  {b.mode === "enforce" ? "Switch to watching" : "Start blocking"}
+                </Act>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    ) : undefined,
+    actions: (
+      <>
+        {own?.rules.length ? <PackMode packKey={OWN} mode={own.mode} body={own.liveBody} version={own.boundVersion} /> : null}
+        <Link href="/app/policies/new" className={n ? "k-btn" : "k-btn-primary"}>
+          Add a rule
+        </Link>
+      </>
+    ),
+  };
+}
 const STARTER = "Starter rules (watch only)";
 
 /**
@@ -57,11 +138,14 @@ type Library = LibraryView & { className?: string; state: { text: string; tone: 
  */
 async function libraries(project: string, agents: string[]): Promise<Library[]> {
   const scope = `agents=${encodeURIComponent(agents.join(","))}`;
-  const [lib, status, applied] = await Promise.all([
+  const [lib, status, applied, rules, business] = await Promise.all([
     safeApi<any>("/api/library/packs", { packs: [] }),
     safeApi<Record<string, Status>>(`/api/policies/libraries/status?${scope}&project=${encodeURIComponent(project)}`, {}),
     safeApi<any>("/api/policies/applied", { rules: [] }),
+    loadRules(),
+    safeApi<any>("/api/business/rules", { rules: [] }),
   ]);
+  const packOf = (key: string) => rules.packs.find((x) => x.key === key);
   const packs: any[] = lib.packs || [];
   const contents = await Promise.all(
     ["basic", ...packs.map((p) => p.id)].map((id) => safeApi<LibraryContents | null>(`/api/library/packs/${libraryPath(id)}/contents?${scope}`, null)),
@@ -78,13 +162,14 @@ async function libraries(project: string, agents: string[]): Promise<Library[]> 
   const basicOn = basic.agents.length;
   const basicTitle = "the basic guardrails";
   const out: Library[] = [
+    ownLibrary(packOf(OWN), business.rules || [], project),
     {
       id: "basic",
       title: "Basic guardrails",
       className: "lib-default",
       description:
-        "The default set: prompt attacks and jailbreaks in what users send, and personal data and secrets in replies. Nothing on tools. Watches first, then blocks the attacks and hides the data.",
-      rules: contentsOf("basic")?.rules.length || 3,
+        "The default set: prompt attacks in what users send and in what the agent reads, and personal data and secrets in replies. Not tool permissions.",
+      rules: contentsOf("basic")?.rules.length || 4,
       on: on(basic),
       mode: mode(basic),
       contents: contentsOf("basic"),
@@ -181,6 +266,9 @@ async function libraries(project: string, agents: string[]): Promise<Library[]> 
           ) : null}
           <UpdateAction id={id} title={p.title} st={st} body={body} />
           <ModeActions id={id} title={p.title} project={project} st={st} body={body} />
+          {/* Applied to every agent (before libraries were per project): its switch is
+              the pack's own, the same one Settings → Detection shows. */}
+          {st.workspace && !n ? <PackSwitches packs={p.policies.map((x: any) => packOf(x.key)).filter(Boolean)} /> : null}
         </>
       ),
     });
@@ -203,8 +291,8 @@ export async function Libraries({ project, agents }: { project: string | null; a
   return (
     <section className="pol">
       <p className="pol-summary">
-        A library is a set of rules you apply together. Applying one here applies it to <b>{project}</b>&apos;s {total === 1 ? "agent" : `${total} agents`} only, watching first: it
-        records what it would stop, so you can check before it blocks. Click one to see its rules.
+        A library is a set of rules you switch on together. <b>Your rules</b> holds the ones you write; the others ship with AgentFox. Applying one here puts it on{" "}
+        <b>{project}</b>&apos;s {total === 1 ? "agent" : `${total} agents`}, watching first, so you see what it would stop before it blocks. Click one to see its rules.
       </p>
       <div className="lib-grid">
         {all.map((l) => (

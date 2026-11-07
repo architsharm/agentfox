@@ -147,9 +147,56 @@ def propose_draft(session: Session, *, slug: str, **fields: Any) -> Agent | None
 _propose_draft = propose_draft
 
 
+def grant_found_tools(session: Session, agent: Agent, *, actor: str) -> list[str]:
+    """Allow an agent being added the tools its own code hands it (``declared_tools``),
+    and nothing else. Returns the tools granted.
+
+    The code already calls these, so refusing them on the first run broke the app and
+    every test of a rule until each was allowed by hand. Least privilege still holds:
+    a tool the code doesn't hand the agent stays refused. A read tool is allowed
+    whatever its arguments came from; one that changes something or sends data out is
+    allowed for what the user asked (``max_taint="user"``), so an argument copied out
+    of a tool result or a page is still stopped. A tool someone already granted is
+    left as it is.
+    """
+    from agentfox.core.models import Tool
+    from agentfox.platform.identity.service import ensure_identity, grant_capability
+    from agentfox.platform.ledger import chain
+
+    tools = [t for t in (agent.declared_tools or []) if t and "*" not in t]
+    if not tools:
+        return []
+    identity = ensure_identity(session, agent)
+    held = {c.tool_key for c in identity.capabilities}
+    impacts = {t.key: t.impact for t in session.scalars(select(Tool).where(Tool.key.in_(tools)))}
+    granted = []
+    for key in tools:
+        if key in held:
+            continue
+        capability = grant_capability(
+            session,
+            identity,
+            key,
+            max_taint="memory" if impacts.get(key, "read") == "read" else "user",
+            granted_by=actor,
+        )
+        chain.append(
+            session,
+            "capability.granted",
+            actor_type="user",
+            actor_id=actor,
+            subject_type="capability",
+            subject_id=capability.id,
+            payload={"agent": agent.slug, "tool_key": key, "source": "found in its code"},
+        )
+        granted.append(key)
+    return granted
+
+
 def approve_drafts(session: Session, agents: list[Agent], *, actor: str) -> list[Agent]:
     """Add proposed agents: the same state change and ledger entry as approving one
-    draft (``POST /api/agents/{id}/approve``). Agents that are not drafts are skipped."""
+    draft (``POST /api/agents/{id}/approve``), with the tools their code hands them
+    allowed (`grant_found_tools`). Agents that are not drafts are skipped."""
     from agentfox.platform.ledger import chain
 
     approved = []
@@ -167,8 +214,20 @@ def approve_drafts(session: Session, agents: list[Agent], *, actor: str) -> list
             subject_type="agent",
             subject_id=agent.id,
         )
+        grant_found_tools(session, agent, actor=actor)
         approved.append(agent)
     return approved
+
+
+def _spec_slug(session: Session, key: str, repo_short: str, name: str) -> str:
+    """One agent's slug: its own name, unless that belongs to another repository."""
+    prefixed = repo_short if key == repo_short else slugify(f"{repo_short}-{key}")
+    if session.scalar(select(Agent.id).where(Agent.slug == prefixed)) is not None:
+        return prefixed  # scanned before: keep landing on the same row
+    existing = session.scalar(select(Agent).where(Agent.slug == key))
+    if existing is None or existing.name == name:
+        return key
+    return prefixed
 
 
 def _propose_agent_specs(
@@ -183,16 +242,21 @@ def _propose_agent_specs(
 ) -> list[str]:
     """One draft per agent a multi-agent scan found, and its declared delegations.
 
-    The slug is the repository plus the agent's own scan key (its name in code), so a
-    re-scan lands on the same rows. A delegation the code no longer declares is removed
+    The slug is the agent's own name in code, as `agentfox init` and the scan output
+    name it, so one agent has one name everywhere. The repository goes in front only
+    when another repository's agent already has that name, and a repository scanned
+    before agents were named this way keeps its old slugs, so a re-scan lands on the
+    same rows. A delegation the code no longer declares is removed
     from the edges, unless traffic has also seen it: a declared edge is a reading of
     the code, and the code changed.
     """
     slug_of: dict[str, str] = {}
     created: list[str] = []
     for spec in specs:
-        key = slugify(str(spec.get("key") or spec.get("name") or ""))
-        slug = repo_short if key == repo_short else f"{repo_short}-{key}"
+        key = slugify(str(spec.get("name") or spec.get("key") or ""))
+        slug = _spec_slug(
+            session, key, repo_short, f"{repo_display_name}/{spec.get('name') or key}"
+        )
         slug_of[str(spec.get("key"))] = slugify(slug)
         tools = [str(t) for t in spec.get("tools") or [] if t]
         agent = _propose_draft(
@@ -288,7 +352,9 @@ def propose_from_scan(
 
     created_agents: list[str] = []
     specs = agents or []
-    if len(specs) >= 2:
+    # One draft per agent the code defines, named as the code names it; a single agent
+    # included, so `agentfox up`, `agentfox init` and the scan output agree.
+    if specs:
         created_agents += _propose_agent_specs(
             session,
             run_id=run_id,
@@ -312,7 +378,11 @@ def propose_from_scan(
             {s["name"] for s in group_sites if s.get("kind") == "tool" and s.get("name")}
         )
         group_slug = slugify(group_key)
-        slug = repo_short if group_slug == repo_short else f"{repo_short}-{group_slug}"
+        slug = (
+            repo_short
+            if group_slug == repo_short or group_key == "root"
+            else f"{repo_short}-{group_slug}"
+        )
         agent = _propose_draft(
             session,
             slug=slug,

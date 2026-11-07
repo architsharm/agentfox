@@ -17,6 +17,8 @@ export type LibraryView = {
   ruleRows?: LibraryRule[];
   /** Said above the actions: why a library can't be limited to the project, say. */
   note?: string;
+  /** Shown under the rules: the business rules in Your rules, each with its own switch. */
+  extra?: ReactNode;
   project: string | null;
   actions: ReactNode;
 };
@@ -49,7 +51,7 @@ export function LibraryDetail({ v }: { v: LibraryView }) {
             <tr>
               <th>Rule</th>
               <th>Checks</th>
-              <th>Does</th>
+              <th>{v.mode === "watching" ? "Would do" : "Does"}</th>
             </tr>
           </thead>
           <tbody>
@@ -67,9 +69,12 @@ export function LibraryDetail({ v }: { v: LibraryView }) {
             ))}
           </tbody>
         </table>
+      ) : v.id === "custom" ? (
+        <p className="muted">No rules yet. Add one and it lands here, watching.</p>
       ) : (
         <p className="muted">Its rules could not be listed.</p>
       )}
+      {v.extra}
 
       {v.contents?.scoped && (
         <p className="lib-detail-sim">
