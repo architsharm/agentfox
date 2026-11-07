@@ -11,6 +11,8 @@ the file it came from.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-07
+
 ### Added
 
 - **LiteLLM proxy guardrail.** One block in a LiteLLM proxy's `config.yaml`
@@ -28,72 +30,6 @@ the file it came from.
 - `POST /v1/guard/tool_call` takes `in_process`, `waive_ungranted` and `declare`, so
   a remote caller gets the same containment record, carve-out and tool registration
   as `auto()` in process.
-
-### Changed
-
-- **Adding an agent allows the tools its own code hands it.** Every tool `agentfox
-  init` or a repo scan found used to start "Not allowed", so the app's own calls were
-  refused on the first run and no rule could be tested until each tool was allowed by
-  hand. Now a read tool is allowed whatever its arguments came from, and a tool that
-  changes something or sends data out is allowed for what the user asked: an argument
-  copied out of a tool result or a page is still stopped. A tool the code doesn't hand
-  the agent stays refused; a grant someone already made is left as it is.
-- **`agentfox scan` names the agents it found** (one line each: framework, model,
-  tools, file), single-agent repositories included, and its Next panel leads with one
-  command, `agentfox up`, instead of advice to edit code by hand.
-- **`agentfox up` instruments framework apps.** A LangGraph, LangChain, CrewAI or
-  AutoGen app calls the model through a client `agentfox.auto()` patches, so `up` now
-  offers to add it even when the scan counts no direct model call.
-- **One key.** "Create a key" on the setup card makes a workspace API key: the key
-  `agentfox init` connects with, and the key your app sends its calls with. Old
-  `afi_` setup keys keep working at `init`.
-- **`agentfox init` connects your app's traffic.** Once connected it saves the key
-  in `.agentfox/agentfox.env` (owner-only, git-ignored) and, with your yes, adds
-  `agentfox.auto("<agent>")` to the file that runs the agent, so its calls show up
-  under Activity.
-- **Basic guardrails stop what they find.** They gain a fourth rule, instructions
-  hidden in what the agent reads (tool results, documents), where most of the
-  onboarding attack test's injections arrive. Adding them runs a simulation against
-  the agent's real traffic: with nothing they would change (a new agent), they go
-  live blocking, so the test run again shows what they stop; otherwise they watch
-  until promoted, as before.
-
-### Fixed
-
-- **`agentfox init` no longer stops right after connecting** when it offers to add
-  `agentfox.auto()`: the server keeps no file paths, so `init` now finds each agent's
-  file in its own map instead of the server's reply.
-
-- **A rule you write can be switched on from the UI.** Policies → Libraries shows
-  **Your rules** (the rules you wrote, and your business rules) with the same
-  simulate-then-block switch as any library, and "Add a rule". A new rule's
-  confirmation, and its own page, link straight there.
-- Libraries applied to every agent (Baseline, Tool containment, EU AI Act, Agent
-  integrity) get their watch/block switch on the Libraries page.
-- One word for one thing: "Start blocking" everywhere (was also "Start enforcing"),
-  "Apply a library" on New rule (was "Turn on a ready-made pack"); a watching
-  library's drawer says what its rules *would* do.
-- With no project chosen, pages show a project with an agent someone added, not a
-  scan's proposals.
-- **`agentfox test redteam` says what live traffic gets.** An attack stopped only by a
-  rule that watches is shown as "would block (watching)" and counted on its own line,
-  instead of as blocked; the command refuses an agent that doesn't exist (it used to
-  run and file a finding for it) and lists the ones that do.
-- **`agentfox doctor` no longer says no model call can leave the machine** when the
-  gateway has no provider: that is true of the gateway's own proxy routes, not of the
-  calls an app makes itself through `agentfox.auto()` or the SDK.
-- **One agent, one name.** The scan, `agentfox init`, `agentfox up` and the
-  `agentfox.auto()` line it writes now all name an agent as its code does
-  (`support-triage`, not `app-support-triage` in one place and `main` in another), so
-  the `permit grant` and other commands the CLI suggests name an agent that exists.
-  The repository goes in front only when another repository's agent has the name; an
-  existing scan's agents keep their slugs. An unnamed agent in a top-level `main.py`
-  is named after the repository. A single-agent repository no longer gets a second,
-  phantom agent for its top-level files.
-
-## [0.5.0] - 2026-11-06
-
-### Added
 
 - **Vapi and Retell calls are recorded when they end.** Vapi's `end-of-call-report`
   (sent to the same hook URL) and Retell's `call_ended` / `call_analyzed` (a new
@@ -238,6 +174,33 @@ the file it came from.
 
 ### Changed
 
+- **Adding an agent allows the tools its own code hands it.** Every tool `agentfox
+  init` or a repo scan found used to start "Not allowed", so the app's own calls were
+  refused on the first run and no rule could be tested until each tool was allowed by
+  hand. Now a read tool is allowed whatever its arguments came from, and a tool that
+  changes something or sends data out is allowed for what the user asked: an argument
+  copied out of a tool result or a page is still stopped. A tool the code doesn't hand
+  the agent stays refused; a grant someone already made is left as it is.
+- **`agentfox scan` names the agents it found** (one line each: framework, model,
+  tools, file), single-agent repositories included, and its Next panel leads with one
+  command, `agentfox up`, instead of advice to edit code by hand.
+- **`agentfox up` instruments framework apps.** A LangGraph, LangChain, CrewAI or
+  AutoGen app calls the model through a client `agentfox.auto()` patches, so `up` now
+  offers to add it even when the scan counts no direct model call.
+- **One key.** "Create a key" on the setup card makes a workspace API key: the key
+  `agentfox init` connects with, and the key your app sends its calls with. Old
+  `afi_` setup keys keep working at `init`.
+- **`agentfox init` connects your app's traffic.** Once connected it saves the key
+  in `.agentfox/agentfox.env` (owner-only, git-ignored) and, with your yes, adds
+  `agentfox.auto("<agent>")` to the file that runs the agent, so its calls show up
+  under Activity.
+- **Basic guardrails stop what they find.** They gain a fourth rule, instructions
+  hidden in what the agent reads (tool results, documents), where most of the
+  onboarding attack test's injections arrive. Adding them runs a simulation against
+  the agent's real traffic: with nothing they would change (a new agent), they go
+  live blocking, so the test run again shows what they stop; otherwise they watch
+  until promoted, as before.
+
 - **The multi-agent scan reads more of the shapes real repositories use.** Typed
   constructors (`Agent[Context](...)`); hand-offs and tools added after an agent is
   built (`a.handoffs = [...]`, `.append`, `.extend`, `+=`, `handoff(agent=x, ...)`),
@@ -278,6 +241,37 @@ the file it came from.
   by the ports. `rails.guardrails_ai` stays for running your own Guard.
 
 ### Fixed
+
+- **`agentfox init` no longer stops right after connecting** when it offers to add
+  `agentfox.auto()`: the server keeps no file paths, so `init` now finds each agent's
+  file in its own map instead of the server's reply.
+
+- **A rule you write can be switched on from the UI.** Policies → Libraries shows
+  **Your rules** (the rules you wrote, and your business rules) with the same
+  simulate-then-block switch as any library, and "Add a rule". A new rule's
+  confirmation, and its own page, link straight there.
+- Libraries applied to every agent (Baseline, Tool containment, EU AI Act, Agent
+  integrity) get their watch/block switch on the Libraries page.
+- One word for one thing: "Start blocking" everywhere (was also "Start enforcing"),
+  "Apply a library" on New rule (was "Turn on a ready-made pack"); a watching
+  library's drawer says what its rules *would* do.
+- With no project chosen, pages show a project with an agent someone added, not a
+  scan's proposals.
+- **`agentfox test redteam` says what live traffic gets.** An attack stopped only by a
+  rule that watches is shown as "would block (watching)" and counted on its own line,
+  instead of as blocked; the command refuses an agent that doesn't exist (it used to
+  run and file a finding for it) and lists the ones that do.
+- **`agentfox doctor` no longer says no model call can leave the machine** when the
+  gateway has no provider: that is true of the gateway's own proxy routes, not of the
+  calls an app makes itself through `agentfox.auto()` or the SDK.
+- **One agent, one name.** The scan, `agentfox init`, `agentfox up` and the
+  `agentfox.auto()` line it writes now all name an agent as its code does
+  (`support-triage`, not `app-support-triage` in one place and `main` in another), so
+  the `permit grant` and other commands the CLI suggests name an agent that exists.
+  The repository goes in front only when another repository's agent has the name; an
+  existing scan's agents keep their slugs. An unnamed agent in a top-level `main.py`
+  is named after the repository. A single-agent repository no longer gets a second,
+  phantom agent for its top-level files.
 
 - **`agentfox scan machine` reports what needs a look instead of every skill that ships
   a script.** A skill that bundles scripts is now `low` (an inventory of unread code), not
@@ -434,6 +428,7 @@ the file it came from.
 - Value checks could not be saved from the dashboard ("a condition rule needs
   `condition`"), and trying one on a tool call ignored the tool: the dashboard's proxy
   dropped both fields. Suggested argument names for a value check now load too.
+
 ## [0.4.0] - 2026-10-12
 
 ### Added
