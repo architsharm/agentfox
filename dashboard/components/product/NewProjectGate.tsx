@@ -7,8 +7,10 @@ import { WORKSPACE_NAV } from "@/lib/product/nav";
 
 const ROWS = WORKSPACE_NAV.flatMap(({ items }) => items);
 
-/** Pages that still work while a project is being added: nothing on them belongs to a project. */
-const OPEN = ["/app/settings", "/app/start", "/app/sources", "/app/entitlement", "/app/projects/"];
+/** Pages that still work while a project is being added: nothing on them belongs to a project.
+ * /app/welcome is itself a way to add one (scan a repository), so it must never be covered
+ * by the card that links to it. */
+const OPEN = ["/app/settings", "/app/start", "/app/sources", "/app/entitlement", "/app/projects/", "/app/welcome"];
 export const gateOpen = (pathname: string) => OPEN.some((p) => pathname.startsWith(p));
 
 /** What each page will show once the project is connected, for its empty cards. */
@@ -36,7 +38,7 @@ const EMPTY: Record<string, string[]> = {
 /** Set by "Skip for now": a new user can look around before connecting anything. */
 export const SKIP_COOKIE = "agentfox_setup_skipped";
 
-export function NewProjectPage({ server, first = false }: { server: string; first?: boolean }) {
+export function NewProjectPage({ server, first = false, github = false }: { server: string; first?: boolean; github?: boolean }) {
   const pathname = usePathname() || "/app";
   const router = useRouter();
   const [skipped, setSkipped] = useState(false);
@@ -80,7 +82,7 @@ export function NewProjectPage({ server, first = false }: { server: string; firs
         </div>
       ) : (
         <Suspense>
-          <SetupCard server={server} hasProjects={!first} onSkip={() => setSkipped(true)} />
+          <SetupCard server={server} hasProjects={!first} github={github} onSkip={() => setSkipped(true)} />
         </Suspense>
       )}
     </div>

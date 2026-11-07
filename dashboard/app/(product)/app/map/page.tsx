@@ -28,5 +28,7 @@ export default async function MapPage({ searchParams }: { searchParams: Promise<
   const chosen = [asked, jar.get(MAP_PROJECT_COOKIE)?.value].find((p) => p && names.includes(p)) ?? defaultProject(projects)!.project;
   const map = await safeApi<any>(`/api/projects/${encodeURIComponent(chosen)}/map`, null);
   const agent = map?.agents?.[0]?.slug;
-  redirect(agent ? projectHref(agent) : "/app/onboarding");
+  // A project whose map has no agent (or a map that did not load): the list of projects,
+  // not /app/onboarding, which redirects straight back here.
+  redirect(agent ? projectHref(agent) : "/app/projects");
 }

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { callJson } from "@/components/kit/Act";
 import { CodeSnippet } from "@/components/product/start/CodeSnippet";
 import { FirstRequestWatcher } from "@/components/product/start/FirstRequestWatcher";
+import { MAP_PROJECT_COOKIE, PROJECT_COOKIE_AGE, projectHref } from "@/lib/product/project";
 import { scanRows, upCommand, type Repo } from "@/lib/product/welcome";
 
 /**
@@ -75,7 +76,13 @@ export function WelcomeFlow({
   const accept = async () => {
     setError("");
     try {
-      setAccepted(await callJson(`/api/welcome/accept/${encodeURIComponent(scan.scan_run_id)}`, "POST"));
+      const done = await callJson(`/api/welcome/accept/${encodeURIComponent(scan.scan_run_id)}`, "POST");
+      // Choose the new project, as finishing the setup card does: a project still being
+      // added ("+ Add a project") would otherwise keep every page on the setup card.
+      if (done.agents?.[0]) {
+        document.cookie = `${MAP_PROJECT_COOKIE}=${encodeURIComponent(done.agents[0])}; path=/; max-age=${PROJECT_COOKIE_AGE}; samesite=lax`;
+      }
+      setAccepted(done);
       setPhase("accepted");
     } catch (err: any) {
       setError(String(err?.message || err));
@@ -165,17 +172,22 @@ export function WelcomeFlow({
               proposedAgents.length || proposedPolicies.length ? (
                 <>
                   <p className="gs-detail">
-                    Approving registers {plural(proposedAgents.length, "agent")} ({proposedAgents.join(", ") || "none"}) and{" "}
-                    {plural(proposedPolicies.length, "policy", "policies")} for the frameworks found. Policies start in observe:
-                    they record what they would stop and block nothing until you turn enforcement on.
+                    {proposedAgents.length
+                      ? `Set this up to start watching ${proposedAgents.length === 1 ? "this agent" : `these ${plural(proposedAgents.length, "agent")}`}${
+                          proposedPolicies.length ? ` with ${plural(proposedPolicies.length, "policy", "policies")} for the frameworks found` : ""
+                        }.`
+                      : `Set this up to turn on ${plural(proposedPolicies.length, "policy", "policies")} for the frameworks found.`}
+                    Everything starts in observe: it records what it would stop and blocks nothing until you turn enforcement on.
                   </p>
                   <div className="gs-row">
                     <button type="button" className="k-btn-primary" onClick={accept}>
                       Set this up
                     </button>
-                    <Link href="/app/projects?tab=proposed" className="k-btn-ghost">
+                    {/* A full page load, not a client navigation: the app layout decided "no
+                        project yet" before this scan proposed one, and would still say so. */}
+                    <a href="/app/projects?tab=proposed" className="k-btn-ghost">
                       Review one by one instead
-                    </Link>
+                    </a>
                   </div>
                 </>
               ) : (
@@ -194,8 +206,13 @@ export function WelcomeFlow({
                     {plural(accepted.agents.length, "agent")} registered, {plural(accepted.policies.length, "policy", "policies")} live
                     in observe.
                   </span>
-                  <Link href="/app/projects">Projects</Link>
-                  <Link href="/app/findings">Issues</Link>
+                  {/* Full page loads, for the same reason as "Review one by one". */}
+                  {accepted.agents.length > 0 && (
+                    <a href={accepted.agents.length === 1 ? projectHref(accepted.agents[0]) : "/app/projects"} className="k-btn-primary">
+                      See your {accepted.agents.length === 1 ? "agent" : "agents"}
+                    </a>
+                  )}
+                  <a href="/app/findings">Issues</a>
                 </div>
               )
             )}
@@ -306,7 +323,7 @@ function ConnectLive({ gateway, siteUrl, counts }: { gateway: string; siteUrl: s
       />
       <p className="k-muted gs-note">
         Requests through this gateway show up here. Claude Code and Codex hooks decide on your machine and record there.{" "}
-        <Link href="/app">Go to the dashboard</Link> · <Link href="/app/start">Full checklist</Link>
+        <a href="/app">Go to the dashboard</a> · <Link href="/app/start">Full checklist</Link>
       </p>
     </div>
   );

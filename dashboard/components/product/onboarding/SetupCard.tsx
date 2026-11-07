@@ -46,10 +46,13 @@ async function getJson<T>(url: string): Promise<T | null> {
 export function SetupCard({
   server,
   hasProjects = false,
+  github = false,
   onSkip,
 }: {
   server: string;
   hasProjects?: boolean;
+  /** A GitHub account is connected: scanning a repository (/app/welcome) comes first, init second. */
+  github?: boolean;
   /** Fold the card away on this page (NewProjectPage); it stays folded on every page. */
   onSkip?: () => void;
 }) {
@@ -281,6 +284,24 @@ export function SetupCard({
           )}
         </header>
 
+        {github && (
+          <>
+          <div className="mx-7 mb-4 flex flex-wrap items-center gap-3 rounded-lg border bg-muted/50 px-4 py-3">
+            <p className="min-w-0 flex-1">
+              <span className="font-medium">Your GitHub is connected.</span>{" "}
+              <span className="text-muted-foreground">Pick a repository: AgentFox finds the agents in it in about a minute.</span>
+            </p>
+            <Link
+              href="/app/welcome?again=1"
+              className="inline-flex h-8 items-center gap-2 rounded-md bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover"
+            >
+              Scan a repository
+            </Link>
+          </div>
+          <p className="mx-7 mb-4 text-[13px] text-muted-foreground">Or connect from your terminal:</p>
+          </>
+        )}
+
         <ol className="px-7 pb-7">
           <Step n={1} title="Create a key" state={haveKey ? "done" : "active"}>
             {key ? (
@@ -393,7 +414,7 @@ export function SetupCard({
 
         <footer className="flex flex-wrap gap-5 border-t bg-muted/50 px-7 py-3 text-[13px]">
           <FooterLink href="/docs/connect/python">Read the full guide</FooterLink>
-          <FooterLink href="/app/welcome">Scan a repository instead</FooterLink>
+          {!github && <FooterLink href="/app/welcome?again=1">Scan a repository instead</FooterLink>}
         </footer>
       </section>
     </div>

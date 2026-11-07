@@ -81,7 +81,7 @@ export function InstallStep() {
         secondary={
           !found && (
             <Button asChild variant="link" className="text-muted-foreground">
-              <Link href="/app/welcome">Scan a repository instead</Link>
+              <Link href="/app/welcome?again=1">Scan a repository instead</Link>
             </Button>
           )
         }
