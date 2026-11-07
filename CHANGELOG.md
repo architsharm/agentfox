@@ -11,6 +11,15 @@ the file it came from.
 
 ## [Unreleased]
 
+### Changed
+
+- **`agentfox scan` names the agents it found** (one line each: framework, model,
+  tools, file), single-agent repositories included, and its Next panel leads with one
+  command, `agentfox up`, instead of advice to edit code by hand.
+- **`agentfox up` instruments framework apps.** A LangGraph, LangChain, CrewAI or
+  AutoGen app calls the model through a client `agentfox.auto()` patches, so `up` now
+  offers to add it even when the scan counts no direct model call.
+
 ## [0.5.0] - 2026-11-06
 
 ### Added

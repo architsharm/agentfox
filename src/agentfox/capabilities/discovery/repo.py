@@ -504,11 +504,12 @@ class ScanReport:
             "agent_edges": [e.to_json() for e in self.agent_edges] if self.multi_agent else [],
         }
 
-    def next_step(self) -> str:
+    def next_step(self, suggest_auto: bool = True) -> str:
         """One sentence telling the operator what to do next.
 
         A report that ends without a next action makes the reader do the synthesis,
-        and most readers will not.
+        and most readers will not. ``suggest_auto=False`` leaves out the advice to add
+        ``agentfox.auto()``, for a caller that offers a command doing it instead.
         """
         if self.trifectas and not self.inconclusive:
             first = (
@@ -516,6 +517,8 @@ class ScanReport:
                 "instruction hidden in content they read into sending private data out. "
                 "Contain those first — each lethal-trifecta finding names the command."
             )
+            if not suggest_auto:
+                return first
             if self.ungoverned or not self.governable:
                 return (
                     f"{first} Then add `import agentfox; agentfox.auto()` to your entry "
@@ -552,6 +555,8 @@ class ScanReport:
                 "was not examined. If this repo calls a model through a wrapper we don't "
                 "recognise, govern it explicitly with the SDK."
             )
+        if self.ungoverned and not suggest_auto:
+            return f"{len(self.ungoverned)} model call(s) are ungoverned."
         if self.ungoverned:
             return (
                 f"{len(self.ungoverned)} model call(s) are ungoverned. Add "
