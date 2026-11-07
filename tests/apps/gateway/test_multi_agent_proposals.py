@@ -222,15 +222,11 @@ def test_map_shows_declared_sub_agents_and_parents_before_traffic(client):
     assert parent["parents"] == []
 
     child = client.get("/api/agents/billing/map", headers=ADMIN).json()
-    assert [(p["slug"], p["relation"]) for p in child["parents"]] == [
-        ("triage", "handoff")
-    ]
+    assert [(p["slug"], p["relation"]) for p in child["parents"]] == [("triage", "handoff")]
     assert child["subagents"] == []
 
     lineage = client.get("/api/agents/triage/lineage", headers=ADMIN).json()
-    assert {(link["target"], link["declared"]) for link in lineage["links"]} >= {
-        ("billing", True)
-    }
+    assert {(link["target"], link["declared"]) for link in lineage["links"]} >= {("billing", True)}
 
 
 def test_a_seen_edge_still_counts_its_calls(client, session):
@@ -278,7 +274,7 @@ def test_agent_list_carries_children_and_add_all_approves_the_system(client):
 def test_a_dismissed_sub_agent_leaves_the_map(client):
     _submit(client)
     agents = {a["slug"]: a for a in client.get("/api/agents", headers=ADMIN).json()["agents"]}
-    client.post(f"/api/agents/{agents["refunds"]['id']}/reject", headers=ADMIN)
+    client.post(f"/api/agents/{agents['refunds']['id']}/reject", headers=ADMIN)
 
     subs = client.get("/api/agents/triage/map", headers=ADMIN).json()["subagents"]
     assert [s["slug"] for s in subs] == ["billing"]
