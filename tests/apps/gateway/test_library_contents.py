@@ -22,7 +22,12 @@ def test_a_library_lists_its_rules_before_it_is_applied(client):
 def test_the_basic_guardrails_and_a_policy_key_resolve_to_their_library(client):
     basic = _contents(client, "basic").json()
     assert basic["title"] == "Basic guardrails" and len(basic["rules"]) == 4
-    assert {s for row in basic["rules"] for s in row["surfaces"]} <= {"input", "output", "tool_result", "retrieved"}
+    assert {s for row in basic["rules"] for s in row["surfaces"]} <= {
+        "input",
+        "output",
+        "tool_result",
+        "retrieved",
+    }
     # A shipped policy's key opens the library that ships it.
     by_policy = _contents(client, "eu-ai-act-high-risk").json()
     assert by_policy["id"] == "eu-ai-act"

@@ -16,14 +16,13 @@ from agentfox.core.db import session_scope
 from agentfox.core.models import Decision, User
 from agentfox.frameworks.autoguard import Blocked, auto, remote
 
-from .test_autoguard_tool_calls import (  # noqa: F401 - fake_openai is a fixture
+from .test_autoguard_tool_calls import (
     TOOLS,
     _bind_shipped_policies,
     _exfiltration_turn,
     _grant,
     _openai_response,
     _openai_tool_call,
-    fake_openai,
 )
 
 
@@ -43,7 +42,9 @@ def account(client, monkeypatch):
             paths.append(url.removeprefix("http://testserver"))
             return client.post(url, json=json, headers=headers)
 
-    monkeypatch.setattr(remote.Remote, "__post_init__", lambda self: setattr(self, "_client", Wire()))
+    monkeypatch.setattr(
+        remote.Remote, "__post_init__", lambda self: setattr(self, "_client", Wire())
+    )
     monkeypatch.setenv("AGENTFOX_URL", "http://testserver")
     monkeypatch.setenv("AGENTFOX_API_KEY", raw)
     return paths
