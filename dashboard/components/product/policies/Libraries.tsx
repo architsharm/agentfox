@@ -305,7 +305,9 @@ export async function Libraries({ project, agents }: { project: string | null; a
               <>
                 <div className="lib-head">
                   <strong>{l.title}</strong>
-                  <span className="lib-n">{l.rules} rules</span>
+                  <span className="lib-n">
+                    {l.rules} {l.rules === 1 ? "rule" : "rules"}
+                  </span>
                 </div>
                 <p>{l.description}</p>
               </>
