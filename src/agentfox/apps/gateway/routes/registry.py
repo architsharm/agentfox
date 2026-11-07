@@ -109,8 +109,9 @@ def approve_project(
     """Add every agent `agentfox init` proposed for this project ("Add all").
 
     Each gets the same state change and ledger entry as approving it on its own
-    (``POST /api/agents/{id}/approve``). Tool access is still granted per tool
-    (``POST /api/agents/{slug}/access``): adding an agent does not grant it anything."""
+    (``POST /api/agents/{id}/approve``), and is allowed the tools its own code hands
+    it (``registry.service.grant_found_tools``); anything else is still granted per
+    tool (``POST /api/agents/{slug}/access``)."""
     from agentfox.platform.registry.projects import project_agents
     from agentfox.platform.registry.service import approve_drafts
 

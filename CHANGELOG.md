@@ -11,6 +11,16 @@ the file it came from.
 
 ## [Unreleased]
 
+### Changed
+
+- **Adding an agent allows the tools its own code hands it.** Every tool `agentfox
+  init` or a repo scan found used to start "Not allowed", so the app's own calls were
+  refused on the first run and no rule could be tested until each tool was allowed by
+  hand. Now a read tool is allowed whatever its arguments came from, and a tool that
+  changes something or sends data out is allowed for what the user asked: an argument
+  copied out of a tool result or a page is still stopped. A tool the code doesn't hand
+  the agent stays refused; a grant someone already made is left as it is.
+
 ## [0.5.0] - 2026-11-06
 
 ### Added
