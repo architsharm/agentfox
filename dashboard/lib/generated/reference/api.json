@@ -526,6 +526,24 @@
       "description": ""
      },
      {
+      "name": "in_process",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "waive_ungranted",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "declare",
+      "type": "object",
+      "required": false,
+      "description": ""
+     },
+     {
       "name": "principal",
       "type": "string | object",
       "required": false,
