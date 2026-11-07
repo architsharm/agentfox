@@ -28,7 +28,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -1111,6 +1111,20 @@ class GuardToolCallRequest(BaseModel):
     # tool and arguments is found and spent, once. Off by default, so an SDK caller
     # that holds its approval ids is never let through on a match it did not ask for.
     redeem_approved: bool = False
+    #: What the caller will do with the verdict, so a containment finding says whether
+    #: the call was really stopped: "enforced", "all" (strict) or "none" (observe).
+    #: `agentfox.auto()` reporting to this gateway sends its own mode here.
+    in_process: Literal["enforced", "all", "none"] = "enforced"
+    #: The one-liner's carve-out: while nobody has granted this agent any tool, a
+    #: missing grant is recorded but not applied, so adding `agentfox.auto()` does not
+    #: refuse every tool an existing app already uses. The response lists the rules
+    #: it waived in `waived_rules`.
+    waive_ungranted: bool = False
+    #: The tool's declaration as the caller's request carried it (name, description,
+    #: parameters), or {} for none. When present, a tool seen for the first time is
+    #: registered with an inferred impact for a person to confirm, as `auto()` does
+    #: in process.
+    declare: dict[str, Any] | None = None
     # The person the agent acts for: a subject (an OIDC `sub`, an employee id) or
     # {"subject", "groups", "attributes"}. Sent to the workspace's access checks
     # (`agentfox_ee.access_checks`, when installed); a bare subject picks up the
@@ -1362,7 +1376,20 @@ def authorise_tool_call(
         approval_id = find_approved(
             session, agent_id=agent.id, tool_key=payload.tool, arguments=payload.arguments
         )
+    if payload.declare is not None:
+        from agentfox.platform.registry.service import register_called_tool
+
+        register_called_tool(session, payload.tool, payload.declare or None)
+    exempt: frozenset[str] = frozenset()
+    if payload.waive_ungranted:
+        from agentfox.core.vocab import CAPABILITY_REFUSAL_RULE_IDS
+        from agentfox.platform.identity.service import holds_any_grant
+
+        if not holds_any_grant(session, _identity):
+            exempt = frozenset(CAPABILITY_REFUSAL_RULE_IDS)
     result = enforcer.guard_tool_call(
+        in_process=payload.in_process,
+        exempt_rules=exempt,
         agent_slug=payload.agent,
         tool_key=payload.tool,
         arguments=payload.arguments,
@@ -1377,6 +1404,8 @@ def authorise_tool_call(
         principal=_principal_for(session, payload.agent, payload.principal),
     )
     body = result.to_json()
+    if exempt:
+        body["waived_rules"] = sorted(exempt)
     note_refusal(session, trace, body, surface="tool_args", tool=payload.tool)
     return with_verdict_aliases(body)
 

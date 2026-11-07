@@ -154,7 +154,9 @@ def connect(key: str, server: str, path: str | Path = ".", console: Console | No
         )
 
     try:
-        api.post("/runner/connect", {"structure": structure, "project": mapped.get("project")})
+        connected = api.post(
+            "/runner/connect", {"structure": structure, "project": mapped.get("project")}
+        )
     except (httpx.HTTPError, RuntimeError) as exc:
         console.print(f"[red]Couldn't reach AgentFox at {server}:[/red] {exc}")
         raise SystemExit(1) from exc
@@ -162,6 +164,7 @@ def connect(key: str, server: str, path: str | Path = ".", console: Console | No
         console.print(
             "[green]●[/green] Connected. Open AgentFox to add the agents it found and see them."
         )
+        connect_live_traffic(console, root, server, key, connected.get("registered") or [])
     else:
         # Connected, but nothing to show: saying "your agents are set up" here was false.
         console.print(
@@ -203,6 +206,93 @@ def connect(key: str, server: str, path: str | Path = ".", console: Console | No
             time.sleep(POLL_SECONDS)
     except KeyboardInterrupt:
         console.print("\nStopped. Run the same command again to reconnect.")
+
+
+def connect_live_traffic(
+    console: Console,
+    root: Path,
+    server: str,
+    key: str,
+    registered: list[dict[str, Any]],
+    *,
+    ask: bool | None = None,
+) -> Path | None:
+    """Make the app's own calls show up in AgentFox: save the workspace key where
+    `agentfox.auto()` finds it, and add that one line to the file that starts the
+    agent. Returns the file changed, if any.
+
+    The key goes to ``.agentfox/agentfox.env`` (owner-only, git-ignored). The line is
+    added only with the user's yes, asked when there is a terminal to ask in;
+    otherwise it is printed for them to add.
+    """
+    import sys
+
+    from agentfox.apps.cli.wizard.components import insert_auto
+    from agentfox.apps.cli.wizard.detect import write_env
+    from agentfox.platform.identity.operators import API_KEY_PREFIX
+
+    if not key.startswith(API_KEY_PREFIX):
+        return None  # an older setup key cannot send traffic
+    write_env(root, {"AGENTFOX_URL": server.rstrip("/"), "AGENTFOX_API_KEY": key})
+
+    entry = _entry_file(root, registered)
+    if entry is None:
+        console.print(
+            "[dim]Saved your key in .agentfox/agentfox.env. To see your app's calls, add "
+            "`import agentfox; agentfox.auto()` where it starts.[/dim]"
+        )
+        return None
+    path, slug = entry
+    rel = path.relative_to(root)
+    block = f'import agentfox\n\nagentfox.auto("{slug}")  # added by `agentfox init`\n'
+    if "agentfox.auto(" in path.read_text(errors="ignore"):
+        console.print(
+            f"[green]●[/green] {rel} already calls agentfox.auto(): its calls show up live."
+        )
+        return None
+    if ask is None:
+        ask = sys.stdin.isatty()
+    answer = "n"
+    if ask:
+        try:
+            answer = (
+                console.input(
+                    f"  Add one line to [cyan]{rel}[/cyan] so your app's calls show up in "
+                    "AgentFox? [bold]\\[Y/n][/bold] "
+                )
+                .strip()
+                .lower()
+                or "y"
+            )
+        except EOFError:
+            answer = "n"
+    if answer.startswith("y"):
+        insert_auto(path, block)
+        console.print(
+            f'[green]●[/green] {rel} now calls agentfox.auto("{slug}"). Run your app as usual: '
+            "its calls show up under Activity."
+        )
+        return path
+    console.print(
+        f"[dim]To see your app's calls, add to {rel}:[/dim]\n"
+        f'    import agentfox; agentfox.auto("{slug}")'
+    )
+    return None
+
+
+def _entry_file(root: Path, registered: list[dict[str, Any]]) -> tuple[Path, str] | None:
+    """The Python file that defines (and, best, runs) an agent, and that agent's slug."""
+    from agentfox.apps.cli.wizard.detect import _MAIN_GUARD
+
+    candidates = [
+        (root / a["file"], a["slug"])
+        for a in registered
+        if a.get("file", "").endswith(".py") and (root / a["file"]).is_file()
+    ]
+    if not candidates:
+        return None
+    runs = [c for c in candidates if _MAIN_GUARD.search(c[0].read_text(errors="ignore"))]
+    return (runs or candidates)[0]
 
 
 def _print_coverage(console: Console, mapped: dict[str, Any]) -> None:
