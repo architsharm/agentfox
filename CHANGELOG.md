@@ -11,6 +11,22 @@ the file it came from.
 
 ## [Unreleased]
 
+### Changed
+
+- **One key.** "Create a key" on the setup card makes a workspace API key: the key
+  `agentfox init` connects with, and the key your app sends its calls with. Old
+  `afi_` setup keys keep working at `init`.
+- **`agentfox init` connects your app's traffic.** Once connected it saves the key
+  in `.agentfox/agentfox.env` (owner-only, git-ignored) and, with your yes, adds
+  `agentfox.auto("<agent>")` to the file that runs the agent, so its calls show up
+  under Activity.
+- **Basic guardrails stop what they find.** They gain a fourth rule, instructions
+  hidden in what the agent reads (tool results, documents), where most of the
+  onboarding attack test's injections arrive. Adding them runs a simulation against
+  the agent's real traffic: with nothing they would change (a new agent), they go
+  live blocking, so the test run again shows what they stop; otherwise they watch
+  until promoted, as before.
+
 ### Added
 
 - **`agentfox.auto()` reports to your AgentFox account when a key is configured.**
