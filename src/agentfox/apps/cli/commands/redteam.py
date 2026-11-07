@@ -13,6 +13,11 @@ redteam_app = typer.Typer(
 )
 
 
+#: Verdicts that stop or rewrite a call: what "blocked" means for live traffic. None:
+#: a finding recorded before the applied verdict was kept.
+_STOPS = {"block", "escalate", "redact", "mask", "tokenize", None}
+
+
 @redteam_app.command("run")
 def redteam_run(
     agent: str,
@@ -63,6 +68,16 @@ def redteam_run(
         )
     keys = [p.strip() for p in probes.split(",")] if probes else None
     with _session() as session:
+        from agentfox.core.models import Agent
+        from agentfox.platform.registry.service import slugify
+
+        if session.scalar(select(Agent).where(Agent.slug == slugify(agent))) is None:
+            known = sorted(session.scalars(select(Agent.slug)))
+            console.print(
+                f"[red]No agent '{agent}'.[/] "
+                + (f"Agents here: {', '.join(known[:12])}" if known else "None registered yet.")
+            )
+            raise typer.Exit(2)
         campaign = run_campaign(
             session,
             agent,
@@ -83,6 +98,8 @@ def redteam_run(
                 "succeeded": f.succeeded,
                 "owasp": f.owasp_id,
                 "verdict": (f.evidence_json or {}).get("verdict"),
+                # What live traffic gets now: a watching rule's block is recorded, not applied.
+                "applied": (f.evidence_json or {}).get("applied_verdict"),
                 "expect_blocked": (f.evidence_json or {}).get("expect_blocked", True),
                 "over_blocked": (f.evidence_json or {}).get("over_blocked", False),
             }
@@ -99,6 +116,15 @@ def redteam_run(
         f"[green]{stats['attacks_blocked']} blocked[/], "
         f"[red]{stats['attacks_succeeded']} got through[/]"
     )
+    watching = [
+        r for r in rows if r["expect_blocked"] and not r["succeeded"] and r["applied"] not in _STOPS
+    ]
+    if watching:
+        console.print(
+            f"  [yellow]{len(watching)} of those only by rules that watch:[/] live traffic is "
+            "not stopped yet. They stop it once their policy blocks "
+            "(Policies → Libraries, or `agentfox policy enforce <policy>`)."
+        )
     if stats.get("benign_probes_run"):
         console.print(
             f"  precision [bold]{stats.get('precision', 1.0):.0%}[/] — "
@@ -140,6 +166,8 @@ def redteam_run(
             result = "[red]OVER-BLOCKED (false positive)[/]"
         elif row["expect_blocked"] and row["succeeded"]:
             result = "[red]NOT BLOCKED (attack succeeded)[/]"
+        elif row["expect_blocked"] and row["applied"] not in _STOPS:
+            result = "[yellow]would block (watching)[/]"
         elif row["expect_blocked"]:
             result = "[green]blocked[/]"
         else:
