@@ -73,7 +73,7 @@ export default function Page() {
             Entra <code>tenant_id</code> and <code>app_id</code>.
           </p>
           <Code>{`curl -s -X POST "$AGENTFOX_URL/api/agents/support-voice/platform-connections" \\
-  -H "Authorization: Bearer $AGENTFOX_API_TOKEN" -H 'Content-Type: application/json' \\
+  -H "Authorization: Bearer $AGENTFOX_API_KEY" -H 'Content-Type: application/json' \\
   -d '{"platform": "vapi", "upstream_url": "https://tools.example.com/vapi"}'`}</Code>
           <p>
             The answer has a <code>hook_url</code>. For Vapi it also has a <code>secret</code>, shown

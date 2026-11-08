@@ -11,6 +11,61 @@ the file it came from.
 
 ## [Unreleased]
 
+### Changed
+
+- **`agentfox up` adds `agentfox.auto()` where your agent starts, and only that.** It
+  finds the file that starts the agent under `src/` and in packages, from
+  `[project.scripts]` (and Poetry's), the graphs `langgraph.json` loads, a `__main__`
+  guard, or a line that runs an agent (`Runner.run`, `crew.kickoff()`,
+  `graph.invoke()` …), and adds the line there by default, for any Python agent the
+  scan finds (the OpenAI Agents SDK included). The name in the call is the agent the
+  entry point starts, the same one `up` registers; an existing unnamed `auto()` is
+  flagged.
+- **`up`'s defaults match the project.** In a Python agent's repository it no longer
+  writes Claude Code / Codex hooks, grants the coding agent its MCP servers' tools,
+  starts the hook daemon and the local API, or writes a GitHub workflow: those are
+  `--with coding-agents`, `--with view` and `--with ci`. They stay the default in a
+  repository set up for a coding agent with no agent of its own. The workflow is never
+  written below the repository root, where GitHub would not run it. Enterprise items
+  are left off the first run's list and named once at the end. No name question when
+  the code names the agent, no per-tool impact review unless asked for.
+- **`up` ends with what to do next:** run your app, `agentfox findings`, then
+  `agentfox test redteam <agent>`; reviewing impacts and enforcing come after.
+- **Hooks call `agentfox` by absolute path**, so a virtualenv install works from the
+  coding agent's environment. A hook installed under the bare name is recognised and
+  not added twice.
+- **`agentfox demo` runs in a database of its own** (`demo.db` beside your
+  workspace's), so a real project's `agentfox findings` and `agentfox declare list`
+  never show the demo's agents. It ends by saying how to look around that database;
+  `--in-workspace` keeps the old behaviour. Reason lines are wrapped, not cut mid-word,
+  and the closing lines name only commands this installation has.
+- **`AGENTFOX_URL` and `AGENTFOX_API_KEY` everywhere.** `agentfox up`, `scan --submit`,
+  the SDK and the LiteLLM guardrail read the names `auto()` and the README use; the
+  older `AGENTFOX_API_URL` / `AGENTFOX_API_TOKEN` are still accepted. `up` writes the
+  new names.
+- `agentfox demo` is listed in `--help` (Start), and `--help` says where the
+  coding-agent hooks live.
+- `scripts/quickscan.sh` installs the published release from PyPI; `--main` installs
+  the current git main.
+- An in-process app (`auto()`, the SDK) says a detector cannot run (the classifier
+  without `agentfox[classifiers]`) once per installation, not on every run;
+  `agentfox doctor` keeps listing it. The gateway and hook daemon still say it on every
+  start.
+
+### Fixed
+
+- `agentfox report evidence` without AgentFox Enterprise says what it is instead of
+  "unexpected extra argument (evidence)".
+- `agentfox doctor` printed `pip install 'agentfox'` for `agentfox[classifiers]`: Rich
+  read the extra as markup.
+- A second project's `up` called the API on :8080 "another serve with its own
+  database" when it was the same installation's on the same database; it is reused
+  now, and anything else on the port is described as what it is. `agentfox serve`
+  says it serves JSON and where the web dashboard is (Cloud or self-hosted).
+- A hook daemon killed with SIGTERM or SIGHUP removes its socket; a socket left by one
+  killed harder is detected and removed by `agentfox up` and `agentfox admin hooks status`.
+- `agentfox init`'s closing steps mention `agentfox demo` and `agentfox up`.
+
 ## [0.5.0] - 2026-11-07
 
 ### Added

@@ -117,7 +117,8 @@ outbox, and a serverless process may freeze before sending.
 |---|---|
 | `AGENTFOX_AGENT` | `agentfox.auto()` agent slug. Fallbacks: `OTEL_SERVICE_NAME`, `SERVICE_NAME`, `APP_NAME`, `K_SERVICE`, script name, `default-agent`. |
 | `AGENTFOX_CONFIG` | Path to the TOML config file, or `none`. |
-| `AGENTFOX_API_URL`, `AGENTFOX_API_TOKEN`, `AGENTFOX_USER` | `check/quickscan --submit` only. |
+| `AGENTFOX_URL`, `AGENTFOX_API_KEY` (older names `AGENTFOX_API_URL`, `AGENTFOX_API_TOKEN` accepted) | The account gateway and key: `agentfox.auto()`, the SDK, `agentfox up`, `scan --submit`. |
+| `AGENTFOX_USER` | `scan --submit` to a development deployment, without a key. |
 | `AGENTFOX_AUDIT_KEY` (falls back to `AGENTFOX_AUDIT_SIGNING_KEY`) | The `verify_chain.py` bundled in evidence packages (checkpoint signatures). |
 | `AGENTFOX_MCP_LOG_LEVEL` | The stdio MCP server's log level. Default `WARNING`. |
 

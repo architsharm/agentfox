@@ -77,15 +77,21 @@ Python 3.11 or newer.
 
 ```bash
 pip install agentfox
-agentfox scan        # names every agent it found, ends with: agentfox up
-agentfox up          # registers them, declares their tools, adds agentfox.auto()
-python main.py       # run your app as usual
-agentfox findings    # what it saw, and what it would have stopped
+agentfox scan                    # names every agent it found, ends with: agentfox up
+agentfox up                      # registers them, declares their tools, adds agentfox.auto()
+python main.py                   # run your app as usual
+agentfox findings                # what it saw, and what it would have stopped
+agentfox test redteam <agent>    # attack-test it
 ```
 
 `up` uses the names the code gives your agents, the same names `scan` printed, and adds
-`agentfox.auto()` to Python apps, LangGraph, LangChain, CrewAI and AutoGen included. It
-starts in watch mode. Everything stays on your machine.
+`agentfox.auto("<agent>")` to the file that starts one (a `pyproject.toml` script, the graph
+`langgraph.json` loads, or the file that runs it, `src/` included), for Python apps on
+LangGraph, LangChain, CrewAI, AutoGen and the OpenAI Agents SDK. It starts in watch mode and
+changes nothing else by default: coding-agent hooks, the GitHub workflow and the local API are
+`--with coding-agents`, `--with ci` and `--with view`. Everything stays on your machine; a pip
+install has no web dashboard (`agentfox findings` is the terminal view), which comes with
+AgentFox Cloud or the self-hosted stack.
 
 ### One key everywhere
 
@@ -109,16 +115,20 @@ is checked before your code can run it; a refused one raises `agentfox.Blocked`.
 - **Your coding agent:** in a project where you use Claude Code or Codex,
   `agentfox up --with coding-agents` writes the hooks, grants the agent its built-in tools
   and starts in watch mode, except shapes such as `rm -rf ~/`, which are refused from the
-  start. Install AgentFox with `uv tool install agentfox` (or `pipx`) so the hooks find it
-  from any directory.
+  start. In a repository set up for a coding agent with no agent of its own, `agentfox up`
+  does this by default. The hooks call AgentFox by absolute path, so they work from a
+  virtualenv install too.
 - **Behind a LiteLLM proxy:** one block in the proxy's `config.yaml` checks every agent
   behind it ([guide](https://useagentfox.com/docs/guides/litellm)).
 - **Look around first:** `agentfox init && agentfox demo`. `init` creates a SQLite database
   and loads 44 controls and the policy packs in about a second; `demo` runs a thirteen-step
-  walkthrough in about five. Both are offline: no API key, no downloaded weights, no network
-  egress.
+  walkthrough in about five, in a database of its own (`~/.agentfox/demo.db`), so your
+  project's `agentfox findings` never shows the demo's made-up agents. Both are offline: no
+  API key, no downloaded weights, no network egress.
 - **Scan this directory without installing:**
   `curl -fsSL https://raw.githubusercontent.com/architsharm/agentfox/main/scripts/quickscan.sh | bash`
+  installs the published release into a throwaway virtualenv (`| bash -s -- --main` for the
+  current main).
 - **On every pull request:** the GitHub Action annotates lethal trifectas, ungoverned model
   calls and poisoned skills, and fails the check on the kinds you list in `fail-on`:
 
@@ -138,7 +148,7 @@ agentfox serve                              # gateway + control-plane API on 127
 agentfox admin users create you@example.com --token   # first operator + API token, shown once
 
 curl -s -X POST http://localhost:8080/v1/guard/tool_call \
-  -H "Authorization: Bearer $AGENTFOX_TOKEN" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AGENTFOX_API_KEY" -H "Content-Type: application/json" \
   -d '{"agent":"payments-ops","tool":"payments.transfer",
        "arguments":{"amount":250,"currency":"USD","to":"acct_991"},
        "provenance":{"to":"tool_result","amount":"user"},
