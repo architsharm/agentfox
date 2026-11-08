@@ -29,6 +29,7 @@ from sqlalchemy.orm import Session
 
 from agentfox.apps import showcase
 from agentfox.apps.gateway.deps import current_user, db, require
+from agentfox.apps.gateway.client_address import client_address
 from agentfox.apps.gateway.playground_sessions import RateLimiter
 from agentfox.capabilities.evaluation import live_probes
 from agentfox.core.crypto import EncryptionNotConfigured
@@ -296,8 +297,7 @@ def public_showcase(
     """AgentFox probing its own demo agent: recent runs, attacks attempted, contained
     and escaped, findings opened and closed. Unauthenticated and read-only; returns
     ``{"enabled": false}`` on a deployment that does not run the showcase."""
-    client = request.client.host if request.client else "unknown"
-    if not showcase_limiter.check(client):
+    if not showcase_limiter.check(client_address(request)):
         raise HTTPException(429, "Too many requests — this page updates once a minute.")
     response.headers["Cache-Control"] = "public, max-age=60, s-maxage=300"
     return showcase.public_summary(session)

@@ -1597,6 +1597,25 @@ input[type="checkbox"], input[type="radio"] {
 .pg-agent:hover { border-color: var(--muted); }
 .pg-agent[aria-selected="true"] { border-color: var(--accent); background: var(--accent-weak); }
 .pg-agent[aria-selected="true"] b { color: var(--accent); }
+/* The chosen agent's line, shown only where the cards drop theirs (phones). */
+.pg-agent-note { display: none; margin: -6px 0 12px; font-size: var(--t-micro); line-height: 1.45; color: var(--muted); }
+/* On a phone five stacked cards pushed the chat a screen and a half down. The
+   picker becomes one row of names that scrolls sideways, and the chat follows it. */
+@media (max-width: 759px) {
+  .pg-agents {
+    display: flex;
+    gap: 8px;
+    margin: 18px 0 12px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .pg-agents::-webkit-scrollbar { display: none; }
+  .pg-agent { flex: 0 0 auto; padding: 8px 13px; border-radius: 999px; scroll-snap-align: start; white-space: nowrap; }
+  .pg-agent span { display: none; }
+  .pg-agent-note { display: block; }
+}
 
 .pg-main { display: grid; gap: 16px; grid-template-columns: 1fr; align-items: start; }
 @media (min-width: 900px) { .pg-main { grid-template-columns: minmax(0, 1fr) 232px; } }
@@ -1758,6 +1777,15 @@ input[type="checkbox"], input[type="radio"] {
   margin-bottom: 16px;
 }
 .pg-lost p { margin: 0 0 12px; font-size: var(--t-small); }
+.pg-lost p:last-child { margin-bottom: 0; }
+/* The rate limit: a notice that says when, not an error with a dead button. */
+.pg-limited { border-color: var(--warn); background: var(--warn-bg); }
+.pg-limited b { display: block; margin-bottom: 6px; font-size: var(--t-small); font-weight: 620; }
+.pg-lost-aside { color: var(--muted); font-size: var(--t-micro) !important; }
+.pg-cite { margin: 4px 0 6px; }
+.pg-cite > summary { font-size: var(--t-micro); color: var(--faint); cursor: pointer; }
+.pg-cite > summary:hover { color: var(--accent); }
+.pg-cite p { margin: 5px 0 0; }
 
 @media (max-width: 760px) {
   .pg-msg { max-width: 94%; }

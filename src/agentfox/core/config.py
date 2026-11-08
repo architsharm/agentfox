@@ -381,6 +381,23 @@ class Settings(BaseSettings):
                 out.append(origin)
         return out
 
+    # --- The visitor's address behind a proxy -------------------------------
+    #: How many proxies in front of the gateway append to ``X-Forwarded-For`` and can
+    #: be trusted to: the visitor's address is that many entries from the right. 0
+    #: ignores the header (it is set by the client, so trusting it with nothing in
+    #: front lets anyone rotate it to dodge a rate limit). Unset, it is 1 on Vercel,
+    #: whose edge overwrites the header with the visitor's own address, and 0
+    #: elsewhere. Used by the per-address limits on the public routes (playground,
+    #: waitlist, showcase): without it every visitor behind the proxy is one address,
+    #: and one busy hour locks everybody out.
+    trusted_proxy_hops: int | None = None
+
+    @property
+    def forwarded_for_hops(self) -> int:
+        if self.trusted_proxy_hops is not None:
+            return max(0, self.trusted_proxy_hops)
+        return 1 if os.environ.get("VERCEL") else 0
+
     # --- Outbound finding webhooks ----------------------------------------
     # Every newly committed Finding at or above `webhook_min_severity` is POSTed
     # to `webhook_url` (see webhooks.py). Still gated by `allow_egress` above: a

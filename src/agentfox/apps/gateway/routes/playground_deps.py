@@ -30,5 +30,7 @@ def playground_session(session_id: str) -> PlaygroundSession:
             404, "This playground sandbox has expired or never existed — create a new one."
         )
     if not action_limiter.check(session_id):
-        raise HTTPException(429, "Slow down — too many actions on this sandbox in the last minute.")
+        raise HTTPException(
+            429, "That was a lot of messages in one minute. Try again in a minute."
+        )
     return record
