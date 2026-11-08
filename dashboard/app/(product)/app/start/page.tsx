@@ -440,7 +440,7 @@ function TokensTab() {
     <>
       <p className="sub" style={{ marginTop: 16 }}>
         For your agents, the CLI and the SDK. Send one as a bearer token; the CLI reads{" "}
-        <code className="mono">AGENTFOX_API_TOKEN</code>.
+        <code className="mono">AGENTFOX_API_KEY</code>.
       </p>
       <TokenManager />
     </>
