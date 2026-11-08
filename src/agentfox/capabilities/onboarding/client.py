@@ -14,7 +14,7 @@ import httpx
 from rich.console import Console
 from rich.table import Table
 
-from agentfox.capabilities.onboarding.attacks import build_suite
+from agentfox.capabilities.onboarding.attacks import build_suite, suite_size
 from agentfox.capabilities.onboarding.mapper import map_repository
 
 POLL_SECONDS = 2.0
@@ -559,10 +559,7 @@ def _run_job(
     checked = bool(job.get("policies")) or phase == "after"
     label = "with your guardrails" if checked else "without guardrails"
     suite = build_suite(structure, job.get("sets"))
-    console.print(
-        f"[bold]Running {len(suite)} attacks and checks {label}[/bold] · tools are faked, "
-        "nothing real happens"
-    )
+    console.print(f"[bold]Running {suite_size(suite)} {label}[/bold] · tools are faked, nothing real happens")
     out = _Results(api, run_id)
     drivers = _drivers(console, root, mapped, structure, loaded)
     guards = _guards(api, run_id, structure, drivers) if checked else None

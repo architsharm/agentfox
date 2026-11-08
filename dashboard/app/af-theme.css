@@ -538,6 +538,11 @@ nav.side .project-switch-menu .project-switch-danger { color: var(--af-err); }
 .at-note { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--af-fg-2); }
 .at-warn { color: var(--af-warn); }
 .at-legend { margin: -4px 0 0; font-size: 11.5px; color: var(--af-muted); text-align: right; }
+/* The run's total, above the rows: the one line a reader takes away. */
+.at-headline { margin: 0; font-size: 13px; font-weight: 600; color: var(--af-fg); font-variant-numeric: tabular-nums; }
+/* Progress reads as progress (small, muted, italic), never in a result's weight. */
+.at-progress { flex-basis: 100%; text-align: right; font-size: 10.5px; font-style: italic; color: var(--af-muted); font-weight: 400; white-space: nowrap; }
+.at-why { font-size: 11px; color: var(--af-muted); line-height: 1.35; }
 .at code, .gm-more-agents code { font-family: var(--af-mono); font-size: 12px; padding: 0 4px; border-radius: 4px; background: var(--af-subtle); }
 .at-next { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid color-mix(in srgb, var(--af-brand) 35%, var(--af-line)); border-radius: var(--af-r-card); background: color-mix(in srgb, var(--af-brand) 4%, var(--af-surface)); }
 .at-next strong { font-size: 13px; }

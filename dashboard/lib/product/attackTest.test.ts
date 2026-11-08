@@ -3,6 +3,10 @@ import {
   IDLE_POLLS,
   POLL_MS,
   campaignNumbers,
+  headline,
+  notRunWhy,
+  progressText,
+  worseRows,
   cell,
   controlsLine,
   plainError,
@@ -219,5 +223,32 @@ describe("red-team campaign numbers (Testing → Attack tests)", () => {
 
   it("falls back to the old counts", () => {
     expect(campaignNumbers({ attacks_run: 5, attacks_blocked: 5, attacks_succeeded: 0 })).toMatchObject({ stopped: 5, through: 0, tone: "ok" });
+  });
+});
+
+describe("the panel's headline and notes", () => {
+  const jb = (over: Partial<ByType>) => row({ type: "jailbreak", label: "Jailbreaks", total: 36, done: 36, controls: 6, ...over });
+  const leak = (over: Partial<ByType>) => row({ type: "data_leak", label: "Data leaks", total: 18, done: 18, controls: 6, ...over });
+  const before = run({}, [jb({ gotThrough: 1, resisted: 35 }), leak({ gotThrough: 12, resisted: 6 })]);
+  const after = run({ phase: "after" }, [jb({ gotThrough: 3, stopped: 33 }), leak({ gotThrough: 0, stopped: 18 })]);
+
+  it("leads with the total, before → after, and the normal requests", () => {
+    expect(headline(before, after)).toBe("13 → 3 attacks got through · 12 of 12 normal requests still answered");
+    expect(headline(before, null)).toBe("13 of 54 attacks got through · 12 of 12 normal requests answered");
+    expect(headline(null, null)).toBeNull();
+  });
+
+  it("names a set that got worse, so the variation is shown rather than hidden", () => {
+    expect(worseRows(before, after)).toEqual([{ label: "Jailbreaks", before: "1/36", after: "3/36" }]);
+  });
+
+  it("says why attacks were not run, next to the count", () => {
+    expect(notRunWhy(row({ notRun: 2, notRunReason: "Needs a tool that sends email." }))).toBe("2 not run: Needs a tool that sends email");
+    expect(notRunWhy(row({ notRun: 0 }))).toBeNull();
+  });
+
+  it("shows progress as progress", () => {
+    expect(progressText(row({ total: 36, done: 12 }))).toBe("testing 12 of 36");
+    expect(progressText(row({ total: 36, done: 36 }))).toBeNull();
   });
 });
