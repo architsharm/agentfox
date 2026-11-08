@@ -462,7 +462,7 @@ function Step({
  * `init --key` (0.4 has no such option and failed as "no such option --key").
  */
 function Install({ keyText, server, muted }: { keyText: string; server: string; muted: boolean }) {
-  const cmd = `pip install "agentfox>=0.5"\nagentfox init --key ${keyText} --server ${server}`;
+  const cmd = `pip install -U agentfox\nagentfox init --key ${keyText} --server ${server}`;
   return (
     <div className="mt-3">
       <Code text={cmd} muted={muted} />

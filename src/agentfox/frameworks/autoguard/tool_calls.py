@@ -84,12 +84,103 @@ def _calls_in_message(message: Any) -> list[_ToolCall]:
     return calls
 
 
+#: Responses API output items the caller's own code acts on: a function tool, a
+#: custom (free-form) tool, and the computer / shell / patch actions the app executes.
+#: Each is a tool call to authorise before the response is handed back. Item type ->
+#: the field holding its arguments.
+_CLIENT_ITEMS = {
+    "function_call": "arguments",
+    "custom_tool_call": "input",
+    "computer_call": "action",
+    "local_shell_call": "action",
+    "shell_call": "action",
+    "apply_patch_call": "operation",
+}
+
+#: Responses API output items for tools OpenAI runs itself. They have already run
+#: when the response arrives, so they are recorded, never authorised.
+_HOSTED_ITEMS = {
+    "web_search_call": "web_search",
+    "file_search_call": "file_search",
+    "code_interpreter_call": "code_interpreter",
+    "image_generation_call": "image_generation",
+    "mcp_call": "mcp",
+    "tool_search_call": "tool_search",
+}
+
+
+def _responses_calls(items: list[Any]) -> list[_ToolCall]:
+    """The client-run tool calls among a Responses API response's output items."""
+    calls: list[_ToolCall] = []
+    for item in items:
+        kind = str(_get(item, "type"))
+        field = _CLIENT_ITEMS.get(kind)
+        if field is None:
+            continue
+        if kind in ("function_call", "custom_tool_call"):
+            name = _get(item, "name")
+        else:  # computer / shell / patch actions are named by what they are
+            name = kind.removesuffix("_call")
+        if not name:
+            continue
+        raw = _get(item, field)
+        if kind == "custom_tool_call" and isinstance(raw, str):
+            arguments = {"input": raw}  # free-form text, not JSON
+        else:
+            arguments = _arguments(raw)
+        calls.append(_ToolCall(str(name), arguments, _get(item, "call_id") or _get(item, "id")))
+    return calls
+
+
+@dataclass
+class _HostedCall:
+    """A tool OpenAI ran on the model's behalf (web search, file search, code
+    interpreter, hosted MCP, ...): recorded from the response, never stopped."""
+
+    name: str
+    detail: dict[str, Any]
+    status: str | None = None
+
+
+def _hosted_calls_of(response: Any) -> list[_HostedCall]:
+    """The hosted-tool items in a Responses API response. Never raises."""
+    try:
+        if getattr(response, "choices", None) is not None:
+            return []
+        items = _get(response, "output")
+        if not isinstance(items, list):
+            return []
+        hosted: list[_HostedCall] = []
+        for item in items:
+            name = _HOSTED_ITEMS.get(str(_get(item, "type")))
+            if name is None:
+                continue
+            plain = _plain(item)
+            detail: dict[str, Any] = {}
+            if isinstance(plain, dict):
+                # What it did, not what it returned: the query, the server and tool,
+                # the code. Results can be large and are the model's to read.
+                for key in ("action", "queries", "server_label", "name", "arguments", "code"):
+                    if plain.get(key) not in (None, "", [], {}):
+                        detail[key] = plain[key]
+            if name == "mcp" and _get(item, "server_label"):
+                name = f"mcp:{_get(item, 'server_label')}.{_get(item, 'name') or ''}".rstrip(".")
+            hosted.append(_HostedCall(name, detail, _get(item, "status")))
+        return hosted
+    except Exception as exc:  # pragma: no cover - defensive against SDK shape drift
+        log.warning("agentfox: could not read hosted tools from the response: %s", exc)
+        return []
+
+
 def _tool_calls_of(response: Any) -> list[_ToolCall]:
     """Every tool call in a buffered response, in order. Never raises."""
     try:
         choices = getattr(response, "choices", None)
         if choices:
             return [c for choice in choices for c in _calls_in_message(_get(choice, "message"))]
+        items = _get(response, "output")
+        if isinstance(items, list):  # the Responses API
+            return _responses_calls(items)
         return _calls_in_message(response)
     except Exception as exc:  # pragma: no cover - defensive against SDK shape drift
         log.warning("agentfox: could not read tool calls from the response: %s", exc)
@@ -114,7 +205,9 @@ def _tool_specs(kwargs: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return specs
 
 
-def _provenance_of(kwargs: dict[str, Any]) -> tuple[TaintTracker, list[str]]:
+def _provenance_of(
+    kwargs: dict[str, Any], declared_for: Any = None
+) -> tuple[TaintTracker, list[str]]:
     """A taint tracker over this conversation, and the tools already called in it.
 
     The request carries the whole conversation — that is how a tool-calling client
@@ -123,9 +216,16 @@ def _provenance_of(kwargs: dict[str, Any]) -> tuple[TaintTracker, list[str]]:
     the SDK and the HTTP proxy cannot disagree about where a value came from: a
     tool's result is ``tool_result`` taint (``tool:<tool>#<index>`` when the call
     that produced it can be found), Anthropic ``tool_result`` blocks included.
+
+    ``declared_for(messages)`` may return index -> source for messages whose
+    provenance is known better than their role says: a framework that quotes a
+    tool's result back to its model inside its own message (CrewAI's
+    "Observation:") is declared ``tool_result`` there.
     """
     tracker = TaintTracker()
-    prior = tracker.mark_messages([_plain_message(m) for m in kwargs.get("messages") or []])
+    messages = [_plain_message(m) for m in kwargs.get("messages") or []]
+    declared = declared_for(messages) if declared_for is not None else None
+    prior = tracker.mark_messages(messages, declared or None)
     return tracker, prior
 
 

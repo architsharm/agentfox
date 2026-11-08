@@ -845,6 +845,42 @@ def env(name: str, default: str | None = None) -> str | None:
     return os.environ.get(ENV_PREFIX + name) or default
 
 
+def run_dir() -> Path:
+    """Where this installation keeps small runtime records (which `agentfox serve` is
+    running, which warnings were already shown): ``run/`` under the state root, or
+    ``AGENTFOX_RUN_DIR``."""
+    override = os.environ.get(f"{ENV_PREFIX}RUN_DIR")
+    return Path(override).expanduser() if override else STATE_ROOT / "run"
+
+
+#: The account's gateway address and API key, as everything outside the gateway reads
+#: them: `agentfox.auto()`, the SDK, the LiteLLM guardrail and the CLI. The first name
+#: is the one to set (the README's); the second is the older CLI name, still accepted.
+API_URL_VARS = ("AGENTFOX_URL", "AGENTFOX_API_URL")
+API_KEY_VARS = ("AGENTFOX_API_KEY", "AGENTFOX_API_TOKEN")
+
+
+def first_env(names: tuple[str, ...], *sources: dict[str, str] | Any) -> str | None:
+    """The first of ``names`` set (non-empty) in ``sources``, the process environment
+    when none is given. Each source is tried in turn, every name in it."""
+    for source in sources or (os.environ,):
+        for name in names:
+            value = source.get(name)
+            if value:
+                return value
+    return None
+
+
+def api_url_from_env(*sources: dict[str, str] | Any) -> str | None:
+    """AGENTFOX_URL, or the older AGENTFOX_API_URL."""
+    return first_env(API_URL_VARS, *sources)
+
+
+def api_key_from_env(*sources: dict[str, str] | Any) -> str | None:
+    """AGENTFOX_API_KEY, or the older AGENTFOX_API_TOKEN."""
+    return first_env(API_KEY_VARS, *sources)
+
+
 def is_development(settings: Settings | None = None) -> bool:
     """Whether ``environment`` names a development environment (see DEV_ENVIRONMENTS)."""
     settings = settings or get_settings()

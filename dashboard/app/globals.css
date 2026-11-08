@@ -1629,6 +1629,8 @@ input[type="checkbox"], input[type="radio"] {
   margin-bottom: 10px;
 }
 .pg-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.pg-chips-more { padding: 10px 16px 0; border-top: 1px solid var(--border); }
+.pg-chips-more .pg-chip { padding: 5px 12px; }
 .pg-chip {
   border: 1px solid var(--border);
   background: var(--panel-2);

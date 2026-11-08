@@ -101,6 +101,8 @@ def isolated_db(tmp_path, monkeypatch, schema_template) -> Iterator[None]:
     monkeypatch.setenv("AGENTFOX_CONFIG", "none")
     # The hook writes per-session delivery state; never into the developer's run dir.
     monkeypatch.setenv("AGENTFOX_DELIVERY_STATE", str(tmp_path / "delivery"))
+    # Run records (the serve record, warnings already shown); never the real run dir.
+    monkeypatch.setenv("AGENTFOX_RUN_DIR", str(tmp_path / "run"))
 
     from agentfox.core import db
     from agentfox.core.config import get_settings, reset_settings_cache

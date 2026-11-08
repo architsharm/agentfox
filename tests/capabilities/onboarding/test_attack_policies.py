@@ -244,7 +244,9 @@ def test_a_test_where_nothing_ran_is_failed_not_clean(client):
     run = client.get("/api/onboarding/projects/people/tests", headers=ME).json()["first"]
     assert run["status"] == "failed" and run["clean"] is False
     assert run["notRun"] == run["total"] and "No attack could be run" in run["error"]
-    assert "ModuleNotFoundError" in run["error"]
+    # The reason, in a sentence with the fix rather than the raw exception.
+    assert "couldn't import your agent (app.agents.agent)" in run["error"]
+    assert "'x'" in run["error"] and "Install your agent's dependencies" in run["error"]
 
 
 SALARY_LOOP = '''

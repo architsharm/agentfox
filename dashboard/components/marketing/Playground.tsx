@@ -205,6 +205,18 @@ const AGENTS: Record<string, { holds: string; tries: Suggestion[] }> = {
 
 /* --- Small pieces --------------------------------------------------------- */
 
+/** What each verdict means, in words a visitor reads without a glossary. */
+const PLAIN: Record<string, string> = {
+  allow: "allowed",
+  block: "blocked",
+  escalate: "held for a person to approve",
+  redact: "sensitive data removed",
+  mask: "sensitive data masked",
+  tokenize: "sensitive data replaced",
+  abstain: "declined: it can't know that yet",
+};
+const plain = (v?: string | null) => (v ? PLAIN[v] ?? v : v ?? undefined);
+
 /**
  * The verdict on a turn, with the reason one click away.
  *
@@ -233,12 +245,12 @@ function VerdictLine({
         {held ? (
           <>
             <span className="tag warn">flagged, not stopped</span>
-            <span className="pg-would">would {v.effective_verdict} in enforce</span>
+            <span className="pg-would">would be {plain(v.effective_verdict)} with blocking on</span>
           </>
         ) : (
-          <Verdict value={v.verdict} />
+          <Verdict value={v.verdict} label={plain(v.verdict)} />
         )}
-        {caughtByWindow && <span className="tag escalate">caught across messages</span>}
+        {caughtByWindow && <span className="tag escalate">flagged by the conversation so far</span>}
         {surface && <span className="pg-surface">{surface}</span>}
         <span className="pg-why">why</span>
       </summary>
@@ -497,9 +509,9 @@ export function Playground({ apiBase }: { apiBase: string }) {
         <div className="mk-wrap">
           <h1 className="pg-h1">Red team a running agent</h1>
           <p className="pg-lede">
-            Red team a running agent in the browser, with no account. Try a prompt
-            injection or a tool call the agent was not granted. The verdict comes
-            from the product.
+            No account needed. Pick an agent, then try to talk it into something it
+            shouldn&apos;t do: a prompt injection, a refund over its limit, a tool it
+            was never given. Every verdict comes from the real product.
           </p>
         </div>
       </section>
@@ -587,7 +599,7 @@ export function Playground({ apiBase }: { apiBase: string }) {
                       return (
                         <div key={i} className="pg-msg agent">
                           {t.scripted && (
-                            <span className="pg-msg-note">scripted reply, no model ran</span>
+                            <span className="pg-msg-note">sample reply: the sandbox runs no real model</span>
                           )}
                           {t.text}
                           {t.verdict && <VerdictLine v={t.verdict} window={t.windowVerdict} surface="message text" />}
@@ -596,6 +608,22 @@ export function Playground({ apiBase }: { apiBase: string }) {
                     })
                   )}
                 </div>
+
+                {turns.length > 0 && tries && tries.length > 0 && (
+                  <div className="pg-chips pg-chips-more" aria-label="More to try">
+                    {tries.map((s) => (
+                      <button
+                        key={s.label}
+                        type="button"
+                        className="pg-chip"
+                        disabled={busy}
+                        onClick={() => (s.tool ? void act(s) : void say(s.say, false))}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 {showDocument && (
                   <div className="pg-doc">
@@ -665,27 +693,32 @@ export function Playground({ apiBase }: { apiBase: string }) {
 
               <aside className="pg-rail" aria-label="Sandbox">
                 <div className="pg-mode">
-                  <span className={`tag ${mode === "enforce" ? "bad" : ""}`}>{mode}</span>
+                  <span className={`tag ${mode === "enforce" ? "bad" : ""}`}>
+                    {mode === "enforce" ? "Blocking" : "Watching"}
+                  </span>
                   <button type="button" className="mk-btn mk-btn-outline" onClick={toggleMode}>
-                    switch to {mode === "observe" ? "enforce" : "observe"}
+                    {mode === "observe" ? "Turn on blocking" : "Back to watching"}
                   </button>
                 </div>
                 <details className="pg-tip">
                   <summary>What does that change?</summary>
                   <p>
-                    In observe, detectors flag what you type and it goes through anyway.
-                    In enforce, it is stopped. Capability checks enforce either way —
-                    they read no text.
+                    While watching, checks on what people type only flag it, so you can
+                    see what would be stopped before anything is. With blocking on, it is
+                    stopped. Limits on what each agent may do (which tools, how much
+                    money) apply either way.
                   </p>
                 </details>
 
                 {chain && (
                   <div className="pg-chain">
-                    <b>{chain.entries}</b> record{chain.entries === 1 ? "" : "s"}
+                    <b>{chain.entries}</b> decision{chain.entries === 1 ? "" : "s"} logged
                     {chain.verified ? (
-                      <span className="tag ok">chain holds</span>
+                      <span className="tag ok" title="Each record is hashed into the one before it, and the chain still verifies.">
+                        tamper check passed
+                      </span>
                     ) : (
-                      <span className="tag bad">chain broken</span>
+                      <span className="tag bad">tamper check failed</span>
                     )}
                   </div>
                 )}
@@ -693,7 +726,9 @@ export function Playground({ apiBase }: { apiBase: string }) {
             </div>
           )}
 
-      {!sessionId && !bootstrapError && <p className="pg-lede">Setting up your sandbox…</p>}
+      {!sessionId && !bootstrapError && (
+        <p className="pg-lede">Starting a private sandbox for you. This takes about ten seconds.</p>
+      )}
         </div>
       </section>
     </>

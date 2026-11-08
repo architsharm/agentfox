@@ -7,9 +7,8 @@ import { appPageMetadata } from "@/lib/site";
 import { publicApiBase } from "@/lib/env";
 import { ApiDown } from "@/components/ui";
 import { Card, Header } from "@/components/kit";
-import { CodeSnippet } from "@/components/product/start/CodeSnippet";
 import { WelcomeFlow } from "@/components/product/welcome/WelcomeFlow";
-import { INSTALL_SPEC, sortRepos, type Repo } from "@/lib/product/welcome";
+import { sortRepos, type Repo } from "@/lib/product/welcome";
 
 export const metadata: Metadata = appPageMetadata("Welcome", "Scan a repository, see what it found, and set it up.");
 export const dynamic = "force-dynamic";
@@ -83,18 +82,18 @@ function NoGithub({ hasAccount }: { hasAccount: boolean }) {
           {hasAccount
             ? "Scan a repository from your machine instead. "
             : "This workspace has no GitHub account connected. "}
-          Run this in the repository: it scans it, then sets AgentFox up with a recommended answer for every question.
+          Connect from your machine instead: create a key, then run the one command it shows in the
+          repository. It finds your agents and attack-tests them, and they show up here.
         </p>
-        <CodeSnippet label="In your repository" code={`uvx --from ${INSTALL_SPEC} agentfox up`} />
         <div className="gs-row">
+          <Link href="/app" className="k-btn-primary">
+            Create a key and connect
+          </Link>
           {!hasAccount && (
-            <a href="/api/auth/github/login" className="k-btn-primary">
+            <a href="/api/auth/github/login" className="k-btn">
               Connect GitHub instead
             </a>
           )}
-          <Link href="/app/start?tab=tokens" className="k-btn">
-            Create an API key
-          </Link>
           <Link href="/app/start" className="k-btn-ghost">
             Full checklist
           </Link>

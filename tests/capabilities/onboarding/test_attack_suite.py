@@ -386,6 +386,21 @@ def test_an_agent_it_cannot_drive_is_reported_not_faked():
     assert driver.refuse and "Can't drive Mystery yet" in driver.refuse
 
 
+def test_a_graph_builder_is_compiled_and_driven_like_the_app_runs_it():
+    """`create_swarm(...)` / `StateGraph(...)` have no .invoke; the app runs .compile()."""
+
+    class Compiled:
+        def invoke(self, payload, config=None):
+            return {"messages": [{"role": "assistant", "content": "compiled ran"}]}
+
+    class Builder:
+        def compile(self):
+            return Compiled()
+
+    driver = runner.make_driver(Builder(), name="Swarm", framework="LangGraph")
+    assert not driver.refuse
+
+
 def test_real_side_effects_are_refused_while_a_suite_runs(tmp_path, monkeypatch):
     """The backstop: a tool the frameworks don't see (called straight from the agent's
     own code) still can't write a file, delete one or start a process."""
@@ -419,6 +434,28 @@ def test_loading_an_agent_puts_cwd_and_sys_path_back(tmp_path):
     cwd, path = __import__("os").getcwd(), list(sys.path)
     write_loop(tmp_path, "people_loop_c")
     assert __import__("os").getcwd() == cwd and sys.path == path
+
+
+@pytest.mark.parametrize("init", [True, False])
+def test_a_module_that_imports_its_siblings_by_bare_name_loads(tmp_path, init):
+    """A LangGraph graph file (langgraph.json loads it by path) imports its neighbours
+    as ``from prompts import X``. Importing it as a module must work too, including
+    langgraph-swarm's own layout: src/agent/agent.py in a folder with no __init__.py,
+    where the folder must stay the package and not become the file."""
+    pkg = tmp_path / "src" / "swagent"
+    pkg.mkdir(parents=True)
+    if init:
+        (pkg / "__init__.py").write_text("")
+    (pkg / "swprompts.py").write_text("PROMPT = 'plan the research'\n")
+    (pkg / "swagent.py").write_text("from swprompts import PROMPT\napp = {'prompt': PROMPT}\n")
+    path = list(sys.path)
+    try:
+        got = runner.load_agent(tmp_path, "swagent.swagent", "app")
+        assert got == {"prompt": "plan the research"}
+        assert sys.path == path
+    finally:
+        for name in ("swagent.swagent", "swagent", "swprompts"):
+            sys.modules.pop(name, None)
 
 
 @pytest.mark.parametrize("surface_fails", ["input", "tool_call"])

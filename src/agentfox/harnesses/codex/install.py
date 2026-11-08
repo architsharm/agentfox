@@ -33,6 +33,7 @@ from agentfox.harnesses.base import (
     InstallError,
     Scope,
     agents_in_hook_commands,
+    has_hook,
     hook_command,
 )
 
@@ -105,7 +106,6 @@ def _inline_commands(config: Path) -> dict[str, str]:
 
 def merge(path: Path, harness: str, agent: str, events: list[str]) -> FileChange:
     """Our hooks merged into the ``hooks.json`` at ``path``. Idempotent."""
-    command = hook_command(harness, agent)
     block = hook_block(harness, agent, events)
     existing: dict[str, Any] = {}
     if path.exists():
@@ -121,9 +121,9 @@ def merge(path: Path, harness: str, agent: str, events: list[str]) -> FileChange
         hooks = existing.setdefault("hooks", {}).setdefault(event, [])
         if not isinstance(hooks, list):
             raise InstallError(f"{path}: `hooks.{event}` is not a list")
-        if any(command in json.dumps(entry) for entry in hooks):
+        if any(has_hook(json.dumps(entry), harness, agent) for entry in hooks):
             continue
-        if command in inline.get(event, ""):
+        if has_hook(inline.get(event, ""), harness, agent):
             continue
         hooks.extend(entries)
         added.append(event)

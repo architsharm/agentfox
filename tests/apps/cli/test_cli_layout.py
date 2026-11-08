@@ -185,21 +185,27 @@ def test_nothing_that_builds_or_walks_the_cli_imports_click():
     assert importers == []
 
 
-def test_the_only_hidden_top_level_entries_are_the_protocol_endpoints_and_demo():
+def test_the_only_hidden_top_level_entries_are_the_protocol_endpoints():
     hidden = sorted(name for name, cmd in ROOT.commands.items() if cmd.hidden)
     expected = {path.split()[0] for path in KEPT_PROTOCOL_ENDPOINTS} | layout.HIDDEN_TOP_LEVEL
     assert hidden == sorted(expected)
 
 
-def test_demo_still_runs_unlisted():
-    result = runner.invoke(app, ["demo", "--help"])
-    assert result.exit_code == 0, result.output
+def test_help_lists_demo_and_says_where_the_hooks_are():
+    """The README sends people to `agentfox demo`, and installed hook configs call
+    `agentfox hooks run`: both have to be findable from `agentfox --help`."""
+    output = " ".join(runner.invoke(app, ["--help"]).output.split())
+    assert "─ Start ─" in runner.invoke(app, ["--help"]).output
+    assert " demo " in output
+    assert "agentfox admin hooks install" in output
+    assert "agentfox hooks run" in output
+    assert runner.invoke(app, ["demo", "--help"]).exit_code == 0
 
 
-def test_visible_top_level_is_thirteen_or_fewer():
+def test_visible_top_level_is_fourteen_or_fewer():
     listed = ROOT.list_commands(ROOT.context_class(ROOT))
     visible = [name for name in listed if not ROOT.commands[name].hidden]
-    assert len(visible) <= 13, visible
+    assert len(visible) <= 14, visible
     assert visible == [name for name, _ in layout.VISIBLE if name in visible]
     assert set(visible) == {name for name, _ in layout.VISIBLE}
 

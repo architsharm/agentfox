@@ -1,7 +1,7 @@
 /**
  * Every "paste this" on Get started and Settings > Connections, built from one
  * place so the two pages cannot drift. Each snippet has this deployment's gateway
- * URL and the chosen agent already in it; the key is read from AGENTFOX_API_TOKEN so
+ * URL and the chosen agent already in it; the key is read from AGENTFOX_API_KEY so
  * nothing secret ends up in a snippet someone pastes into a ticket.
  */
 
@@ -53,7 +53,7 @@ export function snippetsFor(path: PathKey, gateway: string, agent: string): Snip
         {
           label: "Check a tool call",
           code: `curl -s -X POST ${gateway}/v1/guard/tool_call \\
-  -H "Authorization: Bearer $AGENTFOX_API_TOKEN" \\
+  -H "Authorization: Bearer $AGENTFOX_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"agent": "${a}",
        "tool": "payments.transfer",
@@ -68,7 +68,7 @@ export function snippetsFor(path: PathKey, gateway: string, agent: string): Snip
           label: "In your agent",
           code: `from agentfox import AgentFox, ApprovalRequired, PolicyViolation
 
-# Reads your key from AGENTFOX_API_TOKEN.
+# Reads your key from AGENTFOX_API_KEY.
 fox = AgentFox(agent="${a}", base_url="${gateway}")
 
 with fox.session(intent="answer a support question") as run:
@@ -93,7 +93,7 @@ with fox.session(intent="answer a support question") as run:
           code: `from agentfox import AgentFox
 from agentfox.frameworks.openai_agents import govern
 
-fox = AgentFox(agent="${a}", base_url="${gateway}")  # key from AGENTFOX_API_TOKEN
+fox = AgentFox(agent="${a}", base_url="${gateway}")  # key from AGENTFOX_API_KEY
 govern(fox, triage_agent)  # every agent it hands off to, and all their tools`,
         },
       ];
@@ -107,7 +107,7 @@ govern(fox, triage_agent)  # every agent it hands off to, and all their tools`,
 const fox = new AgentFox({
   baseUrl: "${gateway}",
   agent: "${a}",
-  apiKey: process.env.AGENTFOX_API_TOKEN,
+  apiKey: process.env.AGENTFOX_API_KEY,
 });
 
 const input = await fox.guardInput(userText);
@@ -123,7 +123,7 @@ from openai import OpenAI
 
 client = OpenAI(
     base_url="${gateway}/v1",
-    api_key=os.environ["AGENTFOX_API_TOKEN"],  # the gateway holds the model key
+    api_key=os.environ["AGENTFOX_API_KEY"],  # the gateway holds the model key
     default_headers={"X-AgentFox-Agent": "${a}"},
 )`,
         },
@@ -133,7 +133,7 @@ client = OpenAI(
 
 const client = new OpenAI({
   baseURL: "${gateway}/v1",
-  apiKey: process.env.AGENTFOX_API_TOKEN, // the gateway holds the model key
+  apiKey: process.env.AGENTFOX_API_KEY, // the gateway holds the model key
   defaultHeaders: { "X-AgentFox-Agent": "${a}" },
 });`,
         },
@@ -160,7 +160,7 @@ agentfox admin hooks daemon`,
         {
           label: "Exporter settings",
           code: `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=${gateway}/v1/traces
-OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer%20$AGENTFOX_API_TOKEN"
+OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer%20$AGENTFOX_API_KEY"
 OTEL_SERVICE_NAME=${a}`,
         },
       ];

@@ -62,7 +62,8 @@ FLAG_LABEL = {
 
 _READ_VERBS = {
     "read", "get", "list", "search", "lookup", "find", "query", "load", "retrieve",
-    "view", "show", "fetch", "export", "open", "cat", "describe", "check",
+    "view", "show", "fetch", "export", "open", "cat", "describe", "check", "inspect",
+    "examine",
 }  # fmt: skip
 
 _PRIVATE_NOUNS = {
@@ -144,8 +145,23 @@ def tokens(name: str) -> list[str]:
     return _impact_tokens(name)
 
 
+#: Words that take no plural: "can read user data", never "user datas".
+_UNCOUNTABLE = {
+    "data", "info", "information", "metadata", "content", "feedback", "status",
+    "inventory", "mail", "media", "storage", "config", "configuration", "pii", "news",
+    "history", "memory", "knowledge", "analytics", "telemetry",
+}  # fmt: skip
+
+
 def _plural(noun: str) -> str:
-    return noun if noun.endswith("s") else noun + "s"
+    """The plural a sentence needs: "records", "entries", "boxes", "user data"."""
+    if noun in _UNCOUNTABLE or noun.endswith("s"):
+        return noun
+    if noun.endswith("y") and len(noun) > 1 and noun[-2] not in "aeiou":
+        return noun[:-1] + "ies"
+    if noun.endswith(("x", "z", "ch", "sh")):
+        return noun + "es"
+    return noun + "s"
 
 
 @dataclass
@@ -168,8 +184,46 @@ class Capabilities:
         return [f for f in FLAGS if f in self.flags]
 
 
-def classify_tool(name: str, description: str = "") -> Capabilities:
-    """Classify one tool by its name, falling back to its description."""
+#: Argument names that are a filesystem path the model fills in.
+_PATH_ARGS = {
+    "path", "paths", "file", "files", "file_path", "file_paths", "filepath", "filename",
+    "file_name", "filenames", "directory", "dir", "dir_path", "directory_path", "folder",
+    "folder_path", "source_path", "input_path", "document_path", "doc_path",
+}  # fmt: skip
+#: A description that says the tool takes a path to a file.
+_PATH_DESCRIPTION = re.compile(
+    r"\b(?:file|directory|folder)[ _]?path\b|\bpath (?:to|of) (?:the|a|an|any) (?:[\w-]+ ){0,2}"
+    r"(?:file|directory|folder|document)\b"
+)
+
+
+def classify_tool(name: str, description: str = "", args: Iterable[str] = ()) -> Capabilities:
+    """Classify one tool by its name, falling back to its description.
+
+    ``args``, the tool function's argument names when the code shows them, add one
+    shape a name rarely says: a tool that opens whatever path the model gives it
+    (`markdown_validation_tool(file_path)`) reads any file this process can, which is
+    private data whatever the tool is called.
+    """
+    caps = _classify_by_name(name, description)
+    if PRIVATE in caps.flags:
+        return caps
+    desc = (description or "").lower()
+    by_arg = any(a.lower() in _PATH_ARGS for a in args)
+    if not (by_arg or _PATH_DESCRIPTION.search(desc)):
+        return caps
+    toks = set(tokens(name))
+    writes = bool(toks & (_WRITE_VERBS | {"write", "delete", "remove"})) and not toks & _READ_VERBS
+    if writes or UNTRUSTED in caps.flags:
+        return caps
+    caps.flags.add(PRIVATE)
+    caps.phrases[PRIVATE] = "can read any file path it is given"
+    caps.data_noun = caps.data_noun or "file"
+    return caps
+
+
+def _classify_by_name(name: str, description: str = "") -> Capabilities:
+    """The name- and description-only classification behind :func:`classify_tool`."""
     from agentfox.platform.registry.impact import infer_impact
 
     toks = tokens(name)
@@ -227,7 +281,10 @@ def classify_tool(name: str, description: str = "") -> Capabilities:
         reading
         and not web
         and not inbound
-        and re.search(r"\b(web ?page|website|url|internet)\b", desc)
+        and re.search(
+            r"\b(web ?page|website|url|internet|web (?:results?|search|content)|search engine)\b",
+            desc,
+        )
     ):
         web = True
     if web:
@@ -867,18 +924,27 @@ def trifecta_sentence(
     return sentence, evidence
 
 
-def containment_hint(evidence: dict[str, list[str]], *, mcp: bool = False) -> str:
-    """The next command, naming the tool that should be contained."""
+def containment_hint(
+    evidence: dict[str, list[str]], *, mcp: bool = False, agent: str | None = None
+) -> str:
+    """The next command, naming the tool that should be contained and, when the scan
+    knows it, the agent that holds it (its slug, as `agentfox up` registers it).
+
+    Without an agent the command still has to be one a reader can complete, so the
+    placeholder is spelled as one (AGENT) and said to be the agent's name.
+    """
     channel = (evidence.get(EXFIL) or ["<tool>"])[0]
+    who = agent or "AGENT"
+    where = "" if agent else " (AGENT: the name the agent is registered under)"
     if mcp:
         return (
             "Contain it: don't load these servers together in one client, or put the "
-            f"agent behind AgentFox and run `agentfox permit grant <agent> "
-            f"mcp:{channel}/* --max-taint user` so nothing read from the web reaches "
-            f"'{channel}' without an approval."
+            f"agent behind AgentFox and run `agentfox permit grant {who} "
+            f"mcp:{channel}/* --max-taint user`{where} so nothing read from the web "
+            f"reaches '{channel}' without an approval."
         )
     return (
-        f"Contain it: `agentfox permit grant <agent> {channel} --max-taint user` "
+        f"Contain it: `agentfox permit grant {who} {channel} --max-taint user`{where} "
         f"(anything derived from untrusted content needs an approval before it reaches "
         f'{channel}), or run with `agentfox.auto(mode="observe")` to watch it happen '
         "without blocking anything."
