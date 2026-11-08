@@ -103,27 +103,16 @@ const FINDINGS: Row[] = [
 export default function Page() {
   return (
     <article className="docs-doc">
-      <p className="docs-kicker">Reference</p>
       <h1>Detectors and findings</h1>
       <p className="docs-lede">
         Where content is checked, which detectors check it and what they report, how a
         detection becomes a verdict, and every kind of finding that lands in the queue.
       </p>
 
-      <h2 id="when">When to read this</h2>
-      <p>
-        When a decision lists an entity like <code>INJECTION.INSTRUCTION_OVERRIDE</code>{" "}
-        and you want to know where it came from; when you are writing a{" "}
-        <Link href="/docs/reference/policies#conditions"><code>detection</code> condition</Link>;
-        when you are deciding whether to install an optional detector; or when you are
-        working through <code>agentfox findings</code>.
-      </p>
-      <Callout kind="note" title="Detection is the layer to trust least">
+      <Callout kind="note">
         <p>
-          Detectors raise an attacker&apos;s cost; they are not the defence. The product
-          is built so that a missed detection is survivable: grants, declared impact and
-          argument provenance still decide what a tool call may do.{" "}
-          <Link href="/docs/guides/contain-tool-calls">Contain tool calls</Link> covers that layer.
+          A missed detection does not open a tool call: grants, declared impact and argument
+          provenance still decide it (<Link href="/docs/govern">Tool access</Link>).
         </p>
       </Callout>
 
@@ -414,6 +403,73 @@ block block degraded: ['secrets.native', 'injection.heuristic', 'pii.native', 's
         <code>agentfox doctor</code> reports the deployment setting.
       </p>
 
+      <h2 id="judgment">Judgment tiers</h2>
+      <p>
+        A judgment tier adds an evaluator for questions about meaning that patterns cannot
+        answer. Off by default: <code>judgment_tiers</code> is{" "}
+        <code>[&quot;deterministic&quot;]</code> and <code>judgment_backend</code> is{" "}
+        <code>local</code>. To turn one on, add it to <code>judgment_tiers</code> and add{" "}
+        <code>injection.judgment</code> or <code>pii.judgment</code> to the enabled
+        detectors (<Link href="/docs/reference/config#judgment">settings</Link>).
+      </p>
+      <table>
+        <thead>
+          <tr><th>Tier</th><th>What it is</th><th>Needs</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>deterministic</code></td><td>Regex, parsers, grant lookups</td><td>Nothing; always on</td></tr>
+          <tr><td><code>local_model</code></td><td>PIGuard, Granite Guardian, embeddings, on this machine</td><td><code>[classifiers]</code> and weights</td></tr>
+          <tr><td><code>local_llm</code></td><td>A self-hosted general model</td><td><code>judgment_llm_provider</code> pointing at a LiteLLM or vLLM endpoint on loopback; no egress</td></tr>
+          <tr><td><code>jev</code></td><td>A hosted judgment model</td><td><code>JEV_API_KEY</code> and <code>AGENTFOX_ALLOW_EGRESS=true</code></td></tr>
+          <tr><td><code>llm</code></td><td>A hosted general model as judge</td><td>A provider key, <code>judgment_llm_provider</code> / <code>judgment_llm_model</code>, and egress</td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li>
+          A routing table decides which tier may answer which kind of question, from
+          measurement; SQL blast radius and grant lookups stay with code whatever you enable.{" "}
+          <code>GET /api/detectors</code> returns it under <code>judgment</code>.
+        </li>
+        <li>
+          Before a hosted tier sees text, locally detected personal data is masked and
+          credential-named fields are dropped (<code>judgment_redact_before_egress</code>, on).{" "}
+          <code>judgment_pii_egress = block</code> refuses to judge remotely when personal data
+          is present.
+        </li>
+        <li>
+          A workspace admin can narrow the tiers (<code>PUT /api/judgment/posture</code>), never
+          widen them past what the deployment allows.
+        </li>
+      </ul>
+
+      <h2 id="suppressions">Suppressions</h2>
+      <p>
+        A suppression turns one false-positive label into an exception for one detector and
+        one entity type. Create one from a label with <code>POST /api/guardrails/suppressions</code>{" "}
+        (role owner, admin or security), or <strong>suppress 30d</strong> on the label in the
+        app. Creating and revoking (<code>DELETE /api/guardrails/suppressions/&#123;id&#125;</code>)
+        are on the audit chain, and each suppressed detection is recorded on its decision.
+      </p>
+      <table>
+        <thead>
+          <tr><th>Field</th><th>Default</th><th>Meaning</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>feedback_id</code></td><td>required</td><td>The false-positive label it comes from; sets the detector and entity type.</td></tr>
+          <tr><td><code>scope</code></td><td><code>agent</code></td><td><code>agent</code> (the agent that reported it) or <code>global</code>.</td></tr>
+          <tr><td><code>exact</code></td><td><code>false</code></td><td>Only the exact matched text.</td></tr>
+          <tr><td><code>ttl_days</code></td><td>30</td><td>1 to 365. Every suppression expires.</td></tr>
+          <tr><td><code>reason</code></td><td><code>""</code></td><td>Why it is acceptable. Recorded with the suppression.</td></tr>
+        </tbody>
+      </table>
+      <p>
+        <code>GET /api/guardrails/suppressions</code> lists them with hit counts and a{" "}
+        <code>health</code> block (never hit, expiring within 7 days). A detector that
+        raised a second entity on the same text still fires on that one. Labels feed
+        per-detector precision; a threshold recommendation needs at least five labels, and{" "}
+        <code>agentfox policy proposals from-labels</code> turns clean ones into proposals.
+      </p>
+
       <h2 id="findings">Findings</h2>
       <p>
         A finding is one problem that needs a person, not one detection. It is
@@ -502,6 +558,62 @@ agentfox findings --json --limit 1`}</Code>
       </p>
       <Table head={["Type", "Meaning", "First move"]} rows={FINDINGS} />
 
+      <h2 id="scan">What scans report</h2>
+      <h3 id="scan-json">agentfox scan --json</h3>
+      <table>
+        <thead>
+          <tr><th>Key</th><th>What it holds</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>agents</code></td><td>Each agent found: <code>key</code>, <code>name</code>, <code>framework</code>, <code>file</code>, <code>line</code>, <code>tools</code>, <code>tool_details</code> (name, description, args), <code>model</code> when the code states it, <code>ref</code> (module and name), <code>confidence</code>, <code>evidence</code>.</td></tr>
+          <tr><td><code>agent_edges</code></td><td><code>parent</code>, <code>child</code> and <code>relation</code> (for example <code>handoff</code>).</td></tr>
+          <tr><td><code>unassigned_tools</code></td><td>Tools no agent is handed.</td></tr>
+          <tr><td><code>sites</code></td><td>Every finding with <code>kind</code> (<code>model_call</code>, <code>tool</code>, <code>mcp_server</code>, <code>lethal_trifecta</code>, <code>agent_definition</code>, <code>secret</code>, <code>shell_call</code>, <code>sql_build</code>), <code>file</code>, <code>line</code>, <code>detail</code>, <code>severity</code>, and for a model call <code>provider</code> and <code>governed</code>.</td></tr>
+          <tr><td><code>lethal_trifectas</code></td><td>Agents that can read private data, read untrusted input and send data out, with the tools behind each and a fix.</td></tr>
+          <tr><td>Counts</td><td><code>files_scanned</code>, <code>code_files_scanned</code>, <code>model_calls</code>, <code>ungoverned_model_calls</code>, <code>coverage</code>, <code>tools</code>, <code>mcp_servers</code>, <code>counts</code>, <code>frameworks</code>, <code>inconclusive</code>, <code>errors</code>.</td></tr>
+        </tbody>
+      </table>
+      <p><code>--json</code> never prompts. Tool names and models are not sent by <code>scan --submit</code>.</p>
+
+      <h3 id="scan-machine">Files agentfox scan machine reads</h3>
+      <table>
+        <thead>
+          <tr><th>Client</th><th>Config file</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Claude Code</td><td><code>~/.claude.json</code>, <code>~/.claude/settings.json</code></td></tr>
+          <tr><td>Cursor</td><td><code>~/.cursor/mcp.json</code></td></tr>
+          <tr><td>Windsurf</td><td><code>~/.codeium/windsurf/mcp_config.json</code></td></tr>
+          <tr><td>Gemini CLI</td><td><code>~/.gemini/settings.json</code></td></tr>
+          <tr><td>Codex</td><td><code>~/.codex/config.toml</code></td></tr>
+          <tr><td>Claude Desktop</td><td><code>Claude/claude_desktop_config.json</code> in the OS application-data directory</td></tr>
+          <tr><td>VS Code</td><td><code>Code/User/mcp.json</code> and <code>Code/User/settings.json</code> there</td></tr>
+          <tr><td>Cline</td><td><code>cline_mcp_settings.json</code> in VS Code&apos;s global storage for the extension</td></tr>
+        </tbody>
+      </table>
+      <p>
+        Skills are read from <code>~/.claude/skills</code>, <code>~/.claude/plugins</code>,{" "}
+        <code>~/.codex/skills</code> and <code>~/.agents/skills</code>.
+      </p>
+
+      <h3 id="monitor-findings">Monitor findings (AgentFox Enterprise)</h3>
+      <p>Raised by <code>agentfox scan monitors</code> when a watched source changes between runs.</p>
+      <table>
+        <thead>
+          <tr><th>Type</th><th>Severity</th><th>When</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>monitor_lethal_trifecta</code></td><td>critical</td><td>A lethal trifecta appears.</td></tr>
+          <tr><td><code>monitor_governance_removed</code></td><td>high</td><td>A model call that was governed no longer is.</td></tr>
+          <tr><td><code>monitor_ungoverned_model_call</code></td><td>high</td><td>A new ungoverned model call.</td></tr>
+          <tr><td><code>monitor_new_tool</code></td><td>medium, or low with no risky capability</td><td>A new tool.</td></tr>
+          <tr><td><code>monitor_new_mcp_server</code></td><td>medium</td><td>A new MCP server.</td></tr>
+          <tr><td><code>monitor_api_destructive_endpoint</code></td><td>high</td><td>A new destructive endpoint in a watched API.</td></tr>
+          <tr><td><code>monitor_api_new_endpoint</code></td><td>low</td><td>A new endpoint.</td></tr>
+          <tr><td><code>monitor_failing</code></td><td>medium</td><td>The monitor failed <code>monitor_failure_threshold</code> runs in a row (3).</td></tr>
+        </tbody>
+      </table>
+
       <h2 id="numbers">How good is detection</h2>
       <p>
         These numbers come from the benchmark claims registry, where each is bound to the
@@ -573,8 +685,8 @@ agentfox findings --json --limit 1`}</Code>
       <NextSteps
         items={[
           { href: "/docs/reference/policies", label: "Policy language", why: "write rules on these entities" },
-          { href: "/docs/guides/tuning", label: "Tune detectors", why: "feedback, suppressions and thresholds" },
-          { href: "/docs/app/findings", label: "Findings in the web app", why: "triage with the full evidence" },
+          { href: "/docs/protect/tuning", label: "Fix false positives", why: "labels and suppressions from the app" },
+          { href: "/docs/prove", label: "Traces and issues", why: "triage findings with the full evidence" },
           { href: "/docs/benchmarks", label: "Benchmarks", why: "what was measured, and where each result stops" },
         ]}
       />

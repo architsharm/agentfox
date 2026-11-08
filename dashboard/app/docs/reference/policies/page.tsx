@@ -104,22 +104,11 @@ const CODING: PackRule[] = [
 export default function Page() {
   return (
     <article className="docs-doc">
-      <p className="docs-kicker">Reference</p>
       <h1>Policy language</h1>
       <p className="docs-lede">
-        Policies are YAML files of rules: a condition, an effect, a reason. This page
-        lists every field, every condition, the four shipped packs rule by rule, and how
-        to write, check, load and roll out your own.
-      </p>
-
-      <h2 id="when">When to read this</h2>
-      <p>
-        When a decision names a rule and you want to know what it tests; when you want
-        a rule the shipped packs do not have (an export cap, a recipient domain, a
-        stricter threshold for one team); or before you promote a pack from observe to
-        enforce. For threshold ladders written in plain terms, use{" "}
-        <Link href="/docs/guides/business-rules">business rules</Link> instead; they
-        compile to the same engine.
+        Policies are YAML files of rules: a condition, an effect, a reason. This page lists
+        every field and condition, the shipped packs rule by rule, grants and their limits,
+        business rules, imported policies, and how to roll out a change.
       </p>
 
       <h2 id="document">The document</h2>
@@ -181,6 +170,42 @@ export default function Page() {
         been blocked&quot;.
       </p>
 
+      <h2 id="decision-order">How a tool call is decided</h2>
+      <ol>
+        <li>Which agent is calling, and is it stopped (quarantine or kill switch)?</li>
+        <li>Does it hold a <a href="#grants">grant</a> for the tool, and do the arguments fit its limits? No grant: refused.</li>
+        <li>What is the tool&apos;s impact, and the <a href="#provenance">provenance</a> of its arguments? Untrusted values in an irreversible call escalate.</li>
+        <li>Composition (a value from one tool passed into a higher-impact one), declared intent, loops and budget.</li>
+        <li>What the detectors found in the arguments, under each detection rule&apos;s pack mode.</li>
+      </ol>
+      <p>
+        The strongest effect wins and is written to the audit chain. Steps 2 and 3 read no
+        text, so they hold when a detector misses. Content is checked on nine{" "}
+        <Link href="/docs/reference/detectors#surfaces">surfaces</Link>.
+      </p>
+
+      <h3 id="provenance">Provenance</h3>
+      <table>
+        <thead>
+          <tr><th>Level</th><th>The value came from</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>none</code></td><td>No external origin.</td></tr>
+          <tr><td><code>user</code></td><td>The user&apos;s message.</td></tr>
+          <tr><td><code>retrieved</code></td><td>A retrieved document.</td></tr>
+          <tr><td><code>tool_result</code></td><td>Another tool&apos;s output, such as a fetched page.</td></tr>
+          <tr><td><code>subagent</code></td><td>Another agent.</td></tr>
+          <tr><td><code>memory</code></td><td>The agent&apos;s long-term memory.</td></tr>
+        </tbody>
+      </table>
+      <p>
+        Ordered from most to least trusted; everything after <code>user</code> is untrusted.{" "}
+        <code>auto()</code> reads it from the conversation (a value copied out of a{" "}
+        <code>role=&quot;tool&quot;</code> message is a tool result); over HTTP the caller
+        declares it (<code>provenance</code>, <code>X-AgentFox-Trust</code>), and what is
+        declared is believed.
+      </p>
+
       <h2 id="conditions">Conditions (<code>when</code>)</h2>
       <table>
         <thead>
@@ -235,7 +260,7 @@ shell.run PolicyViolation [('shell.destructive', 'enforce')]`}</Output>
         <code>agentfox init</code> loads <code>baseline</code>, <code>tool-containment</code>{" "}
         and <code>eu-ai-act-high-risk</code>. <code>coding-agent</code> is loaded only for
         agents with coding-agent hooks installed (<code>agentfox admin hooks install</code>,
-        see <Link href="/docs/guides/coding-agents">Coding agents</Link>).
+        see <Link href="/docs/connect/coding-agents">Coding agents</Link>).
       </p>
       <Code>{`agentfox policy packs
 agentfox policy list`}</Code>
@@ -458,6 +483,210 @@ output: block ['pii.outbound_redact', 'output.card_number']`}</Output>
         </p>
       </Callout>
 
+      <h2 id="grants">Grants and tool declarations</h2>
+      <p>
+        Default deny is not a rule you write: a tool call with no grant is refused
+        (<code>capability.denied</code>) whatever mode the packs are in. Grants and
+        declarations are the facts the <a href="#pack-tool-containment">containment rules</a>{" "}
+        reason over. In the app they are an agent&apos;s <strong>Access</strong> tab.
+      </p>
+      <h3 id="declare">Declaring a tool</h3>
+      <Code>{`agentfox declare tool billing.export --impact high_impact --output-trust trusted --triggers "s3.put,email.send"`}</Code>
+      <table>
+        <thead>
+          <tr><th>Option</th><th>Values</th><th>Meaning</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>--impact</code></td><td><code>read</code> | <code>write</code> | <code>high_impact</code> | <code>irreversible</code></td><td>Required. Matched by <code>tool_impact</code> and by the <code>taint.*</code> rules.</td></tr>
+          <tr><td><code>--output-trust</code></td><td><code>untrusted</code> (default) | <code>trusted</code></td><td>Whether values from this tool&apos;s output count as tool results. Declare <code>trusted</code> only for a system of record you control; it also tells <code>composition.escalation</code> the flow is intended.</td></tr>
+          <tr><td><code>--triggers</code></td><td>comma-separated tool keys</td><td>What the call sets off downstream, read by the <code>cascade.*</code> rules.</td></tr>
+        </tbody>
+      </table>
+      <p>
+        A tool first seen in traffic is registered with an <em>inferred</em> impact: names
+        with <code>send</code>, <code>delete</code>, <code>transfer</code> or{" "}
+        <code>deploy</code> read as irreversible; <code>create</code>, <code>update</code>{" "}
+        or <code>write</code> as write; anything else as read. A declaration always wins
+        over a guess. The SDK&apos;s <code>@fox.tool(&quot;key&quot;, impact=&quot;…&quot;)</code>{" "}
+        declares too.
+      </p>
+
+      <h3 id="grant-options">permit grant</h3>
+      <Code>{`agentfox permit grant support-triage 'billing.*' --limit 'format:in=csv,json' --limit 'rows:lte=5000' --max-taint retrieved --requires-approval --expires-in-days 7 --yes`}</Code>
+      <table>
+        <thead>
+          <tr><th>Option</th><th>Default</th><th>Meaning</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>TOOL</code></td><td>required</td><td>A key or a glob (<code>tickets.*</code>, <code>mcp:github/*</code>, <code>*</code>). When several grants match, the most specific wins.</td></tr>
+          <tr><td><code>--limit</code></td><td>none</td><td>Repeatable argument limit; see the operators below.</td></tr>
+          <tr><td><code>--max-taint</code></td><td><code>user</code></td><td>The worst provenance an argument may carry and still run without approval: <code>none</code>, <code>user</code>, <code>retrieved</code>, <code>tool_result</code>, <code>subagent</code>, <code>memory</code>. Above it the call escalates. Within it, the <code>taint.*</code> rules defer to the grant; <code>composition.escalation</code> does not.</td></tr>
+          <tr><td><code>--requires-approval</code></td><td>off</td><td>Every matching call goes to a person first.</td></tr>
+          <tr><td><code>--expires-in-days</code></td><td>no expiry</td><td>The grant stops matching after N days.</td></tr>
+          <tr><td><code>--action</code></td><td>every action</td><td>Limit the grant to named actions on the tool. Repeatable.</td></tr>
+          <tr><td><code>--granted-by</code></td><td>you</td><td>Who is accountable, recorded in the audit chain.</td></tr>
+        </tbody>
+      </table>
+      <p>
+        The agent must already exist (it appears the first time it sends traffic). Every
+        grant and revocation (<code>agentfox permit revoke CAP_ID</code>) is on the audit
+        chain. <code>agentfox policy proposals from-traffic</code> drafts grants from
+        recorded calls; limits are learned only from calls no detector or provenance rule
+        flagged, and a tool declaration needs a second approver.
+      </p>
+
+      <h3 id="limit-operators">Limit operators</h3>
+      <p>
+        <code>path=value</code> means equal; <code>path:op=value</code> uses an operator.
+        Values are read as JSON where possible (<code>1000</code> is a number,{" "}
+        <code>&quot;1000&quot;</code> a string). A dotted path reaches nested arguments
+        (<code>recipient.country:eq=GB</code>). A missing argument compares as null, so it
+        fails an equality, list or numeric limit. An unknown operator is refused before
+        anything is written.
+      </p>
+      <table>
+        <thead>
+          <tr><th>Operator</th><th>Example</th><th>Holds when the argument is</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>(none) or <code>eq</code></td><td><code>region=eu</code></td><td>exactly that value</td></tr>
+          <tr><td><code>ne</code></td><td><code>status:ne=closed</code></td><td>anything but that value</td></tr>
+          <tr><td><code>lt</code>, <code>lte</code></td><td><code>rows:lte=5000</code></td><td>below / at most, numerically</td></tr>
+          <tr><td><code>gt</code>, <code>gte</code></td><td><code>priority:gte=2</code></td><td>above / at least, numerically</td></tr>
+          <tr><td><code>in</code></td><td><code>format:in=csv,json</code></td><td>one of a comma-separated list</td></tr>
+          <tr><td><code>not_in</code></td><td><code>queue:not_in=legal,security</code></td><td>none of the list</td></tr>
+          <tr><td><code>contains</code></td><td><code>subject:contains=ticket</code></td><td>text containing it, case-insensitively</td></tr>
+          <tr><td><code>matches</code></td><td><code>to:matches=@example\.com$</code></td><td>text matching a regular expression (search)</td></tr>
+        </tbody>
+      </table>
+
+      <h3 id="taint-scope">Taint scope</h3>
+      <p>
+        <code>taint_scope</code> (<Link href="/docs/reference/config#set-taint_scope">Configuration</Link>)
+        decides what provenance the rules see for a tool call. The recorded decision
+        always keeps the session value and notes which scope was applied.
+      </p>
+      <table>
+        <thead>
+          <tr><th>Value</th><th>What policy sees</th><th>Trade-off</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>session</code> (default)</td><td>The worst provenance anywhere in the run so far, plus the call&apos;s own arguments.</td><td>Contains injections that steer an argument without copying text. Escalates more honest calls.</td></tr>
+          <tr><td><code>argument</code></td><td>Only what this call&apos;s arguments were copied from.</td><td>Lets honest calls through after the agent read the web. Misses an injection whose text never lands in an argument.</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="business-rules">Business rules (threshold ladders)</h2>
+      <p>
+        A ladder bands one numeric tool argument into outcomes. It runs on the{" "}
+        <code>tool_args</code> surface, after grants: a call with no grant is refused
+        before the ladder matters. Its fired rule id is <code>business.&lt;key&gt;</code>.
+      </p>
+      <Code lang="yaml" title="credit-ladder.yaml">{`key: billing-credit-ladder
+tool: billing.credit
+field: arguments.amount
+unit: USD
+owner: finance
+mode: observe
+bands:
+  - upto: 50
+    outcome: allow
+  - upto: 500
+    outcome: verify
+    verify:
+      check: billing.credit_history
+      expect: {credits_last_90d: {op: lt, value: 3}}
+      on_fail: escalate
+  - upto: 5000
+    outcome: escalate
+    approver_role: finance-lead
+  - outcome: block
+    reason: credits above $5,000 go through the finance system`}</Code>
+      <table>
+        <thead>
+          <tr><th>Field</th><th>Default</th><th>Meaning</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>key</code></td><td>required</td><td>Unique id. Applying the same key again replaces the ladder and bumps its version.</td></tr>
+          <tr><td><code>name</code>, <code>description</code>, <code>owner</code></td><td><code>&quot;&quot;</code></td><td>For people. <code>owner</code> names who to ask when two ladders disagree.</td></tr>
+          <tr><td><code>tool</code></td><td>every tool</td><td>Limit the ladder to one tool (a glob). Without it, every tool call carrying the field.</td></tr>
+          <tr><td><code>agent</code></td><td>every agent</td><td>Scope to one registered agent (also <code>--agent</code> on apply).</td></tr>
+          <tr><td><code>field</code></td><td>required</td><td>Dotted path into the request. Tool arguments are under <code>arguments</code>.</td></tr>
+          <tr><td><code>unit</code></td><td><code>count</code></td><td><code>USD</code>, <code>EUR</code>, <code>GBP</code>, <code>JPY</code>, <code>USD_CENTS</code>, <code>EUR_CENTS</code>, <code>GBP_CENTS</code>, <code>count</code>, <code>days</code>.</td></tr>
+          <tr><td><code>mode</code></td><td><code>observe</code></td><td>The ladder&apos;s own mode, whatever mode the packs are in. <code>--mode</code> on apply overrides it.</td></tr>
+          <tr><td><code>bands</code></td><td>required</td><td>Ordered by <code>upto</code>, ascending. Each covers values above the previous <code>upto</code>, up to and including its own. The last band omits <code>upto</code>.</td></tr>
+        </tbody>
+      </table>
+      <table>
+        <thead>
+          <tr><th>Band field</th><th>Meaning</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>upto</code></td><td>Inclusive upper bound. Omitted on the last band.</td></tr>
+          <tr><td><code>outcome</code></td><td><code>allow</code> (default), <code>verify</code>, <code>escalate</code>, <code>block</code>, <code>redact</code>.</td></tr>
+          <tr><td><code>reason</code>, <code>label</code></td><td>Shown in the decision.</td></tr>
+          <tr><td><code>approver_role</code></td><td>Who may approve an <code>escalate</code>.</td></tr>
+          <tr><td><code>verify</code></td><td>Required for a <code>verify</code> band: <code>check</code> (the check key), <code>arguments</code>, <code>expect</code> (what passing looks like; absent means truthy), <code>on_pass</code> (default <code>allow</code>), <code>on_fail</code> and <code>on_error</code> (default <code>escalate</code>), <code>timeout_ms</code> (5000). AgentFox does not run the check: your code does, with <code>agentfox.capabilities.business.run_verification</code>.</td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li>When several ladders match, the strictest outcome wins. A ladder never loosens a security verdict.</li>
+        <li>A missing field, a negative value, text that is not a number, or a value in another currency escalates. It never passes.</li>
+        <li>
+          <code>agentfox policy rules check</code> reports where two ladders on the same field
+          disagree (and ladders in different units as critical), exiting 1, so it works as a CI
+          step. <code>policy lint</code> does not look at ladders.
+        </li>
+      </ul>
+      <TaskTable
+        rows={[
+          { task: "Save or replace a ladder", run: "agentfox policy rules apply credit-ladder.yaml", href: "/docs/reference/cli#cmd-policy-rules-apply" },
+          { task: "Read back the resolved bands", run: "agentfox policy rules show billing-credit-ladder", href: "/docs/reference/cli#cmd-policy-rules-show" },
+          { task: "Try values at each boundary", run: "agentfox policy rules test billing-credit-ladder 50,50.01,5000.01", href: "/docs/reference/cli#cmd-policy-rules-test" },
+          { task: "Find disagreements between ladders", run: "agentfox policy rules check", href: "/docs/reference/cli#cmd-policy-rules-check" },
+          { task: "Every kind of guardrail, and one in detail", run: "agentfox policy rules explain threshold_ladder", href: "/docs/reference/cli#cmd-policy-rules-explain" },
+          { task: "Turn a written policy into ladders (observe)", run: "agentfox policy compile billing-policy.md --apply", href: "/docs/reference/cli#cmd-policy-compile" },
+        ]}
+      />
+      <p>
+        <code>policy compile</code> is deterministic (no model). It lists every assumption
+        it made and the sentences it cannot express; <code>--apply</code> saves only the
+        threshold ladders, in observe.
+      </p>
+
+      <h2 id="import">Imported policies</h2>
+      <p>
+        <code>agentfox policy import FILE</code> prints a plan of what a policy written for
+        another engine becomes; <code>--apply</code> saves it in observe. It reads rule
+        files (<code>apiVersion: governance.toolkit/v1</code>) and policy manifests
+        (<code>agent_control_specification_version</code>, with their Rego from beside the
+        manifest or <code>--bundle</code>; Rego is read, never executed). Over HTTP:{" "}
+        <code>POST /api/import/agent-governance/plan</code>, then{" "}
+        <code>/api/import/agent-governance</code> (<code>skip</code> leaves items out).
+      </p>
+      <table>
+        <thead>
+          <tr><th>Source</th><th>Becomes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>deny</code></td><td><code>block</code></td></tr>
+          <tr><td><code>require_approval</code></td><td><code>escalate</code></td></tr>
+          <tr><td><code>warn</code>, <code>log</code></td><td>recorded when they fire</td></tr>
+          <tr><td><code>default_action: deny</code></td><td>a <code>default-deny</code> block rule, with allow rules on the tool or agent name carved out of it</td></tr>
+          <tr><td><code>default_action: allow</code></td><td>unmatched calls pass; the plan says so first</td></tr>
+          <tr><td>priorities</td><td>dropped: the strongest effect wins, so an allow never overrides a block</td></tr>
+          <tr><td><code>==</code>, <code>!=</code>, <code>in [...]</code>, <code>contains</code>, <code>startswith</code>, <code>endswith</code>, numeric comparisons, <code>and</code>, <code>or</code></td><td>conditions; an <code>or</code> or <code>in</code> list on the tool becomes one rule per branch</td></tr>
+          <tr><td>regex or substring on message text</td><td>a custom pattern rule that detects, plus a policy rule acting on it</td></tr>
+          <tr><td>Rego <code>input</code>, <code>output</code>, <code>pre_tool_call</code>, <code>post_tool_call</code></td><td>the input, output, tool-argument and tool-result surfaces</td></tr>
+        </tbody>
+      </table>
+      <p>
+        Not translated, and absent from the import: comparisons of two fields (unless both
+        are tool, agent, surface or environment), negations, rate limits, conditions on
+        context or budget, more than one argument comparison in a condition, Cedar
+        policies, annotations, and conditional verdict rules in Rego.
+      </p>
+
       <h2 id="effective">The effective policy</h2>
       <p>
         <code>agentfox policy effective</code> resolves what is in force for a subject
@@ -616,6 +845,16 @@ This change would block production traffic. Review before promoting to enforce.`
         <code>--limit</code> (default 1000).
       </p>
 
+      <h3 id="versions">Versions and the simulate gate</h3>
+      <p>
+        Saving a policy (<code>POST /api/policies</code>, or <strong>Save new version</strong>{" "}
+        in the editor) stores an immutable new version and never changes what is in force,
+        whatever <code>mode:</code> the YAML says. A policy saved for the first time goes live
+        in observe. <code>POST /api/policies/&#123;key&#125;/mode</code> with{" "}
+        <code>mode: enforce</code> answers 409 unless a simulation of exactly that
+        version&apos;s rules was recorded; demoting to observe never needs one.
+      </p>
+
       <h3 id="enforce">Promote and demote</h3>
       <Code>{`agentfox policy enforce baseline
 agentfox policy observe baseline`}</Code>
@@ -687,6 +926,85 @@ fired contains out if {
         "effect": "block",
 …`}</Output>
 
+      <h2 id="proposals">Change proposals</h2>
+      <p>
+        AgentFox proposes changes to its own configuration instead of making them: grants and
+        tool declarations from traffic (<code>proposals from-traffic</code>), rule cut-offs
+        from false-positive labels (<code>proposals from-labels</code>). A loosening is never
+        applied by automation.
+      </p>
+      <table>
+        <thead>
+          <tr><th>Status</th><th>Meaning</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>proposed</code></td><td>Filed, not yet checked.</td></tr>
+          <tr><td><code>proven</code></td><td>Replayed against recorded calls; awaiting approval (or a second approver).</td></tr>
+          <tr><td><code>approved</code></td><td>Ready to apply. Only an approved change can be applied.</td></tr>
+          <tr><td><code>canary</code></td><td>Applied to part of the traffic; <code>apply</code> settles it when the canary ends.</td></tr>
+          <tr><td><code>applied</code>, <code>verified</code></td><td>In force; <code>verify</code> records whether it did what it promised.</td></tr>
+          <tr><td><code>rejected</code>, <code>rolled_back</code>, <code>superseded</code></td><td>Not in force.</td></tr>
+        </tbody>
+      </table>
+      <p>
+        A tool declaration applies to the whole organisation, so it needs two different
+        approvers: the same person approving twice is refused. Apply, rollback and verify
+        need the <code>policy_production</code> permission (owner, admin, security). The CLI
+        takes <code>--actor</code> on every decision.
+      </p>
+
+      <h2 id="escalation">Hand-off conditions</h2>
+      <p>
+        <code>agentfox declare escalation</code> sets when a conversation must go to a person
+        (omit <code>--agent</code> for the default). Conditions you do not name keep these
+        defaults:
+      </p>
+      <table>
+        <thead>
+          <tr><th>Condition</th><th>Default</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>explicit_request</code></td><td>on: asking for a person always qualifies</td></tr>
+          <tr><td><code>sentiment_below</code></td><td>-0.6</td></tr>
+          <tr><td><code>confidence_below</code></td><td>0.35</td></tr>
+          <tr><td><code>repeated_failure</code></td><td>2</td></tr>
+          <tr><td><code>repeated_abstention</code></td><td>2</td></tr>
+          <tr><td><code>turn_depth</code></td><td>8</td></tr>
+          <tr><td><code>regulated_topics</code></td><td>legal, medical, financial_advice, complaint, discrimination</td></tr>
+          <tr><td><code>urgent_flags</code></td><td>self_harm, urgency, legal_threat, regulatory, discrimination (self_harm cannot be switched off)</td></tr>
+        </tbody>
+      </table>
+      <p>
+        In <code>observe</code> (the default) the hourly <code>escalation.scan</code> job
+        raises a <code>missed_escalation</code> finding for each conversation that qualified.
+        In <code>enforce</code> the conversation is handed off on the turn that first
+        qualifies. <code>--sla-minutes</code> is how long a hand-off may wait before{" "}
+        <code>handoff_sla_breach</code>.
+      </p>
+
+      <h2 id="boundaries">Knowledge boundaries</h2>
+      <p>
+        <code>agentfox declare boundary AGENT --systems … --coverage-months N --answerable … --out-of-scope …</code>{" "}
+        says what an agent may answer from. The question is checked before the model is
+        called; the answer is withheld with an <code>abstain</code> verdict. Question types
+        are <code>fact</code>, <code>aggregate</code>, <code>prediction</code>,{" "}
+        <code>opinion</code>, <code>procedure</code> (<code>--answerable</code> defaults to
+        fact, aggregate, procedure). Boundaries start in observe;{" "}
+        <code>agentfox test boundary</code> shows the refusal without changing anything.
+      </p>
+      <table>
+        <thead>
+          <tr><th>Abstention kind</th><th>When</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>unknowable</code></td><td>A projection or opinion rather than a recorded fact.</td></tr>
+          <tr><td><code>out_of_coverage</code></td><td>About a period outside the data&apos;s coverage.</td></tr>
+          <tr><td><code>out_of_domain</code></td><td>A topic declared out of scope.</td></tr>
+          <tr><td><code>unsupported_question_type</code></td><td>A question type the agent is not set up to answer.</td></tr>
+          <tr><td><code>out_of_scope_entity</code></td><td>Only when the caller sends <code>known_entities</code>: the question names an identifier-shaped token not among them.</td></tr>
+        </tbody>
+      </table>
+
       <h2 id="tasks">Commands</h2>
       <TaskTable
         rows={[
@@ -732,9 +1050,8 @@ fired contains out if {
       <NextSteps
         items={[
           { href: "/docs/reference/detectors", label: "Detectors and findings", why: "the entities your detection conditions match" },
-          { href: "/docs/guides/tuning", label: "Tune detectors", why: "feedback, suppressions, simulate and canary in practice" },
-          { href: "/docs/guides/business-rules", label: "Business rules", why: "threshold ladders without writing YAML rules" },
-          { href: "/docs/app/policies", label: "Policies in the web app", why: "the same packs, modes and simulation in the UI" },
+          { href: "/docs/protect/custom-rules", label: "Custom rules", why: "the same rules from the app" },
+          { href: "/docs/protect/tuning", label: "Fix false positives", why: "feedback, suppressions and canaries in practice" },
         ]}
       />
     </article>

@@ -119,6 +119,12 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "env": "AGENTFOX_PLAYGROUND_CORS_ORIGIN",
         "def": "unset",
         "what": "Comma-separated browser origins allowed to call the public playground, added to localhost."
+      },
+      {
+        "key": "onboarding_key_ttl_days",
+        "env": "AGENTFOX_ONBOARDING_KEY_TTL_DAYS",
+        "def": "30",
+        "what": "How long a setup key (agentfox init --key, afi_\u2026) stays valid after it is made or rotated. 0: never expires."
       }
     ]
   },
@@ -197,6 +203,12 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "env": "AGENTFOX_STREAM_WINDOW_CHARS",
         "def": "200",
         "what": "Window size for windowed streaming."
+      },
+      {
+        "key": "approval_ttl_minutes",
+        "env": "AGENTFOX_APPROVAL_TTL_MINUTES",
+        "def": "30",
+        "what": "How long a held call waits for a person before it is denied."
       }
     ]
   },
@@ -281,6 +293,48 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "env": "AGENTFOX_GUARDRAILS_AI_VALIDATORS",
         "def": "[]",
         "what": "Guardrails AI Hub validator slugs for rails.guardrails_ai (validators extra). Each must be installed separately."
+      },
+      {
+        "key": "prompt_injection_classifier_secondary_inline",
+        "env": "AGENTFOX_PROMPT_INJECTION_CLASSIFIER_SECONDARY_INLINE",
+        "def": "false",
+        "what": "Run the classifier's advisory backstop model inline. Off: it runs after the response and its hit is recorded on the same trace."
+      },
+      {
+        "key": "classifier_cache_size",
+        "env": "AGENTFOX_CLASSIFIER_CACHE_SIZE",
+        "def": "4096",
+        "what": "Classifier scores kept per model, by hash of the text. 0 turns the cache off."
+      },
+      {
+        "key": "grounding_nli_model",
+        "env": "AGENTFOX_GROUNDING_NLI_MODEL",
+        "def": "cross-encoder/nli-deberta-v3-small",
+        "what": "Model for the opt-in grounding.nli detector. Read from the local cache only."
+      },
+      {
+        "key": "model_server_url",
+        "env": "AGENTFOX_MODEL_SERVER_URL",
+        "def": "unset",
+        "what": "Send model-backed detectors to an agentfox serve models process at this URL, under the same budgets. Unset: they run in this process."
+      },
+      {
+        "key": "model_server_token",
+        "env": "AGENTFOX_MODEL_SERVER_TOKEN",
+        "def": "unset",
+        "what": "Bearer token shared with the model server. It refuses to listen beyond loopback without one."
+      },
+      {
+        "key": "model_server_detectors",
+        "env": "AGENTFOX_MODEL_SERVER_DETECTORS",
+        "def": "[]",
+        "what": "Which detectors go to the model server. Empty: every model-backed one."
+      },
+      {
+        "key": "model_device",
+        "env": "AGENTFOX_MODEL_DEVICE",
+        "def": "auto",
+        "what": "Where a model runs in this process: cpu, cuda, mps, or auto (cuda, then mps, then cpu)."
       }
     ]
   },
@@ -335,6 +389,24 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "env": "AGENTFOX_JUDGMENT_LLM_MODEL",
         "def": "\"\"",
         "what": "Model for those tiers. Empty uses the provider's default."
+      },
+      {
+        "key": "judgment_llm_timeout_s",
+        "env": "AGENTFOX_JUDGMENT_LLM_TIMEOUT_S",
+        "def": "4.0",
+        "what": "Seconds one LLM judge call may take before it is abandoned."
+      },
+      {
+        "key": "judgment_inline",
+        "env": "AGENTFOX_JUDGMENT_INLINE",
+        "def": "when_relied",
+        "what": "when_relied: judges run on the request path only when an enforcing rule on that surface could act on their findings, otherwise after the response. always: inline on every check."
+      },
+      {
+        "key": "trusted_model_hosts",
+        "env": "AGENTFOX_TRUSTED_MODEL_HOSTS",
+        "def": "[]",
+        "what": "Hosts you run that count as inside the deployment (a model server, a vLLM or LiteLLM box). A judgment call to one is local_llm, not egress."
       }
     ]
   },
@@ -545,6 +617,60 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "env": "AGENTFOX_AGENT_MESSAGE_VALIDITY_SECONDS",
         "def": "300",
         "what": "Oldest an inter-agent message signature may be and still verify."
+      },
+      {
+        "key": "degraded_warn_ratio",
+        "env": "AGENTFOX_DEGRADED_WARN_RATIO",
+        "def": "0.05",
+        "what": "Share of checks in the window answered without a selected detector above which the gateway logs a warning and /api/health reports unhealthy. Per process."
+      },
+      {
+        "key": "degraded_window_seconds",
+        "env": "AGENTFOX_DEGRADED_WINDOW_SECONDS",
+        "def": "60",
+        "what": "The sliding window for degraded_warn_ratio."
+      },
+      {
+        "key": "degraded_warn_min_checks",
+        "env": "AGENTFOX_DEGRADED_WARN_MIN_CHECKS",
+        "def": "20",
+        "what": "Fewer checks than this in the window never warn."
+      },
+      {
+        "key": "agent_breaker_mode",
+        "env": "AGENTFOX_AGENT_BREAKER_MODE",
+        "def": "alert",
+        "what": "Per-agent circuit breaker: off, alert (raise an issue), or pause (also refuse the agent's calls for the cool-down, then probe). Each agent can override."
+      },
+      {
+        "key": "agent_breaker_window_seconds",
+        "env": "AGENTFOX_AGENT_BREAKER_WINDOW_SECONDS",
+        "def": "300",
+        "what": "Window the breaker counts blocked decisions over."
+      },
+      {
+        "key": "agent_breaker_min_calls",
+        "env": "AGENTFOX_AGENT_BREAKER_MIN_CALLS",
+        "def": "20",
+        "what": "Decisions needed in the window before it can trip."
+      },
+      {
+        "key": "agent_breaker_block_ratio",
+        "env": "AGENTFOX_AGENT_BREAKER_BLOCK_RATIO",
+        "def": "0.5",
+        "what": "Share of blocked decisions that trips it."
+      },
+      {
+        "key": "agent_breaker_cooldown_seconds",
+        "env": "AGENTFOX_AGENT_BREAKER_COOLDOWN_SECONDS",
+        "def": "300",
+        "what": "How long a paused agent stays paused before probing."
+      },
+      {
+        "key": "agent_breaker_probe_calls",
+        "env": "AGENTFOX_AGENT_BREAKER_PROBE_CALLS",
+        "def": "5",
+        "what": "Calls let through to test recovery."
       }
     ]
   },
@@ -658,13 +784,13 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "key": "monitor_batch_limit",
         "env": "AGENTFOX_MONITOR_BATCH_LIMIT",
         "def": "5",
-        "what": "Most due monitors one monitors.run job runs; the rest wait for the next runner call."
+        "what": "AgentFox Enterprise (monitoring). Most due monitors one monitors.run job runs; the rest wait for the next runner call."
       },
       {
         "key": "monitor_failure_threshold",
         "env": "AGENTFOX_MONITOR_FAILURE_THRESHOLD",
         "def": "3",
-        "what": "Failed runs in a row before a monitor raises a monitor_failing finding."
+        "what": "AgentFox Enterprise (monitoring). Failed runs in a row before a monitor raises a monitor_failing finding."
       },
       {
         "key": "job_stuck_after_seconds",
@@ -695,6 +821,12 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "env": "AGENTFOX_SHOWCASE_ORG_ID",
         "def": "org_showcase",
         "what": "The tenant the showcase lives in. The public endpoint reads nothing else."
+      },
+      {
+        "key": "jobs_on_traffic",
+        "env": "AGENTFOX_JOBS_ON_TRAFFIC",
+        "def": "true",
+        "what": "Also run due jobs off ordinary traffic, at most every 10 minutes per instance, for hosts whose cron runs once a day."
       }
     ]
   },
@@ -760,7 +892,7 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "key": "slack_webhook_url",
         "env": "AGENTFOX_SLACK_WEBHOOK_URL",
         "def": "unset",
-        "what": "Slack incoming webhook for monitor findings opened, reopened or closed. Needs allow_egress. A tenant can also set its own (PUT /api/alerts/slack)."
+        "what": "AgentFox Enterprise (monitoring). Slack incoming webhook for monitor findings opened, reopened or closed. Needs allow_egress. A tenant can also set its own (PUT /api/alerts/slack)."
       },
       {
         "key": "slack_min_severity",
@@ -833,6 +965,12 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "env": "AGENTFOX_LANGFUSE_HOST",
         "def": "https://cloud.langfuse.com",
         "what": "Langfuse host."
+      },
+      {
+        "key": "outbound_allow_private_hosts",
+        "env": "AGENTFOX_OUTBOUND_ALLOW_PRIVATE_HOSTS",
+        "def": "false",
+        "what": "Let outbound calls an operator configures (API specs, custom models, probe targets, GitHub) reach loopback and private addresses. Link-local (cloud metadata), multicast and reserved addresses stay refused."
       }
     ]
   }
@@ -857,25 +995,18 @@ const DASHBOARD: { name: string; def: string; what: string }[] = [
   { name: "AGENTFOX_SERVICE_AUTH_SECRET", def: "unset", what: "Must equal the gateway's service_auth_secret, or GitHub sign-in fails at provisioning." },
   { name: "AGENTFOX_SITE_URL", def: "the public site", what: "Canonical URL used in page metadata." },
   { name: "AGENTFOX_SELF_HOSTED", def: "unset", what: "Marks a self-hosted dashboard in the interface." },
-  { name: "GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET", def: "unset", what: "The GitHub OAuth app for sign-in. Unset: sign-in is unavailable." },
+  { name: "GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET", def: "unset", what: "The GitHub OAuth app for sign-in. Unset: sign-in is unavailable. A GitHub sign-in token lasts 365 days; signing out revokes it at the gateway." },
 ];
 
 export default function Page() {
   return (
     <article className="docs-doc">
-      <p className="docs-kicker">Reference</p>
       <h1>Configuration</h1>
       <p className="docs-lede">
         Every setting AgentFox reads: its environment variable, its <code>agentfox.toml</code>{" "}
-        key, its default, and what it changes.
-      </p>
-
-      <h2>When to use this</h2>
-      <p>
-        Look a setting up here when <Link href="/docs/install">Install and configure</Link> or a
-        guide names one, and before you deploy (<Link href="/docs/self-host">Self-hosting</Link>).
-        The defaults are offline-first: no egress, the <code>echo</code> provider, five
-        dependency-free detectors, and detector packs in observe.
+        key, its default, and what it changes. Then the integration formats (webhooks, OTLP,
+        SIEM, metrics) and the gateway&apos;s headers. The defaults are offline: no egress, the{" "}
+        <code>echo</code> provider, and detector packs in observe.
       </p>
 
       <h2 id="sources">How a setting is resolved</h2>
@@ -905,7 +1036,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
         <code>&lt;state dir&gt;</code> below is <code>AGENTFOX_STATE_DIR</code> if set, the
         repository root in a source checkout, and otherwise{" "}
         <code>$XDG_DATA_HOME/agentfox</code> or <code>~/.agentfox</code>. See{" "}
-        <Link href="/docs/install#state">where state lives</Link>.
+        <Link href="/docs/reference/install">where state lives</Link>.
       </Callout>
 
       <nav aria-label="Groups">
@@ -917,7 +1048,11 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
             </span>
           ))}
           {" · "}
-          <a href="#outside">Read outside Settings</a> · <a href="#dashboard">Dashboard</a>
+          <a href="#webhooks">Webhook deliveries</a> · <a href="#otlp">OpenTelemetry</a> ·{" "}
+          <a href="#siem">SIEM export</a> · <a href="#metrics">Metrics</a> ·{" "}
+          <a href="#gateway">Gateway requests</a> · <a href="#compose">Docker Compose</a> ·{" "}
+          <a href="#outside">Read outside Settings</a> ·{" "}
+          <a href="#dashboard">Dashboard</a>
         </p>
       </nav>
 
@@ -950,6 +1085,196 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
           </table>
         </section>
       ))}
+
+      <h2 id="webhooks">Webhook deliveries</h2>
+      <p>
+        With <code>webhook_url</code> set and <code>allow_egress</code> on, AgentFox POSTs a
+        JSON body for each finding at or above <code>webhook_min_severity</code>:
+      </p>
+      <table>
+        <thead>
+          <tr><th>Part</th><th>What it is</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Events</td><td><code>finding.created</code>; <code>finding.resolved</code>, <code>finding.suppressed</code>, <code>finding.reopened</code> on a status change; <code>webhook.test</code> from <code>agentfox.core.webhooks.send_test_event()</code>.</td></tr>
+          <tr><td>Body</td><td><code>{`{"event", "finding", "org_id", "sent_at"}`}</code>. <code>finding</code> has the fields of <code>GET /api/findings/{"{id}"}</code>; it is null for a test.</td></tr>
+          <tr><td><code>X-AgentFox-Signature</code></td><td><code>sha256=</code> and the hex HMAC-SHA256 of the raw body, keyed with <code>webhook_secret</code>. Verify before parsing; compare in constant time.</td></tr>
+          <tr><td><code>X-AgentFox-Event</code></td><td>The event name.</td></tr>
+          <tr><td><code>X-AgentFox-Delivery</code></td><td>A delivery id. A retry reuses it with the same body and signature: de-duplicate on it.</td></tr>
+          <tr><td><code>X-AgentFox-Timestamp</code></td><td>Unix seconds. Not signed: check freshness with <code>sent_at</code>, which the signature covers.</td></tr>
+          <tr><td>Retries</td><td>One retry after half a second on a timeout, connection error or 5xx. A redirect is a failure. Failures are logged and dropped; use the SIEM export to backfill.</td></tr>
+          <tr><td>Queue</td><td>A background thread behind a 1,000-item queue, so delivery never slows the code that raised the finding. Nothing is sent for work that was rolled back.</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="otlp">OpenTelemetry ingest</h2>
+      <p>
+        <code>POST /v1/traces</code> takes an OTLP/HTTP trace export, protobuf
+        (<code>application/x-protobuf</code>, the exporters&apos; default) or JSON, either
+        gzip-compressed. Protobuf needs <code>agentfox[otel]</code>; without it the server
+        answers 415 and JSON still works. Outside development it needs an agent key or an
+        operator token. Each agent a span names goes into the registry, and one nobody
+        registered raises a <code>shadow_agent</code> finding. The agent is{" "}
+        <code>agentfox.agent</code>, else <code>service.name</code>, else{" "}
+        <code>gen_ai.agent.name</code>. Ingest records spans only: it runs no policy or
+        detectors and keeps no parent-child structure.
+      </p>
+      <p>
+        AgentFox has no push exporter. <code>GET /api/export/siem?format=otlp</code> returns
+        decisions and findings as OTLP/JSON log records to forward yourself.
+      </p>
+
+      <h2 id="siem">SIEM export</h2>
+      <p>
+        <code>GET /api/export/siem</code> returns recent decisions and findings, oldest
+        first, as <code>text/plain</code>. It needs a token when token auth is on.
+      </p>
+      <table>
+        <thead>
+          <tr><th>Parameter</th><th>Default</th><th>Values</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>format</code></td><td><code>jsonl</code></td><td><code>jsonl</code>, <code>cef</code> (ArcSight), <code>leef</code> (QRadar), <code>otlp</code> (OTLP/JSON log records)</td></tr>
+          <tr><td><code>since_days</code></td><td>7</td><td>How far back.</td></tr>
+          <tr><td><code>limit</code></td><td>1000</td><td>Applied to decisions and to findings separately.</td></tr>
+        </tbody>
+      </table>
+      <p>
+        Findings are <code>governance.finding.&lt;type&gt;</code> events. CEF and LEEF severity
+        runs 0 to 10 (block 8, escalate 6, a critical finding 10). A decision recorded without
+        a trace exports with <code>agent: null</code>.
+      </p>
+
+      <h2 id="metrics">Prometheus metrics</h2>
+      <p>
+        <code>GET /metrics</code> serves the Prometheus text format with no token; keep it on
+        a private network. Every series is computed from the last 24 hours of records at
+        scrape time, so the <code>_total</code> series go down as records age out:{" "}
+        <code>rate()</code> and <code>increase()</code> misread them. Alert on the value, for
+        example <code>agentfox_detector_degraded_total &gt; 0</code> or{" "}
+        <code>agentfox_open_findings{"{"}severity=&quot;critical&quot;{"}"} &gt; 0</code>.
+        Others worth alerting on: <code>agentfox_detector_duration_ms_max</code>,{" "}
+        <code>agentfox_missed_escalation_rate</code>, <code>agentfox_circuit_breaker_state</code>{" "}
+        (1 is open). Observe-mode decisions carry <code>mode=&quot;observe&quot;</code>. The
+        per-process <code>agentfox_checks_total</code> and{" "}
+        <code>agentfox_checks_degraded_total</code> only go up until restart, so{" "}
+        <code>rate()</code> works on those.
+      </p>
+
+      <h2 id="gateway">Gateway requests</h2>
+      <p>
+        Headers the proxy routes (<code>/v1/chat/completions</code>, <code>/v1/messages</code>)
+        read and return. Routes and bodies are in the <Link href="/docs/reference/api">HTTP API reference</Link>.
+      </p>
+      <table>
+        <thead>
+          <tr><th>Request header</th><th>What it does</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>X-AgentFox-Agent</code></td><td>The agent slug. Without it, no grant or agent-scoped policy applies.</td></tr>
+          <tr><td><code>X-AgentFox-Session</code></td><td>Ties calls into one conversation; turns on loop checks (<code>loop_*</code> settings).</td></tr>
+          <tr><td><code>X-AgentFox-Intent</code></td><td>The declared task.</td></tr>
+          <tr><td><code>X-AgentFox-Trust</code></td><td>JSON map of message index to source, e.g. <code>{`{"1":"retrieved"}`}</code>.</td></tr>
+          <tr><td><code>X-AgentFox-Environment</code></td><td>Default <code>production</code>.</td></tr>
+          <tr><td><code>X-AgentFox-Provider</code></td><td>Which configured provider to forward to (default <code>default_provider</code>).</td></tr>
+          <tr><td><code>X-AgentFox-Stream-Mode</code></td><td><code>buffered</code> or <code>windowed</code> for this request (below).</td></tr>
+          <tr><td><code>X-AgentFox-Priority</code></td><td>Admission priority when shedding load (default <code>normal</code>).</td></tr>
+          <tr><td><code>X-AgentFox-Approval</code></td><td>An approved <code>apr_…</code> id: the held request runs once.</td></tr>
+          <tr><td><code>Authorization: Bearer nom_agt_…</code></td><td>Optional agent key.</td></tr>
+        </tbody>
+      </table>
+      <table>
+        <thead>
+          <tr><th>Response header</th><th>Meaning</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>x-agentfox-verdict</code>, <code>x-agentfox-applied-verdict</code></td><td>What happened to this request. Gate on this.</td></tr>
+          <tr><td><code>x-agentfox-effective-verdict</code>, <code>x-agentfox-would-be-verdict</code></td><td>What the policy asks for; differs only in observe.</td></tr>
+          <tr><td><code>x-agentfox-mode</code></td><td><code>observe</code> or <code>enforce</code>.</td></tr>
+          <tr><td><code>x-agentfox-trace</code>, <code>x-agentfox-decision</code></td><td>Ids to look the decision up by.</td></tr>
+          <tr><td><code>x-agentfox-latency-ms</code></td><td>Time spent in governance.</td></tr>
+          <tr><td><code>x-agentfox-explain</code></td><td>Link to the trace in the app, when <code>console_url</code> is set.</td></tr>
+          <tr><td><code>x-agentfox-degraded</code></td><td>A dependency was unavailable while serving the request.</td></tr>
+        </tbody>
+      </table>
+      <table>
+        <thead>
+          <tr><th>Status</th><th>Meaning</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>200</td><td>Allowed; content may have been redacted or tokenised.</td></tr>
+          <tr><td>428</td><td>Held for a person (<code>agentfox_approval_required</code>, with <code>approval_id</code> and <code>poll</code>). Retry with <code>X-AgentFox-Approval</code> once approved.</td></tr>
+          <tr><td>403</td><td>Blocked (<code>agentfox_policy_violation</code>). Do not retry.</td></tr>
+          <tr><td>429</td><td>Load shed before governance ran (<code>agentfox_admission_shed</code>). Retry after <code>Retry-After</code>.</td></tr>
+          <tr><td>503</td><td>A dependency is down and <code>fail_mode</code> says refuse (<code>agentfox_service_degraded</code>).</td></tr>
+        </tbody>
+      </table>
+      <p>
+        <code>/v1/guard/*</code> answer 200 with a <code>verdict</code> field for every
+        decision; 429 and 503 apply to every <code>/v1</code> route.
+      </p>
+      <h3 id="streaming">Streaming modes</h3>
+      <table>
+        <thead>
+          <tr><th><code>streaming_mode</code></th><th>Behaviour</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>buffered</code> (default)</td><td>The whole answer is collected and checked before anything is sent. Output checks are identical to a non-streamed call; first-token latency is the cost.</td></tr>
+          <tr><td><code>windowed</code></td><td>Chunks are forwarded as they arrive while detectors run over a growing window (<code>stream_window_chars</code>, 200). A block ends the stream but cannot recall what was already sent.</td></tr>
+        </tbody>
+      </table>
+      <p>
+        A streamed response sends headers before anything is decided, so it carries{" "}
+        <code>x-agentfox-streaming: enforced</code> and an empty trace header; the decision
+        arrives as an <code>{`{"agentfox": {...}}`}</code> data frame before{" "}
+        <code>[DONE]</code>. A streamed Anthropic reply carries text only: do not stream tool
+        use through <code>/v1/messages</code>. <code>agentfox.auto()</code> checks a stream
+        only once it is exhausted.
+      </p>
+
+      <h2 id="compose">What deploy/docker-compose.yml sets</h2>
+      <table>
+        <thead>
+          <tr><th>Variable</th><th>Compose value</th><th>Why it differs from the default</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>AGENTFOX_DATABASE_URL</code></td><td>the bundled Postgres</td><td>Multi-worker servers refuse SQLite.</td></tr>
+          <tr><td><code>AGENTFOX_ENVIRONMENT</code></td><td><code>production</code></td><td>Tokens required; the development audit key is refused.</td></tr>
+          <tr><td><code>AGENTFOX_ENFORCEMENT_BUDGET_MS</code>, <code>AGENTFOX_DETECTOR_TIMEOUT_MS</code></td><td>100, 40</td><td>Raise both to run a slow model such as <code>safety.granite</code> on CPU.</td></tr>
+          <tr><td><code>AGENTFOX_ENABLED_DETECTORS</code></td><td>the defaults plus <code>injection.similarity</code></td><td>Its weights are in the image.</td></tr>
+          <tr><td><code>AGENTFOX_POLICY_ENGINE</code>, <code>AGENTFOX_OPA_URL</code></td><td><code>native</code>, <code>http://opa:8181</code></td><td>Set <code>opa</code> to use the sidecar; it falls back to native when unreachable.</td></tr>
+          <tr><td><code>AGENTFOX_EVIDENCE_DIR</code></td><td><code>/var/agentfox/evidence</code></td><td>A volume, so evidence packages survive a restart.</td></tr>
+          <tr><td><code>AGENTFOX_AUDIT_SIGNING_KEY</code>, <code>AGENTFOX_SERVICE_AUTH_SECRET</code></td><td>required</td><td>Compose refuses to start without them (<code>openssl rand -hex 32</code>).</td></tr>
+          <tr><td><code>AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES</code></td><td><code>&quot;0&quot;</code></td><td>Below.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 id="gated-models">Licence-gated models (Llama Guard, Prompt Guard 2)</h3>
+      <p>
+        The published image never carries gated weights. To run <code>safety.restricted</code>{" "}
+        (Llama Guard 3) or Prompt Guard 2:
+      </p>
+      <ol>
+        <li>Accept Meta&apos;s licence for the model on Hugging Face.</li>
+        <li>
+          Build the image yourself with that account&apos;s token:{" "}
+          <code>export HF_TOKEN=hf_…</code>, then{" "}
+          <code>docker compose -f deploy/docker-compose.yml build gateway</code>. The token is a
+          BuildKit secret and is not written to a layer. Without it the step is skipped.
+        </li>
+        <li>
+          The build arg <code>GATED_MODELS</code> (space-separated, default{" "}
+          <code>meta-llama/Llama-Guard-3-8B</code>) picks what to bake. Add{" "}
+          <code>meta-llama/Llama-Prompt-Guard-2-22M</code> or <code>-86M</code> and set{" "}
+          <code>prompt_injection_classifier_model</code>, or use{" "}
+          <code>meta-llama/Llama-Guard-3-1B</code> with <code>llama_guard_model</code>.
+        </li>
+        <li>
+          Add the detector to <code>AGENTFOX_ENABLED_DETECTORS</code> and set{" "}
+          <code>AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1</code>. The code refuses to load
+          these models without it.
+        </li>
+      </ol>
 
       <h2 id="outside">Read outside Settings</h2>
       <p>
@@ -1027,7 +1352,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
 
       <NextSteps
         items={[
-          { href: "/docs/install", label: "Install and configure", why: "state, extras and agentfox.toml in practice" },
+          { href: "/docs/reference/install", label: "Install options", why: "extras, models and where state lives" },
           { href: "/docs/self-host", label: "Self-hosting", why: "the settings a server must change" },
           { href: "/docs/concepts#provenance", label: "Provenance", why: "what taint_scope trades" },
         ]}

@@ -163,3 +163,22 @@ export function TaskTable({ rows }: { rows: { task: string; run: string; href?: 
     </table>
   );
 }
+
+/**
+ * A grid of linked cards: the choices on an overview page ("pick your stack", "what next").
+ * Each card is a title and one line.
+ */
+export function Cards({ items }: { items: { href: string; title: string; text: string }[] }) {
+  return (
+    <ul className="docs-cards">
+      {items.map((item) => (
+        <li key={item.href}>
+          <Link href={item.href}>
+            <strong>{item.title}</strong>
+            <span>{item.text}</span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}

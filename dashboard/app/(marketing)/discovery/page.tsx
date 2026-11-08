@@ -39,7 +39,7 @@ export default function Page() {
       kicker="AI-SPM"
       title={["Agents, tools and", "MCP servers you run"]}
       lede="In your repositories, your configs, and sessions on this machine. Cloud accounts are not scanned yet. If nobody owns one, it is listed."
-      docs="/docs/guides/scan-a-repo"
+      docs="/docs/discover"
       challenge={
         <p>Most of them were never written down.</p>
       }

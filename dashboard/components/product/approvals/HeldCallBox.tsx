@@ -49,7 +49,7 @@ export async function HeldCallBox({ waiting }: { waiting: Approval[] }) {
         </dl>
         <div className="k-muted" style={{ fontSize: "var(--t-micro)" }}>
           The wait is set on the gateway with <span className="k-mono">AGENTFOX_APPROVAL_TTL_MINUTES</span>.{" "}
-          <Link href="/docs/guides/approvals">How approvals work</Link>
+          <Link href="/docs/govern/approvals">How approvals work</Link>
         </div>
       </div>
     </section>

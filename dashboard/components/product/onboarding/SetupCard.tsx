@@ -392,7 +392,7 @@ export function SetupCard({
         </ol>
 
         <footer className="flex flex-wrap gap-5 border-t bg-muted/50 px-7 py-3 text-[13px]">
-          <FooterLink href="/docs/guides/python-auto">Read the full guide</FooterLink>
+          <FooterLink href="/docs/connect/python">Read the full guide</FooterLink>
           <FooterLink href="/app/welcome">Scan a repository instead</FooterLink>
         </footer>
       </section>

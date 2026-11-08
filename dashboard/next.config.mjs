@@ -13,24 +13,59 @@ const nextConfig = {
   // unstyled. `NEXT_DIST_DIR=.next-dev npm run dev` keeps them apart. Unset, this
   // is exactly the previous behaviour, so CI and Vercel are unaffected.
   distDir: process.env.NEXT_DIST_DIR || ".next",
-  // Docs pages that moved in the docs rewrite. Permanent, so old links and search
-  // results land on the new page; this is the only list of them.
+  // Docs URLs that moved. Permanent, so old links, in-app links and search results land
+  // on the new page; this is the only list of them. Each points at the final page, never
+  // at another redirect. Pages are listed in lib/docs/pages.ts.
   async redirects() {
     return [
+      ["/docs/install", "/docs/reference/install"],
+      ["/docs/plugin", "/docs/connect/coding-agents"],
+      ["/docs/guides/walkthrough", "/docs/quickstart/cli"],
+      ["/docs/guides/scan-a-repo", "/docs/discover"],
+      ["/docs/guides/monitoring", "/docs/discover"],
+      ["/docs/guides/python-auto", "/docs/connect/python"],
+      ["/docs/guides/contain-tool-calls", "/docs/govern"],
+      ["/docs/guides/langgraph", "/docs/connect/langgraph"],
+      ["/docs/guides/litellm", "/docs/connect/litellm"],
+      ["/docs/guides/mcp", "/docs/connect/mcp"],
+      ["/docs/guides/coding-agents", "/docs/connect/coding-agents"],
+      ["/docs/guides/codex", "/docs/connect/coding-agents"],
+      ["/docs/guides/gateway", "/docs/connect/http"],
+      ["/docs/guides/rag", "/docs/govern/data-access"],
+      ["/docs/guides/approvals", "/docs/govern/approvals"],
+      ["/docs/guides/business-rules", "/docs/protect/custom-rules"],
+      ["/docs/guides/import-policies", "/docs/protect/custom-rules"],
+      ["/docs/guides/red-team-and-evals", "/docs/test/ci"],
+      ["/docs/guides/live-probes", "/docs/test/ci"],
+      ["/docs/guides/tuning", "/docs/protect/tuning"],
+      ["/docs/guides/migrate-from-llm-guard", "/docs/reference/migrate-from-llm-guard"],
+      ["/docs/guides/owasp-agentic-top-10", "/docs/reference/owasp"],
+      ["/docs/guides/audit-evidence", "/docs/prove/audit"],
+      ["/docs/guides/observability", "/docs/prove/integrations"],
+      ["/docs/app", "/docs/quickstart"],
+      ["/docs/app/start", "/docs/quickstart"],
+      ["/docs/app/projects", "/docs/discover"],
+      ["/docs/app/findings", "/docs/prove"],
+      ["/docs/app/traces", "/docs/prove"],
+      ["/docs/app/policies", "/docs/protect"],
+      ["/docs/app/approvals", "/docs/govern/approvals"],
+      ["/docs/app/access-and-sources", "/docs/govern/data-access"],
+      ["/docs/app/evals", "/docs/test/ci"],
+      ["/docs/app/compliance", "/docs/prove/audit"],
+      ["/docs/app/playground", "/docs/test"],
+      // From the docs rewrite before this one.
       ["/docs/commands", "/docs/reference/cli"],
-      ["/docs/connect", "/docs/guides/python-auto"],
       ["/docs/control-points", "/docs/concepts"],
-      ["/docs/discovery", "/docs/guides/scan-a-repo"],
-      ["/docs/access", "/docs/guides/contain-tool-calls"],
+      ["/docs/discovery", "/docs/discover"],
+      ["/docs/access", "/docs/govern"],
       ["/docs/runtime", "/docs/reference/policies"],
-      ["/docs/hooks", "/docs/guides/coding-agents"],
-      ["/docs/mcp", "/docs/guides/mcp"],
-      ["/docs/test", "/docs/guides/red-team-and-evals"],
-      ["/docs/evidence", "/docs/guides/audit-evidence"],
-      ["/docs/compliance", "/docs/guides/audit-evidence"],
+      ["/docs/hooks", "/docs/connect/coding-agents"],
+      ["/docs/mcp", "/docs/connect/mcp"],
+      ["/docs/evidence", "/docs/prove/audit"],
+      ["/docs/compliance", "/docs/prove/audit"],
       // The operator plugin was called "the harness" until "harness" came to mean a
       // coding agent AgentFox governs.
-      ["/docs/harness", "/docs/plugin"],
+      ["/docs/harness", "/docs/connect/coding-agents"],
     ].map(([source, destination]) => ({ source, destination, permanent: true }));
   },
 };
