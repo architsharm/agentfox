@@ -526,6 +526,10 @@ class McpServerDecl:
     transport: str = "stdio"
     headers: dict[str, Any] = field(default_factory=dict)
     env: dict[str, Any] = field(default_factory=dict)
+    #: The config sets up an OAuth login for it (Claude Code's and Gemini CLI's
+    #: `oauth`, an `auth` block), or a token read from the environment (Codex's
+    #: `bearer_token_env_var`): it authenticates, just not with a header written here.
+    oauth: bool = False
 
     @property
     def launch(self) -> str:
@@ -679,6 +683,7 @@ def _decl(name: str, entry: Any, label: str) -> McpServerDecl:
         transport=transport,
         headers=headers if isinstance(headers, dict) else {},
         env=entry.get("env") if isinstance(entry.get("env"), dict) else {},
+        oauth=any(entry.get(k) for k in ("oauth", "auth", "bearer_token_env_var")),
     )
 
 
@@ -815,15 +820,38 @@ def server_hygiene(decl: McpServerDecl) -> list[dict[str, str]]:
             )
         has_auth = any(k.lower() in ("authorization", "x-api-key", "api-key") for k in decl.headers)
         if not has_auth and not re.search(r"[?&](key|token|api_key)=", decl.url):
-            issues.append(
-                {
-                    "type": "remote_without_auth",
-                    "severity": "medium",
-                    "detail": "remote server with no auth header in the config — anyone "
-                    "who can reach it can call it, or it relies on an OAuth login this "
-                    "scan cannot see",
-                }
-            )
+            # Over HTTPS, no header is the normal shape of a remote server: the MCP
+            # standard for remote servers is an OAuth login the client runs and keeps
+            # out of the config. Said for information, not as something to fix. Over
+            # plain http (already high above) it stays something to check.
+            if decl.oauth:
+                issues.append(
+                    {
+                        "type": "remote_without_auth",
+                        "severity": "info",
+                        "detail": "signs in with OAuth, set up in the config",
+                    }
+                )
+            elif decl.url.startswith("https://"):
+                issues.append(
+                    {
+                        "type": "remote_without_auth",
+                        "severity": "info",
+                        "detail": "no auth header in the config: remote servers normally "
+                        "sign in with OAuth, which the client keeps out of the config — "
+                        "check it asked you to log in",
+                    }
+                )
+            else:
+                issues.append(
+                    {
+                        "type": "remote_without_auth",
+                        "severity": "medium",
+                        "detail": "remote server with no auth header in the config — anyone "
+                        "who can reach it can call it, or it relies on an OAuth login this "
+                        "scan cannot see",
+                    }
+                )
     elif decl.command and decl.pinned_version is None:
         launcher = Path(decl.command).name
         if launcher in ("npx", "pnpx", "bunx", "uvx", "pipx", "docker"):

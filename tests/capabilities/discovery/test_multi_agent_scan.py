@@ -412,10 +412,10 @@ def test_crewai_crewbase_class_layout(tmp_path):
     report = scan(tmp_path)
     agents = _agents(report)
     assert agents["researcher"]["tools"] == ["SerperDevTool"]
-    assert agents["researchcrew"]["kind"] == "crew"
+    assert agents["research-crew"]["kind"] == "crew"
     assert _edges(report) == {
-        ("researchcrew", "researcher", "member"),
-        ("researchcrew", "reporting-analyst", "member"),
+        ("research-crew", "researcher", "member"),
+        ("research-crew", "reporting-analyst", "member"),
     }
 
 

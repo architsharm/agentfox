@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -515,6 +516,28 @@ def parse_skill_file(path: Path) -> tuple[str, dict[str, Any], str]:
     return name, frontmatter, body
 
 
+def _installed(directory: Path) -> bool:
+    """A virtualenv (it has `pyvenv.cfg`, whatever it is called) or an installed
+    package tree: its skills ship with a dependency, not with this project."""
+    return (directory / "pyvenv.cfg").is_file()
+
+
+def _skill_files(root: Path) -> list[Path]:
+    """Every SKILL.md under ``root``, skipping what the repository scan skips
+    (`.venv`, `node_modules`, `site-packages`, build output) and any virtualenv
+    under another name. A skill bundled with an installed package (pydantic-ai's,
+    or AgentFox's own dependencies') is not this project's skill."""
+    from agentfox.capabilities.discovery.repo import SKIP_DIRS
+
+    found: list[Path] = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        here = Path(dirpath)
+        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS and not _installed(here / d))
+        if "SKILL.md" in filenames:
+            found.append(here / "SKILL.md")
+    return sorted(found)
+
+
 def scan_skills_dir(root: Path) -> list[dict[str, Any]]:
     """Every `SKILL.md` under `root`, analysed.
 
@@ -523,7 +546,7 @@ def scan_skills_dir(root: Path) -> list[dict[str, Any]]:
     to whichever skill happened to be nearest.
     """
     results: list[dict[str, Any]] = []
-    for path in sorted(root.rglob("SKILL.md")):
+    for path in _skill_files(root):
         name, frontmatter, body = parse_skill_file(path)
         siblings = [
             str(f.relative_to(path.parent))
