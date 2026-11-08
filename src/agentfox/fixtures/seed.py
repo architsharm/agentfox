@@ -224,7 +224,7 @@ def seed(
         # this directory has installed coding-harness hooks for (policy/coding.py).
         policies, _ = scope_coding_pack(load_available(), hooked_agents())
         for doc in policies:
-            save_policy(session, doc, author="seed", notes="Shipped policy pack")
+            save_policy(session, doc, author="seed", notes="Shipped policy pack", keep_mode=True)
         summary["policies"] = [d.key for d in policies]
 
     # --- Users (Pillar 2) --------------------------------------------

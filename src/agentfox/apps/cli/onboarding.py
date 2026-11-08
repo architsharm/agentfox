@@ -230,7 +230,7 @@ def setup_workspace(
     from agentfox.core.config import get_settings
     from agentfox.core.db import init_db, session_scope
     from agentfox.harnesses import hooked_agents
-    from agentfox.platform.policy import load_available, save_policy
+    from agentfox.platform.policy import current_binding, load_available, save_policy
     from agentfox.platform.policy.coding import retire_tool_wildcard, scope_coding_pack
 
     if not Path(path).is_dir():
@@ -274,15 +274,25 @@ def setup_workspace(
         documents, coding_agents = scope_coding_pack(load_available(), hooked_agents(path))
         if coding_agents == []:
             retire_tool_wildcard(session)
+        # A pack already installed keeps the mode it is in: the one it declares is only
+        # its first. Run after `agentfox up` (which puts every pack in observe), `init`
+        # must not quietly turn tool-containment back to blocking.
+        modes: dict[str, str] = {}
         for document in documents:
-            save_policy(session, document, author="init", notes="loaded by agentfox init")
+            policy, _version = save_policy(
+                session, document, author="init", notes="loaded by agentfox init", keep_mode=True
+            )
+            live, _ = current_binding(session, policy.id)
+            modes[document.key] = live.mode if live is not None else document.mode
         # Say the truth per pack: a blanket "observe mode" was wrong the moment one
         # shipped pack (tool-containment) declared enforce.
         say(f"  [green]✓[/] {len(documents)} policy pack(s) loaded")
         for document in sorted(documents, key=lambda d: d.key):
-            colour = "red" if document.mode == "enforce" else "yellow"
-            meaning = _MODE_MEANING.get(document.mode, "")
-            say(f"      {document.key:<24} [{colour}]{document.mode}[/]  [dim]{meaning}[/]")
+            mode = modes[document.key]
+            colour = "red" if mode == "enforce" else "yellow"
+            meaning = _MODE_MEANING.get(mode, "")
+            kept = "  [dim](kept)[/]" if mode != document.mode else ""
+            say(f"      {document.key:<24} [{colour}]{mode}[/]  [dim]{meaning}[/]{kept}")
         if coding_agents:
             say(f"      [dim]coding-agent applies to: {', '.join(coding_agents)}[/]")
         elif coding_agents == []:
@@ -291,7 +301,7 @@ def setup_workspace(
                 "`agentfox admin hooks install --agent <slug> --write` turns it on for that "
                 "agent.[/]"
             )
-        enforcing = [d.key for d in documents if d.mode == "enforce"]
+        enforcing = [d.key for d in documents if modes[d.key] == "enforce"]
         if enforcing:
             say(
                 f"      [dim]{', '.join(enforcing)} blocks from the start — "
