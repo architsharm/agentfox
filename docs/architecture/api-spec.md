@@ -138,7 +138,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-330 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+331 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -446,6 +446,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/alerts/slack/test` | Send a test message to every channel this tenant's alerts go to, now. |
 | `POST` | `/api/auth/github/provision` | Find-or-create the user behind a GitHub identity, and mint them a token. |
 | `POST` | `/api/auth/logout` | Revoke the bearer token this request presents — the dashboard's Sign Out. |
+| `POST` | `/api/auth/oauth/provision` | Find-or-create the user behind a Google or Microsoft sign-in, and mint a token. |
 | `GET` | `/api/authorizers` | Get Authorizers |
 | `POST` | `/api/authorizers` | Register (or update) an access-check endpoint. |
 | `DELETE` | `/api/authorizers/{key}` | Remove Authorizer |
