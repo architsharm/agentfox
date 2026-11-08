@@ -668,7 +668,7 @@ def _tools_ask(run: Run) -> None:
 
 def _tools_apply(run: Run) -> None:
     impacts = run.answers.get("tools") or _inferred(run)
-    if not impacts:
+    if not impacts and not run.ctx.agent_tools:
         run.skipped(
             "tools",
             f"{run.agent} has no tools of its own; the "
