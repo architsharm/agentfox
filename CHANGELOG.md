@@ -180,6 +180,12 @@ the file it came from.
   trusted proxies. Defaults to 1 on Vercel, whose edge overwrites the header, and 0
   elsewhere.
 - `GET /api/playground/world`: the playground's agents and prompts without a sandbox.
+- The dashboard moves from Next.js 16.4.0 to 16.4.5. 16.4.0 is affected by
+  GHSA-2464-fhr4-w9xw (unauthenticated remote code execution in the image optimisation
+  API with SVG files), GHSA-673q-mjm6-r5xr (remote code execution in `use cache` functions
+  returning typed arrays) and GHSA-p3m5-59mp-jv5r (denial of service with Server Actions).
+  Dev-only test tooling (vite, vitest) is updated for its own advisories. `npm audit`
+  reports 0 vulnerabilities, and `next build` no longer stops on the security check.
 
 ## [0.5.1] - 2026-11-08
 
