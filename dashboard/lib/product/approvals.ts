@@ -130,3 +130,19 @@ export function firstSentence(reason?: string | null): string {
   const m = text.match(/^(.{25,}?[.!?])\s+(?=[A-Z])/);
   return m ? m[1] : text;
 }
+
+/**
+ * What became of a held call, for its run: "Approved by ana@x", "Denied by ana@x",
+ * "Nobody answered". Null while the approval is still waiting (the run reads Held).
+ * A run used to say "Held" for ever after a person had answered.
+ */
+export function approvalOutcome(a?: { status?: string | null; resolver?: string | null } | null): { label: string; tone: "ok" | "bad" | "warn" } | null {
+  if (!a || !a.status || a.status === "pending") return null;
+  const by = a.resolver ? ` by ${a.resolver}` : "";
+  if (a.status === "approved") return { label: `Approved${by}`, tone: "ok" };
+  if (a.status === "used") return { label: `Approved${by} · ran`, tone: "ok" };
+  if (a.status === "lapsed") return { label: `Approved${by} · not run in time`, tone: "warn" };
+  if (a.status === "denied") return { label: `Denied${by}`, tone: "bad" };
+  if (a.status === "expired") return { label: "Nobody answered · denied", tone: "warn" };
+  return { label: a.status[0].toUpperCase() + a.status.slice(1), tone: "warn" };
+}

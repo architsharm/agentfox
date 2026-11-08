@@ -68,6 +68,7 @@ from agentfox.platform.policy.store import (
     pack_sources,
     policies_in_force,
     project_policy_dir,
+    runtime_environment,
     save_policy,
     set_mode,
 )
@@ -99,6 +100,7 @@ __all__ = [
     "agent_team",
     "current_binding",
     "policies_in_force",
+    "runtime_environment",
     "canary_health",
     "canary_rollout",
     "effective_for",

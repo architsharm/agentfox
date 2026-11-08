@@ -281,25 +281,28 @@ def test_entitlement_report_hint_names_a_real_command():
 
 
 # ---------------------------------------------------------------------------
-# 10. policy effective resolves for the configured environment
+# 10. policy effective resolves where the gateway does
 # ---------------------------------------------------------------------------
 
 
-def test_policy_effective_defaults_to_the_configured_environment(monkeypatch):
+def test_policy_effective_defaults_to_the_gateways_environment(monkeypatch):
+    """The runtime resolves an agent in its registered environment (production by
+    default), not the CLI's configured one: defaulting to "development" showed rules the
+    gateway was not applying."""
     from agentfox.core.config import reset_settings_cache
 
     _seed()
     default = runner.invoke(app, ["policy", "effective"])
     assert default.exit_code == 0, default.output
-    assert "effective policy in development" in flat(default.output)
+    assert "effective policy in production" in flat(default.output)
 
     monkeypatch.setenv("AGENTFOX_ENVIRONMENT", "staging")
     reset_settings_cache()
-    configured = runner.invoke(app, ["policy", "effective"])
-    assert "effective policy in staging" in flat(configured.output)
+    agent = runner.invoke(app, ["policy", "effective", "--agent", "payments-ops"])
+    assert "effective policy in production" in flat(agent.output)
 
-    explicit = runner.invoke(app, ["policy", "effective", "--environment", "production"])
-    assert "effective policy in production" in flat(explicit.output)
+    explicit = runner.invoke(app, ["policy", "effective", "--environment", "staging"])
+    assert "effective policy in staging" in flat(explicit.output)
 
 
 # ---------------------------------------------------------------------------

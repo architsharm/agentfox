@@ -9,6 +9,7 @@ import { HeldCallBox } from "@/components/product/approvals/HeldCallBox";
 import { TRUST } from "@/lib/product/vocab";
 import { STATUS_TONE, actionLabel, actionSummary, decidedBy, firstSentence, isMessage } from "@/lib/product/approvals";
 import { NoticeToast } from "@/components/product/NoticeToast";
+import { observeScope } from "@/lib/product/observeScope";
 
 export const metadata: Metadata = appPageMetadata("Approvals", "Actions waiting for a person.");
 export const dynamic = "force-dynamic";
@@ -25,19 +26,24 @@ function source(s?: string) {
 export default async function Approvals({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   const tab = sp.tab === "history" ? "history" : sp.tab === "handoffs" || sp.tab === "escalation" ? "handoffs" : "pending";
-  const [all, agents] = await Promise.all([
+  const [all, agents, scope] = await Promise.all([
     safeApi<any>("/api/approvals?status=pending", { approvals: [] }),
     safeApi<any>("/api/agents", { agents: [] }),
+    observeScope(sp.agent),
   ]);
-  // In a project's scope, only that project's requests.
-  const project = sp.agent ? (agents.agents || []).find((a: any) => a.slug === sp.agent || a.id === sp.agent) : null;
-  const mine = (list: any[]) => (sp.agent ? list.filter((a) => a.agent_id === (project?.id ?? sp.agent)) : list);
+  // The project chosen in the sidebar, like every other page: only its agents'
+  // requests (or the one agent the URL names). With no project chosen, all of them.
+  const ids = new Set(
+    (agents.agents || []).filter((a: any) => scope.agents.includes(a.slug) || a.id === sp.agent).map((a: any) => a.id),
+  );
+  const scoped = Boolean(sp.agent || scope.project);
+  const mine = (list: any[]) => (scoped ? list.filter((a) => ids.has(a.agent_id)) : list);
   const pending = { approvals: mine(all.approvals || []) };
   const q = sp.agent ? `agent=${encodeURIComponent(sp.agent)}` : "";
 
   return (
     <>
-      <Header title="Approvals" />
+      <Header title="Approvals" hint={scope.project ? `Held calls from ${scope.project}. Switch project in the sidebar to see another's.` : undefined} />
       <Tabs
         active={tab}
         items={[

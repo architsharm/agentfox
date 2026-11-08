@@ -11,6 +11,48 @@ the file it came from.
 
 ## [Unreleased]
 
+### Added
+- **Restore this version.** A pack's or a business rule's History has "Restore this
+  version": the old rules go live again as a new version, in the current mode
+  (`POST /api/policies/{key}/versions/{version}/restore`,
+  `GET /api/business/rules/{key}/history`,
+  `POST /api/business/rules/{key}/versions/{version}/restore`).
+- **Held calls reach Slack.** With a Slack channel connected (Settings → Alerts), every
+  call held for approval is posted with a link to approve or deny it. The Approvals
+  page says who is told and links to where to set it up.
+
+### Changed
+- **One rule model for business rules.** An approval limit written in New rule is
+  listed in Applied rules (in Your rules), its page
+  (`/app/policies/rules/business.<key>`) shows its real mode, hits and history, and
+  `agentfox policy effective` and `policy list` list and count it.
+- **Business rules start blocking through the same gate as libraries.** Start blocking
+  replays the last 7 days of calls through the rule and shows what it would have held,
+  then confirms; the gateway refuses to enforce without that recorded simulation
+  (`POST /api/business/rules/{key}/simulate`). Switch to watching asks first.
+- **A denial sticks.** A retry that presents the approval a person denied, for the same
+  call, is blocked with the `approval.denied` rule and their reason, instead of
+  filing a fresh approval.
+- **An approval's reason leads with the rule that held the call**; rules that were only
+  watching come after it, labelled "(watching only)".
+- **A held call's run shows its answer**: Approved or Denied and by whom, in the run and
+  the runs list, and its Approval link opens that approval.
+- **Approvals follow the project switcher** like the other pages.
+- **The default project** is the one with the most recent traffic among projects with an
+  added agent, never a shadow agent. `GET /api/projects` carries `last_seen_at`.
+- `agentfox policy effective` (and `GET /api/policies/effective`) default to the
+  environment the gateway resolves the agent in, not the CLI's configured one, and the
+  CLI prints a title beside each rule id. `agentfox permit approvals list` prints full
+  ids and wraps between words.
+
+### Fixed
+- "Start blocking" on Your rules said "0 would have been stopped" right after a words
+  rule had flagged a message: it counted calls newly blocked compared with what a
+  watching rule already would have done. It now counts what the pack's own rules
+  would stop (`runs_own_would_stop` in a simulation).
+- "Your rules" said "2 rules · blocking" while one of them was only watching; it now
+  says each rule's state ("1 blocking, 1 watching").
+
 ## [0.5.1] - 2026-11-08
 
 The first-run release. A new user's own agent now gets the "wow": `agentfox up` adds

@@ -315,6 +315,33 @@ def test_monitor_findings_reach_slack_with_a_link(
     assert any("Cleared" in body["text"] for _url, body in slack)
 
 
+def test_a_held_call_reaches_slack_with_a_link_to_decide_it(client, monkeypatch, slack):
+    """Held calls notified nobody: they now go to the same channel as issues, whatever
+    its minimum severity, with a link to the approval."""
+    monkeypatch.setattr(get_settings(), "allow_egress", True)
+    monkeypatch.setattr(
+        get_settings(), "slack_webhook_url", "https://hooks.slack.com/services/T/B/X"
+    )
+    monkeypatch.setattr(get_settings(), "slack_min_severity", "critical")
+    monkeypatch.setattr(get_settings(), "console_url", "https://console.example.com")
+    held = client.post(
+        "/v1/guard/tool_call",
+        json={
+            "agent": "payments-ops",
+            "tool": "email.send",
+            "arguments": {"to": "customer@example.com", "body": "your receipt"},
+            "provenance": {"to": "user", "body": "user"},
+            "intent": "email the customer their receipt",
+        },
+    ).json()
+    assert held["verdict"] == "escalate", held
+    assert alerts.wait_for_delivery(5)
+    texts = [body["text"] for _url, body in slack]
+    assert any(
+        "Held for approval" in t and f"/app/approvals/{held['approval_id']}" in t for t in texts
+    ), texts
+
+
 def test_no_egress_means_no_slack(client, monkeypatch, monitored_repo, fake_github, slack):
     monkeypatch.setattr(
         get_settings(), "slack_webhook_url", "https://hooks.slack.com/services/T/B/X"

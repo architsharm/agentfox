@@ -71,7 +71,6 @@ A running list as we go. Newest priorities first. `[ ]` open · `[~]` started ·
 - [ ] **Render blueprint**: `deploy/render.yaml` sets the dashboard's `AGENTFOX_API_URL` from `property: hostport` (no scheme, and `lib/env.ts:apiBase()` adds none), and the gateway block has no `AGENTFOX_TOKEN_ENCRYPTION_KEY`, so connecting GitHub returns 503.
 - [ ] **Blocked calls get different status codes**: `/v1/guard/tool_call` returns 200 with a block verdict, `/v1/mcp/call` returns 403. Make them match, or say so in the gateway guide.
 - [ ] **Injection classifier reported as timed out while under budget** (253 ms of a 300 ms budget shows `injection.classifier: timeout`). Check the classifier deadline against the request budget in `runtime/enforcement`.
-- [ ] **Held calls notify nobody**: approvals have no notification channel (Slack covers only issues), so a held call expires to deny unseen.
 - [ ] **Shadow agent raised twice**: `/api/attention` (`routes/onboarding.py`) adds "running and was never registered" on top of the open `shadow_agent` finding.
 - [ ] **Agent environment defaults to "production"** (`core/models/registry.py`), so a dev gateway's agents and runs are labelled production.
 - [ ] **Limit blocks don't say which value broke the limit**: `capability.constraint_violated` run detail should say e.g. "amount 40 > 25".

@@ -411,6 +411,69 @@ class ModeIn(BaseModel):
     mode: str
 
 
+@router.get("/api/business/rules/{key}/history")
+def business_rule_history(
+    key: str, session: Session = Depends(db), _user: User = Depends(current_user)
+) -> dict[str, Any]:
+    """Every saved version of the rule, newest first, with its bands."""
+    from agentfox.capabilities.business.store import history
+
+    if session.scalar(select(BusinessRule).where(BusinessRule.key == key)) is None:
+        raise HTTPException(404, f"unknown business rule '{key}'")
+    return {"key": key, "versions": history(session, key)}
+
+
+@router.post("/api/business/rules/{key}/versions/{version}/restore", status_code=201)
+def restore_business_rule(
+    key: str,
+    version: int,
+    session: Session = Depends(db),
+    user: User = Depends(require("policy")),
+) -> dict[str, Any]:
+    """Put an earlier version's bands back, as a new version in the rule's current mode.
+
+    Restoring an enforcing rule changes what is held right now, so like an edit it
+    needs the production role, and the restored bands are simulated on the way in."""
+    from agentfox.apps.gateway.deps import may_enforce
+    from agentfox.capabilities.business.simulate import simulate_rule
+    from agentfox.capabilities.business.store import restore_version
+
+    rule = session.scalar(select(BusinessRule).where(BusinessRule.key == key))
+    if rule is None:
+        raise HTTPException(404, f"unknown business rule '{key}'")
+    if rule.mode == "enforce" and not may_enforce(user):
+        raise HTTPException(
+            403, "this rule is enforcing; restoring a version needs a production policy role"
+        )
+    try:
+        restored = restore_version(session, key, version, actor=user.email or user.id)
+    except ValueError as exc:
+        raise HTTPException(409 if "already live" in str(exc) else 404, str(exc)) from exc
+    out = _rule_json(restored)
+    out["restored"] = version
+    out["version"] = restored.version
+    if restored.mode == "enforce":
+        out["simulation"] = simulate_rule(session, restored, run_by=user.email or user.id)
+    return out
+
+
+@router.post("/api/business/rules/{key}/simulate")
+def simulate_business_rule(
+    key: str, session: Session = Depends(db), user: User = Depends(current_user)
+) -> dict[str, Any]:
+    """Replay the last 7 days of calls through the rule as if it enforced, and record
+    it: what Start blocking needs first, as for any library."""
+    from agentfox.capabilities.business.simulate import simulate_rule
+
+    rule = session.scalar(select(BusinessRule).where(BusinessRule.key == key))
+    if rule is None:
+        raise HTTPException(404, f"unknown business rule '{key}'")
+    try:
+        return simulate_rule(session, rule, run_by=user.email or user.id)
+    except ValueError as exc:
+        raise HTTPException(422, f"the rule no longer validates: {exc}") from exc
+
+
 @router.post("/api/business/rules/{key}/mode")
 def business_rule_mode(
     key: str,
@@ -418,6 +481,22 @@ def business_rule_mode(
     session: Session = Depends(db),
     user: User = Depends(require("policy_production")),
 ) -> dict[str, Any]:
+    """Watch or enforce a business rule. Enforcing needs a recorded simulation of the
+    rule as it stands (``POST …/simulate``), the same gate as a policy pack's; going
+    back to watching never does."""
+    from agentfox.capabilities.business.simulate import simulation_for_rule
+
+    if payload.mode == "enforce":
+        rule = session.scalar(select(BusinessRule).where(BusinessRule.key == key))
+        if rule is None:
+            raise HTTPException(404, f"unknown business rule '{key}'")
+        if rule.mode != "enforce" and simulation_for_rule(session, rule) is None:
+            raise HTTPException(
+                409,
+                f"'{key}' has not been simulated as it stands: replay recent traffic "
+                f"through it first (Simulate, or POST /api/business/rules/{key}/simulate), "
+                "then start blocking",
+            )
     try:
         rule = set_mode(
             session,

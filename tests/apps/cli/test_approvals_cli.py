@@ -73,3 +73,14 @@ def test_the_top_level_name_works_too(session):
     approval_id = _file(session)
     result = runner.invoke(app, ["permit", "approvals", "approve", approval_id])
     assert result.exit_code == 0, result.output
+
+
+def test_the_table_prints_full_ids_and_wraps_between_words(session, monkeypatch):
+    """The id is what approve/deny and the agent's retry take: printed whole, on one line."""
+    monkeypatch.setenv("COLUMNS", "100")
+    first = _file(session)
+    out = runner.invoke(app, ["permit", "approvals", "list"]).output
+    assert first in out
+    # The reason wraps at spaces: every word of it is on the page intact.
+    words = set(out.split())
+    assert {"granting", "capability", "requires", "approval"} <= words

@@ -48,15 +48,17 @@ agentfox permit approvals approve apr_… -r "Finance asked for it"`}</Code>
           </Tabs>
           <p>
             Approving lets exactly one call through: the same agent, tool and arguments, when the agent
-            tries again within 30 minutes. Different arguments are held again.
+            tries again within 30 minutes. Different arguments are held again. Denying sticks: a retry of
+            the denied call that presents its approval id is blocked, with your reason.
           </p>
         </Step>
       </Steps>
 
-      <Callout kind="warning" title="Nobody is told">
-        AgentFox sends no notification for a held call: no email, and Slack alerts and webhooks carry
-        Issues, not approvals. Someone has to watch the Approvals page. A call nobody decides is denied
-        after 30 minutes (<code>AGENTFOX_APPROVAL_TTL_MINUTES</code> on the gateway).
+      <Callout kind="warning" title="Who is told">
+        With a Slack channel connected under Settings → Alerts (Enterprise), every held call is posted
+        there with a link to approve or deny it. Without one nobody is told, so someone has to watch the
+        Approvals page. There is no email. A call nobody decides is denied after 30 minutes
+        (<code>AGENTFOX_APPROVAL_TTL_MINUTES</code> on the gateway).
       </Callout>
 
       <h2 id="kill-switch">Pause or stop an agent</h2>

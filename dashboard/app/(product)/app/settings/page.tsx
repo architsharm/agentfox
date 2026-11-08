@@ -66,7 +66,7 @@ export default async function Settings({
       <AreaTabs tabs={SETTINGS_TABS} active="alerts" />
       <Card
         title="Slack"
-        hint="New issues at or above the chosen severity are posted to this channel."
+        hint="New issues at or above the chosen severity, and every call held for approval, are posted to this channel."
         action={slack.configured ? <Pill tone="ok">Connected</Pill> : <Pill tone="outline">Not connected</Pill>}
       >
         {slack.egress_allowed === false && <div className="k-muted" style={{ marginBottom: 8 }}>Outbound messages are switched off for this deployment.</div>}

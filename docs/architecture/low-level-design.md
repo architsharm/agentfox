@@ -68,8 +68,9 @@ the call would otherwise escalate, `redeem_approval` checks that the approval is
 unexpired, for the same agent, tool and canonicalised arguments (or the same content digest
 for a held message), then flips it to `used` with a conditional `UPDATE … WHERE status =
 'approved'`, so two racing retries cannot both spend it. A redeemed call is allowed with the
-`approval.redeemed` rule fired; anything else escalates again and the decision's reason says why
-the approval was not used. An approval can therefore never make a call more permitted than a
+`approval.redeemed` rule fired. A retry of the very call a person denied is blocked with the
+`approval.denied` rule and their rationale (`denial_of`), and files no new approval; anything
+else escalates again and the decision's reason says why the approval was not used. An approval can therefore never make a call more permitted than a
 person said, and lets exactly one call through. A held proxy request answers **428** with the
 approval id and the poll path.
 

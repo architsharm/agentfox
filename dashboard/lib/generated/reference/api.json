@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 331,
+ "count": 335,
  "routes": [
   {
    "method": "GET",
@@ -3536,12 +3536,41 @@
    }
   },
   {
+   "method": "GET",
+   "path": "/api/business/rules/{key}/history",
+   "section": "business",
+   "audience": "operator",
+   "summary": "Every saved version of the rule, newest first, with its bands.",
+   "description": "Every saved version of the rule, newest first, with its bands.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
    "method": "POST",
    "path": "/api/business/rules/{key}/mode",
    "section": "business",
    "audience": "operator",
-   "summary": "Business Rule Mode",
-   "description": "",
+   "summary": "Watch or enforce a business rule. Enforcing needs a recorded simulation of the rule as it stands (``POST …/simulate``), the same gate as a policy pack's; going back to watching never does.",
+   "description": "Watch or enforce a business rule. Enforcing needs a recorded simulation of the\nrule as it stands (``POST …/simulate``), the same gate as a policy pack's; going\nback to watching never does.",
    "params": [
     {
      "name": "key",
@@ -3573,6 +3602,70 @@
      }
     ]
    }
+  },
+  {
+   "method": "POST",
+   "path": "/api/business/rules/{key}/simulate",
+   "section": "business",
+   "audience": "operator",
+   "summary": "Replay the last 7 days of calls through the rule as if it enforced, and record it: what Start blocking needs first, as for any library.",
+   "description": "Replay the last 7 days of calls through the rule as if it enforced, and record\nit: what Start blocking needs first, as for any library.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/business/rules/{key}/versions/{version}/restore",
+   "section": "business",
+   "audience": "operator",
+   "summary": "Put an earlier version's bands back, as a new version in the rule's current mode.",
+   "description": "Put an earlier version's bands back, as a new version in the rule's current mode.\n\nRestoring an enforcing rule changes what is held right now, so like an edit it\nneeds the production role, and the restored bands are simulated on the way in.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "version",
+     "in": "path",
+     "required": true,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
   },
   {
    "method": "GET",
@@ -9529,7 +9622,7 @@
    "section": "policies",
    "audience": "operator",
    "summary": "The policy actually in force for a subject, with per-rule provenance.",
-   "description": "The policy actually in force for a subject, with per-rule provenance.\n\nWith ``agent``, each rule also says whether it was changed for that agent only\n(``changed_for_agent``), and ``agent_changes`` lists every rule the agent's own\nlayer sets beside the workspace default it replaces.",
+   "description": "The policy actually in force for a subject, with per-rule provenance.\n\n``environment`` defaults to the one the runtime resolves the agent in: its own\nregistered environment, or ``production`` without an agent. Business rules\n(approval limits) are listed too, with ``level`` ``business``.\n\nWith ``agent``, each rule also says whether it was changed for that agent only\n(``changed_for_agent``), and ``agent_changes`` lists every rule the agent's own\nlayer sets beside the workspace default it replaces.",
    "params": [
     {
      "name": "agent",
@@ -9553,7 +9646,7 @@
      "name": "environment",
      "in": "query",
      "required": false,
-     "type": "string"
+     "type": null
     },
     {
      "name": "authorization",
@@ -10496,6 +10589,41 @@
      }
     ]
    }
+  },
+  {
+   "method": "POST",
+   "path": "/api/policies/{key}/versions/{version}/restore",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Make an earlier version's rules live again, as a new version.",
+   "description": "Make an earlier version's rules live again, as a new version.\n\nUndoing a change (a Tune applied, a rule switched off) used to mean redoing it by\nhand. The restored rules are saved as the newest version, so history only moves\nforward and the restore itself is one more audited change, and they go live in\nthe pack's current mode. An enforcing pack is replayed over recent traffic first\nand the impact returned (`publish_in_current_mode`), which is why restoring one\nneeds the production policy role.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "version",
+     "in": "path",
+     "required": true,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
   },
   {
    "method": "POST",

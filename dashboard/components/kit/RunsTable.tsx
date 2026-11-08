@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Dot, Empty, OutcomePill, Pill, ago } from "@/components/kit";
 import { SURFACES, WOULD, outcomeOf, ruleTitle } from "@/lib/product/vocab";
+import { approvalOutcome } from "@/lib/product/approvals";
 
 /** Runs as a list: when, which agent, what it was doing, what happened and why. */
 export function RunsTable({ runs, showAgent = true }: { runs: any[]; showAgent?: boolean }) {
@@ -58,6 +59,9 @@ export function RunsTable({ runs, showAgent = true }: { runs: any[]; showAgent?:
                     </Pill>
                   ) : (
                     <OutcomePill outcome={outcomeOf(t.verdict)} />
+                  )}
+                  {outcomeOf(t.verdict) === "held" && approvalOutcome({ status: t.approval_status }) && (
+                    <Pill tone={approvalOutcome({ status: t.approval_status })!.tone}>{approvalOutcome({ status: t.approval_status })!.label}</Pill>
                   )}
                   {t.would_verdict && outcomeOf(t.verdict) === "allowed" && (
                     <Pill tone="outline" title="The rule is watching. Blocking, it would have stopped this run.">
