@@ -341,6 +341,8 @@ class _FileResult:
     tool_info: dict[str, tuple[str, list[str]]] = field(default_factory=dict)
     #: module-level list variable -> the tool references it holds
     tool_lists: dict[str, list[tuple[str, str]]] = field(default_factory=dict)
+    #: ``to_x = create_handoff_tool(agent_name="x")`` -> "x": a hand-off, not a tool
+    handoff_vars: dict[str, str] = field(default_factory=dict)
     #: module-level function -> the tool references in the list it returns
     tool_helpers: dict[str, list[tuple[str, str]]] = field(default_factory=dict)
     #: module-level string constant -> its value (``MODEL = "gpt-4o"``)
@@ -1089,6 +1091,13 @@ class _Extractor:
             if isinstance(value.func, ast.Name):
                 self.out.aliases.setdefault(var, value.func.id)
             path = _path(value.func)
+            if path.rsplit(".", 1)[-1] == "create_handoff_tool":
+                target = _str(_kw(value, "agent_name")) or (
+                    _str(value.args[0]) if value.args else None
+                )
+                if target:
+                    self.out.handoff_vars[var] = target
+                return
             made = wrapped_tool(value, self.imported)
             if made is not None:
                 # `lookup = function_tool(fetch)`: the tool is named by the code or by
@@ -1841,6 +1850,9 @@ class _Extractor:
                 elif last:
                     # `SerperDevTool()` — a library tool, named by its class.
                     raw.tools.append(("name", last))
+            elif isinstance(elt, ast.Name) and elt.id in self.out.handoff_vars:
+                # `transfer_to_x = create_handoff_tool(agent_name="x")`, passed by name.
+                raw.children.append((("label", self.out.handoff_vars[elt.id]), "handoff"))
             elif isinstance(elt, ast.Name):
                 raw.tools.append(("var", elt.id))
             elif isinstance(elt, ast.Attribute):

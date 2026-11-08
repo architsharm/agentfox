@@ -300,6 +300,32 @@ def test_langgraph_swarm_handoff_tools(tmp_path):
     assert ("workflow", "alice", "member") in _edges(report)
 
 
+def test_a_handoff_tool_assigned_to_a_variable_is_a_handoff_not_a_tool(tmp_path):
+    """langgraph-swarm's own examples name the hand-off first and pass the variable."""
+    _write(
+        tmp_path,
+        "swarm.py",
+        """
+        from langchain.agents import create_agent
+        from langgraph_swarm import create_handoff_tool, create_swarm
+
+        to_researcher = create_handoff_tool(agent_name="researcher", description="Hand off")
+        to_planner = create_handoff_tool(agent_name="planner")
+
+        planner = create_agent(model, tools=[fetch_doc, to_researcher], name="planner")
+        researcher = create_agent(model, tools=[fetch_doc, to_planner], name="researcher")
+        swarm = create_swarm([planner, researcher], default_active_agent="planner")
+        """,
+    )
+    report = scan(tmp_path)
+    assert _agents(report)["planner"]["tools"] == ["fetch_doc"]
+    assert _agents(report)["researcher"]["tools"] == ["fetch_doc"]
+    assert _edges(report) >= {
+        ("planner", "researcher", "handoff"),
+        ("researcher", "planner", "handoff"),
+    }
+
+
 # ---------------------------------------------------------------------------
 # CrewAI
 # ---------------------------------------------------------------------------

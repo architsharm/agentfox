@@ -634,6 +634,22 @@ def _install_audit_hook() -> None:
 _LOAD_LOCK = threading.Lock()
 
 
+def _module_dirs(root: Path, module: str) -> list[Path]:
+    """The directories holding ``module``'s own file, under the repository or its src/.
+
+    A file loaded as a script (``python src/agent/agent.py``, or a ``langgraph.json``
+    graph path) imports its siblings by bare name (``from prompts import ...``), because
+    its own directory is on ``sys.path``. Importing it as ``agent.agent`` does not put it
+    there, so those imports fail although nothing is missing."""
+    rel = Path(*module.split("."))
+    out = []
+    for base in (root / "src", root):
+        for candidate in (base / rel.with_suffix(".py"), base / rel / "__init__.py"):
+            if candidate.is_file() and candidate.parent not in out:
+                out.append(candidate.parent)
+    return out
+
+
 def load_agent(root: str | Path, module: str, attr: str) -> Any:
     """Import the user's module and return the named object. The working directory and
     ``sys.path`` are put back as they were afterwards."""
@@ -645,7 +661,26 @@ def load_agent(root: str | Path, module: str, attr: str) -> Any:
             for p in (root / "src", root):
                 if str(p) not in sys.path:
                     sys.path.insert(0, str(p))
-            return getattr(importlib.import_module(module), attr)
+            try:
+                return getattr(importlib.import_module(module), attr)
+            except ModuleNotFoundError as exc:
+                # Only when what is missing sits right beside the file: then the file
+                # imports its siblings by bare name, as a script or a langgraph.json
+                # graph does. Added on retry and last, so its directory never decides
+                # what the package itself resolves to (src/agent/agent.py must not
+                # turn `agent` into a module).
+                dirs = _module_dirs(root, module)
+                missing = (exc.name or "").split(".")[0]
+                if not missing or not any(
+                    (d / f"{missing}.py").is_file() or (d / missing / "__init__.py").is_file()
+                    for d in dirs
+                ):
+                    raise
+                for p in dirs:
+                    if str(p) not in sys.path:
+                        sys.path.append(str(p))
+                importlib.invalidate_caches()
+                return getattr(importlib.import_module(module), attr)
         finally:
             os.chdir(cwd)
             sys.path[:] = path
@@ -913,6 +948,15 @@ def make_driver(
             )
 
         return Driver(name, call=run_sdk, context_missing=missing)
+    if not hasattr(obj, "invoke") and callable(getattr(obj, "compile", None)):
+        # A LangGraph builder (`create_swarm(...)`, `StateGraph(...)`): the app runs what
+        # `.compile()` returns, so the test does too.
+        try:
+            compiled = obj.compile()
+        except Exception:  # noqa: BLE001 - a builder that cannot compile is not run
+            compiled = None
+        if compiled is not None and hasattr(compiled, "invoke"):
+            obj = compiled
     if hasattr(obj, "invoke"):
         keys = getattr(obj, "input_keys", None)
         legacy = isinstance(keys, (list, tuple)) and "input" in keys and "messages" not in keys
