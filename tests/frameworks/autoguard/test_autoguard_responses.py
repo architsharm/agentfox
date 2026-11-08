@@ -502,6 +502,133 @@ def test_a_conversation_held_by_openai_is_recorded_as_unknown_provenance(fake_re
             assert note.startswith("unknown") and "previous_response_id=resp_earlier" in note
 
 
+# ---------------------------------------------------------------------------
+# Hand-offs: recorded as hand-offs, never decided as tools needing a grant
+# ---------------------------------------------------------------------------
+
+#: The Agents SDK's hand-off tool, as `Converter._convert_handoff_tool` writes it.
+HANDOFF_TOOL = {
+    "type": "function",
+    "name": "transfer_to_seat_booking_agent",
+    "description": "Handoff to the Seat Booking Agent agent to handle the request. "
+    "A helpful agent that can update a seat on a flight.",
+    "parameters": {"type": "object", "properties": {}},
+}
+
+
+def _grant_something(agent_slug: str) -> None:
+    from agentfox.platform.identity.service import ensure_identity, grant_capability
+    from agentfox.platform.registry.service import register_agent
+
+    with _db() as session:
+        agent = register_agent(session, agent_slug, name=agent_slug)
+        grant_capability(session, ensure_identity(session, agent), "update_seat")
+
+
+def _handoff_records(session):
+    from agentfox.core.models import LineageEdge
+
+    spans = session.query(Span).filter(Span.kind == "subagent").all()
+    edges = session.query(LineageEdge).filter(LineageEdge.relation == "delegates_to").all()
+    return spans, edges
+
+
+@pytest.mark.parametrize("mode", ["policy", "enforce"])
+def test_an_agents_sdk_handoff_is_a_handoff_not_an_ungranted_tool(fake_responses, mode):
+    """The customer_service example's first turn: triage hands off to seat booking.
+    Once the agent holds a grant, default-deny used to refuse it; and before that it
+    was a 'tried to transfer_to_... without permission' finding on a first run."""
+    responses, _async, script, _calls = fake_responses
+    script.append(_response(_function_call("transfer_to_seat_booking_agent", {})))
+    _grant_something("airline")
+    governed = auto(agent="airline", mode=mode, quiet=True)
+
+    responses().create(model="gpt-4o-mini", input="change my seat", tools=[HANDOFF_TOOL])
+    assert governed.calls_blocked == 0 and governed.would_have_blocked == 0
+    with _db() as session:
+        from agentfox.core.models import Finding, Tool
+
+        assert _tool_decisions(session) == []
+        assert session.query(Tool).filter_by(key="transfer_to_seat_booking_agent").count() == 0
+        assert session.query(Finding).filter(Finding.type == "containment").count() == 0
+        (span,), (edge,) = _handoff_records(session)
+        assert span.name == "Seat Booking Agent"
+        assert span.attributes_json["agentfox.handoff.relation"] == "handoff"
+        assert (edge.src_id, edge.dst_id) == ("airline", "Seat Booking Agent")
+
+
+def test_a_handoff_with_its_own_description_is_known_from_the_sdk(fake_responses, monkeypatch):
+    """`handoff(tool_description_override=...)`: the name is learned from the SDK's
+    own `Handoff` object as its converter turns it into a tool."""
+    module = types.ModuleType("agents.models.openai_responses")
+
+    class Converter:
+        @classmethod
+        def _convert_handoff_tool(cls, handoff):
+            return {"type": "function", "name": handoff.tool_name}
+
+    module.Converter = Converter
+    monkeypatch.setitem(sys.modules, "agents.models.openai_responses", module)
+    responses, _async, script, _calls = fake_responses
+    script += [_response(_message("ok")), _response(_function_call("escalate_now", {}))]
+    auto(agent="airline", mode="enforce", quiet=True)
+
+    responses().create(model="gpt-4o-mini", input="hi")  # watching starts here
+    Converter._convert_handoff_tool(
+        types.SimpleNamespace(tool_name="escalate_now", agent_name="Billing")
+    )
+    custom = {"type": "function", "name": "escalate_now", "description": "Get a human."}
+    responses().create(model="gpt-4o-mini", input="I want a refund", tools=[custom])
+    with _db() as session:
+        assert _tool_decisions(session) == []
+        (span,), _edges = _handoff_records(session)
+        assert span.name == "Billing"
+    off()
+    assert not getattr(Converter._convert_handoff_tool, "__agentfox__", False)
+
+
+def test_an_ordinary_tool_is_still_decided(fake_responses):
+    responses, _async, script, _calls = fake_responses
+    script.append(_response(_function_call("transfer_funds", {"to": "x"})))
+    auto(agent="airline", quiet=True)
+    tool = {"type": "function", "name": "transfer_funds", "description": "Move money."}
+    responses().create(model="gpt-4o-mini", input="pay", tools=[tool])
+    with _db() as session:
+        assert [d.tool_key for d in _tool_decisions(session)] == ["transfer_funds"]
+
+
+def test_crewai_delegation_tools_are_handoffs():
+    from agentfox.frameworks.autoguard import _crew_handoff
+
+    class BaseAgentTool:  # crewai.tools.agent_tools.base_agent_tools.BaseAgentTool
+        pass
+
+    class DelegateWorkTool(BaseAgentTool):
+        pass
+
+    structured = types.SimpleNamespace(_original_tool=DelegateWorkTool())
+    assert _crew_handoff(structured, {"coworker": "Researcher", "task": "t"}) == (
+        "Researcher",
+        "delegates",
+    )
+    assert _crew_handoff(types.SimpleNamespace(), {"coworker": "x"}) is None
+
+
+def test_a_handoff_where_it_runs_is_recorded_not_decided(isolated_db):
+    from agentfox.frameworks.autoguard import _lc_handoff, _lc_tool_decide
+
+    governed = auto(agent="graph", mode="enforce", quiet=True)
+    tool = types.SimpleNamespace(metadata={"__handoff_destination": "billing_agent"})
+    allowed, _result, trace_id = _lc_tool_decide(
+        governed, "transfer_to_billing_agent", {}, _lc_handoff(tool)
+    )
+    assert allowed and trace_id
+    with _db() as session:
+        assert _tool_decisions(session) == []
+        (span,), _edges = _handoff_records(session)
+        assert span.name == "billing_agent"
+
+
 def test_evidence_kwargs_never_reach_openai(fake_responses):
     responses, _async, script, calls = fake_responses
     script.append(_response(_message("ok")))

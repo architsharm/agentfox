@@ -255,3 +255,41 @@ async def test_strict_mode_stops_the_tool_before_the_sdk_runs_it():
         await agents.Runner.run(agent, f"Move booking {CONFIRMATION} to seat 12A")
     assert len(server.requests) == 1, "the tool never ran, so the model was never re-asked"
     assert state().calls_blocked == 1
+
+
+async def test_an_agents_sdk_handoff_is_recorded_not_refused():
+    """The customer_service example's shape: triage hands off to seat booking, with
+    an agent that already holds a grant (so default-deny is on)."""
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Finding, Span
+    from agentfox.platform.identity.service import ensure_identity, grant_capability
+    from agentfox.platform.registry.service import register_agent
+
+    agents, seat_agent = _seat_agent(None)
+    with session_scope() as session:
+        agent = register_agent(session, "customer-service", name="customer-service")
+        grant_capability(session, ensure_identity(session, agent), "update_seat")
+    server = _Server(
+        _response(_function_call("transfer_to_seat_booking_agent", {})),
+        _response(_message("Which seat would you like?"), response_id="resp_2"),
+    )
+    _sync, client = _clients(server)
+    model = agents.OpenAIResponsesModel(model="gpt-4o-mini", openai_client=client)
+    seat_agent.model = model
+    triage = agents.Agent(
+        name="Triage Agent",
+        model=model,
+        handoffs=[
+            agents.handoff(agent=seat_agent, tool_name_override="transfer_to_seat_booking_agent")
+        ],
+    )
+    governed = auto(agent="customer-service", quiet=True)
+
+    result = await agents.Runner.run(triage, "I want to change my seat")
+    assert result.final_output == "Which seat would you like?"
+    assert governed.calls_blocked == 0
+    assert _tool_keys() == []
+    with session_scope() as session:
+        assert session.query(Finding).filter(Finding.type == "containment").count() == 0
+        spans = session.query(Span).filter(Span.kind == "subagent").all()
+        assert [s.name for s in spans] == ["Seat Booking Agent"]

@@ -38,6 +38,15 @@ the file it came from.
   agent as the tool's result (`tool_refusals="raise"` raises instead), and the result is
   checked as `tool_result` before the agent reads it. Native tool calls in a CrewAI
   agent's model replies are left to that check, so each call is decided once.
+- **Hand-offs are recorded as hand-offs, not as tools without a grant.** An Agents SDK
+  hand-off (`transfer_to_<agent>`) is a function call, so it was decided as a tool: on
+  a first run of the customer_service example it read as "tried to
+  transfer_to_seat_booking_agent without permission", and once the agent held any
+  grant it was refused. Hand-offs are now known from the SDK's own `Handoff` objects
+  (and its default hand-off description), LangGraph's handoff tools
+  (`metadata["__handoff_destination"]`) and CrewAI's delegation tools, and are
+  recorded as a `subagent` span and a `delegates_to` lineage edge with no tool
+  decision, grant or containment finding.
 - **Tools checked where they run (LangChain, CrewAI) get argument provenance.** Their
   results are kept per conversation (bounded), so an argument copied out of an earlier
   tool's result is `tool_result` taint and the containment and composition rules apply;
