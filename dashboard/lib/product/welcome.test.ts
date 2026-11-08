@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { INSTALL_SPEC, scanRows, sortRepos, upCommand } from "./welcome";
+import { INSTALL_SPEC, githubConnected, scanRows, sortRepos, upCommand } from "./welcome";
 
 describe("sortRepos", () => {
   it("offers the most recently updated repository first", () => {
@@ -56,5 +56,25 @@ describe("scanRows", () => {
     expect(byLabel["Skills"].value).toBe("2 (1 flagged: planted instructions or risky commands)");
     expect(byLabel["Tools"]).toBeUndefined();
     expect(byLabel["Built on"].value).toBe("OpenAI SDK");
+  });
+});
+
+describe("githubConnected", () => {
+  it("is true only when the workspace is a GitHub login, not the org id", () => {
+    expect(githubConnected({ workspace: "octocat", org_id: "org_1" })).toBe(true);
+    expect(githubConnected({ workspace: "org_1", org_id: "org_1" })).toBe(false);
+    expect(githubConnected(null)).toBe(false);
+  });
+});
+
+describe("scanRows agents", () => {
+  it("leads with the agents the scan found, by name", () => {
+    const rows = scanRows({
+      agents_proposed: ["shop-triage", "shop-refunds"],
+      frameworks: ["OpenAI Agents SDK"],
+      highlights: { model_calls: 1, ungoverned_model_calls: 0, tools: 4, mcp_servers: [], trifectas: [], skills: 0, skill_issues: [] },
+    });
+    expect(rows[0]).toMatchObject({ label: "2 agents", value: "shop-triage, shop-refunds" });
+    expect(scanRows({ agents_proposed: ["solo"] })[0]).toMatchObject({ label: "Agent", value: "solo" });
   });
 });

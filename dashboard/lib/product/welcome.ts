@@ -65,7 +65,7 @@ export type Highlights = {
 };
 
 /**
- * The scan's result as rows for the welcome page. A row is shown only when there is
+ * The scan's result as rows for the welcome page, the agents it found first. A row is shown only when there is
  * something to say, and `tone` is "bad" only for what a security owner would act on.
  * An empty repository is "inconclusive" when nothing it could read was code, which
  * is not the same as clean and must not look like it.
@@ -73,6 +73,9 @@ export type Highlights = {
 export function scanRows(summary: any): { label: string; value: string; tone: "bad" | "warn" | "ok" | "neutral" }[] {
   const h: Highlights | undefined = summary?.highlights;
   const rows: { label: string; value: string; tone: "bad" | "warn" | "ok" | "neutral" }[] = [];
+  // The agents first: what was found, by name, before what they call.
+  const agents: string[] = summary?.agents_proposed || [];
+  if (agents.length) rows.push({ label: agents.length === 1 ? "Agent" : `${agents.length} agents`, value: agents.join(", "), tone: "ok" });
   if (!h) return rows;
   if (h.model_calls) {
     rows.push({
@@ -97,4 +100,14 @@ export function scanRows(summary: any): { label: string; value: string; tone: "b
   const frameworks: string[] = summary?.frameworks || [];
   if (frameworks.length) rows.push({ label: "Built on", value: frameworks.join(", "), tone: "neutral" });
   return rows;
+}
+
+/**
+ * Whether this workspace has a GitHub account connected, from `/api/me`: its
+ * `workspace` is the connected GitHub login when there is one and the org id when
+ * there is not. Decides whether the setup card leads with scanning a repository
+ * (/app/welcome) or with `agentfox init`.
+ */
+export function githubConnected(me: { workspace?: string | null; org_id?: string | null } | null): boolean {
+  return Boolean(me?.workspace && me.workspace !== me.org_id);
 }

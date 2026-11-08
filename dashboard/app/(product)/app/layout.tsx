@@ -17,6 +17,7 @@ import { MAP_PROJECT_COOKIE, NEW_PROJECT } from "@/lib/product/project";
 import { apiBase } from "@/lib/env";
 import { TopbarStats } from "@/components/product/TopbarStats";
 import { getEdition } from "@/lib/product/edition";
+import { githubConnected } from "@/lib/product/welcome";
 
 /**
  * The app chrome — sidebar, topbar — for everything under `/app`.
@@ -116,7 +117,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // empty cards and the connection card. A new signup and "+ Add a project" match.
   const projectCount = signedIn ? ((await safeApi<any>("/api/projects", { projects: [] })).projects ?? []).length : 0;
   const adding = signedIn && (project === NEW_PROJECT || projectCount === 0);
-  const newProject = adding ? { server: apiBase(), first: projectCount === 0 } : null;
+  // With GitHub connected, the card leads with scanning a repository (/app/welcome).
+  const github = adding ? githubConnected(await safeApi<any>("/api/me", null)) : false;
+  const newProject = adding ? { server: apiBase(), first: projectCount === 0, github } : null;
   return (
     <AppChrome
       newProject={newProject}

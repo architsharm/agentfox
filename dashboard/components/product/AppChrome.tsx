@@ -25,7 +25,7 @@ export function AppChrome({
   /** Above the page on normal routes (the setup banner); never on full-screen ones. */
   banner?: React.ReactNode;
   /** A project is being added (see NEW_PROJECT): pages show their empty state and the connection card. */
-  newProject?: { server: string; first: boolean } | null;
+  newProject?: { server: string; first: boolean; github?: boolean } | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname() || "";
@@ -40,7 +40,7 @@ export function AppChrome({
         {topbar}
         <main>
           {showBanner && banner}
-          {newProject && !gateOpen(pathname) ? <NewProjectPage server={newProject.server} first={newProject.first} /> : children}
+          {newProject && !gateOpen(pathname) ? <NewProjectPage server={newProject.server} first={newProject.first} github={newProject.github} /> : children}
         </main>
       </div>
     </div>
