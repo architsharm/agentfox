@@ -264,11 +264,11 @@ print(f"{mode:8} {outcome} | blocked={state.calls_blocked} would_have_blocked={s
 agentfox.off()`}</Code>
       <Output>{`observe  returned | blocked=0 would_have_blocked=1
 policy   returned | blocked=0 would_have_blocked=1
-enforce  Blocked: Prompt-injection or jailbreak attempt detected in user input.; System-prompt extraction attempt. | blocked=1 would_have_blocked=0
+enforce  Blocked: Jailbreaks & prompt injection: Prompt-injection or jailbreak attempt detected in user input (also: System prompt extraction). | blocked=1 would_have_blocked=0
 ---
 observe  returned | blocked=0 would_have_blocked=1
-policy   Blocked: Prompt-injection or jailbreak attempt detected in user input.; System-prompt extraction attempt. | blocked=1 would_have_blocked=0
-enforce  Blocked: Prompt-injection or jailbreak attempt detected in user input.; System-prompt extraction attempt. | blocked=1 would_have_blocked=0`}</Output>
+policy   Blocked: Jailbreaks & prompt injection: Prompt-injection or jailbreak attempt detected in user input (also: System prompt extraction). | blocked=1 would_have_blocked=0
+enforce  Blocked: Jailbreaks & prompt injection: Prompt-injection or jailbreak attempt detected in user input (also: System prompt extraction). | blocked=1 would_have_blocked=0`}</Output>
 
       <h3 id="auto-tools">Tool calls in a response</h3>
       <p>
@@ -655,6 +655,20 @@ PolicyViolation: capability.denied`}</Output>
           </tr>
         </tbody>
       </table></div>
+      <h3 id="catching-blocked">Catching Blocked</h3>
+      <p>
+        A refused call raises <code>agentfox.Blocked</code> in your code. Its message is one
+        sentence naming the rule; <code>exc.result</code> is the decision. Left uncaught, it
+        ends the program with one line, <code>AgentFox blocked this message: &lt;reason&gt;.
+        Catch agentfox.Blocked to handle it.</code>, rather than a traceback
+        (<code>AGENTFOX_VERBOSE=1</code> keeps the traceback). Catch it where you answer the
+        user:
+      </p>
+      <Code lang="python">{`try:
+    result = await Runner.run(agent, user_input)
+    reply = result.final_output
+except agentfox.Blocked as exc:
+    reply = exc.result.user_message or "Sorry, I can't help with that request."`}</Code>
       <p>
         <code>Blocked</code>, <code>PolicyViolation</code>, <code>ApprovalRequired</code> and{" "}
         <code>McpCallBlocked</code> all derive from <code>agentfox.AgentFoxError</code> (defined

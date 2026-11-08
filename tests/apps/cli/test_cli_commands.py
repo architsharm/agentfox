@@ -55,13 +55,21 @@ def _policy_mode(key: str) -> str | None:
 # ---------------------------------------------------------------------------
 
 
-def test_init_reports_each_pack_in_its_declared_mode(tmp_path):
+def test_init_starts_every_pack_watching_and_says_how_to_block(tmp_path):
+    """Audit 2026-11-08, B1: tool containment held a normal $50 transfer for a person
+    on the first day. A new workspace starts every pack watching."""
     result = runner.invoke(app, ["init", "--path", str(tmp_path)])
     assert result.exit_code == 0, result.output
     output = flat(result.output)
     assert "baseline observe" in output
-    assert "tool-containment enforce" in output
-    assert "nothing is blocked yet" not in output
+    assert "tool-containment observe" in output
+    assert "agentfox policy enforce tool-containment" in output
+    assert _policy_mode("tool-containment") == "observe"
+    # Switched to blocking by the user, a second init keeps it blocking.
+    assert runner.invoke(app, ["policy", "enforce", "tool-containment"]).exit_code == 0
+    again = flat(runner.invoke(app, ["init", "--path", str(tmp_path)]).output)
+    assert "tool-containment enforce" in again and "(kept)" in again
+    assert _policy_mode("tool-containment") == "enforce"
 
 
 def test_init_config_template_matches_the_settings_defaults(tmp_path):

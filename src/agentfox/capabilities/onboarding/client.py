@@ -212,7 +212,14 @@ def report(api: Any, console: Console, root: Path, server: str, key: str) -> dic
             "[yellow]●[/yellow] Connected, but no agents were found, so there is nothing "
             "to set up yet. Fix that (see below), then run this again."
         )
-    _print_missing_help(console)
+    if structure["agents"] and structure["tools"]:
+        # Found what it was looking for: the full list of shapes would bury the result.
+        console.print(
+            "[dim]Missing an agent or tool? What mapping recognises: "
+            "https://useagentfox.com/docs/discover — then run this again.[/dim]\n"
+        )
+    else:
+        _print_missing_help(console)
     return mapped
 
 

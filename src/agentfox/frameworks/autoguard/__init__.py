@@ -208,6 +208,16 @@ def _tools_governed_where_they_run(state: AutoState) -> bool:
     return (state.lc_tools and _FROM_LANGCHAIN.get()) or (state.crew_tools and _FROM_CREWAI.get())
 
 
+def _agent_of(state: AutoState) -> str:
+    """The agent the current call is credited to: the framework agent running it once
+    something handed off to it (`delegation.agent_for`), else the one `auto()` names."""
+    try:
+        return _delegation.agent_for(state.agent)
+    except Exception as exc:  # pragma: no cover - attribution must not break the call
+        log.debug("agentfox: could not tell which agent is running: %s", exc)
+        return state.agent
+
+
 #: Key in a governed request saying part of the conversation is held by the provider
 #: (the Responses API's `previous_response_id` / `conversation`), not in the request.
 _HISTORY_NOTE = "_agentfox_history_note"
@@ -486,7 +496,7 @@ def _record_turn(
             with session_scope() as session:
                 from sqlalchemy import select
 
-                agent = session.scalar(select(Agent).where(Agent.slug == state.agent))
+                agent = session.scalar(select(Agent).where(Agent.slug == _agent_of(state)))
                 record_turn(
                     session,
                     session_id=state.session_id or trace_id,
@@ -523,9 +533,80 @@ class Blocked(AgentFoxError, RuntimeError):
     """
 
     def __init__(self, result: Any, message: str | None = None, tool_call: Any = None) -> None:
-        super().__init__(message or result.reason or "blocked by policy")
+        super().__init__(message or _plain_reason(result))
         self.result = result
         self.tool_call = tool_call
+
+
+def _clip(text: str, limit: int = 160) -> str:
+    text = " ".join(str(text or "").split()).strip().rstrip(".;:, ")
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
+
+
+def _plain_reason(result: Any) -> str:
+    """One sentence for a refusal: the deciding rule by name and what it found, then
+    the others by name. ``result.reason`` joins every rule's reason with "; ", which
+    read as "Prompt injection detected.; System prompt extraction attempt.; ..."."""
+    from agentfox.core.rule_titles import rule_title
+
+    verdict = getattr(result, "verdict", "") or ""
+    rules = [
+        r
+        for r in getattr(result, "rules_fired", None) or []
+        if isinstance(r, dict) and r.get("effect") not in (None, "allow")
+    ]
+    # The rule that set the verdict first, applied rules before recorded-only ones.
+    rules.sort(key=lambda r: (r.get("effect") != verdict, r.get("mode") == "observe"))
+    if not rules:
+        reason = _clip(str(getattr(result, "reason", "") or "").split(";")[0])
+        return (reason or "blocked by policy") + "."
+    lead = rules[0]
+    title = rule_title(str(lead.get("rule_id") or ""), lead.get("reason"))
+    detail = _clip(str(lead.get("reason") or ""))
+    sentence = title if not detail or detail.lower() == title.lower() else f"{title}: {detail}"
+    others = [
+        rule_title(str(r.get("rule_id") or ""), r.get("reason"))
+        for r in rules[1:]
+        if r.get("rule_id") != lead.get("rule_id")
+    ]
+    others = [t for t in dict.fromkeys(others) if t != title]
+    if others:
+        sentence += f" (also: {', '.join(others)})"
+    return sentence + "."
+
+
+def _blocked_hook(previous: Callable[..., Any]) -> Callable[..., Any]:
+    """`sys.excepthook` for an app `auto()` governs: a `Blocked` nobody caught prints one
+    line saying what was refused and how to handle it, not a page of framework
+    traceback. Every other exception goes to the hook that was there before.
+    ``AGENTFOX_VERBOSE=1`` keeps the full traceback."""
+
+    def hook(exc_type: Any, exc: Any, tb: Any) -> Any:
+        verbose = os.environ.get("AGENTFOX_VERBOSE", "").lower() in ("1", "true", "yes")
+        if not isinstance(exc, Blocked) or verbose:
+            return previous(exc_type, exc, tb)
+        what = "a tool call" if getattr(exc, "tool_call", None) is not None else "this message"
+        reason = str(exc).removeprefix("agentfox: ").removeprefix("tool call ").rstrip(". ")
+        print(  # noqa: T201 - this is the app's last word; it must be seen
+            f"AgentFox blocked {what}: {reason}. Catch agentfox.Blocked to handle it.",
+            file=sys.stderr,
+        )
+        return None
+
+    hook.__agentfox__ = True  # type: ignore[attr-defined]
+    hook.__agentfox_previous__ = previous  # type: ignore[attr-defined]
+    return hook
+
+
+def _install_blocked_hook() -> None:
+    if not getattr(sys.excepthook, "__agentfox__", False):
+        sys.excepthook = _blocked_hook(sys.excepthook)
+
+
+def _remove_blocked_hook() -> None:
+    previous = getattr(sys.excepthook, "__agentfox_previous__", None)
+    if previous is not None:
+        sys.excepthook = previous
 
 
 #: Reserved kwargs the caller may pass to any patched entry point. Popped before the
@@ -616,7 +697,7 @@ def _run_preflight(
         # answerability gate, then per-message evaluation — the same one every other
         # call surface goes through.
         outcome = enforcer.preflight(
-            agent_slug=state.agent,
+            agent_slug=_agent_of(state),
             messages=messages,
             model=str(kwargs.get("model") or "default"),
             environment=state.environment,
@@ -648,7 +729,7 @@ def _run_preflight(
             )
             if new_user_text:
                 window = enforcer.check_conversation_window(
-                    agent_slug=state.agent,
+                    agent_slug=_agent_of(state),
                     session_id=state.session_id,
                     new_user_text=new_user_text,
                     trace=trace,
@@ -768,7 +849,7 @@ def _postflight(
             try:
                 with session_scope() as session:
                     enforcer = Enforcer(session)
-                    agent, identity, _shadow = enforcer.resolve(state.agent)
+                    agent, identity, _shadow = enforcer.resolve(_agent_of(state))
                     if text:
                         outbound, refused, rewrite = _evaluate_output(
                             call, session, enforcer, agent, identity, text, usage, provider_ms
@@ -892,13 +973,13 @@ def _record_handoff(
         kind="subagent",
         name=target,
         attributes={
-            ATTR_AGENT: state.agent,
+            ATTR_AGENT: _agent_of(state),
             "agentfox.child_agent": target,
             "agentfox.handoff.tool": tool,
             "agentfox.handoff.relation": relation,
         },
     )
-    record_edge(session, "agent", state.agent, "agent", target, "delegates_to")
+    record_edge(session, "agent", _agent_of(state), "agent", target, "delegates_to")
 
 
 def _handoff_where_it_runs(state: AutoState, tool: str, target: str, relation: str) -> str | None:
@@ -911,11 +992,11 @@ def _handoff_where_it_runs(state: AutoState, tool: str, target: str, relation: s
     token = _IN_AGENTFOX.set(True)
     try:
         with session_scope() as session:
-            agent = Enforcer(session).resolve(state.agent)[0]
+            agent = Enforcer(session).resolve(_agent_of(state))[0]
             trace = start_trace(
                 session,
                 agent_id=agent.id if agent else None,
-                agent_slug=state.agent,
+                agent_slug=_agent_of(state),
                 session_id=state.session_id,
                 environment=state.environment,
                 intent=state.intent,
@@ -1074,7 +1155,7 @@ def _govern_tool_calls(
         result = enforcer.guard_tool_call(
             in_process=in_process,
             exempt_rules=exempt,
-            agent_slug=state.agent,
+            agent_slug=_agent_of(state),
             intent=state.intent,
             tool_key=tool_call.name,
             arguments=tool_call.arguments,
@@ -1121,7 +1202,7 @@ def _govern_tool_calls(
             kind="tool",
             name=tool_call.name,
             attributes={
-                ATTR_AGENT: state.agent,
+                ATTR_AGENT: _agent_of(state),
                 ATTR_TOOL_NAME: tool_call.name,
                 ATTR_TOOL_IMPACT: (result.taint or {}).get("tool_impact"),
                 ATTR_VERDICT: result.verdict,
@@ -1151,7 +1232,7 @@ def _record_hosted(call: _Call, session: Any, hosted: list[_HostedCall]) -> None
             kind="tool",
             name=item.name,
             attributes={
-                ATTR_AGENT: state.agent,
+                ATTR_AGENT: _agent_of(state),
                 ATTR_TOOL_NAME: item.name,
                 "agentfox.tool.hosted": True,
                 "agentfox.tool.status": item.status,
@@ -1189,9 +1270,9 @@ def _evaluate_output(
         session,
         call.trace_id,
         kind="llm",
-        name=f"{state.agent}.invoke",
+        name=f"{_agent_of(state)}.invoke",
         attributes={
-            ATTR_AGENT: state.agent,
+            ATTR_AGENT: _agent_of(state),
             ATTR_REQUEST_MODEL: call.model,
             "gen_ai.usage.input_tokens": usage.get("input_tokens", 0),
             "gen_ai.usage.output_tokens": usage.get("output_tokens", 0),
@@ -2084,12 +2165,12 @@ def _lc_tool_decide(
     try:
         with session_scope() as session:
             enforcer = Enforcer(session)
-            agent, identity, _shadow = enforcer.resolve(state.agent)
+            agent, identity, _shadow = enforcer.resolve(_agent_of(state))
             _register_tool(session, name, None)
             trace = start_trace(
                 session,
                 agent_id=agent.id if agent else None,
-                agent_slug=state.agent,
+                agent_slug=_agent_of(state),
                 session_id=state.session_id,
                 environment=state.environment,
                 intent=state.intent,
@@ -2105,7 +2186,7 @@ def _lc_tool_decide(
             result = enforcer.guard_tool_call(
                 in_process={"observe": "none", "enforce": "all"}.get(state.mode, "enforced"),
                 exempt_rules=exempt,
-                agent_slug=state.agent,
+                agent_slug=_agent_of(state),
                 intent=state.intent,
                 tool_key=name,
                 arguments=arguments,
@@ -2146,7 +2227,7 @@ def _lc_tool_result(state: AutoState, trace_id: str | None, text: str) -> Enforc
             enforcer = Enforcer(session)
             trace = session.get(Trace, trace_id) if trace_id else None
             decision = enforcer.check_content(
-                agent_slug=state.agent,
+                agent_slug=_agent_of(state),
                 content=text,
                 surface="tool_result",
                 taint_source="tool_result",
@@ -2208,7 +2289,7 @@ def _remote_preflight(
         body = state.remote.post(
             "/v1/guard/input",
             {
-                "agent": state.agent,
+                "agent": _agent_of(state),
                 "content": str(message.get("content")),
                 "taint_source": (
                     "tool_result"
@@ -2265,7 +2346,7 @@ def _remote_tool_body(
     body = state.remote.post(
         "/v1/guard/tool_call",
         {
-            "agent": state.agent,
+            "agent": _agent_of(state),
             "tool": name,
             "arguments": arguments,
             "environment": state.environment,
@@ -2309,7 +2390,7 @@ def _remote_postflight(
         body = state.remote.post(
             "/v1/guard/output",
             {
-                "agent": state.agent,
+                "agent": _agent_of(state),
                 "content": text,
                 "surface": "output",
                 "environment": state.environment,
@@ -2391,7 +2472,7 @@ def _remote_tool_result(
     body = state.remote.post(
         "/v1/guard/input",
         {
-            "agent": state.agent,
+            "agent": _agent_of(state),
             "content": text,
             "surface": "tool_result",
             "taint_source": "tool_result",
@@ -2618,9 +2699,18 @@ def _crew_tool_method(
     return build
 
 
+def _crew_agent(args: tuple[Any, ...]) -> str | None:
+    """The CrewAI agent a scope runs (``self``), by its role; None when unreadable."""
+    try:
+        return _delegation.crew_member(args[0]) if args else None
+    except Exception:  # pragma: no cover - attribution must not break the task
+        return None
+
+
 def _crew_scope(*, is_async: bool) -> Callable[[Any], Any]:
     """Wrapper factory for a CrewAI agent running a task: marks the model calls made
-    inside it as CrewAI's, whose tool calls are decided where the tools run."""
+    inside it as CrewAI's, whose tool calls are decided where the tools run, and as
+    that agent's (`delegation.crew_member`)."""
 
     def build(original: Any) -> Any:
         if is_async:
@@ -2629,7 +2719,8 @@ def _crew_scope(*, is_async: bool) -> Callable[[Any], Any]:
             async def ascoped(*args: Any, **kwargs: Any) -> Any:
                 token = _FROM_CREWAI.set(True)
                 try:
-                    return await original(*args, **kwargs)
+                    with _delegation.active(_crew_agent(args)):
+                        return await original(*args, **kwargs)
                 finally:
                     _FROM_CREWAI.reset(token)
 
@@ -2639,7 +2730,8 @@ def _crew_scope(*, is_async: bool) -> Callable[[Any], Any]:
         def scoped(*args: Any, **kwargs: Any) -> Any:
             token = _FROM_CREWAI.set(True)
             try:
-                return original(*args, **kwargs)
+                with _delegation.active(_crew_agent(args)):
+                    return original(*args, **kwargs)
             finally:
                 _FROM_CREWAI.reset(token)
 
@@ -2769,9 +2861,11 @@ def auto(
       the enforced verdict stops the call (an enforce-mode policy, the kill switch,
       quarantine or a hard budget cap) — what the gateway would refuse. The shipped
       detector packs observe, so model traffic is not refused until
-      ``agentfox policy enforce baseline``; tool containment enforces from
-      ``agentfox init``, so a tool call it stops is refused. Start with
-      ``mode="observe"`` to see what that would be first.
+      ``agentfox policy enforce baseline``, and a new workspace starts tool
+      containment watching too (``agentfox policy enforce tool-containment`` starts
+      it blocking). A tool the agent was not given (once it holds any grant), a
+      destructive statement and the kill switch are refused whatever the packs'
+      modes. Start with ``mode="observe"`` to see what would be refused first.
     * ``"observe"`` — never raise; would-have-blocked is logged and counted.
     * ``"enforce"`` — strict: raise whenever the effective verdict blocks, even for a
       policy still in observe. For tests and CI.
@@ -2873,6 +2967,7 @@ def auto(
     # Hand-offs, agents used as tools and output tools, learned from the frameworks'
     # own objects: those imported already, and those imported after this line.
     _delegation.start(_PATCHED)
+    _install_blocked_hook()
     state.started = True
     _STATE = state
 
@@ -2922,5 +3017,6 @@ def off() -> list[str]:
     _PATCHED.clear()
     _TOOL_RESULTS.clear()
     _delegation.stop()
+    _remove_blocked_hook()
     _STATE = None
     return restored

@@ -290,6 +290,43 @@ def rule_applied(
     return rule.get("mode", "enforce") == "enforce" and decision_verdict != "allow"
 
 
+def recorded_only(rule: dict[str, Any], scope: tuple[str, frozenset[str]]) -> bool:
+    """Whether this rule only watched: its pack observes, or the caller let the call
+    run past it (``scope``: auto() in observe mode, or a rule it exempts)."""
+    in_process, exempt = scope
+    if rule.get("mode", "enforce") == "observe":
+        return True
+    return in_process == "none" or str(rule.get("rule_id") or "") in exempt
+
+
+def applied_verdict(
+    verdict: str,
+    rules_fired: list[dict[str, Any]],
+    scope: tuple[str, frozenset[str]] = ("enforced", frozenset()),
+) -> str:
+    """What happened to the call: ``verdict`` unless the caller let it run anyway.
+
+    auto() in observe mode (``"none"``) runs every call, and a rule it exempts (the
+    no-grants carve-out) stops nothing. A call nothing stopped is recorded as
+    allowed; its rules keep what they would have done, read as "would block". It
+    was recorded as blocked, and listed as Blocked, while it ran."""
+    in_process, exempt = scope
+    if verdict not in ("block", "escalate") or in_process not in ("none", "enforced"):
+        return verdict
+    if in_process == "none":
+        return "allow"
+    if not exempt:
+        return verdict
+    stopping = [
+        str(r.get("effect"))
+        for r in rules_fired
+        if r.get("effect") in ("block", "escalate") and not recorded_only(r, scope)
+    ]
+    if not stopping:
+        return "allow"
+    return "block" if "block" in stopping and verdict == "block" else "escalate"
+
+
 def decision_scope(taint_summary: dict[str, Any] | None) -> tuple[str, frozenset[str]]:
     """The caller's in-process scope as the enforcer recorded it on the decision."""
     summary = taint_summary or {}
@@ -399,6 +436,7 @@ def raise_containment_findings(
 
 __all__ = [
     "CAUSES",
+    "applied_verdict",
     "FINDING_TYPE",
     "cause_of",
     "containment_rules",
@@ -407,6 +445,7 @@ __all__ = [
     "matches_detector_rule",
     "outcome_words",
     "raise_containment_findings",
+    "recorded_only",
     "source_words",
     "story",
     "untrusted_source",

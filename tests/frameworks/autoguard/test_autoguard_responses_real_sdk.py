@@ -333,3 +333,56 @@ async def test_an_agent_used_as_a_tool_is_recorded_not_refused():
         assert [(s.name, s.attributes_json["agentfox.handoff.relation"]) for s in spans] == [
             ("spanish_agent", "as_tool")
         ]
+
+
+async def test_after_a_handoff_the_faq_agents_own_tool_is_the_faq_agents():
+    """Audit 2026-11-08, A1: the customer_service example. After triage hands off, the
+    FAQ agent's `faq_lookup_tool` was credited to triage (no grant) and listed as
+    Blocked with a high issue. It is the FAQ agent's, which holds it: allowed."""
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Agent, Finding
+    from agentfox.platform.identity.service import ensure_identity, grant_capability
+    from agentfox.platform.registry.service import register_agent
+
+    agents = pytest.importorskip("agents")
+    with session_scope() as session:
+        faq_row = register_agent(session, "faq-agent", name="FAQ Agent")
+        grant_capability(session, ensure_identity(session, faq_row), "faq_lookup_tool")
+        triage_row = register_agent(session, "triage-agent", name="Triage Agent")
+        grant_capability(session, ensure_identity(session, triage_row), "unrelated_tool")
+
+    @agents.function_tool
+    def faq_lookup_tool(question: str) -> str:
+        """Lookup frequently asked questions."""
+        return "One bag under 50 pounds."
+
+    server = _Server(
+        _response(_function_call("transfer_to_faq_agent", {})),
+        _response(
+            {
+                **_function_call("faq_lookup_tool", {"question": "bags?"}),
+                "id": "fc_2",
+                "call_id": "call_2",
+            },
+            response_id="r2",
+        ),
+        _response(_message("One bag under 50 pounds."), response_id="r3"),
+    )
+    _sync, client = _clients(server)
+    model = agents.OpenAIResponsesModel(model="gpt-4o-mini", openai_client=client)
+    faq = agents.Agent(name="FAQ Agent", model=model, tools=[faq_lookup_tool])
+    triage = agents.Agent(
+        name="Triage Agent",
+        model=model,
+        handoffs=[agents.handoff(agent=faq, tool_name_override="transfer_to_faq_agent")],
+    )
+    governed = auto(agent="triage-agent", quiet=True)
+
+    result = await agents.Runner.run(triage, "What is the baggage allowance?")
+    assert result.final_output == "One bag under 50 pounds."
+    assert governed.calls_blocked == 0 and governed.would_have_blocked == 0
+    with session_scope() as session:
+        decision = session.query(Decision).filter_by(surface="tool_args").one()
+        assert decision.tool_key == "faq_lookup_tool" and decision.verdict == "allow"
+        assert session.get(Agent, decision.agent_id).slug == "faq-agent"
+        assert session.query(Finding).filter(Finding.type == "containment").count() == 0

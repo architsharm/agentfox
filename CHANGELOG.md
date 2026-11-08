@@ -88,6 +88,30 @@ the file it came from.
 - Public copy: the footer uses the control-plane line, pricing says what is offline by
   default, the privacy page drops source line numbers, benchmark wording no longer
   contradicts itself (numbers unchanged).
+- **A new workspace starts every pack watching, tool containment included.** `agentfox init`
+  bound `tool-containment` in enforce, so `intent.undeclared_irreversible` held a normal $50
+  transfer with no stated task for a person, against the promise that nothing your users do
+  is blocked until you say so. `init` now binds every shipped pack in observe (a second run
+  keeps each pack's mode) and says how to start blocking: `agentfox policy enforce
+  tool-containment`, or Start blocking in the dashboard after its simulation. A missing
+  grant (once the agent holds any), a destructive statement such as `rm -rf ~/` and
+  tampering with AgentFox are refused whatever the packs' modes. The pack still declares
+  `enforce`: `agentfox up --mode defaults` ("Shipped defaults") now applies it, where it
+  left whatever `init` had bound; the demo seed and the benchmarks are unchanged.
+- **A guard response's `mode` is the mode of the rule that decided it.** A call held by an
+  enforcing rule read `mode: observe` when a watching rule had fired the same effect first,
+  or when a grant or a destructive statement decided it with every pack watching.
+- **`agentfox.Blocked` reads as one sentence**, naming the rule by its dashboard title
+  ("Jailbreaks & prompt injection: … (also: System prompt extraction).") instead of every
+  rule's reason joined with ".;". Left uncaught, it prints one line, "AgentFox blocked this
+  message: <reason>. Catch agentfox.Blocked to handle it.", instead of a traceback
+  (`AGENTFOX_VERBOSE=1` keeps it); every other exception reaches the previous
+  `sys.excepthook` untouched. The Python reference shows how to catch it.
+- `agentfox init --key` prints the full "Missing something?" list of recognised shapes only
+  when it found no agent or no tool; otherwise one line points to the docs.
+- `agentfox init --server <url>` with no `--key` reads `AGENTFOX_API_KEY`, so the key
+  stays out of `ps` and the shell history. A plain `agentfox init` still sets up this
+  machine. (The dashboard's setup card keeps `--key` until a release with this is out.)
 
 ### Fixed
 - "Start blocking" on Your rules said "0 would have been stopped" right after a words
@@ -96,6 +120,18 @@ the file it came from.
   would stop (`runs_own_would_stop` in a simulation).
 - "Your rules" said "2 rules · blocking" while one of them was only watching; it now
   says each rule's state ("1 blocking, 1 watching").
+- **After a hand-off, calls are credited to the agent running them.** `agentfox.auto()`
+  credited every call to the agent it names, so after the OpenAI Agents SDK triage agent
+  handed off, the FAQ agent's own `faq_lookup_tool` was listed as "Blocked: tools the agent
+  wasn't given" with a high issue "triage-agent tried to faq_lookup_tool without
+  permission". Each model and tool call now goes to the agent the framework is running:
+  the Agents SDK's current agent (read as its models are called), a LangGraph supervisor
+  or swarm member (the graph namespace it runs in) and a CrewAI agent running its task. The
+  agent a system starts with keeps the name `auto()` was given.
+- **A call that only would have been blocked is never recorded as blocked.** A tool call
+  `auto()` let run (observe mode, or the no-grants carve-out) was stored with verdict
+  `block` and listed as Blocked. It is recorded as allowed, in observe, with the rule kept
+  as what would have blocked it ("Would block" on the runs list).
 
 ### Security
 - `docs/screens/setup-key.png` showed a complete API key; it is re-captured with the

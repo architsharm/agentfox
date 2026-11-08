@@ -209,7 +209,7 @@
     "path": "init",
     "name": "init",
     "summary": "Set everything up.",
-    "help": "Set everything up. Idempotent, offline, and safe to run twice.\n\nCreates the database, applies migrations, loads the control catalog and the\nshipped policy packs, each in the mode it declares (baseline and\neu-ai-act-high-risk observe; tool-containment enforces; coding-agent only for\nagents this repo's coding-harness hooks govern), and writes a\nagentfox.toml carrying the real runtime defaults so they are visible rather than\nimplicit. AGENTFOX_* environment variables override that file.",
+    "help": "Set everything up. Idempotent, offline, and safe to run twice.\n\nCreates the database, applies migrations, loads the control catalog and the\nshipped policy packs, every one watching (observe) until you switch it to blocking\nwith `agentfox policy enforce <key>`; coding-agent only for agents this repo's\ncoding-harness hooks govern. Missing grants, destructive commands and tampering\nwith AgentFox are refused from the start. It writes an\nagentfox.toml carrying the real runtime defaults so they are visible rather than\nimplicit. AGENTFOX_* environment variables override that file.",
     "panel": "Start",
     "params": [
      {
@@ -264,7 +264,7 @@
       "required": false,
       "multiple": false,
       "default": "",
-      "help": "Your onboarding key from the dashboard's Connect screen. Maps the agent in this repo (reading the code, never running it), reports its names and shapes, and stays connected to run the attack tests on this machine: those do run your agent, with every tool faked."
+      "help": "Your onboarding key from the dashboard's Connect screen; with --server and no --key, AGENTFOX_API_KEY is used, which keeps the key out of `ps` and your shell history. Maps the agent in this repo (reading the code, never running it), reports its names and shapes, and stays connected to run the attack tests on this machine: those do run your agent, with every tool faked."
      },
      {
       "kind": "option",

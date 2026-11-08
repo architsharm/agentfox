@@ -19,7 +19,7 @@ A running list as we go. Newest priorities first. `[ ]` open · `[~]` started ·
   - Write a redaction back into the `message` item's `output_text` part.
   - `previous_response_id` / `conversation` keep history on OpenAI's servers, so the request does not carry the whole conversation. Provenance for earlier turns has to come from the session, or be marked as unknown.
   - Hosted tools (web search, file search, code interpreter) run at OpenAI. Record them from the output items; they can't be stopped before they run.
-- [ ] Workspace packs apply on top of a project's own guardrails: `tool-containment` enforces (destructive SQL/shell) and baseline watches. Decide whether a brand-new workspace should start everything in watch mode.
+- [x] Workspace packs apply on top of a project's own guardrails. Decided (audit 2026-11-08, B1): a brand-new workspace (`agentfox init`, `agentfox up`) starts every pack watching, tool-containment included; destructive SQL/shell, missing grants and tampering are refused regardless. The pack still declares `enforce`, used by `up --mode defaults`, the demo seed and the benchmarks.
 - [ ] **Attack test** (`capabilities/onboarding/runner.py`, `attacks.py`; the map's panel):
   - [ ] An "after" test of a project whose agents are still drafts is dominated by `capability.denied` (nothing granted until the agents are added; "Add all" grants the tools their code hands them). Every tool call is stopped and ordinary requests show as over-blocked. Say so on the panel, or test after the agents are added.
   - [ ] A re-run hides the previous "with basic guardrails" numbers until it finishes; keep the last finished one visible.
