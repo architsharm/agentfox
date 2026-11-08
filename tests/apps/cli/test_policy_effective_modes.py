@@ -35,9 +35,11 @@ def test_effective_reports_per_layer_and_per_rule_modes(session):
 def test_business_rules_are_listed_and_counted_like_other_rules(session, monkeypatch):
     """An approval limit is in force too: `policy effective` lists it with a title, and
     `policy list` counts it, so the CLI agrees with Your rules in the dashboard."""
+    from agentfox.apps.cli.commands import _shared
     from agentfox.capabilities.business import Ladder, save_ladder
 
-    monkeypatch.setenv("COLUMNS", "160")
+    # The console is made once per process; give it a wide terminal whatever ran first.
+    monkeypatch.setattr(_shared.console, "width", 160)
     save_policy(session, PolicyDocument.from_yaml(OBSERVED), bind_mode="observe")
     save_ladder(
         session,
