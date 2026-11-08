@@ -143,6 +143,16 @@ services:
         sync: false
       - key: GITHUB_CLIENT_SECRET
         sync: false
+      # Optional: Google and Microsoft sign-in. Each button shows only when both of
+      # its values are set. Callbacks: /api/auth/google/callback, /api/auth/microsoft/callback.
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: MICROSOFT_CLIENT_ID
+        sync: false
+      - key: MICROSOFT_CLIENT_SECRET
+        sync: false
       # The gateway's generated value, never a second one (see the gateway above).
       - key: AGENTFOX_SERVICE_AUTH_SECRET
         fromService:

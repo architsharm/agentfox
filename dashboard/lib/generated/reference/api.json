@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 330,
+ "count": 331,
  "routes": [
   {
    "method": "GET",
@@ -2997,6 +2997,51 @@
     }
    ],
    "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/auth/oauth/provision",
+   "section": "auth",
+   "audience": "operator",
+   "summary": "Find-or-create the user behind a Google or Microsoft sign-in, and mint a token.",
+   "description": "Find-or-create the user behind a Google or Microsoft sign-in, and mint a token.\n\nThe same trust model as :func:`provision`: the dashboard's callback completed the\nprovider's OAuth exchange and read the subject from the provider's own userinfo\nendpoint with the token it was issued. The account is keyed on the provider's\nsubject, never the email, for the reason given there. One person who signs in\nwith GitHub and later with Google gets two workspaces: there is no account\nlinking yet, and linking on a matching email would be the takeover that rule\nexists to prevent.",
+   "params": [
+    {
+     "name": "x-agentfox-service-secret",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "OAuthProvisionIn",
+    "fields": [
+     {
+      "name": "provider",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "subject",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "email",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
   },
   {
    "method": "GET",

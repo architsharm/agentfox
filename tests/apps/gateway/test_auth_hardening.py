@@ -140,6 +140,46 @@ def test_provision_refuses_a_deactivated_user(ready, production):
     assert _provision(client, gh_id="333").status_code == 403
 
 
+def _provision_oauth(client: TestClient, provider: str = "google", subject: str = "1001", **kw):
+    return client.post(
+        "/api/auth/oauth/provision",
+        headers={"X-AgentFox-Service-Secret": kw.pop("secret", SECRET)},
+        json={"provider": provider, "subject": subject, "email": "dev@corp.example", **kw},
+    )
+
+
+def test_oauth_provision_keys_on_the_provider_subject(ready, production):
+    client = _app()
+    first = _provision_oauth(client, subject="g-1").json()
+    again = _provision_oauth(client, subject="g-1").json()
+    assert again["user"]["id"] == first["user"]["id"]
+    # A different Google account with the same email is someone else.
+    assert _provision_oauth(client, subject="g-2").json()["user"]["id"] != first["user"]["id"]
+
+
+def test_oauth_subjects_never_collide_across_providers(ready, production):
+    client = _app()
+    github = _provision(client, gh_id="555").json()
+    google = _provision_oauth(client, "google", "555").json()
+    microsoft = _provision_oauth(client, "microsoft", "555").json()
+    assert len({github["user"]["id"], google["user"]["id"], microsoft["user"]["id"]}) == 3
+
+
+def test_oauth_provision_refuses_bad_input_and_bad_secrets(ready, production, monkeypatch):
+    client = _app()
+    assert _provision_oauth(client, provider="myspace").status_code == 400
+    assert _provision_oauth(client, subject="  ").status_code == 400
+    assert _provision_oauth(client, secret="guess").status_code == 401
+    monkeypatch.setattr(get_settings(), "service_auth_secret", DEFAULT_SERVICE_AUTH_SECRET)
+    assert _provision_oauth(client, secret=DEFAULT_SERVICE_AUTH_SECRET).status_code == 503
+
+
+def test_oauth_sign_in_mints_a_working_session(ready, production):
+    client = _app()
+    token = _provision_oauth(client, "microsoft", "ms-7").json()["token"]
+    assert client.get("/api/me", headers={"Authorization": f"Bearer {token}"}).status_code == 200
+
+
 # ---------------------------------------------------------------------------
 # #72 — sign out revokes; sign-in does not accumulate tokens
 # ---------------------------------------------------------------------------
