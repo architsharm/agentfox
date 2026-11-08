@@ -2,15 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { match, type SearchItem } from "@/lib/product/searchIndex";
 
-type NavItem = { label: string; href: string; group: string };
+type NavItem = { label: string; href: string; group: string; sub?: string };
 
 /**
- * The shell had no way to jump straight to a page or a specific record — only
- * sequential nav clicks. Full entity search would need a backend endpoint this
- * pass doesn't add; what this does instead: fuzzy-match nav pages by name, and
- * recognise the ID prefixes the product already hands out everywhere it links to a
- * trace or finding (trc_..., fnd_...) so pasting one jumps straight there.
+ * Jump to a page or a record. Pages match by name; agents, tools, rules and open
+ * issues come from `/api/search` (fetched once when the palette first opens, then
+ * matched in the browser, so typing stays instant); a pasted trace or finding id
+ * (trc_..., fnd_...) jumps straight there. It used to search page names only.
  */
 export function CommandSearch({ nav }: { nav: NavItem[] }) {
   const [open, setOpen] = useState(false);
@@ -18,6 +18,8 @@ export function CommandSearch({ nav }: { nav: NavItem[] }) {
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const [records, setRecords] = useState<SearchItem[] | null>(null);
+  const loading = useRef(false);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -37,10 +39,21 @@ export function CommandSearch({ nav }: { nav: NavItem[] }) {
       setQ("");
       setActive(0);
       setTimeout(() => inputRef.current?.focus(), 0);
+      if (!loading.current) {
+        loading.current = true;
+        fetch("/api/search", { cache: "no-store" })
+          .then((r) => (r.ok ? r.json() : { items: [] }))
+          .then((body) => setRecords(Array.isArray(body?.items) ? body.items : []))
+          .catch(() => setRecords([]))
+          // Fetched again on the next open, so a new agent or issue shows up.
+          .finally(() => {
+            loading.current = false;
+          });
+      }
     }
   }, [open]);
 
-  const results = useMemo(() => {
+  const results = useMemo<SearchItem[]>(() => {
     const trimmed = q.trim();
     const jump = /^(trc_|fnd_)[a-zA-Z0-9]+$/.test(trimmed)
       ? [
@@ -52,12 +65,10 @@ export function CommandSearch({ nav }: { nav: NavItem[] }) {
         ]
       : [];
     if (!trimmed) return [...jump, ...nav];
-    const needle = trimmed.toLowerCase();
-    const matched = nav.filter(
-      (item) => item.label.toLowerCase().includes(needle) || item.group.toLowerCase().includes(needle),
-    );
-    return [...jump, ...matched];
-  }, [q, nav]);
+    const pages = match(nav as SearchItem[], trimmed, 8);
+    const found = match(records || [], trimmed, 30);
+    return [...jump, ...pages, ...found];
+  }, [q, nav, records]);
 
   function go(href: string) {
     setOpen(false);
@@ -95,11 +106,13 @@ export function CommandSearch({ nav }: { nav: NavItem[] }) {
               go(results[active].href);
             }
           }}
-          placeholder="Search pages, or paste a trace/finding id (trc_.../fnd_...)"
+          placeholder="Search agents, tools, rules, issues and pages, or paste a trc_/fnd_ id"
           className="cmdk-input"
         />
         <div className="cmdk-list">
-          {results.length === 0 && <div className="cmdk-empty small muted">No matches.</div>}
+          {results.length === 0 && (
+            <div className="cmdk-empty small muted">{records === null && q.trim() ? "Searching…" : "No matches."}</div>
+          )}
           {results.map((item, i) => (
             <button
               type="button"
@@ -108,7 +121,10 @@ export function CommandSearch({ nav }: { nav: NavItem[] }) {
               onMouseEnter={() => setActive(i)}
               onClick={() => go(item.href)}
             >
-              <span className="small">{item.label}</span>
+              <span className="small">
+                {item.label}
+                {item.sub ? <span className="muted"> · {item.sub}</span> : null}
+              </span>
               <span className="small muted">{item.group}</span>
             </button>
           ))}
