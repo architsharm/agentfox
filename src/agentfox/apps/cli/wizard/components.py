@@ -309,7 +309,7 @@ def _coding_ask(run: Run) -> None:
         picked = run.prompter.multiselect(
             "Which coding agents?",
             [Choice(h.name, h.display, "in use here" if h.present else "") for h in harnesses],
-            run.ctx.saved.get("harnesses", present),
+            run.ctx.saved.get("harnesses") or present,
         )
     else:
         picked = present
