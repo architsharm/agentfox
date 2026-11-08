@@ -81,7 +81,7 @@ export const BLOG_POSTS: BlogPost[] = [
     readMinutes: 7,
     image: {
       src: "/blog/latency-benchmark.png",
-      alt: "The AgentFox latency benchmark page: per-check latency for the deterministic, default and extended layers.",
+      alt: "The AgentFox latency benchmark page: median latency per check with the ML classifier, per tool call, and without the model.",
       width: 1600,
       height: 900,
     },
@@ -164,7 +164,7 @@ export const BLOG_POSTS: BlogPost[] = [
     readMinutes: 8,
     image: {
       src: "/blog/mcp-page.png",
-      alt: "The AgentFox MCP security page: six MCP risks, four covered and two marked as gaps.",
+      alt: "The AgentFox docs page for MCP servers: scan the servers in a repository and on your machine, then pin each server's version.",
       width: 1600,
       height: 900,
     },
@@ -219,7 +219,7 @@ export const BLOG_POSTS: BlogPost[] = [
     readMinutes: 7,
     image: {
       src: "/blog/hooks-page.png",
-      alt: "The AgentFox coding agents page, showing which Claude Code hooks can stop a call.",
+      alt: "The AgentFox docs page for Claude Code and Codex: the hooks that check shell commands, file edits and MCP calls before they run.",
       width: 1600,
       height: 900,
     },
@@ -302,7 +302,7 @@ export const BLOG_POSTS: BlogPost[] = [
     readMinutes: 8,
     image: {
       src: "/blog/evidence-page.png",
-      alt: "The AgentFox evidence and audit page: every allowed and blocked call recorded in a chain you can verify.",
+      alt: "The AgentFox docs page for the audit trail: every allowed and blocked call recorded in a chain you can verify.",
       width: 1600,
       height: 900,
     },

@@ -3942,7 +3942,13 @@
 .blog-cta-title { margin: 0 !important; font-size: 18px !important; font-weight: 650; color: var(--mk-ink-text) !important; }
 .blog-cta-body { margin: 6px 0 0 !important; font-size: 15px !important; color: var(--mk-ink-muted) !important; }
 .blog-cta-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-.blog-cta .mk-btn-outline { color: var(--mk-ink-text); border-color: var(--mk-ink-border); }
+/* The callout is dark in both themes, so its secondary button is light in both.
+   Through var(--mk-ink-text) it picked up the page's text colour after the token
+   remap and was dark-on-dark ("Quickstart" invisible in the 0.5 release post). */
+.blog-cta a.mk-btn-outline,
+.docs-doc .blog-cta a.mk-btn-outline { color: #ecedf1; border-color: rgba(255, 255, 255, 0.28); background: transparent; }
+.blog-cta a.mk-btn-outline:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.45); }
+:root[data-theme="dark"] .blog-cta { border: 1px solid rgba(255, 255, 255, 0.1); }
 .docs-doc .blog-cta a.mk-btn { text-decoration: none; }
 .docs-doc .blog-cta a.mk-btn-primary { color: var(--mk-cta-fg, #fff); }
 
@@ -4150,3 +4156,10 @@
 .docs-cards strong { display: block; color: var(--mk-text); }
 .docs-cards span { display: block; margin-top: 4px; font-size: 14px; color: var(--mk-muted); }
 @media (max-width: 640px) { .docs-pager { grid-template-columns: 1fr; } .docs-pager-next { grid-column: 1; text-align: left; } }
+
+/* Blog screenshots are light captures of the product and the site. On a dark page
+   they were the brightest thing on screen by far; a hairline frame and a slight dim
+   keep them readable without glare. */
+:root[data-theme="dark"] :is(.blog-cover, .blog-figure) .shot-frame,
+:root[data-theme="dark"] .blog-card-img { border-color: var(--mk-border-strong); }
+:root[data-theme="dark"] :is(.blog-cover, .blog-figure, .blog-card-img) img { filter: brightness(0.82) contrast(1.04); }
