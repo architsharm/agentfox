@@ -23,11 +23,10 @@ export function sortRepos(repos: Repo[]): Repo[] {
 }
 
 /**
- * Where AgentFox is installed from for `agentfox up`. From git rather than PyPI
- * while the published release predates `up`, the same choice scripts/quickscan.sh
- * makes, so the command works the day this page ships.
+ * Where AgentFox is installed from for `agentfox up`: the published package, the
+ * same one every other install line on the site and in the docs uses.
  */
-export const INSTALL_SPEC = "git+https://github.com/architsharm/agentfox";
+export const INSTALL_SPEC = "agentfox";
 
 /** The hosted product's own address: `up --target cloud` links back to it. */
 const CLOUD_HOST = "useagentfox.com";
@@ -49,8 +48,7 @@ export function upCommand({ gateway, token, siteUrl }: { gateway: string; token:
   }
   return [
     `AGENTFOX_API_TOKEN=${token} \\`,
-    `  uvx --from ${INSTALL_SPEC} \\`,
-    `  agentfox up --target ${target} --api-url ${gateway} --mode observe --yes`,
+    `  uvx ${INSTALL_SPEC} up --target ${target} --api-url ${gateway} --mode observe --yes`,
   ].join("\n");
 }
 
