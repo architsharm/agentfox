@@ -91,6 +91,14 @@ class Context:
         return sorted(names)
 
     @property
+    def agent_tools(self) -> dict[str, str]:
+        """Tool name -> the agent it runs, for each agent another uses as a tool
+        (``as_tool`` edges whose tool name the scan could read)."""
+        return {
+            e.tool: e.child for e in self.report.agent_edges if e.relation == "as_tool" and e.tool
+        }
+
+    @property
     def mcp_names(self) -> list[str]:
         return sorted({s.name for s in self.report.mcp_servers if s.name})
 

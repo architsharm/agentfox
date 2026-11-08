@@ -54,6 +54,8 @@ class SubmittedAgentEdge(BaseModel):
     parent: str
     child: str
     relation: str = "delegates"
+    #: For ``as_tool``: the tool name the parent's model calls to run the child.
+    tool: str | None = None
 
 
 class ScanSubmission(BaseModel):

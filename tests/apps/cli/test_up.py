@@ -599,6 +599,84 @@ def test_the_agents_own_tools_are_granted_not_left_to_default_deny(project):
     assert {"lookup_order", "refund_payment"} <= _grants_of("support-bot")
 
 
+AGENTS_AS_TOOLS_PY = """
+from agents import Agent, Runner, function_tool
+
+
+@function_tool
+def get_user_name() -> str:
+    return "Kaz"
+
+
+spanish_agent = Agent(name="spanish_agent", instructions="Spanish.", tools=[get_user_name])
+french_agent = Agent(name="french_agent", instructions="French.")
+orchestrator = Agent(
+    name="orchestrator",
+    instructions="Route.",
+    tools=[
+        spanish_agent.as_tool(tool_name="respond_spanish", tool_description="Spanish"),
+        french_agent.as_tool(tool_name="respond_french", tool_description="French"),
+    ],
+)
+
+if __name__ == "__main__":
+    Runner.run_sync(orchestrator, "hola")
+"""
+
+AUTOGEN_AGENT_TOOL_PY = """
+import asyncio
+
+from autogen_agentchat.agents import AssistantAgent
+from autogen_agentchat.tools import AgentTool
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+
+
+async def main() -> None:
+    client = OpenAIChatCompletionClient(model="gpt-4o-mini")
+    math_agent = AssistantAgent("math_expert", model_client=client, description="Math.")
+    math_agent_tool = AgentTool(math_agent)
+    chemistry_agent = AssistantAgent("chemistry_expert", model_client=client)
+    chemistry_agent_tool = AgentTool(chemistry_agent)
+    agent = AssistantAgent(
+        "assistant", model_client=client, tools=[math_agent_tool, chemistry_agent_tool]
+    )
+    await agent.run(task="What is the integral of x^2?")
+
+
+asyncio.run(main())
+"""
+
+
+@pytest.mark.parametrize(
+    ("source", "subagent_tools"),
+    [
+        (AGENTS_AS_TOOLS_PY, {"respond_spanish", "respond_french"}),
+        (AUTOGEN_AGENT_TOOL_PY, {"math_expert", "chemistry_expert"}),
+    ],
+)
+def test_agents_used_as_tools_are_declared_and_granted(tmp_path, source, subagent_tools):
+    """The 2026-11-08 re-audit: the scan mapped "orchestrator uses spanish_agent as a
+    tool", and `up` granted only the functions it found, so the orchestrator calling
+    its own sub-agent was refused under default-deny. The sub-agent tools are declared
+    (they reach nothing themselves) and granted."""
+    import re
+
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Tool
+
+    root = tmp_path / "multi"
+    root.mkdir()
+    (root / ".git").mkdir()
+    (root / "main.py").write_text(source)
+    result = _up(str(root), "--yes")
+    assert result.exit_code == 0, result.output
+    slug = re.search(r'agentfox\.auto\("([^"]+)"', (root / "main.py").read_text()).group(1)
+    assert subagent_tools <= _grants_of(slug)
+    with session_scope() as session:
+        impacts = {t.key: t.impact for t in session.query(Tool).all()}
+    assert {impacts[name] for name in subagent_tools} == {"read"}
+
+
 def test_the_coding_agent_may_use_the_mcp_servers_it_loads(project, home):
     """A repository set up for a coding agent and holding no agent of its own: hooks
     and the grants of the servers the coding agent loads are the default."""

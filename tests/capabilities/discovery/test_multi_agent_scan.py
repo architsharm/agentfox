@@ -91,6 +91,68 @@ def test_openai_agents_handoffs_tools_and_as_tool(tmp_path):
     assert report.multi_agent
 
 
+def _as_tools(report: ScanReport) -> dict[str, str | None]:
+    return {e.child: e.tool for e in report.agent_edges if e.relation == "as_tool"}
+
+
+def test_an_agent_used_as_a_tool_is_named_as_its_parent_calls_it(tmp_path):
+    """The tool name the parent's model calls, so `agentfox up` can grant it: given
+    (``tool_name=``), else the Agents SDK's default, the agent's name snake-cased."""
+    _write(
+        tmp_path,
+        "main.py",
+        """
+        from agents import Agent
+
+        spanish_agent = Agent(name="spanish_agent", instructions="Spanish.")
+        summarizer = Agent(name="Summary Writer", instructions="Summarize.")
+        orchestrator = Agent(
+            name="orchestrator",
+            instructions="Route.",
+            tools=[
+                spanish_agent.as_tool(tool_name="respond_spanish", tool_description="Spanish"),
+                summarizer.as_tool(tool_description="Summarize"),
+            ],
+        )
+        """,
+    )
+    report = scan(tmp_path)
+    assert _as_tools(report) == {
+        "spanish-agent": "respond_spanish",
+        "summary-writer": "summary_writer",
+    }
+    assert {"parent": "orchestrator", "child": "spanish-agent", "relation": "as_tool",
+            "tool": "respond_spanish"} in [e.to_json() for e in report.agent_edges]  # fmt: skip
+
+
+def test_autogen_agent_tools_held_in_variables(tmp_path):
+    """autogen's README: `math_agent_tool = AgentTool(math_agent)`, then
+    `tools=[math_agent_tool, ...]`. The tool is the agent's name."""
+    _write(
+        tmp_path,
+        "main.py",
+        """
+        from autogen_agentchat.agents import AssistantAgent
+        from autogen_agentchat.tools import AgentTool
+
+        async def main():
+            math_agent = AssistantAgent("math_expert", model_client=client)
+            math_agent_tool = AgentTool(math_agent, return_value_as_last_message=True)
+            chemistry_agent = AssistantAgent("chemistry_expert", model_client=client)
+            chemistry_agent_tool = AgentTool(chemistry_agent)
+            agent = AssistantAgent(
+                "assistant", model_client=client, tools=[math_agent_tool, chemistry_agent_tool]
+            )
+        """,
+    )
+    report = scan(tmp_path)
+    assert _as_tools(report) == {
+        "math-expert": "math_expert",
+        "chemistry-expert": "chemistry_expert",
+    }
+    assert _agents(report)["assistant"]["tools"] == []
+
+
 def test_cross_file_reference_resolves_by_module_level_name(tmp_path):
     _write(
         tmp_path,
