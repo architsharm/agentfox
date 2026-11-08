@@ -238,6 +238,9 @@ nav.side .side-foot .theme-toggle { margin: 0; padding: 0; border: 0; }
 .shell .card .l { font-size: 12px; color: var(--af-muted); }
 .shell .card.bad, .shell .card.warn, .shell .card.ok { background: var(--af-surface); border-color: var(--af-line); }
 .shell pre { background: var(--af-subtle); border: 1px solid var(--af-line); border-radius: var(--af-r-control); font-size: 12px; }
+/* Tailwind-built components draw their own box around a <pre> (tw-reset.css); the
+   rule above would put a second border inside it. */
+.shell .tw pre { background: transparent; border: 0; border-radius: 0; }
 
 /* ── Tables: subtle header band, 40px rows, hairlines ──────────────────────── */
 :where(.shell) table { font-size: 13px; }
