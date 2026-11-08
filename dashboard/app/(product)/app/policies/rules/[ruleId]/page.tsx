@@ -10,11 +10,12 @@ import { RuleTests } from "@/components/product/policies/RuleTests";
 import { RuleTuner, type RuleScope } from "@/components/product/policies/RuleTuner";
 import { RuleChecks } from "@/components/product/policies/RuleChecks";
 import { checksFor, type CheckInfo } from "@/lib/product/checks";
+import { versionNote } from "@/lib/product/policyWords";
 import { RANGE_DAYS, metricsQs, runsHref } from "@/lib/product/observe";
 import { loadRules, ruleMode, type RuleInfo } from "@/lib/product/rules";
 import { ensureRange } from "@/lib/product/range";
 import { RangeProvider } from "@/components/kit/RangeContext";
-import { categoryLabel, rangeOf, ruleCategory, ruleTitle } from "@/lib/product/vocab";
+import { WOULD, categoryLabel, rangeOf, ruleCategory, ruleTitle } from "@/lib/product/vocab";
 
 export const metadata: Metadata = appPageMetadata("Rule");
 export const dynamic = "force-dynamic";
@@ -60,7 +61,8 @@ export default async function RulePage({ params, searchParams }: { params: Promi
         hint={ruleId.startsWith("custom.") ? undefined : rule?.description}
         meta={
           <>
-            {rule && <ActionPill effect={rule.effect} />}
+            {/* While its library only watches, the rule would block: it is not live, so not red. */}
+            {rule && (mode === "enforce" || !WOULD[rule.effect] ? <ActionPill effect={rule.effect} /> : <Pill tone="outline">{WOULD[rule.effect]}</Pill>)}
             <ModePill mode={mode} />
             <Pill tone="outline">{categoryLabel(ruleCategory(ruleId))}</Pill>
           </>
@@ -146,17 +148,22 @@ export default async function RulePage({ params, searchParams }: { params: Promi
                   .filter((p) => rule.packs.some((x) => x.key === p.key))
                   .flatMap((p) => p.versions.map((v: any) => ({ ...v, pack: p, live: v.version === p.boundVersion })))
                   .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
-                  .map((v) => (
+                  .map((v) => {
+                    // "injection.direct: {'min_score': 0.5}" reads "Sensitivity changed from Medium to High".
+                    const note = versionNote(v.notes, (id) => ruleTitle(id, rules.find((r) => r.rule_id === id)?.description));
+                    const other = note.rule && note.rule !== ruleTitle(ruleId, rule.description) ? `${note.rule}: ` : "";
+                    return (
                     <tr key={v.id}>
                       <td>
-                        <span className="k-name">{v.notes || `Version ${v.version}`}</span>
+                        <span className="k-name">{note.text ? `${other}${note.text}` : `Version ${v.version}`}</span>
                         <span className="sub">{v.pack.name}</span>
                       </td>
                       <td className="tight">{v.live ? <Pill tone="ok">Live</Pill> : <Pill tone="outline">v{v.version}</Pill>}</td>
                       <td className="tight muted">{v.author}</td>
                       <td className="tight muted">{ago(v.created_at)}</td>
                     </tr>
-                  ))}
+                    );
+                  })}
               </tbody>
             </table>
           ) : (
@@ -222,6 +229,8 @@ async function CheckedBy({ finds, agent }: { finds: string; agent?: string }) {
     surfaces: d.surfaces || [],
     available: Boolean(d.available),
     finds: d.finds || "",
+    enabled: d.always_on ? true : Boolean(d.enabled),
+    unavailable: d.unavailable_reason || null,
   }));
   const on: string[] = Array.from(new Set((map?.stages || []).flatMap((st: any) => st.detectors || [])));
   return (

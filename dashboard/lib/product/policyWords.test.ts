@@ -41,7 +41,7 @@ describe("a version's notes", () => {
   });
 
   it("leaves notes a person wrote as they are", () => {
-    expect(versionNote("loaded by agentfox init")).toEqual({ text: "loaded by agentfox init" });
+    expect(versionNote("loaded by agentfox init")).toEqual({ text: "Loaded by agentfox init" });
     expect(versionNote(null)).toEqual({ text: "" });
   });
 });

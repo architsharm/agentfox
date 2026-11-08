@@ -148,7 +148,7 @@ function changeWords(field: string, after: unknown, before: unknown): string {
 export function versionNote(notes: string | null | undefined, ruleTitle?: (id: string) => string): { text: string; rule?: string } {
   const raw = (notes || "").trim();
   const m = /^([a-z0-9_.-]+): (\{.*?\})(?: \(was (\{.*\})\))?$/i.exec(raw);
-  if (!m) return { text: raw };
+  if (!m) return { text: raw.charAt(0).toUpperCase() + raw.slice(1) };
   const after = parsePyDict(m[2]);
   if (!after || !Object.keys(after).length) return { text: raw };
   const before = (m[3] && parsePyDict(m[3])) || {};

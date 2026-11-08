@@ -56,12 +56,13 @@ import {
   type ToolFilter,
   type ToolGroup,
 } from "@/lib/product/guardrailMap";
-import { IMPACT, SENSITIVITY, detectorName, ruleTitle, sensitivityOf, wouldDo } from "@/lib/product/vocab";
+import { IMPACT, SENSITIVITY, ruleTitle, sensitivityOf, wouldDo } from "@/lib/product/vocab";
 import { AttackTests } from "./AttackTests";
 import { ControlButton } from "./AgentStatus";
 import { breakerLabel, isHalted, stateLabel, type AgentFacts } from "@/lib/product/agentStatus";
 import { projectHref } from "@/lib/product/project";
 import { businessRuleName } from "@/lib/product/policyWords";
+import { checkName } from "@/lib/product/checks";
 
 // The surfaces a custom rule can check; a rail's others (retrieval, tool results) have no rule form yet.
 const RULE_SURFACES = ["input", "output", "tool_args"];
@@ -861,20 +862,14 @@ export type Catalog = {
 };
 
 const TIER: Record<string, { name: string; note: string }> = {
-  jev: { name: "Jev", note: "hosted judge model" },
+  jev: { name: "Hosted judge model (Jev)", note: "TypeSafe System One" },
   local_llm: { name: "Your LLM", note: "self-hosted, nothing leaves" },
   llm: { name: "Hosted LLM", note: "e.g. OpenAI, Anthropic" },
 };
 /** The order judges are asked in, for the open-ended questions these checks ask. */
 const CHAIN = ["jev", "local_llm", "llm"];
 
-/** Names the catalogue leaves blank. */
-const MODULE_NAME: Record<string, string> = {
-  "custom.validators": "Your validator rules",
-  "injection.judgment": "Prompt injection (judge)",
-  "validator.prompt_injection_llm": "Prompt injection (validator judge)",
-};
-const moduleName = (d: { key: string; label: string }) => MODULE_NAME[d.key] || d.label || detectorName(d.key);
+const moduleName = (d: { key: string; label: string }) => checkName(d);
 /** What kind of check each source is, in a word. */
 const KIND: Record<string, string> = { builtin: "Regex", open_source: "ML", yours: "Custom", llm_judge: "LLM" };
 

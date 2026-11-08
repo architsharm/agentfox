@@ -77,7 +77,9 @@ export function RuleTuner({
   const [pack, setPack] = useState((workspace[0] || packs[0])?.key || "");
   const base = packs.find((p) => p.key === pack) || packs[0];
   const tree = scopes[pack] || scopes[workspace[0]?.key || ""];
-  const [some, setSome] = useState(Boolean(agent && tree));
+  // Start where the rule stands now: on "Only some agents" when the chosen agent has
+  // a copy of its own, else on every agent, where the workspace rule applies.
+  const [some, setSome] = useState(Boolean(agent && tree?.agents.some((a) => a.slug === agent && a.own)));
   const [chosen, setChosen] = useState<string[]>(agent ? [agent] : []);
   const [withSubs, setWithSubs] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -94,6 +96,8 @@ export function RuleTuner({
     ? { ...base, effect: own.effect, enabled: own.enabled, minScore: own.min_score, message: own.message, onBlock: own.on_block }
     : base;
   const packChoices = some ? workspace : packs;
+  // A chosen Block or Ask in a library that only watches is not live yet: say so.
+  const notLive = current.enabled && current.effect !== "allow" && base.mode !== "enforce";
 
   const reset = () => {
     setPreview(null);
@@ -165,8 +169,8 @@ export function RuleTuner({
     <div className="k-form">
       {tree && workspace.length > 0 && (
         <div className="k-field">
-          <label>Applies to</label>
-          <div className="k-seg" role="group" aria-label="Applies to">
+          <label>Apply this change to</label>
+          <div className="k-seg" role="group" aria-label="Apply this change to">
             <button disabled={busy} className={!some ? "active" : ""} onClick={() => { reset(); setSome(false); }}>
               Every agent
             </button>
@@ -231,15 +235,23 @@ export function RuleTuner({
       )}
       <div className="k-field">
         <label>When it fires</label>
-        <div className="k-seg" role="group" aria-label="Action">
+        <div className="k-form" style={{ gap: 6 }}>
+        <div className={`k-seg${notLive ? " gm-seg-watching" : ""}`} role="group" aria-label="Action">
           {ACTION_CHOICES.map((a) => {
             const active = current.enabled && (current.effect === a.effect || (a.effect === "redact" && ["mask", "tokenize"].includes(current.effect)));
             return (
               <button key={a.effect} disabled={busy} className={active ? "active" : ""} onClick={() => !active && propose({ effect: a.effect, enabled: true }, a.label)}>
                 {a.label}
+                {active && notLive ? <span className="gm-seg-watch"> · watching</span> : null}
               </button>
             );
           })}
+        </div>
+        {notLive ? (
+          <span className="k-muted gm-watch-note">
+            Watching: {base.name} only records what this rule would do and stops nothing. Start blocking from its library.
+          </span>
+        ) : null}
         </div>
       </div>
       <div className="k-field">
