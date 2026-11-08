@@ -20,8 +20,28 @@ What is governed on each call: the request messages (pre-flight), the response t
 conversation (a value copied out of a ``role="tool"`` message is ``tool_result``
 taint), and a tool seen for the first time is registered with an *inferred* impact
 for a human to confirm. A refused tool call raises `Blocked` instead of returning
-the response, so the caller's code never runs it. The OpenAI Responses API
-(``client.responses.create``) is not patched, so its calls are not governed here.
+the response, so the caller's code never runs it.
+
+The OpenAI Responses API (``client.responses.create`` / ``.parse`` / ``.stream``,
+sync and async, buffered, streamed, ``with_streaming_response`` and
+``with_raw_response``) is governed the same way: ``instructions`` and ``input`` are
+the request messages (a ``function_call_output`` item is a tool's result, so
+``tool_result`` taint), the ``message`` items' text is the response text, and each
+``function_call`` item is a tool call. This is what the OpenAI Agents SDK calls the
+model through, so ``auto()`` alone governs an Agents SDK app: its model calls, the
+tool calls the model asks for (before the SDK runs them) and the tool results fed
+back. Tools OpenAI hosts (web search, file search, code interpreter, hosted MCP) have
+already run when the response arrives; they are recorded, not authorised. A request
+that continues a conversation held on OpenAI's servers (``previous_response_id``,
+``conversation``) carries only the new turn, so provenance for the earlier turns is
+recorded as unknown rather than guessed.
+
+CrewAI tools are governed where they run, as LangChain's are: a CrewAI agent writes
+its tool calls as text ("Action: ... / Action Input: ..."), which no model-level
+patch can read as a tool call, so ``CrewStructuredTool.invoke`` and
+``BaseTool.run`` (and their async twins) are patched. Each call is authorised with
+the arguments' provenance taken from the tool results seen earlier in the run, and
+its result is checked as ``tool_result`` before the agent reads it.
 
 An output redaction (a ``redact`` / ``mask`` / ``tokenize`` rule on the output
 surface) is applied, not only recorded: the enforcer's rewritten text replaces the
@@ -74,9 +94,11 @@ What is deliberately *not* done here:
   receive redacted text, call without ``stream=True`` or stream through the
   gateway's buffered mode, which holds the response until the rewrite is done.
 
-Frameworks (LangGraph, CrewAI, LlamaIndex, AutoGen, ...) are detected, not patched:
-they reach the model through one of the client libraries above, and the summary says
-which of those routes are actually governed.
+Frameworks (LangGraph, CrewAI, LlamaIndex, AutoGen, the OpenAI Agents SDK, ...) are
+detected, not patched: they reach the model through one of the client libraries
+above, and the summary says which of those routes are actually governed. The
+exception is where their tools run: LangChain's and CrewAI's tools are patched there
+(see above), because that is the only place their tool calls can be seen.
 
 Everything is import-guarded: a codebase with only `anthropic` installed never sees an
 OpenAI import error, and `auto()` on a machine with neither still succeeds — it simply
@@ -94,6 +116,7 @@ from __future__ import annotations
 import atexit
 import contextvars
 import functools
+import inspect
 import json
 import logging
 import os
@@ -116,17 +139,21 @@ from agentfox.frameworks.autoguard.environment import (
     detect_frameworks,
 )
 from agentfox.frameworks.autoguard.shapes import (
+    _chunk_final_response,
     _chunk_text,
     _chunk_tool_calls,
     _chunk_usage,
     _lc_messages_from,
     _messages_from,
+    _responses_messages,
     _rewrite_text,
     _text_of,
     _usage_of,
 )
 from agentfox.frameworks.autoguard.tool_calls import (
     _arguments,
+    _hosted_calls_of,
+    _HostedCall,
     _provenance_of,
     _tool_calls_of,
     _tool_specs,
@@ -163,6 +190,24 @@ _IN_AGENTFOX: contextvars.ContextVar[bool] = contextvars.ContextVar(
 _FROM_LANGCHAIN: contextvars.ContextVar[bool] = contextvars.ContextVar(
     "agentfox_from_langchain", default=False
 )
+
+#: Set while a CrewAI agent runs a task, for the same reason: its tools are governed
+#: where they run (see `_patch_crewai_tools`), so the native tool calls in its model's
+#: replies are not decided a second time.
+_FROM_CREWAI: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "agentfox_from_crewai", default=False
+)
+
+
+def _tools_governed_where_they_run(state: AutoState) -> bool:
+    """Whether the tool calls in the current model reply are left to the tool-level
+    guard: the reply came from a framework whose tools are patched where they run."""
+    return (state.lc_tools and _FROM_LANGCHAIN.get()) or (state.crew_tools and _FROM_CREWAI.get())
+
+
+#: Key in a governed request saying part of the conversation is held by the provider
+#: (the Responses API's `previous_response_id` / `conversation`), not in the request.
+_HISTORY_NOTE = "_agentfox_history_note"
 
 _STATE: AutoState | None = None
 
@@ -223,6 +268,9 @@ class AutoState:
     #: LangChain tools are governed where they run (`BaseTool.invoke`), so the tool
     #: calls in a LangChain model's reply are not decided a second time.
     lc_tools: bool = False
+    #: CrewAI tools are governed where they run (`CrewStructuredTool.invoke`,
+    #: `BaseTool.run`), the same way.
+    crew_tools: bool = False
     #: What a refused LangChain tool call does: "message" hands the agent the refusal
     #: as the tool's result and the run carries on; "raise" raises `Blocked`.
     tool_refusals: str = "message"
@@ -334,9 +382,25 @@ class AutoState:
         if patched:
             lines.append(
                 "  Governed per call: request messages, response text, and the tool "
-                "calls in the response (OpenAI tool_calls, Anthropic tool_use) before "
-                "your code can run them. Not the OpenAI Responses API."
+                "calls in the response (OpenAI tool_calls and Responses API "
+                "function_call items, Anthropic tool_use) before your code can run "
+                "them."
             )
+            if by_label.get("openai.responses") and by_label["openai.responses"].patched:
+                lines.append(
+                    "  OpenAI-hosted tools (web search, file search, code interpreter) "
+                    "run at OpenAI, so they are recorded, not stopped."
+                )
+            if self.lc_tools or self.crew_tools:
+                where = " and ".join(
+                    name
+                    for name, on in (("LangChain", self.lc_tools), ("CrewAI", self.crew_tools))
+                    if on
+                )
+                lines.append(
+                    f"  {where} tools are checked where they run, and what they return "
+                    "is checked before the model reads it."
+                )
         if self.mode == "policy":
             lines.append(
                 "  Policy mode: each policy's own mode decides. Observe-mode policies "
@@ -485,6 +549,10 @@ class _Call:
     prior_tools: list[str] = field(default_factory=list)
     #: The request's own tool declarations, by name.
     tool_specs: dict[str, dict[str, Any]] = field(default_factory=dict)
+    #: Set when part of the conversation is not in the request (the Responses API's
+    #: ``previous_response_id`` / ``conversation`` keep it on OpenAI's servers): the
+    #: provenance of anything from those turns is unknown, and the record says so.
+    provenance_note: str | None = None
 
 
 def _pop_evidence(kwargs: dict[str, Any]) -> dict[str, Any]:
@@ -516,6 +584,7 @@ def _run_preflight(
             environment=state.environment,
             session_id=state.session_id,
             intent=state.intent,
+            trust_map=_TOOL_RESULTS.declared(state.session_id, messages) or None,
         )
         trace = outcome.trace
         result = outcome.result
@@ -559,7 +628,7 @@ def _run_preflight(
                 enforced = enforced or window_enforced
                 effective = effective or window_effective
 
-    tracker, prior_tools = _provenance_of(kwargs)
+    tracker, prior_tools = _provenance_of(kwargs, _declared_for(state))
     tracker.trace_id = trace.id
     call = _Call(
         state=state,
@@ -570,8 +639,15 @@ def _run_preflight(
         tracker=tracker,
         prior_tools=prior_tools,
         tool_specs=_tool_specs(kwargs),
+        provenance_note=kwargs.get(_HISTORY_NOTE),
     )
     return call, result, enforced, effective
+
+
+def _declared_for(state: AutoState) -> Callable[[list[Any]], dict[str, str]]:
+    """Messages quoting a tool result this conversation's tools returned, declared
+    ``tool_result`` for provenance marking (see `_ToolResults`)."""
+    return lambda messages: _TOOL_RESULTS.declared(state.session_id, messages)
 
 
 def _preflight(state: AutoState, kwargs: dict[str, Any], evidence: dict[str, Any]) -> _Call | None:
@@ -611,6 +687,7 @@ def _postflight(
     tool_calls: list[_ToolCall] | None = None,
     may_raise: bool = True,
     response: Any = None,
+    hosted: list[_HostedCall] | None = None,
 ) -> None:
     """Span, output evaluation, tool-call authorisation, budget charge, turn record.
     Shared by buffered, streamed, sync and async calls. Raises `Blocked` when the
@@ -619,16 +696,20 @@ def _postflight(
     ``response`` is the buffered response object, rewritten in place when an output
     redaction applies; None for a stream, whose chunks are already with the caller
     and so cannot be — an applied redaction refuses the stream instead (see
-    `_apply_redaction`)."""
+    `_apply_redaction`).
+
+    ``hosted`` are the tools OpenAI ran itself during a Responses API call (web
+    search, file search, ...): already run, so recorded rather than authorised."""
     state = call.state
     tool_calls = tool_calls or []
+    hosted = hosted or []
     provider_ms = (time.perf_counter() - call.started) * 1000
     refusal: Blocked | None = None
     tool_failure: Exception | None = None
     try:
         if (text or usage or tool_calls) and state.remote is not None:
             refusal, text = _remote_postflight(call, text, usage, tool_calls, response)
-        elif text or usage or tool_calls:
+        elif text or usage or tool_calls or hosted:
             token = _IN_AGENTFOX.set(True)
             try:
                 with session_scope() as session:
@@ -644,11 +725,13 @@ def _postflight(
                             refusal = _apply_redaction(outbound, rewrite, response)
                             if refusal is None:
                                 text = rewrite
-                    if tool_calls and not (state.lc_tools and _FROM_LANGCHAIN.get()):
+                    if tool_calls and not _tools_governed_where_they_run(state):
                         tool_refusal = _govern_tool_calls(
                             call, session, enforcer, identity, tool_calls
                         )
                         refusal = refusal or tool_refusal
+                    if hosted:
+                        _record_hosted(call, session, hosted)
                     # This call never goes through AgentFox's own provider
                     # abstraction — it's the caller's own SDK, patched in place — so
                     # nothing else on this path ever charges spend against the
@@ -905,9 +988,40 @@ def _govern_tool_calls(
                 "agentfox.decision_id": result.decision_id,
                 "agentfox.runtime.autoguard.raised": raised,
                 "agentfox.runtime.autoguard.note": note,
+                **({"agentfox.provenance": call.provenance_note} if call.provenance_note else {}),
             },
         )
     return refusal
+
+
+def _record_hosted(call: _Call, session: Any, hosted: list[_HostedCall]) -> None:
+    """One `tool` span per hosted tool OpenAI ran during this call.
+
+    They ran before the response came back, so there is nothing to authorise: the
+    span is the record that the agent searched the web or read a file store, with
+    what it searched for. The tool is registered so it appears in the agent's
+    inventory like any other.
+    """
+    state = call.state
+    for item in hosted:
+        _register_tool(session, item.name, {"description": f"OpenAI hosted tool ({item.name})"})
+        add_span(
+            session,
+            call.trace_id,
+            kind="tool",
+            name=item.name,
+            attributes={
+                ATTR_AGENT: state.agent,
+                ATTR_TOOL_NAME: item.name,
+                "agentfox.tool.hosted": True,
+                "agentfox.tool.status": item.status,
+                "agentfox.tool.detail": json.dumps(item.detail, default=str)[:2000],
+                "agentfox.runtime.autoguard.raised": False,
+                "agentfox.runtime.autoguard.note": (
+                    "run by OpenAI before the response arrived; recorded, not authorised"
+                ),
+            },
+        )
 
 
 def _evaluate_output(
@@ -942,6 +1056,7 @@ def _evaluate_output(
             "gen_ai.usage.input_tokens": usage.get("input_tokens", 0),
             "gen_ai.usage.output_tokens": usage.get("output_tokens", 0),
             "agentfox.output": text,
+            **({"agentfox.provenance": call.provenance_note} if call.provenance_note else {}),
         },
         duration_ms=provider_ms,
     )
@@ -1071,16 +1186,7 @@ def _govern(state: AutoState, kwargs: dict[str, Any], call: Callable[[], Any]) -
         return response
     governed.started = started
 
-    if _is_stream(kwargs, response) and hasattr(response, "__iter__"):
-        return _GovernedStream(response, governed)
-    _postflight(
-        governed,
-        _text_of(response),
-        _usage_of(response),
-        tool_calls=_tool_calls_of(response),
-        response=response,
-    )
-    return response
+    return _settle(governed, kwargs, response, is_async=False)
 
 
 async def _agovern(state: AutoState, kwargs: dict[str, Any], call: Callable[[], Any]) -> Any:
@@ -1101,8 +1207,22 @@ async def _agovern(state: AutoState, kwargs: dict[str, Any], call: Callable[[], 
         return response
     governed.started = started
 
+    return _settle(governed, kwargs, response, is_async=True)
+
+
+def _is_raw(response: Any) -> bool:
+    """An OpenAI SDK raw response (`with_raw_response` / `with_streaming_response`):
+    the HTTP response, whose `.parse()` yields what a plain call returns."""
+    return hasattr(response, "http_response") and callable(getattr(response, "parse", None))
+
+
+def _settle(governed: _Call, kwargs: dict[str, Any], response: Any, *, is_async: bool) -> Any:
+    """What the caller gets back: a stream wrapped so post-flight runs when it ends,
+    a raw response whose `.parse()` is governed, or the buffered response, checked."""
+    if _is_raw(response):
+        return _govern_parse(governed, kwargs, response)
     if _is_stream(kwargs, response):
-        if hasattr(response, "__aiter__"):
+        if is_async and hasattr(response, "__aiter__"):
             return _AsyncGovernedStream(response, governed)
         if hasattr(response, "__iter__"):
             return _GovernedStream(response, governed)
@@ -1112,8 +1232,55 @@ async def _agovern(state: AutoState, kwargs: dict[str, Any], call: Callable[[], 
         _usage_of(response),
         tool_calls=_tool_calls_of(response),
         response=response,
+        hosted=_hosted_calls_of(response),
     )
     return response
+
+
+def _govern_parse(governed: _Call, kwargs: dict[str, Any], raw: Any) -> Any:
+    """Govern what a raw response parses to, when the caller parses it.
+
+    The OpenAI SDK's ``with_streaming_response.create`` — the path the Agents SDK
+    streams through — and ``with_raw_response.create`` return the HTTP response, not
+    the model's: its ``.parse()`` produces the stream or the response object. That
+    is where post-flight has to sit. The first parse is governed (a buffered
+    response checked, a stream wrapped) and the same object is handed back on every
+    later call, as the SDK itself caches it. A raw response nobody parses was
+    pre-flighted only: the caller read bytes AgentFox cannot interpret.
+    """
+    original = raw.parse
+    done: dict[str, Any] = {}
+
+    def settle(parsed: Any, is_async: bool) -> Any:
+        if "parsed" not in done:
+            done["parsed"] = _settle(governed, kwargs, parsed, is_async=is_async)
+        return done["parsed"]
+
+    if inspect.iscoroutinefunction(original):
+
+        async def aparse(*args: Any, **kw: Any) -> Any:
+            parsed = await original(*args, **kw)
+            if args or kw:  # parse(to=...): the caller's own type, not the model's reply
+                return parsed
+            return settle(parsed, True)
+
+        governed_parse: Any = aparse
+    else:
+
+        def parse(*args: Any, **kw: Any) -> Any:
+            parsed = original(*args, **kw)
+            if args or kw:  # parse(to=...): the caller's own type, not the model's reply
+                return parsed
+            # The async client's legacy raw response parses synchronously to an
+            # async stream; `_settle` wraps whichever iteration the result has.
+            return settle(parsed, True)
+
+        governed_parse = parse
+    try:
+        raw.parse = governed_parse
+    except Exception as exc:  # pragma: no cover - a frozen response object
+        log.warning("agentfox: could not govern this raw response's parse(): %s", exc)
+    return raw
 
 
 class _StreamBase:
@@ -1134,6 +1301,8 @@ class _StreamBase:
         self._nm_usage: dict[str, int] = {}
         #: Tool calls arrive in fragments: index -> {"name", "id", "args": [str]}.
         self._nm_tools: dict[int, dict[str, Any]] = {}
+        #: The whole response a Responses API stream's final event carries.
+        self._nm_final: Any = None
         self._nm_done = False
 
     def __getattr__(self, name: str) -> Any:
@@ -1151,6 +1320,9 @@ class _StreamBase:
                 if value:
                     self._nm_usage[key] = max(self._nm_usage.get(key, 0), value)
             _chunk_tool_calls(chunk, self._nm_tools)
+            final = _chunk_final_response(chunk)
+            if final is not None:
+                self._nm_final = final
         except Exception as exc:  # pragma: no cover - never break the caller's stream
             log.debug("agentfox: stream chunk not read: %s", exc)
 
@@ -1158,17 +1330,27 @@ class _StreamBase:
         if self._nm_done:
             return
         self._nm_done = True
+        text = "".join(self._nm_parts)
         tool_calls = [
             _ToolCall(part["name"], _arguments("".join(part["args"])), part.get("id"))
             for _index, part in sorted(self._nm_tools.items())
             if part.get("name")
         ]
+        hosted: list[_HostedCall] = []
+        final = self._nm_final
+        if final is not None:
+            # A Responses API stream ended with the whole response: read it as a
+            # buffered call is read, deltas only where it is silent.
+            text = _text_of(final) or text
+            tool_calls = _tool_calls_of(final) or tool_calls
+            hosted = _hosted_calls_of(final)
         _postflight(
             self._nm_call,
-            "".join(self._nm_parts),
+            text,
             dict(self._nm_usage),
             tool_calls=tool_calls,
             may_raise=may_raise,
+            hosted=hosted,
         )
 
 
@@ -1257,6 +1439,79 @@ def _sdk_method(state: AutoState, *, is_async: bool) -> Callable[[Any], Any]:
         @functools.wraps(original)
         def governed(*args: Any, **kwargs: Any) -> Any:
             return _govern(_live(state), kwargs, lambda: original(*args, **kwargs))
+
+        return governed
+
+    return build
+
+
+def _responses_request(kwargs: dict[str, Any]) -> dict[str, Any]:
+    """The governed view of an OpenAI Responses API request: its ``instructions`` and
+    ``input`` as a chat message list (see `_responses_messages`), its model, tools
+    and stream flag. The caller's own kwargs are what the provider receives,
+    reserved evidence kwargs popped first.
+
+    The SDK's own sentinels (``omit`` / ``NOT_GIVEN``) are truthy objects, so every
+    value is type-checked rather than tested for truth.
+    """
+    model = kwargs.get("model")
+    tools = kwargs.get("tools")
+    governed: dict[str, Any] = {
+        "messages": _responses_messages(kwargs),
+        "model": model if isinstance(model, str) else "",
+        "tools": list(tools) if isinstance(tools, (list, tuple)) else [],
+        "stream": kwargs.get("stream") is True,
+    }
+    for key in _EVIDENCE_KWARGS:  # never forwarded to OpenAI
+        if key in kwargs:
+            governed[key] = kwargs.pop(key)
+    previous = kwargs.get("previous_response_id")
+    conversation = kwargs.get("conversation")
+    held = (
+        f"previous_response_id={previous}"
+        if isinstance(previous, str) and previous
+        else f"conversation={_get_id(conversation)}"
+        if isinstance(conversation, (str, dict)) or hasattr(conversation, "id")
+        else None
+    )
+    if held:
+        # The earlier turns are on OpenAI's servers, not in this request: nothing
+        # here can say where a value from them came from. Recorded as unknown rather
+        # than guessed clean.
+        governed[_HISTORY_NOTE] = (
+            f"unknown for earlier turns: the conversation is held by OpenAI ({held}), "
+            "so only this request's own input was read for provenance"
+        )
+    return governed
+
+
+def _get_id(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        return str(value.get("id") or "")
+    return str(getattr(value, "id", "") or "")
+
+
+def _responses_method(state: AutoState, *, is_async: bool) -> Callable[[Any], Any]:
+    """Wrapper factory for `Responses.create` / `.parse` and their async twins."""
+
+    def build(original: Any) -> Any:
+        if is_async:
+
+            @functools.wraps(original)
+            async def agoverned(*args: Any, **kwargs: Any) -> Any:
+                govern_kwargs = _responses_request(kwargs)
+                return await _agovern(
+                    _live(state), govern_kwargs, lambda: original(*args, **kwargs)
+                )
+
+            return agoverned
+
+        @functools.wraps(original)
+        def governed(*args: Any, **kwargs: Any) -> Any:
+            govern_kwargs = _responses_request(kwargs)
+            return _govern(_live(state), govern_kwargs, lambda: original(*args, **kwargs))
 
         return governed
 
@@ -1384,6 +1639,46 @@ def _patch_openai(state: AutoState) -> list[PatchResult]:
             version,
             "AsyncCompletions.create",
         ),
+        *_patch_openai_responses(state, version),
+    ]
+
+
+#: label -> (class, method, async, what it is). `create` covers `responses.stream()`
+#: and `with_streaming_response` / `with_raw_response` (all call it); `parse` posts
+#: on its own and is patched separately.
+_RESPONSES_ENTRY_POINTS = (
+    ("openai.responses", "Responses", "create", False, "responses.create"),
+    ("openai.responses.async", "AsyncResponses", "create", True, "AsyncResponses.create"),
+    ("openai.responses.parse", "Responses", "parse", False, "responses.parse"),
+    ("openai.responses.parse.async", "AsyncResponses", "parse", True, "AsyncResponses.parse"),
+)
+
+
+def _patch_openai_responses(state: AutoState, version: str | None) -> list[PatchResult]:
+    """The Responses API: what the OpenAI Agents SDK calls the model through."""
+    try:
+        from openai.resources.responses import responses as module
+    except Exception:
+        return [
+            PatchResult(
+                label,
+                False,
+                "this openai version has no Responses API (openai>=1.66 has it)",
+                version,
+            )
+            for label, *_rest in _RESPONSES_ENTRY_POINTS[:2]
+        ]
+    return [
+        _patch_attr(
+            label,
+            "openai",
+            getattr(module, owner, None),
+            attr,
+            _responses_method(state, is_async=is_async),
+            version,
+            detail,
+        )
+        for label, owner, attr, is_async, detail in _RESPONSES_ENTRY_POINTS
     ]
 
 
@@ -1547,10 +1842,92 @@ def _lc_tool_reply(text: str, name: str, call_id: str | None, *, error: bool) ->
     )
 
 
+class _ToolResults:
+    """What the tools governed where they run (LangChain, CrewAI) returned, recently,
+    per conversation: the provenance a tool-level guard has no request to read.
+
+    A model-level guard rebuilds provenance from the request, which carries the whole
+    conversation. A tool-level guard sees only the call; and a CrewAI agent hands a
+    tool's result back to its model as text inside its own messages ("Observation:
+    ..."), where marking by role reads it as something the user typed. So each
+    result is kept here: a later tool call's arguments are matched against them
+    (`tracker`), and a model request that quotes one has that message declared
+    ``tool_result`` (`declared`). Bounded: the last `_PER_SESSION` results of the
+    last `_SESSIONS` conversations. A result from another conversation in the same
+    process (one with no ``session_id``) can only make a call stricter.
+    """
+
+    _PER_SESSION = 64
+    _SESSIONS = 256
+    #: A result shorter than this is too common a string to say where text came from.
+    _MIN = 12
+    #: Matching reads the start of a result: a framework may truncate a long one.
+    _NEEDLE = 200
+
+    def __init__(self) -> None:
+        import collections
+        import threading
+
+        self._by_session: collections.OrderedDict[str, collections.deque[tuple[str, str]]] = (
+            collections.OrderedDict()
+        )
+        self._deque = collections.deque
+        self._lock = threading.Lock()
+
+    def add(self, session_id: str | None, tool: str, text: str) -> None:
+        if len(text.strip()) < self._MIN:
+            return
+        key = session_id or ""
+        with self._lock:
+            results = self._by_session.pop(key, None) or self._deque(maxlen=self._PER_SESSION)
+            results.append((tool, text))
+            self._by_session[key] = results
+            while len(self._by_session) > self._SESSIONS:
+                self._by_session.popitem(last=False)
+
+    def _results(self, session_id: str | None) -> list[tuple[str, str]]:
+        with self._lock:
+            return list(self._by_session.get(session_id or "", ()))
+
+    def tracker(self, session_id: str | None) -> tuple[TaintTracker, list[str]]:
+        """A tracker holding this conversation's tool results, and their tools in order."""
+        tracker = TaintTracker()
+        results = self._results(session_id)
+        for tool, text in results:
+            tracker.mark(f"tool:{tool}", "tool_result", text)
+        return tracker, [tool for tool, _text in results]
+
+    def declared(self, session_id: str | None, messages: list[Any]) -> dict[str, str]:
+        """Message index -> ``tool_result`` for each message that quotes a result."""
+        from agentfox.capabilities.detection.taint import _flatten, _norm
+
+        needles = [_norm(text)[: self._NEEDLE] for _tool, text in self._results(session_id)]
+        if not needles:
+            return {}
+        declared: dict[str, str] = {}
+        for index, message in enumerate(messages):
+            if not isinstance(message, dict) or message.get("role") in ("tool", "function"):
+                continue
+            content = message.get("content")
+            text = _norm(content if isinstance(content, str) else _flatten(content))
+            if text and any(needle in text for needle in needles):
+                declared[str(index)] = "tool_result"
+        return declared
+
+    def clear(self) -> None:
+        with self._lock:
+            self._by_session.clear()
+
+
+_TOOL_RESULTS = _ToolResults()
+
+
 def _lc_tool_decide(
     state: AutoState, name: str, arguments: dict[str, Any]
 ) -> tuple[bool, EnforcementResult, str | None]:
-    """Authorise one LangChain tool call. Returns (may run, decision, trace id)."""
+    """Authorise one tool call where it runs (LangChain, CrewAI). Returns (may run,
+    decision, trace id). Argument provenance comes from the results of the tools
+    this conversation already ran (`_ToolResults`)."""
     if state.remote is not None:
         return _remote_tool_decide(state, name, arguments)
     from agentfox.platform.ledger.trace import start_trace
@@ -1569,6 +1946,8 @@ def _lc_tool_decide(
                 environment=state.environment,
                 intent=state.intent,
             )
+            tracker, prior_tools = _TOOL_RESULTS.tracker(state.session_id)
+            tracker.trace_id = trace.id
             has_grants = _agent_has_grants(session, identity)
             exempt = (
                 frozenset(_CAPABILITY_REFUSAL_RULE_IDS)
@@ -1583,6 +1962,8 @@ def _lc_tool_decide(
                 tool_key=name,
                 arguments=arguments,
                 trace=trace,
+                tracker=tracker,
+                prior_tools=prior_tools,
                 approval_id=_LC_HELD.approved(session, name, arguments),
             )
             enforced = result.blocked or result.escalated
@@ -1672,13 +2053,18 @@ def _remote_preflight(
     ]
     trace_id: str | None = None
     worst: dict[str, Any] = {"verdict": "allow"}
-    for message in fresh:
+    quoted = _TOOL_RESULTS.declared(state.session_id, fresh)
+    for index, message in enumerate(fresh):
         body = state.remote.post(
             "/v1/guard/input",
             {
                 "agent": state.agent,
                 "content": str(message.get("content")),
-                "taint_source": "tool_result" if message.get("role") == "tool" else "user",
+                "taint_source": (
+                    "tool_result"
+                    if message.get("role") == "tool" or str(index) in quoted
+                    else "user"
+                ),
                 "environment": state.environment,
                 **{
                     k: v
@@ -1700,7 +2086,7 @@ def _remote_preflight(
     result = _remote_module().result(worst)
     enforced = _stops(worst)
     effective = enforced or worst.get("effective_verdict") == "block"
-    tracker, prior_tools = _provenance_of(kwargs)
+    tracker, prior_tools = _provenance_of(kwargs, _declared_for(state))
     tracker.trace_id = trace_id
     call = _Call(
         state=state,
@@ -1711,6 +2097,7 @@ def _remote_preflight(
         tracker=tracker,
         prior_tools=prior_tools,
         tool_specs=_tool_specs(kwargs),
+        provenance_note=kwargs.get(_HISTORY_NOTE),
     )
     return call, result, enforced, effective
 
@@ -1793,7 +2180,7 @@ def _remote_postflight(
                     text = rewrite
             elif effective:
                 call.flagged = call.flagged or outbound.reason or "flagged by policy"
-    if tool_calls and not (state.lc_tools and _FROM_LANGCHAIN.get()):
+    if tool_calls and not _tools_governed_where_they_run(state):
         prior = list(call.prior_tools)
         for tool_call in tool_calls:
             body = _remote_tool_body(
@@ -1825,7 +2212,14 @@ def _remote_tool_decide(
     state: AutoState, name: str, arguments: dict[str, Any]
 ) -> tuple[bool, EnforcementResult, str | None]:
     """`_lc_tool_decide` on the account's gateway."""
-    body = _remote_tool_body(state, name, arguments, declare={})
+    results = _TOOL_RESULTS._results(state.session_id)
+    provenance: dict[str, Any] = {}
+    if results:
+        provenance = {
+            "messages": [{"role": "tool", "name": tool, "content": text} for tool, text in results],
+            "prior_tools": [tool for tool, _text in results],
+        }
+    body = _remote_tool_body(state, name, arguments, declare={}, **provenance)
     result, raised, effective = _remote_tool_verdict(state, body)
     state.calls_governed += 1
     if raised:
@@ -1879,10 +2273,11 @@ def _lc_tool_method(state: AutoState, *, is_async: bool) -> Callable[[Any], Any]
 
     def after(output: Any, name: str, call_id: str | None, trace_id: str | None) -> Any:
         text = getattr(output, "content", output)
-        withheld = _lc_tool_result(
-            _live(state), trace_id, text if isinstance(text, str) else str(text)
-        )
+        st = _live(state)
+        text = text if isinstance(text, str) else str(text)
+        withheld = _lc_tool_result(st, trace_id, text)
         if withheld is None:
+            _TOOL_RESULTS.add(st.session_id, name, text)
             return output
         message = withheld.user_message or withheld.reason or "it failed a policy check"
         return _lc_tool_reply(
@@ -1954,12 +2349,236 @@ def _patch_langchain_tools(state: AutoState) -> list[PatchResult]:
     return results
 
 
+# -- CrewAI tools, governed where they run -------------------------------------------
+
+
+def _crew_tool_name(tool: Any) -> str:
+    """The tool's name as CrewAI hands it to the model (``sanitize_tool_name``), so a
+    tool keeps one key whether it was called by text or natively."""
+    name = str(getattr(tool, "name", "") or type(tool).__name__)
+    try:
+        from crewai.utilities.string_utils import sanitize_tool_name
+
+        return sanitize_tool_name(name) or name
+    except Exception:  # older crewai: no sanitiser, the name as given
+        return name
+
+
+def _crew_invoke_input(tool: Any, args: tuple[Any, ...], kwargs: dict[str, Any]) -> dict[str, Any]:
+    """`CrewStructuredTool.invoke(input, config=None, **kwargs)`: the arguments the
+    agent wrote after "Action Input:", already parsed by CrewAI into a dict, or a
+    string it could not parse."""
+    raw = args[0] if args else kwargs.get("input", {})
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except ValueError:
+            return {"input": raw}
+    if isinstance(raw, dict):
+        return dict(raw)
+    return {"_value": raw}
+
+
+def _crew_run_input(tool: Any, args: tuple[Any, ...], kwargs: dict[str, Any]) -> dict[str, Any]:
+    """`BaseTool.run(*args, **kwargs)`: what a native tool call or the app passed."""
+    arguments = dict(kwargs)
+    if len(args) == 1 and not arguments:
+        return _crew_invoke_input(tool, args, {})
+    if args:
+        arguments["_args"] = list(args)
+    return arguments
+
+
+def _crew_tool_method(
+    state: AutoState, *, is_async: bool, read: Callable[..., dict[str, Any]]
+) -> Callable[[Any], Any]:
+    """Wrapper factory for CrewAI's tool entry points. The same decision as a
+    LangChain tool (`_lc_tool_decide`): a refused call hands the agent the refusal as
+    the tool's result and the crew carries on (``tool_refusals="raise"`` raises
+    `Blocked`); what the tool returns is checked as ``tool_result`` before the agent
+    reads it, and kept as provenance for the calls that follow."""
+
+    def before(tool: Any, args: tuple[Any, ...], kwargs: dict[str, Any]) -> tuple[Any, str, Any]:
+        st = _live(state)
+        name = _crew_tool_name(tool)
+        arguments = read(tool, args, kwargs)
+        allowed, result, trace_id = _lc_tool_decide(st, name, arguments)
+        if allowed:
+            return None, name, trace_id
+        if st.tool_refusals == "raise":
+            raise Blocked(result, f"agentfox: tool call '{name}' refused: {result.reason}")
+        if result.escalated and result.approval_id:
+            return _HELD_MESSAGE.format(approval_id=result.approval_id), name, trace_id
+        reason = result.user_message or result.reason or "not allowed"
+        return f"This tool call was blocked by policy: {reason}", name, trace_id
+
+    def after(output: Any, name: str, trace_id: str | None) -> Any:
+        if inspect.isawaitable(output):
+            # CrewAI's sync path over an `async def` tool hands back the coroutine
+            # unawaited; it has no text yet, and awaiting it is CrewAI's business.
+            return output
+        st = _live(state)
+        text = output if isinstance(output, str) else str(output)
+        withheld = _lc_tool_result(st, trace_id, text)
+        if withheld is None:
+            _TOOL_RESULTS.add(st.session_id, name, text)
+            return output
+        message = withheld.user_message or withheld.reason or "it failed a policy check"
+        return f"This tool's result was withheld by policy: {message}"
+
+    def build(original: Any) -> Any:
+        if is_async:
+
+            @functools.wraps(original)
+            async def agoverned(self: Any, *args: Any, **kwargs: Any) -> Any:
+                if _IN_AGENTFOX.get():
+                    return await original(self, *args, **kwargs)
+                refusal, name, trace_id = before(self, args, kwargs)
+                if refusal is not None:
+                    return refusal
+                output = await original(self, *args, **kwargs)
+                return after(output, name, trace_id)
+
+            return agoverned
+
+        @functools.wraps(original)
+        def governed(self: Any, *args: Any, **kwargs: Any) -> Any:
+            if _IN_AGENTFOX.get():
+                return original(self, *args, **kwargs)
+            refusal, name, trace_id = before(self, args, kwargs)
+            if refusal is not None:
+                return refusal
+            output = original(self, *args, **kwargs)
+            return after(output, name, trace_id)
+
+        return governed
+
+    return build
+
+
+def _crew_scope(*, is_async: bool) -> Callable[[Any], Any]:
+    """Wrapper factory for a CrewAI agent running a task: marks the model calls made
+    inside it as CrewAI's, whose tool calls are decided where the tools run."""
+
+    def build(original: Any) -> Any:
+        if is_async:
+
+            @functools.wraps(original)
+            async def ascoped(*args: Any, **kwargs: Any) -> Any:
+                token = _FROM_CREWAI.set(True)
+                try:
+                    return await original(*args, **kwargs)
+                finally:
+                    _FROM_CREWAI.reset(token)
+
+            return ascoped
+
+        @functools.wraps(original)
+        def scoped(*args: Any, **kwargs: Any) -> Any:
+            token = _FROM_CREWAI.set(True)
+            try:
+                return original(*args, **kwargs)
+            finally:
+                _FROM_CREWAI.reset(token)
+
+        return scoped
+
+    return build
+
+
+#: CrewAI's tool entry points: label, owner (in `crewai.tools.*`), method, async,
+#: how its arguments are read. `CrewStructuredTool.invoke` is an agent's text tool
+#: call ("Action: ... / Action Input: ...", via `ToolUsage`); `BaseTool.run` and the
+#: `@tool` decorator's `Tool.run` are a native tool call, or the app calling the tool.
+#: None calls another, so each call is decided once.
+_CREW_ENTRY_POINTS = (
+    ("crewai.tools", "structured_tool.CrewStructuredTool", "invoke", False, _crew_invoke_input),
+    (
+        "crewai.tools.async",
+        "structured_tool.CrewStructuredTool",
+        "ainvoke",
+        True,
+        _crew_invoke_input,
+    ),
+    ("crewai.tools.run", "base_tool.BaseTool", "run", False, _crew_run_input),
+    ("crewai.tools.run.async", "base_tool.BaseTool", "arun", True, _crew_run_input),
+    ("crewai.tools.function", "base_tool.Tool", "run", False, _crew_run_input),
+    ("crewai.tools.function.async", "base_tool.Tool", "arun", True, _crew_run_input),
+)
+
+#: Where a CrewAI agent runs: the model calls inside are CrewAI's (`_FROM_CREWAI`).
+_CREW_AGENT_SCOPES = (
+    ("crewai.agent", "execute_task", False),
+    ("crewai.agent.async", "aexecute_task", True),
+    ("crewai.agent.kickoff", "kickoff", False),
+    ("crewai.agent.kickoff.async", "kickoff_async", True),
+)
+
+
+def _patch_crewai_tools(state: AutoState) -> list[PatchResult]:
+    """CrewAI tools, governed where they run (see `_CREW_ENTRY_POINTS`).
+
+    Reported as two results, ``crewai.tools`` and ``crewai.tools.async``, each
+    patched when every entry point of its kind is. CrewAI is imported only when it is
+    installed; that import takes a second or two the first time.
+    """
+    import importlib.util
+
+    try:
+        if importlib.util.find_spec("crewai") is None:
+            return _not_importable("crewai tools", ImportError("crewai"))
+        import crewai
+        from crewai.tools import base_tool, structured_tool
+    except Exception as exc:
+        return _not_importable("crewai tools", exc)
+
+    modules = {"base_tool": base_tool, "structured_tool": structured_tool}
+    version = getattr(crewai, "__version__", None)
+    parts: dict[bool, list[PatchResult]] = {False: [], True: []}
+    for label, where, attr, is_async, read in _CREW_ENTRY_POINTS:
+        module, _, cls = where.partition(".")
+        owner = getattr(modules[module], cls, None)
+        if cls == "Tool" and attr not in getattr(owner, "__dict__", {}):
+            continue  # `Tool` inherits BaseTool's, patched already
+        parts[is_async].append(
+            _patch_attr(
+                label,
+                "crewai",
+                owner,
+                attr,
+                _crew_tool_method(state, is_async=is_async, read=read),
+                version,
+                f"{cls}.{attr}",
+            )
+        )
+    try:
+        from crewai import Agent
+
+        for label, attr, is_async in _CREW_AGENT_SCOPES:
+            if getattr(Agent, attr, None) is not None:
+                _patch_attr(
+                    label, "crewai", Agent, attr, _crew_scope(is_async=is_async), version, attr
+                )
+    except Exception as exc:  # pragma: no cover - the tools are still governed
+        log.debug("agentfox: CrewAI agent scope not patched: %s", exc)
+
+    results = []
+    for label, is_async in (("crewai.tools", False), ("crewai.tools.async", True)):
+        failed = [p for p in parts[is_async] if not p.patched]
+        details = [p.detail for p in parts[is_async] if p.detail != "already patched"]
+        detail = failed[0].detail if failed else ", ".join(details) or "already patched"
+        results.append(PatchResult(label, not failed and bool(parts[is_async]), detail, version))
+    state.crew_tools = results[0].patched
+    return results
+
+
 _PATCHERS = (
     _patch_openai,
     _patch_anthropic,
     _patch_litellm,
     _patch_langchain,
     _patch_langchain_tools,
+    _patch_crewai_tools,
 )
 
 
@@ -2132,5 +2751,6 @@ def off() -> list[str]:
         except Exception:  # pragma: no cover - a module torn down under us
             pass
     _PATCHED.clear()
+    _TOOL_RESULTS.clear()
     _STATE = None
     return restored

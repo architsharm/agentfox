@@ -1,6 +1,6 @@
 """Reading the client libraries' own shapes: request messages, response text, usage
-and stream chunks from OpenAI, Anthropic, LiteLLM and LangChain objects, as plain
-values the enforcer understands.
+and stream chunks from OpenAI (chat completions and the Responses API), Anthropic,
+LiteLLM and LangChain objects, as plain values the enforcer understands.
 """
 
 from __future__ import annotations
@@ -71,12 +71,108 @@ def _messages_from(kwargs: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
+#: Responses API roles -> our role vocabulary. ``developer`` is the Responses API's
+#: name for the system prompt.
+_RESPONSES_ROLES = {"developer": "system"}
+
+
+def _part_text(content: Any) -> str:
+    """The text of a Responses content value: a string, or a list of parts
+    (``input_text`` / ``output_text`` / ``text``, ``refusal``); images and files carry
+    none."""
+    if isinstance(content, str):
+        return content
+    if not isinstance(content, list):
+        return "" if content is None else str(content)
+    texts = []
+    for part in content:
+        text = _get(part, "text")
+        if text is None:
+            text = _get(part, "refusal")
+        if isinstance(text, str):
+            texts.append(text)
+    return "\n".join(texts)
+
+
+def _responses_messages(kwargs: dict[str, Any]) -> list[dict[str, Any]]:
+    """An OpenAI Responses API request (``instructions`` + ``input``) as a chat
+    message list in OpenAI's chat shape, so the same pre-flight and provenance
+    marking read it.
+
+    ``input`` is a string (one user turn) or a list of items: messages (with or
+    without ``type: "message"``), the model's earlier ``function_call`` items
+    (kept as an assistant turn's ``tool_calls``, so a result can name the tool that
+    produced it) and ``function_call_output`` items, which are a tool's result and
+    become ``role="tool"`` messages: ``tool_result`` taint, exactly like chat
+    completions' tool messages. Reasoning, hosted-tool and other items carry nothing
+    the model reads as instructions and are skipped.
+    """
+    messages: list[dict[str, Any]] = []
+    instructions = kwargs.get("instructions")
+    if isinstance(instructions, str) and instructions:
+        messages.append({"role": "system", "content": instructions})
+    raw = kwargs.get("input")
+    if isinstance(raw, str):
+        if raw:
+            messages.append({"role": "user", "content": raw})
+        return messages
+    if not isinstance(raw, (list, tuple)):
+        return messages
+    for item in raw:
+        item = _plain(item)
+        kind = _get(item, "type")
+        role = _get(item, "role")
+        if kind in (None, "message") and role:
+            role = _RESPONSES_ROLES.get(str(role), str(role))
+            messages.append({"role": role, "content": _part_text(_get(item, "content"))})
+        elif kind in ("function_call", "custom_tool_call"):
+            arguments = _get(item, "arguments")
+            if arguments is None:
+                arguments = _get(item, "input")
+            call = {
+                "id": _get(item, "call_id") or _get(item, "id"),
+                "type": "function",
+                "function": {"name": _get(item, "name"), "arguments": arguments or ""},
+            }
+            last = messages[-1] if messages else None
+            if last is not None and last.get("role") == "assistant" and "tool_calls" in last:
+                last["tool_calls"].append(call)  # parallel calls: one assistant turn
+            else:
+                messages.append({"role": "assistant", "content": None, "tool_calls": [call]})
+        elif kind in ("function_call_output", "custom_tool_call_output"):
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": _get(item, "call_id"),
+                    "content": _part_text(_get(item, "output")),
+                }
+            )
+    return messages
+
+
+def _response_items(response: Any) -> list[Any] | None:
+    """The ``output`` items of a Responses API response, or None for any other shape."""
+    if getattr(response, "choices", None) is not None:
+        return None
+    output = _get(response, "output")
+    return output if isinstance(output, list) else None
+
+
 def _text_of(response: Any) -> str:
     """Pull the assistant text out of whichever client shape came back."""
     try:
         choices = getattr(response, "choices", None)
         if choices:
             return getattr(choices[0].message, "content", "") or ""
+        items = _response_items(response)
+        if items is not None:  # the Responses API: `message` items' output_text parts
+            return "".join(
+                str(_get(part, "text") or "")
+                for item in items
+                if _get(item, "type") == "message"
+                for part in _get(item, "content") or []
+                if _get(part, "type") == "output_text"
+            )
         content = getattr(response, "content", None)
         if isinstance(content, list):
             return "".join(getattr(block, "text", "") or "" for block in content)
@@ -103,6 +199,23 @@ def _rewrite_text(response: Any, text: str) -> bool:
             message = choices[0].message
             message.content = text
             return getattr(message, "content", None) == text
+        items = _response_items(response)
+        if items is not None:  # the Responses API: same rule as Anthropic's blocks
+            parts = [
+                part
+                for item in items
+                if _get(item, "type") == "message"
+                for part in _get(item, "content") or []
+                if _get(part, "type") == "output_text"
+            ]
+            if not parts:
+                return False
+            for index, part in enumerate(parts):
+                if isinstance(part, dict):
+                    part["text"] = text if index == 0 else ""
+                else:
+                    part.text = text if index == 0 else ""
+            return _text_of(response) == text
         content = getattr(response, "content", None)
         if isinstance(content, list):
             blocks = [b for b in content if isinstance(getattr(b, "text", None), str)]
@@ -155,12 +268,30 @@ def _chunk_text(chunk: Any) -> str:
         if choices:
             content = getattr(getattr(choices[0], "delta", None), "content", None)
             return content if isinstance(content, str) else ""
-        if getattr(chunk, "type", None) == "content_block_delta":
+        kind = getattr(chunk, "type", None)
+        if kind == "content_block_delta":
             text = getattr(getattr(chunk, "delta", None), "text", None)
+            return text if isinstance(text, str) else ""
+        if kind == "response.output_text.delta":  # the Responses API
+            text = getattr(chunk, "delta", None)
             return text if isinstance(text, str) else ""
     except Exception:  # pragma: no cover - defensive against SDK shape drift
         pass
     return ""
+
+
+#: Responses API stream events that end the response and carry it whole.
+_RESPONSES_FINAL_EVENTS = ("response.completed", "response.incomplete", "response.failed")
+
+
+def _chunk_final_response(chunk: Any) -> Any:
+    """The whole response a Responses API stream's final event carries, else None.
+
+    Read in preference to the deltas: it holds the text, every output item (tool
+    calls, hosted tools) and the usage exactly as a buffered call would have."""
+    if getattr(chunk, "type", None) in _RESPONSES_FINAL_EVENTS:
+        return getattr(chunk, "response", None)
+    return None
 
 
 def _chunk_tool_calls(chunk: Any, parts: dict[int, dict[str, Any]]) -> None:
@@ -185,6 +316,17 @@ def _chunk_tool_calls(chunk: Any, parts: dict[int, dict[str, Any]]) -> None:
                 part["args"].append(str(_get(function, "arguments")))
         return
     kind = getattr(chunk, "type", None)
+    if kind == "response.output_item.done":
+        # The Responses API: a finished `function_call` item carries its whole
+        # arguments, so the `function_call_arguments.delta` events need no assembly.
+        item = getattr(chunk, "item", None)
+        if _get(item, "type") == "function_call":
+            parts[int(getattr(chunk, "output_index", 0) or 0)] = {
+                "name": str(_get(item, "name") or ""),
+                "id": _get(item, "call_id"),
+                "args": [str(_get(item, "arguments") or "")],
+            }
+        return
     if kind == "content_block_start":
         block = getattr(chunk, "content_block", None)
         if _get(block, "type") == "tool_use":
@@ -209,6 +351,9 @@ def _chunk_usage(chunk: Any) -> dict[str, int]:
     Anthropic's ``message_start`` (input) and ``message_delta`` (output) events."""
     if getattr(chunk, "type", None) == "message_start":
         return _usage_of(getattr(chunk, "message", None))
+    final = _chunk_final_response(chunk)  # the Responses API's last event
+    if final is not None:
+        return _usage_of(final)
     return _usage_of(chunk)
 
 
