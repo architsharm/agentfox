@@ -18,7 +18,13 @@ the file it came from.
   `graph.invoke()`, on the variable the code holds it in), not the first agent defined
   or one from another file. In a folder of independent examples it sets up one system,
   grants it only its own and its sub-agents' tools, and says how to pick another
-  (`agentfox up --agent <name>`, which also moves `auto()` to that agent's file). A swarm,
+  (`agentfox up --agent <name>`, which also moves `auto()` to that agent's file, with the
+  best few named). When nothing (a declared script, langgraph.json, a single runnable
+  file) singles one out, it starts with the system that has tools of its own and a run
+  site, then the most agents and tools, never a tool-less agent beside one with tools.
+  The count of separate systems is the number of independent systems, the same on every
+  run. Choosing another file at the question re-derives the agent and its tools, a saved
+  name included; with `--agent`, `up` says when that file does not run it. A swarm,
   crew or graph the code names only by its variable (`builder = create_swarm(...)`)
   runs under its project's name (`pyproject.toml`, else the folder); its members keep
   theirs. The name is shown before anything changes, and asked in a terminal so it can

@@ -208,6 +208,106 @@ def test_a_folder_of_independent_examples_sets_up_the_one_the_chosen_file_runs(t
     assert _grants_of(expected) == own
 
 
+#: Three scripts, none singled out: a pair with no tools that runs first by file name,
+#: a lone tool-less agent, and a system with tools of its own and a run site.
+UNEVEN = {
+    "a_echo.py": (
+        "import asyncio\nfrom agents import Agent, Runner\n\n"
+        "second = Agent(name='second', instructions='Two.')\n"
+        "first = Agent(name='first', instructions='One.', handoffs=[second])\n\n\n"
+        "async def main():\n    await Runner.run(first, 'x')\n\n\n"
+        "if __name__ == '__main__':\n    asyncio.run(main())\n"
+    ),
+    "b_lone.py": (
+        "import asyncio\nfrom agents import Agent, Runner\n\n"
+        "lone = Agent(name='lone', instructions='Alone.')\n\n\n"
+        "if __name__ == '__main__':\n    asyncio.run(Runner.run(lone, 'x'))\n"
+    ),
+    "c_desk.py": (
+        "import asyncio\nfrom agents import Agent, Runner, function_tool\n\n\n"
+        "@function_tool\ndef open_ticket(text: str) -> str:\n    return text\n\n\n"
+        "clerk = Agent(name='clerk', tools=[open_ticket])\n"
+        "desk = Agent(name='desk', handoffs=[clerk])\n\n\n"
+        "if __name__ == '__main__':\n    asyncio.run(Runner.run(desk, 'x'))\n"
+    ),
+}
+
+
+def test_with_nothing_singling_one_out_the_system_with_tools_and_a_run_site_wins(tmp_path):
+    root = _write(tmp_path / "patterns", UNEVEN)
+    result = _up(str(root), "--yes", "--with", "python-app,tools")
+    assert result.exit_code == 0, result.output
+    assert _saved(root)["agent"] == "desk"
+    assert 'agentfox.auto("desk"' in (root / "c_desk.py").read_text()
+    assert _grants_of("desk") == {"open_ticket"}
+    out = flat(result.output)
+    # Counted once per system: the pair is one, not two (and nothing is a container
+    # plus its members).
+    assert "3 separate agent systems here" in out
+    # The alternatives, by the key --agent takes.
+    assert "agentfox up --agent <name>:" in out and "lone" in out
+    # Nothing was asked, so nothing says "pick its file above".
+    assert "pick its file above" not in out
+
+
+def test_the_system_count_is_the_same_every_run(tmp_path):
+    root = _write(tmp_path / "patterns", UNEVEN)
+    counts = {
+        flat(_up(str(root), "--yes", "--dry-run").output).split(" separate agent systems")[0][-2:]
+        for _ in range(3)
+    }
+    assert counts == {" 3"}
+
+
+def test_a_project_that_declares_its_entry_point_is_not_re_ranked(tmp_path):
+    files = dict(UNEVEN)
+    files["pyproject.toml"] = (
+        '[project]\nname = "x"\nversion = "0"\n[project.scripts]\nx = "a_echo:main"\n'
+    )
+    root = _write(tmp_path / "declared", files)
+    assert _up(str(root), "--yes", "--dry-run").exit_code == 0
+    from agentfox.apps.cli.wizard import command
+    from agentfox.apps.cli.wizard.detect import detect
+
+    assert command._pick(detect(root, machine=False)).file == "a_echo.py"
+
+
+def _answering(monkeypatch, file: str):
+    """A prompter that takes every default except the file auto() goes into."""
+    from agentfox.apps.cli.wizard import command
+    from agentfox.apps.cli.wizard.prompt import Scripted
+
+    class Choosing(Scripted):
+        def select(self, question, choices, default):
+            if question.startswith("Add `agentfox.auto()`"):
+                return file
+            return super().select(question, choices, default)
+
+    monkeypatch.setattr(command, "Scripted", Choosing)
+
+
+def test_choosing_another_file_re_derives_a_saved_name_and_its_tools(tmp_path, monkeypatch):
+    root = _write(tmp_path / "patterns", EXAMPLES)
+    assert _up(str(root), "--yes", "--with", "python-app,tools", "--agent", "writer").exit_code == 0
+    assert _saved(root)["agent"] == "writer"
+    _answering(monkeypatch, "alpha_router.py")
+    result = _up(str(root), "--with", "python-app,tools")
+    assert result.exit_code == 0, result.output
+    assert _saved(root)["agent"] == "router"
+    assert 'agentfox.auto("router"' in (root / "alpha_router.py").read_text()
+    assert _grants_of("router") == {"read_inbox"}
+
+
+def test_an_explicit_agent_and_a_file_that_does_not_run_it_says_so(tmp_path, monkeypatch):
+    root = _write(tmp_path / "patterns", EXAMPLES)
+    _answering(monkeypatch, "alpha_router.py")
+    result = _up(str(root), "--with", "python-app", "--agent", "writer")
+    assert result.exit_code == 0, result.output
+    out = flat(result.output)
+    assert "alpha_router.py does not run writer" in out
+    assert "agentfox up --agent router" in out
+
+
 def test_up_agent_picks_another_system_and_its_file(tmp_path):
     root = _write(tmp_path / "patterns", EXAMPLES)
     result = _up(str(root), "--yes", "--with", "python-app,tools", "--agent", "writer")

@@ -78,7 +78,7 @@ class Pick:
     #: How many separate agent systems the project holds: more than one means a
     #: folder of independent examples or apps, and only this one is set up.
     systems: int = 0
-    #: The roots of the systems left alone (in other files), biggest first.
+    #: The roots of the systems left alone (in other files), best first run first.
     others: list[str] = field(default_factory=list)
 
 
@@ -184,28 +184,122 @@ def _members(ctx: Any, key: str) -> list[str]:
 
 
 def _systems(ctx: Any) -> list[dict[str, Any]]:
+    """The independent agent systems: agents joined by any hand-off, either way, are
+    one system. Each is ``{"root", "members"}``, the root the agent that hands work to
+    the most of it (see `systems_of`), members from it outwards. Deterministic: the
+    count is the number of separate systems, never containers plus their members."""
     from agentfox.platform.registry.projects import systems_of
 
-    return systems_of(
-        [a.key for a in _python_specs(ctx)],
-        [(e.parent, e.child, e.relation) for e in ctx.report.agent_edges],
+    keys = sorted(a.key for a in _python_specs(ctx))
+    known = set(keys)
+    edges = [
+        (e.parent, e.child, e.relation)
+        for e in ctx.report.agent_edges
+        if e.parent in known and e.child in known
+    ]
+    parent = {k: k for k in keys}
+
+    def find(k: str) -> str:
+        while parent[k] != k:
+            parent[k] = parent[parent[k]]
+            k = parent[k]
+        return k
+
+    for a, b, _ in edges:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[max(ra, rb)] = min(ra, rb)
+    groups: dict[str, list[str]] = {}
+    for k in keys:
+        groups.setdefault(find(k), []).append(k)
+    rooted = systems_of(keys, edges)
+    out = []
+    for group in groups.values():
+        inside = set(group)
+        best = min(
+            (sys for sys in rooted if sys["root"] in inside),
+            key=lambda sys: (-len(sys["members"]), sys["root"]),
+        )
+        order = [m["slug"] for m in best["members"]]
+        order += [k for k in group if k not in order]
+        out.append({"root": best["root"], "members": order})
+    return sorted(out, key=lambda sys: sys["root"])
+
+
+def _singled_out(ctx: Any, entries: list[str]) -> str | None:
+    """The entry file the project itself points at, when one does: a file it declares
+    (`[project.scripts]`, langgraph.json), or the only file that runs as a script or
+    runs an agent. None for a folder of examples where many files do."""
+    from agentfox.capabilities.onboarding.project_files import (
+        _MAIN_GUARD,
+        AGENT_RUN,
+        _declared_entries,
+        _matches_declared,
     )
+
+    declared = _declared_entries(ctx.root)
+    for rel in entries:
+        if declared and _matches_declared(rel, declared):
+            return rel
+    runnable = [
+        rel
+        for rel in entries
+        if _MAIN_GUARD.search(_read(ctx, rel)) or AGENT_RUN.search(_read(ctx, rel))
+    ]
+    return runnable[0] if len(runnable) == 1 else None
+
+
+def _ranked_systems(ctx: Any, systems: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Systems best first run first: one with tools of its own and a run site (there
+    is something to watch, and something to start), then the most agents and tools,
+    then the one nearest the root. A tool-less agent never wins over a system with
+    tools."""
+    specs = _python_specs(ctx)
+    by_key = {a.key: a for a in specs}
+    entries = [_rel(ctx, p) for p in ctx.entry_points]
+    scored = []
+    for system in systems:
+        members = [by_key[k] for k in system["members"] if k in by_key]
+        tools = {t for a in members for t in a.tools}
+        files = list(dict.fromkeys([*(a.file for a in members), *entries]))
+        runs = bool(_started(ctx, members, files))
+        root = by_key[system["root"]]
+        scored.append(
+            (
+                (
+                    not (tools and runs),
+                    not tools,
+                    not runs,
+                    -len(members),
+                    -len(tools),
+                    root.file.count("/"),
+                    system["root"],
+                ),
+                {**system, "tools": sorted(tools)},
+            )
+        )
+    return [system for _key, system in sorted(scored, key=lambda item: item[0])]
 
 
 def _pick(ctx: Any, entry: str | None = None, wanted: str | None = None) -> Pick:
     """The agent to set up. ``wanted`` (`--agent`), when it is an agent the scan found,
-    is that agent. Otherwise the one a run site in the entry file starts (``entry``,
-    else the best guess at it), then the root of a system defined there: the agent
-    that file actually runs, never one from an unrelated file beside it."""
+    is that agent. With an ``entry`` file, the one a run site there starts, then the
+    root of a system defined there: the agent that file actually runs. With neither,
+    the file the project points at; and in a folder of independent examples where
+    nothing does, the system that makes the best first run (:func:`_ranked_systems`)."""
     specs = _python_specs(ctx)
     if not specs:
         return Pick(wanted or ctx.project)
     by_key = {a.key: a for a in specs}
     entries = [_rel(ctx, p) for p in ctx.entry_points]
-    systems = len(_systems(ctx))
+    systems = _systems(ctx)
+    ranked = _ranked_systems(ctx, systems)
     spec = by_key.get(wanted or "")
+    singled = None if entry or spec is not None else _singled_out(ctx, entries)
+    if spec is None and not entry and not singled and len(systems) > 1:
+        spec = by_key[ranked[0]["root"]]
     if spec is None:
-        files = [entry] if entry else entries[:1]
+        files = [entry] if entry else [singled] if singled else entries[:1]
         started = _started(ctx, specs, files)
         if not started and not entry:
             started = _started(ctx, specs, entries[:3])
@@ -232,12 +326,15 @@ def _pick(ctx: Any, entry: str | None = None, wanted: str | None = None) -> Pick
     # The file that starts it: an entry point that runs it, or its own file when that
     # runs it (an example script below the top five entry points, or `--agent`).
     candidates = list(dict.fromkeys([*entries, spec.file]))
+    system_of = next((s for s in systems if spec.key in s["members"]), None)
+    starters = [by_key[k] for k in (system_of or {"members": [spec.key]})["members"]]
     started_in = next((f for f in candidates if spec.key in _started(ctx, [spec], [f])), None)
-    chosen_by_name = spec.key == wanted
+    started_in = started_in or next((f for f in candidates if _started(ctx, starters, [f])), None)
+    by_ranking = spec.key == wanted or (not entry and not singled and len(systems) > 1)
     file = (
         entry
         or started_in
-        or (spec.file if chosen_by_name or spec.file in entries or not entries else entries[0])
+        or (spec.file if by_ranking or spec.file in entries or not entries else entries[0])
     )
     # What runs in that process is this agent's system and any other the same file
     # defines or starts (a generator and the judge beside it): one auto() governs them
@@ -246,13 +343,13 @@ def _pick(ctx: Any, entry: str | None = None, wanted: str | None = None) -> Pick
     started_here = set(_started(ctx, specs, [file])) if file else set()
     members = _members(ctx, spec.key)
     others: list[str] = []
-    for system in sorted(_systems(ctx), key=lambda s: -len(s["members"])):
+    for system in ranked:
         root = by_key.get(system["root"])
         if root is None or system["root"] in members:
             continue
-        if root.file in in_process or system["root"] in started_here:
-            members += [m["slug"] for m in system["members"] if m["slug"] not in members]
-        else:
+        if root.file in in_process or started_here & set(system["members"]):
+            members += [m for m in system["members"] if m not in members]
+        elif spec.key not in system["members"]:
             others.append(system["root"])
     tools = sorted({t for key in members if key in by_key for t in by_key[key].tools})
     return Pick(
@@ -261,9 +358,30 @@ def _pick(ctx: Any, entry: str | None = None, wanted: str | None = None) -> Pick
         members=members,
         tools=tools,
         file=file,
-        systems=systems,
+        systems=len(systems),
         others=others,
     )
+
+
+def _follow_file(ctx: Any, pick: Pick, entry: str, agent: str | None, run: Run) -> Pick:
+    """The file auto() goes into changed at the question: the agent and its tools are
+    the ones that file runs, whatever name was saved. An agent asked for by `--agent`
+    is kept; if that file does not run it, that is said, with the one it does run."""
+    fresh = _pick(ctx, entry=entry)
+    if agent and pick.spec is not None and pick.spec.key == agent:
+        if agent not in fresh.members:
+            right = fresh.spec.key if fresh.spec is not None else fresh.name
+            console.print(
+                f"  [yellow]{escape(entry)} does not run {escape(agent)}[/] — it runs "
+                f"[bold]{escape(fresh.name)}[/]. Keeping --agent {escape(agent)}; for "
+                f"that one: [cyan]agentfox up --agent {escape(right)}[/]"
+            )
+        return Pick(**{**pick.__dict__, "file": entry})
+    if agent:  # a new name of the user's own: keep it, scope it to the file
+        fresh.name = agent
+    run.agent = fresh.name
+    run.system_tools = fresh.tools if fresh.spec is not None else None
+    return fresh
 
 
 def _agent_name(ctx: Any, entry: str | None = None) -> str:
@@ -542,20 +660,23 @@ def up(
         # The agent follows the file auto() goes into: the one that file starts. Before
         # the next question, so the tools offered are that agent's.
         entry = run.answers.get("python-app")
-        if key == "python-app" and entry != "none" and not agent and not saved.get("agent"):
-            pick = _pick(ctx, entry=entry)
-            run.agent = pick.name
-            run.system_tools = pick.tools if pick.spec is not None else None
+        if key == "python-app" and entry and entry != "none" and entry != pick.file:
+            pick = _follow_file(ctx, pick, entry, agent, run)
     if pick.others and pick.spec is not None:
-        # The biggest other system first: the likeliest "no, that one".
-        others = pick.others
+        # The best other first runs, by the key `--agent` takes.
+        shown = pick.others[:3]
+        how = "pick its file above, or run" if interactive else "run"
         console.print(
             f"  [yellow]{pick.systems} separate agent systems here[/] — setting up "
             f"[bold]{escape(run.agent)}[/] only"
             + (f" [dim]({escape(pick.file)})[/]" if pick.file else "")
-            + ". For another, pick its file above or run "
-            f"[cyan]agentfox up --agent {escape(others[0] if others else '<name>')}[/]"
-            + " [dim](names: `agentfox scan`)[/]"
+            + f". For another, {how} [cyan]agentfox up --agent <name>[/]: "
+            + ", ".join(f"[cyan]{escape(k)}[/]" for k in shown)
+            + (
+                f" [dim](+{len(pick.others) - len(shown)} more: `agentfox scan`)[/]"
+                if len(pick.others) > len(shown)
+                else ""
+            )
         )
     # The name, shown and changeable: what auto("…") is called with and what the
     # dashboard lists. `--agent` decides it without asking.
