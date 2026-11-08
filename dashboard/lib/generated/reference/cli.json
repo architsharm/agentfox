@@ -120,7 +120,7 @@
       "required": false,
       "multiple": false,
       "default": null,
-      "help": "Name for your agent. Default: the one the scan finds in your code."
+      "help": "The agent to set up: one the scan found (its file gets auto()), or a new name. Default: the agent the entry file runs."
      },
      {
       "kind": "option",

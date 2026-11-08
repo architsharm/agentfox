@@ -89,6 +89,10 @@ class Run:
     #: After the first look: review, tighten. Listed below `next_steps`.
     later_steps: list[tuple[str, str]] = field(default_factory=list)
     running: list[str] = field(default_factory=list)
+    #: The tools of the agent being set up and the agents it hands work to, as the
+    #: scan found them; None when the scan found no agent to scope them to (then every
+    #: tool in the repository is the agent's).
+    system_tools: list[str] | None = None
     _edition: Edition | None = field(default=None, repr=False)
 
     @property
@@ -471,17 +475,16 @@ def _python_note(run: Run) -> str:
 
 
 def _python_ask(run: Run) -> None:
-    candidates = run.ctx.entry_points
-    choices = [
-        Choice(
-            str(p.relative_to(run.ctx.root)),
-            str(p.relative_to(run.ctx.root)),
-            "starts your agent" if i == 0 else "",
-        )
-        for i, p in enumerate(candidates)
-    ]
+    files = [str(p.relative_to(run.ctx.root)) for p in run.ctx.entry_points]
+    # The file that starts the agent being set up (`--agent`, a saved answer or the
+    # scan's pick) is the default, and on the list even when it ranks below the top 5.
+    preferred = run.answers.pop("entry-default", None)
+    if preferred and preferred not in files and (run.ctx.root / preferred).is_file():
+        files.insert(0, preferred)
+    first = preferred if preferred in files else (files[0] if files else None)
+    choices = [Choice(f, f, "starts your agent" if f == first else "") for f in files]
     choices.append(Choice("none", "Don't edit my code", "show the line to add instead"))
-    default = run.ctx.saved.get("entry_point") or (choices[0].key if candidates else "none")
+    default = run.ctx.saved.get("entry_point") or first or "none"
     if default not in {c.key for c in choices}:
         default = choices[0].key
     run.answers["python-app"] = run.prompter.select(
@@ -584,7 +587,19 @@ def _tools_unavailable(run: Run) -> str:
 
 
 def _tools_note(run: Run) -> str:
-    return f"{plural(len(run.ctx.tool_names), 'tool')} found; impact inferred from the name"
+    own, every = len(_own_tools(run)), len(run.ctx.tool_names)
+    if own < every:
+        return f"{plural(own, 'tool')} of {run.agent}'s ({every} in all); impact inferred"
+    return f"{plural(every, 'tool')} found; impact inferred from the name"
+
+
+def _own_tools(run: Run) -> list[str]:
+    """The tools to declare and grant: the agent's own and its sub-agents' when the
+    scan tied tools to agents, every tool found otherwise. A folder of separate
+    examples does not hand one agent the tools of seventeen others."""
+    if run.system_tools is None:
+        return run.ctx.tool_names
+    return [n for n in run.ctx.tool_names if n in set(run.system_tools)]
 
 
 def _inferred(run: Run) -> dict[str, str]:
@@ -593,7 +608,7 @@ def _inferred(run: Run) -> dict[str, str]:
     details = {s.name: s.detail for s in run.ctx.report.tools if s.name}
     return {
         name: infer_impact(name, {"description": details.get(name, "")}, cautious=True)
-        for name in run.ctx.tool_names
+        for name in _own_tools(run)
     }
 
 
@@ -615,6 +630,13 @@ def _tools_ask(run: Run) -> None:
 
 def _tools_apply(run: Run) -> None:
     impacts = run.answers.get("tools") or _inferred(run)
+    if not impacts:
+        run.skipped(
+            "tools",
+            f"{run.agent} has no tools of its own; the "
+            f"{plural(len(run.ctx.tool_names), 'tool')} found belong to other agents here",
+        )
+        return
     added = kept = 0
     for name, impact in impacts.items():
         try:
@@ -1071,7 +1093,7 @@ CATALOGUE: tuple[Component, ...] = (
         "Tool containment — declare the tools found",
         _tools_note,
         _tools_unavailable,
-        lambda r: bool(r.ctx.tool_names),
+        lambda r: bool(_own_tools(r)),
         _tools_apply,
         _tools_ask,
     ),

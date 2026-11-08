@@ -553,8 +553,20 @@ def test_the_scan_step_includes_this_machine_and_the_repos_skills(project, home)
     assert result.exit_code == 0, result.output
     assert "this machine" in result.output and "Codex" in result.output
     assert "skills" in result.output
-    # Codex is configured on this machine, so its hooks are offered too.
-    assert "Codex CLI" in result.output.split("coding agents", 1)[1].splitlines()[0]
+    # Codex is configured on this machine, not in this project: said as that. The
+    # project's own CLAUDE.md makes Claude Code this project's.
+    line = result.output.split("coding agents", 1)[1].splitlines()[0]
+    assert line.split("(on this machine")[0].strip() == "Claude Code"
+    assert "on this machine: Codex CLI" in line
+
+
+def test_coding_agents_only_installed_on_this_machine_are_not_the_projects(project, home):
+    (project / "CLAUDE.md").unlink()
+    (home / ".claude.json").write_text('{"mcpServers": {"x": {"command": "x"}}}')
+    result = _up(str(project), "--yes", "--dry-run")
+    line = result.output.split("coding agents", 1)[1].splitlines()[0]
+    assert line.strip().startswith("none set up in this project")
+    assert "on this machine: Claude Code" in line
 
 
 def test_skip_machine_leaves_the_home_directory_alone(project, home):
