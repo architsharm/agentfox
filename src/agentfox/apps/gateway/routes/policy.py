@@ -596,11 +596,21 @@ def patch_rule(
         }.items()
         if v is not None
     }
+    # What each changed field was, so a rule's history can say "from Medium to High".
+    old = {
+        "effect": rule.effect,
+        "enabled": rule.enabled,
+        "message": rule.message or "",
+        "on_block": rule.on_block,
+        "min_score": rule.when.detection.min_score if rule.when.detection else None,
+        "overridable": rule.overridable,
+    }
+    was = {k: old[k] for k in changes if old.get(k) is not None}
     _policy, version = save_policy(
         session,
         patched,
         author=user.email,
-        notes=payload.notes or f"{rule_id}: {changes}",
+        notes=payload.notes or f"{rule_id}: {changes}" + (f" (was {was})" if was else ""),
         bind_mode="observe",
         level=binding.level if binding else "org",
         scope_id=binding.scope_id if binding else "*",

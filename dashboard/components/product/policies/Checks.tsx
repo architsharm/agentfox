@@ -2,7 +2,7 @@ import Link from "next/link";
 import { safeApi } from "@/lib/product/api";
 import { Card, Empty, Pill } from "@/components/kit";
 import { Act } from "@/components/kit/Act";
-import { detectorName } from "@/lib/product/vocab";
+import { checkName } from "@/lib/product/checks";
 import { ModelForm, ModelTest, PullButton, TierSwitch, type PostureDoc } from "./ChecksControls";
 import { AccessChecksCard } from "@/ee/AccessChecksCard";
 import { EnterpriseOnly } from "@/components/product/EnterpriseOnly";
@@ -56,11 +56,11 @@ const TIERS: Record<string, { name: string; sub: string }> = {
   deterministic: { name: "Rules and code", sub: "Always on. No model, no network." },
   local_model: { name: "Local models", sub: "Classifier weights on this server." },
   local_llm: { name: "Local LLM", sub: "A model served on this machine." },
-  jev: { name: "JEV", sub: "TypeSafe System One, hosted." },
-  llm: { name: "LLM judge", sub: "A hosted LLM with your provider key." },
+  jev: { name: "Hosted judge model (Jev)", sub: "TypeSafe System One, hosted." },
+  llm: { name: "Your LLM provider", sub: "A hosted LLM, with your provider key." },
 };
 
-const name = (d: Detector) => (detectorName(d.key) !== d.key ? detectorName(d.key) : d.label || d.key);
+const name = (d: Detector) => checkName(d);
 
 function Source({ d }: { d: Detector }) {
   if (d.source === "builtin") return <Pill tone="outline">Built-in</Pill>;

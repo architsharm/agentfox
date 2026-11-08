@@ -9,6 +9,7 @@ import { SimulateThenBlock } from "@/components/product/policies/SimulateLibrary
 import { ApplyChoice, LibraryCard } from "@/components/product/policies/LibraryCard";
 import { LibraryDetail, type LibraryView } from "@/components/product/policies/LibraryDetail";
 import { libraryPath, libraryState, ownRulesState, whereOn, type LibraryContents, type LibraryStatus as Status } from "@/lib/product/libraries";
+import { businessRuleName } from "@/lib/product/policyWords";
 
 const NONE: Status = { agents: [], blocking: false, workspace: false };
 /** The pack every rule a person writes lands in (`custom_store.POLICY_KEY`). */
@@ -21,7 +22,7 @@ function PackSwitches({ packs }: { packs: PackInfo[] }) {
   return (
     <>
       {live.map((p) => (
-        <PackMode key={p.key} packKey={p.key} mode={p.mode} body={p.liveBody} version={p.boundVersion} />
+        <PackMode key={p.key} packKey={p.key} mode={p.mode} body={p.liveBody} version={p.boundVersion} secondary />
       ))}
     </>
   );
@@ -64,12 +65,15 @@ function ownLibrary(own: PackInfo | undefined, business: any[], project: string)
           {business.map((b: any) => (
             <tr key={b.key}>
               <td>
-                <Link className="k-name" href={`/app/policies/rules/${encodeURIComponent(`business.${b.key}`)}`}>{b.name}</Link>
-                <span className="sub">{b.tool || "Any tool"}</span>
+                <Link className="k-name" href={`/app/policies/rules/${encodeURIComponent(`business.${b.key}`)}`}>{businessRuleName(b)}</Link>
+                <span className="sub">
+                  {b.tool && !businessRuleName(b).includes(b.tool) ? `${b.tool} · ` : ""}
+                  {b.agent ? `Only ${b.agent}` : "Every agent"}
+                </span>
               </td>
               <td className="tight"><ModePill mode={b.enabled ? b.mode : null} /></td>
               <td className="tight" style={{ textAlign: "right" }}>
-                <BusinessMode ruleKey={b.key} mode={b.mode} name={b.name} />
+                <BusinessMode ruleKey={b.key} mode={b.mode} name={businessRuleName(b)} />
               </td>
             </tr>
           ))}
@@ -78,7 +82,7 @@ function ownLibrary(own: PackInfo | undefined, business: any[], project: string)
     ) : undefined,
     actions: (
       <>
-        {own?.rules.length ? <PackMode packKey={OWN} mode={own.mode} body={own.liveBody} version={own.boundVersion} /> : null}
+        {own?.rules.length ? <PackMode packKey={OWN} mode={own.mode} body={own.liveBody} version={own.boundVersion} secondary /> : null}
         <Link href="/app/policies/new" className={n ? "k-btn" : "k-btn-primary"}>
           Add a rule
         </Link>
@@ -123,7 +127,7 @@ function UpdateAction({ id, title, st, body }: { id: string; title: string; st: 
 }
 
 /** One library's card and drawer: what both show, and the actions both carry. */
-type Library = LibraryView & { className?: string; state: { text: string; tone: string; title?: string } };
+type Library = LibraryView & { className?: string; tag?: string; state: { text: string; tone: string; title?: string } };
 
 /**
  * Every library, as it stands on the project chosen in the sidebar: the basic
@@ -165,6 +169,7 @@ async function libraries(project: string, agents: string[]): Promise<Library[]> 
     {
       id: "basic",
       title: "Basic guardrails",
+      tag: "Recommended",
       className: "lib-default",
       description:
         "The default set: prompt attacks in what users send and in what the agent reads, and personal data and secrets in replies. Not tool permissions.",
@@ -181,7 +186,7 @@ async function libraries(project: string, agents: string[]): Promise<Library[]> 
               project={{
                 url: "/api/policies/libraries/basic/apply",
                 body,
-                label: basicOn ? "Apply to the rest" : `Apply to ${project}`,
+                label: basicOn ? `Apply to the rest of ${project}` : `Apply to ${project}`,
                 confirm: `Apply the basic guardrails to ${project}? They start by watching: they record what they would block and hide, and stop nothing. They block once they have been simulated and someone allowed to change production policy starts them.`,
               }}
               every={{
@@ -254,7 +259,7 @@ async function libraries(project: string, agents: string[]): Promise<Library[]> 
         <>
           {n < total && !(st.workspace && !n) ? (
             <ApplyChoice
-              project={{ url: `/api/policies/libraries/${id}/apply`, body, label: n ? "Apply to the rest" : `Apply to ${project}` }}
+              project={{ url: `/api/policies/libraries/${id}/apply`, body, label: n ? `Apply to the rest of ${project}` : `Apply to ${project}` }}
               every={{
                 url: `/api/policies/libraries/${id}/apply`,
                 body: everyBody,
@@ -303,7 +308,10 @@ export async function Libraries({ project, agents }: { project: string | null; a
             head={
               <>
                 <div className="lib-head">
-                  <strong>{l.title}</strong>
+                  <span className="lib-head-title">
+                    <strong>{l.title}</strong>
+                    {l.tag ? <span className="lib-tag" title="The set we suggest every agent starts with">{l.tag}</span> : null}
+                  </span>
                   <span className="lib-n">
                     {l.rules} {l.rules === 1 ? "rule" : "rules"}
                   </span>

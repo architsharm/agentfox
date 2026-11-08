@@ -116,6 +116,18 @@ def test_patching_message_reask_and_sensitivity(client):
     assert "I can't help with that." in body and "reask" in body and "0.3" in body
 
 
+def test_a_patched_version_notes_what_each_field_was(client):
+    """The rule's History says "Sensitivity changed from Medium to High": the notes
+    carry the value before the change, not only the one after."""
+    client.post(
+        "/api/policies/baseline/rules/injection.direct", json={"min_score": 0.5}, headers=ADMIN
+    )
+    history = client.get("/api/policies?full=1", headers=ADMIN).json()["policies"]
+    baseline = next(p for p in history if p["key"] == "baseline")
+    notes = max(baseline["version_history"], key=lambda v: v["version"])["notes"]
+    assert notes == "injection.direct: {'min_score': 0.5} (was {'min_score': 0.7})"
+
+
 def test_sensitivity_on_a_rule_without_detection_is_refused(client):
     r = client.post(
         "/api/policies/tool-containment/rules/capability.denied",

@@ -1,0 +1,78 @@
+/* ── Policy screens: the map's rule panel, rule pages, Applied rules, Libraries ──
+ * One colour rule throughout: what stops traffic reads red, what holds it for a
+ * person amber, what hides data blue; watching, allowing and off read quiet. A
+ * live mode is never green beside a red action. Loaded after af-theme.css. */
+
+/* Map nodes: names wrap to two lines instead of cutting off, and text stays
+ * readable once the canvas is fitted (sizes match the layout in GuardrailMap.tsx). */
+.gm-clamp2 { min-width: 0; max-width: 100%; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.gm-agent { width: 230px; height: 116px; gap: 4px; }
+.gm-agent strong { font-size: 17px; line-height: 21px; }
+.gm-agent .gm-kind { font-size: 13px; }
+.gm-agent .gm-sub, .gm-agent .gm-handoff-note { font-size: 12.5px; }
+.gm-llm { width: 230px; height: 68px; }
+.gm-llm strong { font-size: 16px; line-height: 20px; font-family: var(--af-sans); }
+.gm-llm .gm-kind { font-size: 13px; }
+.gm-tool { width: 230px; height: 46px; font-size: 14px; line-height: 17px; }
+.gm-tool .gm-perm { font-size: 11.5px; }
+.gm-docs .gm-kind, .gm-end, .gm-box-head .gm-kind, .gm-system-head, .gm-system-head span { font-size: 14px; }
+.gm-rail { font-size: 14px; height: 32px; }
+
+/* A rule's settings, open in the map's panel */
+.gm-rule-open { background: var(--af-subtle); }
+.gm-rule-link { width: 100%; border: 0; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.gm-rule-settings { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 2px 12px 12px; }
+.gm-rule-settings .gm-control { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.gm-rule-settings .k-seg { flex-wrap: wrap; max-width: 100%; }
+.gm-rule-settings .k-seg button { padding-inline: 9px; }
+.gm-threshold { font-size: 12.5px; color: var(--af-fg-2); }
+.gm-tone-block { color: var(--af-err); }
+.gm-tone-held { color: var(--af-warn); }
+.gm-tone-hide { color: var(--af-info); }
+.gm-tone-quiet { color: var(--af-muted); }
+.gm-limits { margin: 0; font-size: 13px; color: var(--af-fg); }
+
+/* A segmented control whose chosen action is only watching: it reads as not live. */
+.gm-seg-watching button.active { background: var(--af-subtle); color: var(--af-fg-2); box-shadow: inset 0 0 0 1px var(--af-line-2); }
+.gm-seg-watch { font-weight: 400; }
+.gm-watch-note { font-size: 12px; }
+
+/* "This would loosen…": the refusal, said plainly, with a way forward. */
+.gm-loosen { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--af-warn) 35%, var(--af-line)); border-radius: 8px; background: color-mix(in srgb, var(--af-warn) 6%, var(--af-surface)); }
+.gm-loosen p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--af-fg); }
+.gm-loosen-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+
+/* Applied rules and library states: blocking is live (strong), watching quiet. */
+.pol-on { color: var(--af-fg) !important; font-weight: 600; }
+.pol-watch { color: var(--af-muted) !important; }
+.pol-block { color: var(--af-err) !important; font-weight: 500; }
+.pol-held { color: var(--af-warn) !important; font-weight: 500; }
+.pol-hide { color: var(--af-info) !important; font-weight: 500; }
+.pol-quiet { color: var(--af-muted) !important; }
+.pol-group { display: flex; flex-direction: column; gap: 0; }
+.pol-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 10px 16px; background: var(--af-subtle); border-bottom: 1px solid var(--af-line); font-size: 13px; }
+.pol-group-head strong { font-weight: 600; color: var(--af-fg); }
+.pol-group-head span { font-size: 12px; color: var(--af-muted); }
+.pol-groups { display: flex; flex-direction: column; gap: 14px; }
+.pol-groups .pol-list { overflow: hidden; }
+.pol-list-plain { list-style: none; margin: 0; padding: 0; }
+.pol-list-plain > li + li { border-top: 1px solid var(--af-line); }
+.pol-groups .pol-head, .pol-groups .pol-row { grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.6fr) minmax(0, 1.4fr); }
+
+/* Libraries: the recommended one says so. */
+.lib-tag { flex: none; align-self: center; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 500; color: var(--af-brand); background: color-mix(in srgb, var(--af-brand) 10%, transparent); }
+.lib-head-title { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+
+/* A library's rules in its drawer: titles first; what an engineer wrote, behind Details. */
+.lib-rule-more { margin-top: 4px; font-size: 12.5px; color: var(--af-fg-2); }
+.lib-rule-more summary { cursor: pointer; color: var(--af-muted); width: max-content; }
+.lib-rule-more p { margin: 4px 0 0; line-height: 1.5; }
+.lib-rule-more code { font-family: var(--af-mono); font-size: 11.5px; }
+.lib-rule-controls { margin-top: 4px; font-family: var(--af-mono); font-size: 11px; color: var(--af-muted); }
+
+/* Checked by: a check that is off or not installed says so. */
+.gm-chip-idle { border-style: dashed; color: var(--af-muted); }
+.gm-chip-why { font-size: 10.5px; color: var(--af-warn); }
+
+/* Approval limits / words forms */
+.k-help { margin: 0; font-size: 12.5px; color: var(--af-muted); line-height: 1.45; }

@@ -98,6 +98,39 @@ def test_a_compiled_ladder_saves_watching_and_can_be_enforced(client):
     assert enforced.json()["mode"] == "enforce"
 
 
+def test_a_business_rule_says_which_agent_it_is_scoped_to(client):
+    """The approval-limit form offers "this agent" or "every agent"; the rule says
+    which it got, so the screens can show it."""
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Agent
+
+    with session_scope() as session:
+        session.add(Agent(slug="pay-bot", registered=True, status="active"))
+    ladder = next(
+        r
+        for r in client.post(
+            "/api/business/compile", json={"text": LADDER_TEXT}, headers=ADMIN
+        ).json()["rules"]
+        if r["kind"] == "threshold_ladder"
+    )
+    one = client.post(
+        "/api/business/rules",
+        json={"definition": {**ladder["definition"], "key": "one"}, "agent": "pay-bot"},
+        headers=ADMIN,
+    ).json()
+    every = client.post(
+        "/api/business/rules",
+        json={"definition": {**ladder["definition"], "key": "every"}},
+        headers=ADMIN,
+    ).json()
+    assert one["agent"] == "pay-bot" and every["agent"] is None
+    listed = {
+        r["key"]: r["agent"]
+        for r in client.get("/api/business/rules", headers=ADMIN).json()["rules"]
+    }
+    assert listed == {"one": "pay-bot", "every": None}
+
+
 def test_unknown_pack_is_404(client):
     assert client.post("/api/library/packs/nope/install", headers=ADMIN).status_code == 404
 

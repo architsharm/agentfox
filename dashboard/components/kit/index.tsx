@@ -274,7 +274,8 @@ export function ActionPill({ effect }: { effect?: string | null }) {
 
 export function ModePill({ mode }: { mode?: string | null }) {
   if (!mode) return <Pill tone="outline">Off</Pill>;
-  return <Pill tone={modeKey(mode) === "enforce" ? "ok" : "outline"}>{modeLabel(mode)}</Pill>;
+  // Blocking is live, not "good": never green beside a red Block (neutral, with the dot); watching is an outline.
+  return <Pill tone={modeKey(mode) === "enforce" ? "neutral" : "outline"}>{modeLabel(mode)}</Pill>;
 }
 
 export function SeverityPill({ value }: { value?: string | null }) {

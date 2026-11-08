@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { Meta, Pill, ago } from "@/components/kit";
 import { ruleTitle } from "@/lib/product/vocab";
-import { checksLabel, doesLabel, simulationSummary, type LibraryContents, type LibraryRule } from "@/lib/product/libraries";
+import { businessRuleName, inlineMarkdown, splitControls } from "@/lib/product/policyWords";
+import { checksLabel, doesLabel, simulationSummary, wouldDoLabel, type LibraryContents, type LibraryRule } from "@/lib/product/libraries";
 
 /** What the drawer and a library's page show for one library. */
 export type LibraryView = {
@@ -30,6 +31,46 @@ export type LibraryView = {
  * and what its last simulation found. The body of the drawer a library card opens,
  * and of /app/policies/<library>.
  */
+/** A rule's docstring with its *emphasis* and `code` rendered, not shown as marks. */
+function Markdown({ text }: { text: string }) {
+  return (
+    <>
+      {inlineMarkdown(text).map((p, i) =>
+        p.kind === "em" ? <em key={i}>{p.text}</em> : p.kind === "strong" ? <strong key={i}>{p.text}</strong> : p.kind === "code" ? <code key={i}>{p.text}</code> : <span key={i}>{p.text}</span>,
+      )}
+    </>
+  );
+}
+
+/**
+ * One rule's name: its title, never its id. A business rule (it has bands) is named
+ * as a person would; a rule whose description is its title shows no details.
+ */
+function RuleName({ r }: { r: LibraryRule }) {
+  const title = r.detail ? businessRuleName({ key: r.id, name: r.description, tool: r.tool }) : ruleTitle(r.id, r.description);
+  const { text, controls } = splitControls(r.description || "");
+  const more = text && text !== title && !r.detail;
+  return (
+    <>
+      <span className="k-name">{title}</span>
+      {r.detail && <span className="sub">{r.detail}</span>}
+      {more || controls.length ? (
+        <details className="lib-rule-more">
+          <summary>Details</summary>
+          {more ? (
+            <p>
+              <Markdown text={text} />
+            </p>
+          ) : null}
+          {controls.length ? <div className="lib-rule-controls">Controls: {controls.join(", ")}</div> : null}
+        </details>
+      ) : null}
+    </>
+  );
+}
+
+const DOES_TONE = (effect: string) => (effect === "block" ? "bad" : effect === "escalate" ? "held" : effect === "allow" ? "neutral" : "info");
+
 export function LibraryDetail({ v }: { v: LibraryView }) {
   const rows = v.ruleRows ?? v.contents?.rules ?? [];
   const sim = v.contents?.simulation;
@@ -40,7 +81,7 @@ export function LibraryDetail({ v }: { v: LibraryView }) {
         items={[
           ["Rules", String(v.rules)],
           ["On", v.on],
-          ["Mode", v.mode ? <Pill tone={v.mode === "blocking" ? "ok" : "warn"}>{v.mode === "blocking" ? "Blocking" : v.mode === "mixed" ? "Some blocking, some watching" : "Watching"}</Pill> : "—"],
+          ["Mode", v.mode ? <Pill tone={v.mode === "blocking" ? "neutral" : "outline"}>{v.mode === "blocking" ? "Blocking" : v.mode === "mixed" ? "Some blocking, some watching" : "Watching"}</Pill> : "—"],
         ]}
       />
       {v.note && <p className="lib-detail-note">{v.note}</p>}
@@ -52,19 +93,23 @@ export function LibraryDetail({ v }: { v: LibraryView }) {
             <tr>
               <th>Rule</th>
               <th>Checks</th>
-              <th>{v.mode === "watching" ? "Would do" : "Does"}</th>
+              <th>{v.mode === "blocking" ? "Does" : "Would do"}</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.id}>
                 <td>
-                  <span className="k-name">{r.description ? r.description : ruleTitle(r.id)}</span>
-                  {r.detail && <span className="sub">{r.detail}</span>}
+                  <RuleName r={r} />
                 </td>
                 <td className="muted">{checksLabel(r)}</td>
                 <td className="tight">
-                  <Pill tone={r.effect === "block" ? "bad" : r.effect === "escalate" ? "held" : r.effect === "allow" ? "neutral" : "info"}>{doesLabel(r.effect)}</Pill>
+                  {/* Watching: what it would do, quiet; red and amber are for what acts now. */}
+                  {v.mode === "blocking" ? (
+                    <Pill tone={DOES_TONE(r.effect)}>{doesLabel(r.effect)}</Pill>
+                  ) : (
+                    <Pill tone="outline">{wouldDoLabel(r.effect)}</Pill>
+                  )}
                 </td>
               </tr>
             ))}
