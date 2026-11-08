@@ -790,8 +790,8 @@
      {
       "path": "agents list",
       "name": "list",
-      "summary": "List every agent, registered or shadow.",
-      "help": "List every agent, registered or shadow.",
+      "summary": "List every agent: registered, proposed by a scan (draft), or shadow (seen in traffic, never registered).",
+      "help": "List every agent: registered, proposed by a scan (draft), or shadow (seen in\ntraffic, never registered).",
       "panel": null,
       "params": [
        {
@@ -819,6 +819,19 @@
         "multiple": false,
         "default": null,
         "help": "Only agents that are quarantined or killed, and why."
+       },
+       {
+        "kind": "option",
+        "name": "show_all",
+        "opts": [
+         "--all"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Also list dismissed drafts and disconnected agents."
        }
       ],
       "default_subcommand": null,
@@ -4287,7 +4300,7 @@
       "path": "test redteam",
       "name": "redteam",
       "summary": "Run adversarial probes, written from the agent's own tools, against the deployed configuration.",
-      "help": "Run adversarial probes, written from the agent's own tools, against the deployed\nconfiguration.\n\nThis measures whether *this configuration* got weaker, against known attack classes.\nIt is not a robustness certificate, and `--adaptive` does not make it one: every\npublished result says an attacker who adapts eventually gets through.\n\nExits 1 when any attack got through (unless --allow-escapes). Probes are simulated:\ntheir tool calls are evaluated without writing decisions, so they never show up\nin findings or in what `policy simulate` replays. The campaign itself, and a\nfinding naming the attacks that got through, are recorded.",
+      "help": "Run adversarial probes, written from the agent's own tools, against the deployed\nconfiguration.\n\nThis measures whether *this configuration* got weaker, against known attack classes.\nIt is not a robustness certificate, and `--adaptive` does not make it one: every\npublished result says an attacker who adapts eventually gets through.\n\nAn attack got through when live traffic would not stop it today: one only a\nwatching (observe-mode) rule catches gets through until that rule blocks. The\nrecall line, the verdict and the exit code all count it this way.\n\nExits 1 when any attack got through (unless --allow-escapes, for a CI step that\nreports without failing). Probes are simulated:\ntheir tool calls are evaluated without writing decisions, so they never show up\nin findings or in what `policy simulate` replays. The campaign itself, and a\nfinding naming the attacks that got through, are recorded.",
       "panel": null,
       "params": [
        {
@@ -4419,7 +4432,7 @@
         "required": false,
         "multiple": false,
         "default": null,
-        "help": "Exit 0 even when an attack got through. By default an escaped attack exits 1, so the command can gate CI."
+        "help": "Exit 0 even when an attack got through. By default an attack that got through exits 1, so the command can gate CI; one only a watching rule catches counts, since live traffic isn't stopped by it."
        }
       ],
       "default_subcommand": null,

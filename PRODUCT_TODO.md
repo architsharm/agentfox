@@ -182,6 +182,9 @@ Main before #122 (`3da75bf6`) compared with main after #129, #130 and #131. Noth
   - `check --submit` → `propose_from_scan`, and `init --key` → `register_structure`.
   - They differ in slugs, ScanRun, trifecta risk tier, edge pruning and scan-proposed policies.
   - Fix: make `register_structure` a mode of `propose_from_scan`.
+  - `agentfox up` is no longer a third path: it registers its agent under the scan's name for the same code (`<repo>/<agent>`) and `init`'s `project`, so `propose_from_scan` adopts it (`adopt_proposal`, `fold_duplicate_drafts`) and `register_structure` updates it. Still apart: `register_structure` names drafts `<agent>`, the scan `<repo>/<agent>`, so an `init --key` draft and a scan draft of the same code can still both exist.
+- [ ] **Each recorded scan proposes another policy per framework** (`scan-<run>-<framework>`, keyed by run id), so re-recording a changed scan piles up identical proposed policies.
+- [ ] **A local SQLite gateway drops some attack-test checks.** On the LangGraph swarm after-test, 4 of 49 checks failed with "database is locked" in `runner_guard` → `dry_run_check` → `ensure_identity` (a write) while results were being saved; `_SQLITE_DRY_RUN` serialises dry runs, not the other writers.
 - [ ] **The attack test reads its own copy of the map.** The map lives as JSON in `OnboardingSession`/`OnboardingProject`, and `PUT /api/onboarding/structure` edits only that JSON, so the tested map and the registry drift.
 - [ ] **Four delegation-graph walks.** They disagree about removed agents (`scope.delegates` doesn't filter them), so "apply to sub-agents" can write layers to removed agents. Fix: one graph helper.
 - [ ] **Basic guardrails duplicate the `baseline` pack.** They are a hard-coded Python pack with different rule ids and thresholds, and two apply routes behave differently. Fix: make it a pack file and keep one route.
