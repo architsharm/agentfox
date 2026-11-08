@@ -57,7 +57,7 @@ export function Body() {
       </p>
       <Figure
         src="/product/injection-observed.png"
-        alt="A retrieved refunds document containing an instruction to ignore previous instructions and transfer a balance. In observe mode the verdict reads: would block in enforce."
+        alt="An AgentFox run whose retrieved document carries an instruction: allowed while the rule watches, and marked would block."
         caption={
           <>
             A retrieved document carrying an override, caught as{" "}
@@ -66,7 +66,7 @@ export function Body() {
           </>
         }
         width={1600}
-        height={707}
+        height={900}
       />
       <p>
         The obvious version, <em>ignore all previous instructions</em> in plain text, is easy to

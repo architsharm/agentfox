@@ -108,10 +108,10 @@ export const BLOG_POSTS: BlogPost[] = [
     published: "2026-10-17",
     readMinutes: 6,
     image: {
-      src: "/product/refusal.png",
-      alt: "A payments.transfer call refused with capability.denied: no capability grants this agent the requested tool and action.",
+      src: "/blog/release-0-5.png",
+      alt: "The AgentFox agent map for a payments agent after setup: its model, four tools, the rails where guardrails apply, and the attack test panel.",
       width: 1600,
-      height: 670,
+      height: 900,
     },
     pillars: [
       { href: "/docs/quickstart", label: "Quickstart", why: "From pip install to a governed agent." },
@@ -136,9 +136,9 @@ export const BLOG_POSTS: BlogPost[] = [
     readMinutes: 7,
     image: {
       src: "/product/injection-observed.png",
-      alt: "A retrieved document carrying an override instruction, recorded in observe mode as would block in enforce.",
+      alt: "An AgentFox run whose retrieved document carries an instruction: allowed while the rule watches, and marked would block.",
       width: 1600,
-      height: 707,
+      height: 900,
     },
     pillars: [
       { href: "/docs/reference/detectors", label: "Detector reference", why: "unicode.tags and every other detector, with surfaces." },
@@ -191,10 +191,10 @@ export const BLOG_POSTS: BlogPost[] = [
     published: "2026-10-06",
     readMinutes: 9,
     image: {
-      src: "/product/refusal.png",
-      alt: "A payments.transfer call refused with capability.denied: no capability grants this agent the requested tool and action.",
+      src: "/blog/containment-issue.png",
+      alt: "An AgentFox issue: a payments.transfer above the agent's granted limit, blocked as outside the limits of its permission, with the reason in plain words.",
       width: 1600,
-      height: 670,
+      height: 900,
     },
     pillars: [
       { href: "/benchmark", label: "Benchmarks", why: "The containment and AgentDojo results, losses included." },
@@ -274,9 +274,9 @@ export const BLOG_POSTS: BlogPost[] = [
     readMinutes: 8,
     image: {
       src: "/product/injection-blocked.png",
-      alt: "A retrieved document carrying an instruction to transfer funds, blocked before it reached the model as indirect prompt injection.",
+      alt: "An AgentFox run where a retrieved document carried an instruction: the tool result is blocked as injection in documents or tool results.",
       width: 1600,
-      height: 660,
+      height: 900,
     },
     pillars: [
       { href: "/docs/reference/policies", label: "Policies", why: "Every rule and what it checks." },
