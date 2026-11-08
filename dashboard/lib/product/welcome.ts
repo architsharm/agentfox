@@ -35,7 +35,7 @@ const CLOUD_HOST = "useagentfox.com";
  * `agentfox up`, already answered: the gateway, the key and observe mode are filled
  * in, and `--yes` takes the recommendations for the rest, so the terminal asks
  * nothing. The agent is left to `up`, which names it after the repository's folder,
- * as it does when run on its own. The key travels as `AGENTFOX_API_TOKEN` (which `up`
+ * as it does when run on its own. The key travels as `AGENTFOX_API_KEY` (which `up`
  * reads) rather than a flag, the same way every other snippet on these pages passes
  * it. `siteUrl` is the address this dashboard is being served at.
  */
@@ -47,7 +47,7 @@ export function upCommand({ gateway, token, siteUrl }: { gateway: string; token:
     // An unparseable site URL is a self-hosted deployment's own name.
   }
   return [
-    `AGENTFOX_API_TOKEN=${token} \\`,
+    `AGENTFOX_API_KEY=${token} \\`,
     `  uvx ${INSTALL_SPEC} up --target ${target} --api-url ${gateway} --mode observe --yes`,
   ].join("\n");
 }

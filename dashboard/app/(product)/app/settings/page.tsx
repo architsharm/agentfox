@@ -100,7 +100,7 @@ export default async function Settings({
       </Card>
 
       <Card title="SIEM export" hint="Decisions and findings in a format your SIEM can ingest.">
-        <CodeSnippet code={`curl -s ${gateway}/api/export/siem \\\n  -H "Authorization: Bearer $AGENTFOX_API_TOKEN"`} />
+        <CodeSnippet code={`curl -s ${gateway}/api/export/siem \\\n  -H "Authorization: Bearer $AGENTFOX_API_KEY"`} />
       </Card>
     </>
   );

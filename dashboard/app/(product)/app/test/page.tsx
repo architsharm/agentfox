@@ -374,7 +374,7 @@ function Ci() {
         <div className="k-form">
           <CodeSnippet label="Save the current run as the baseline" code="agentfox test baseline RUN_ID --label main" />
           <CodeSnippet label="In CI: fail on regression" code="agentfox test gate SUITE --baseline RUN_ID" />
-          <CodeSnippet label="Or over HTTP" code={`curl -s -X POST ${gateway}/api/eval/gate \\\n  -H "Authorization: Bearer $AGENTFOX_API_TOKEN" \\\n  -H "Content-Type: application/json" \\\n  -d '{"suite": "SUITE", "min_pass_rate": 0.9}'`} />
+          <CodeSnippet label="Or over HTTP" code={`curl -s -X POST ${gateway}/api/eval/gate \\\n  -H "Authorization: Bearer $AGENTFOX_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"suite": "SUITE", "min_pass_rate": 0.9}'`} />
         </div>
       </Card>
       <Card title="Attack test in CI">
