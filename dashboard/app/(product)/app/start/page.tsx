@@ -168,7 +168,7 @@ async function Checklist({ agentParam, gateway }: { agentParam?: string; gateway
         <div className="note-panel" style={{ marginBottom: 14 }}>
           <strong>You&apos;re set up.</strong> From here: <Link href="/app/approvals">Approvals</Link> is where held
           actions wait for you, <Link href="/app/findings">Issues</Link> lists what needs a look, and{" "}
-          <Link href="/app/observe">Observe</Link> shows every request. Add another agent with Register another below.
+          <Link href="/app/observe">Activity</Link> shows every request. Add another agent with Register another below.
         </div>
       )}
 

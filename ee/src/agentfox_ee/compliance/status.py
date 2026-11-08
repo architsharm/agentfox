@@ -143,7 +143,8 @@ def evaluate_control(
         open_count = _open_findings(session, degrading, since)
         if open_count:
             status = "degraded"
-            rationale += f" Downgraded: {open_count} open finding(s) of type {degrading}."
+            noun = "issue" if open_count == 1 else "issues"
+            rationale += f" Downgraded: {open_count} open {noun} ({_names(degrading)})."
             evidence["open_findings"] = open_count
 
     record = ControlStatus(
@@ -419,7 +420,9 @@ def _rule_capability_active(session, control, rule, since) -> tuple[str, str, di
             + (" Marked not applicable — this capability is optional." if optional else ""),
             {"counts": counts},
         )
-    return "effective", f"Capability exercised: {counts}.", {"counts": counts}
+    # A sentence, not the dict: "In use: 4 traces." rather than "{'traces': 4}".
+    used = ", ".join(f"{n:,} {_names(name)}" for name, n in sorted(counts.items()) if n)
+    return "effective", f"In use: {used}.", {"counts": counts}
 
 
 def _rule_kill_switch(session, control, rule, since) -> tuple[str, str, dict]:

@@ -45,12 +45,12 @@ describe("sidebar scopes", () => {
     expect(labels).not.toContain("Policies");
   });
 
-  it("lights Reports on its tab pages and Traces on its tab pages", () => {
+  it("lights Reports on its tab pages and Activity on its tab pages", () => {
     const rows = WORKSPACE_NAV.flatMap((g) => g.items);
     const reports = rows.find((r) => r[0] === "Reports")!;
     expect(reports[1]).toBe("/app/reports");
     expect(reports[2]).toEqual(expect.arrayContaining(["/app/compliance", "/app/coverage"]));
-    const traces = rows.find((r) => r[0] === "Traces")!;
+    const traces = rows.find((r) => r[0] === "Activity")!;
     expect(traces[2]).toEqual(expect.arrayContaining(["/app/tools", "/app/models", "/app/sessions", "/app/events"]));
   });
 
@@ -59,7 +59,7 @@ describe("sidebar scopes", () => {
     expect(rows[0][1]).toBe("/app/map");
     expect(rows[0][2]).toContain("/app/projects");
     expect(rows.map((r) => r[0])).toEqual([
-      "Agents", "Policies", "Approvals", "Issues", "Testing", "Traces", "Reports",
+      "Agents", "Policies", "Approvals", "Issues", "Testing", "Activity", "Reports",
       "Settings",
     ]);
   });

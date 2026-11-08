@@ -244,6 +244,9 @@ nav.side .side-foot .theme-toggle { margin: 0; padding: 0; border: 0; }
 
 /* ── Tables: subtle header band, 40px rows, hairlines ──────────────────────── */
 :where(.shell) table { font-size: 13px; }
+/* One header style everywhere: some tables were written lowercase ("evidence /
+   rationale", "risk tier") and most capitalised. */
+.shell th::first-letter { text-transform: uppercase; }
 .shell th { font-size: 12px; font-weight: 500; color: var(--af-muted); text-transform: none; letter-spacing: 0; padding: 10px 16px; background: var(--af-subtle); border-bottom: 1px solid var(--af-line); }
 .shell td { padding: 10px 16px; border-bottom: 1px solid var(--af-line); vertical-align: middle; }
 .shell tbody tr:hover { background: color-mix(in srgb, var(--af-subtle) 60%, transparent); }
@@ -837,3 +840,22 @@ a.gm-add { align-self: flex-start; text-decoration: none; }
 
 /* Approvals → Human hand-offs: the line under the tab bar saying what this tab is. */
 .k-tab-intro { margin: 4px 0 12px; color: var(--muted); font-size: var(--t-small); }
+
+/* ── Evidence as sentences, IDs tucked away (FindingEvidence, CopyId) ─────── */
+.shell .ev-lines { display: grid; gap: 6px; margin: 0; }
+.shell .ev-lines > div { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 12px; }
+.shell .ev-lines dt { font-size: 13px; }
+.shell .ev-lines dd { margin: 0; }
+.shell .ev-ids summary { cursor: pointer; }
+.shell .ev-ids .ev-lines { margin-top: 8px; }
+.shell .copy-id { display: inline-flex; align-items: center; gap: 8px; }
+.shell .copy-id code { font-size: 12px; color: var(--af-fg-2); }
+.shell .copy-id-btn { border: 1px solid var(--af-line-2); background: transparent; border-radius: 999px; padding: 1px 8px; font: inherit; font-size: 11px; color: var(--af-muted); cursor: pointer; }
+.shell .copy-id-btn:hover { color: var(--af-fg); border-color: var(--af-muted); }
+
+/* Activity rows: the whole row opens the run (its "What" link stretches over the
+   row); other links in the row (the agent) stay on top and keep their own target. */
+.shell .k-row-link tbody tr { position: relative; }
+.shell .k-row-link tbody tr:hover { background: var(--af-subtle); }
+.shell .k-row-link .k-name::after { content: ""; position: absolute; inset: 0; }
+.shell .k-row-link td a:not(.k-name) { position: relative; z-index: 1; }

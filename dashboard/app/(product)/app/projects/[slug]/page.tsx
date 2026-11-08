@@ -37,7 +37,7 @@ import { PROJECT_VIEWS, projectHref, projectView } from "@/lib/product/project";
 import { AgentStatusMenu, ControlButton, HaltedBanner } from "@/components/product/agent/AgentStatus";
 import { breakerLabel, breakerRule, isHalted, noticeSentence, stateLabel, type AgentControlRecord, type AgentFacts } from "@/lib/product/agentStatus";
 
-export const metadata: Metadata = appPageMetadata("Project");
+export const metadata: Metadata = appPageMetadata("Agent");
 export const dynamic = "force-dynamic";
 
 /** Activity's parts, under `?view=activity&tab=`. The old agent tabs of the same names land here. */

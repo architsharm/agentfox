@@ -11,7 +11,7 @@ import { publicApiBase } from "@/lib/env";
 import { NoticeToast } from "@/components/product/NoticeToast";
 import { campaignNumbers } from "@/lib/product/attackTest";
 
-export const metadata: Metadata = appPageMetadata("Test", "Check rules and agents before they meet real traffic.");
+export const metadata: Metadata = appPageMetadata("Testing", "Check rules and agents before they meet real traffic.");
 export const dynamic = "force-dynamic";
 
 type SP = Record<string, string | undefined>;
@@ -33,7 +33,7 @@ export default async function Test({ searchParams }: { searchParams: Promise<SP>
 
   return (
     <>
-      <Header title="Test" />
+      <Header title="Testing" />
       <Tabs items={TABS.map((t) => ({ ...t, href: href("/app/test", { tab: t.key === "try" ? undefined : t.key }) }))} active={tab} />
       <NoticeToast notice={sp.review_notice} error={sp.review_error} />
       {tab === "try" && <Try agents={live} />}

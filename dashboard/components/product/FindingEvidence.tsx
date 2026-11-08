@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { InventoryStrip } from "@/components/ui";
+import { CopyId } from "@/components/product/CopyId";
 
 /** Every finding type that doesn't have a bespoke evidence view (most of them —
  * unowned agent, missed hand-off, budget exceeded, model drift, disclosure risk,
@@ -46,25 +47,114 @@ export function EvidenceValue({ value }: { value: any }) {
   return <>{String(value)}</>;
 }
 
+/** Keys that hold an identifier or an internal code. Shown last, small, copyable:
+ *  they are what support and the CLI ask for, not something to read. */
+const ID_KEYS = new Set(["trace_id", "decision_id", "approval_id", "finding_id", "rule_id", "session_id", "run_id", "cause", "surface"]);
+const ID_VALUE = /^(dec|trc|apr|fnd|ses|run|evt)_[A-Za-z0-9]+$/;
+/** Keys the sentences below already say. */
+const SAID = new Set(["reason", "cause_label", "tool", "effect", "applied", "untrusted_source", "untrusted_arguments", "origin_tool"]);
+
+const EFFECT: Record<string, [string, string]> = {
+  block: ["Blocked", "Would have been blocked"],
+  escalate: ["Held for a person's approval", "Would have been held for approval"],
+  redact: ["Masked", "Would have been masked"],
+  mask: ["Masked", "Would have been masked"],
+  allow: ["Allowed", "Allowed"],
+};
+const SOURCE: Record<string, string> = {
+  tool_result: "a tool's output",
+  retrieved: "a retrieved document",
+  retrieval: "a retrieved document",
+  sub_agent: "another agent's output",
+  user: "the user's message",
+  memory: "the agent's memory",
+};
+
+function isEmpty(v: unknown): boolean {
+  return v === null || v === undefined || v === "" || (Array.isArray(v) && v.length === 0);
+}
+
 export function GenericEvidence({ evidence }: { evidence: any }) {
-  const entries = Object.entries(evidence || {});
+  const ev = evidence || {};
+  const entries = Object.entries(ev);
   if (entries.length === 0) {
     return <p className="small muted">No further detail was recorded with this finding.</p>;
   }
+  const lines: [string, React.ReactNode][] = [];
+  if (!isEmpty(ev.tool)) lines.push(["Tool", <code key="t" className="mono">{String(ev.tool)}</code>]);
+  if (!isEmpty(ev.effect)) {
+    const [done, would] = EFFECT[String(ev.effect)] || [humanizeKey(String(ev.effect)), humanizeKey(String(ev.effect))];
+    lines.push(["What happened", ev.applied === false ? `${would} (watching, so it went through)` : done]);
+  }
+  if (!isEmpty(ev.cause_label)) lines.push(["Why", String(ev.cause_label)]);
+  if (!isEmpty(ev.untrusted_source)) {
+    const src = SOURCE[String(ev.untrusted_source)] || humanizeKey(String(ev.untrusted_source)).toLowerCase();
+    const args = Array.isArray(ev.untrusted_arguments) ? ev.untrusted_arguments : [];
+    lines.push([
+      "Data from",
+      <>
+        {src}
+        {!isEmpty(ev.origin_tool) && <> (<code className="mono">{String(ev.origin_tool)}</code>)</>}
+        {args.length > 0 && (
+          <>
+            {", in "}
+            {args.map((a: any, i: number) => (
+              <span key={i}>
+                {i ? ", " : ""}
+                <code className="mono">{String(a)}</code>
+              </span>
+            ))}
+          </>
+        )}
+      </>,
+    ]);
+  }
+  const ids = entries.filter(([k, v]) => !isEmpty(v) && (ID_KEYS.has(k) || (typeof v === "string" && ID_VALUE.test(v))));
+  const rest = entries.filter(([k, v]) => !SAID.has(k) && !ids.some(([ik]) => ik === k) && !isEmpty(v));
   return (
-    <div className="panel">
-      <table>
-        <tbody>
-          {entries.map(([key, value]) => (
-            <tr key={key}>
-              <td className="small muted" style={{ whiteSpace: "nowrap", verticalAlign: "top" }}>
-                {humanizeKey(key)}
-              </td>
-              <td className="small wrap" style={{ maxWidth: 460 }}><EvidenceValue value={value} /></td>
-            </tr>
+    <div className="stack" style={{ gap: 12 }}>
+      {!isEmpty(ev.reason) && <p style={{ margin: 0 }}>{String(ev.reason)}</p>}
+      {lines.length > 0 && (
+        <dl className="ev-lines">
+          {lines.map(([k, v]) => (
+            <div key={k}>
+              <dt className="muted">{k}</dt>
+              <dd>{v}</dd>
+            </div>
           ))}
-        </tbody>
-      </table>
+        </dl>
+      )}
+      {rest.length > 0 && (
+        <div className="panel">
+          <table>
+            <tbody>
+              {rest.map(([key, value]) => (
+                <tr key={key}>
+                  <td className="small muted" style={{ whiteSpace: "nowrap", verticalAlign: "top" }}>
+                    {humanizeKey(key)}
+                  </td>
+                  <td className="small wrap" style={{ maxWidth: 460 }}><EvidenceValue value={value} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {ids.length > 0 && (
+        <details className="ev-ids">
+          <summary className="small muted">Details for support and the CLI</summary>
+          <dl className="ev-lines">
+            {ids.map(([k, v]) => (
+              <div key={k}>
+                <dt className="muted">{humanizeKey(k).replace(/\bid\b/i, "ID")}</dt>
+                <dd>
+                  <CopyId value={String(v)} />
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </details>
+      )}
     </div>
   );
 }

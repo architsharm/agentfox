@@ -229,7 +229,7 @@ async function Audit() {
                   <td>{e.actor_id}</td>
                   <td>{String(e.action).replace(/[._]/g, " ")}</td>
                   <td className="muted">
-                    {e.payload?.trace_id ? <Link href={`/app/traces/${e.payload.trace_id}`}>{e.subject_type}</Link> : e.subject_type}
+                    {e.payload?.trace_id ? <Link href={`/app/traces/${e.payload.trace_id}`}>{subjectWords(e.subject_type)}</Link> : subjectWords(e.subject_type)}
                   </td>
                 </tr>
               ))}
@@ -241,4 +241,14 @@ async function Audit() {
       </Card>
     </>
   );
+}
+
+/** An audit subject as words: "api_token" reads "API token", "retention_run" "Retention run". */
+function subjectWords(subject?: string | null): string {
+  if (!subject) return "";
+  const words = String(subject)
+    .replace(/[._]+/g, " ")
+    .replace(/\b(api|id|mcp|sso|llm)\b/gi, (w) => w.toUpperCase())
+    .trim();
+  return words ? words[0].toUpperCase() + words.slice(1) : "";
 }
