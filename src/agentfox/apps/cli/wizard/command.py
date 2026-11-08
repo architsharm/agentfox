@@ -73,8 +73,49 @@ def _agent_name(ctx: Any) -> str:
         return ctx.project
     entries = {str(p.relative_to(ctx.root)) for p in ctx.entry_points}
     handed = {e.child for e in ctx.report.agent_edges}
-    ranked = sorted(specs, key=lambda a: (a.file not in entries, a.key in handed))
+    # The root hands work to the others. Hand-offs are often two-way (a triage agent
+    # and the specialists that hand back to it), so "handed to by nobody" can leave no
+    # one; the agent that hands to the most others is the one that starts the run.
+    hands_to: dict[str, int] = {}
+    for edge in ctx.report.agent_edges:
+        hands_to[edge.parent] = hands_to.get(edge.parent, 0) + 1
+    # Strongest of all: the agent the entry point actually starts (`Runner.run(triage`,
+    # `crew.kickoff(`, `graph.invoke(`).
+    started = _started_agents(ctx, specs)
+    ranked = sorted(
+        specs,
+        key=lambda a: (
+            a.key not in started,
+            a.file not in entries,
+            a.key in handed,
+            -hands_to.get(a.key, 0),
+        ),
+    )
     return slugify(ranked[0].name) or ctx.project
+
+
+def _started_agents(ctx: Any, specs: list[Any]) -> set[str]:
+    """Keys of the agents an entry point starts by the name the code gives them."""
+    import re
+
+    texts = []
+    for path in ctx.entry_points[:3]:
+        try:
+            texts.append(path.read_text(errors="ignore"))
+        except OSError:
+            continue
+    started = set()
+    for spec in specs:
+        attr = getattr(spec, "attr", None)
+        if not attr or not attr.isidentifier():
+            continue
+        runs = re.compile(
+            rf"Runner\.run\w*\(\s*(?:starting_agent\s*=\s*)?{attr}\b"
+            rf"|\b{attr}\s*(?:\(\s*\))?\s*\.\s*(?:kickoff|a?invoke|a?stream|run)\w*\s*\("
+        )
+        if any(runs.search(text) for text in texts):
+            started.add(spec.key)
+    return started
 
 
 def _step(number: int, title: str) -> None:
@@ -155,9 +196,17 @@ def _short(where: str) -> str:
     return f"SQLite {path}"
 
 
+def _hidden(component: Any, run: Run) -> bool:
+    """An Enterprise component this control plane does not have: left off the list
+    (`--with` still names why), and mentioned once at the end instead."""
+    return component.enterprise and component.key not in run.edition.features
+
+
 def _choices(run: Run) -> list[Choice]:
     out = []
     for component in CATALOGUE:
+        if _hidden(component, run):
+            continue
         reason = component.unavailable(run)
         out.append(
             Choice(component.key, component.label, "" if reason else component.note(run), reason)
@@ -181,16 +230,20 @@ def up(
         None, "--mode", help="observe (block nothing yet), defaults, or enforce."
     ),
     agent: str | None = typer.Option(
-        None, "--agent", help="Name for your agent. Default: the project's."
+        None, "--agent", help="Name for your agent. Default: the one the scan finds in your code."
     ),
     api_url: str | None = typer.Option(
         None,
         "--api-url",
-        envvar="AGENTFOX_API_URL",
+        # The names auto() reads first, then the older CLI names.
+        envvar=["AGENTFOX_URL", "AGENTFOX_API_URL"],
         help="Gateway address, for self-hosted or cloud.",
     ),
     api_token: str | None = typer.Option(
-        None, "--api-token", envvar="AGENTFOX_API_TOKEN", help="API key, for self-hosted or cloud."
+        None,
+        "--api-token",
+        envvar=["AGENTFOX_API_KEY", "AGENTFOX_API_TOKEN"],
+        help="API key, for self-hosted or cloud.",
     ),
     email: str | None = typer.Option(
         None, "--email", help="First operator's email, when `up` starts a self-hosted stack."
@@ -275,11 +328,6 @@ def up(
     edition = run.edition
     if edition.enterprise:
         console.print(f"  [green]Enterprise[/] [dim]{', '.join(sorted(edition.features))}[/]")
-    else:
-        console.print(
-            "  [dim]Open core. Compliance, evidence and monitoring are AgentFox Enterprise: "
-            "included in Cloud, free self-hosted for one workspace and four agents.[/]"
-        )
 
     # 3. What ---------------------------------------------------------------------
     _step(3, "What to include")
@@ -304,7 +352,15 @@ def up(
     run.mode = mode or prompter.select("How strict to start?", MODES, saved.get("mode", "observe"))
 
     # 5. Follow-ups ---------------------------------------------------------------
-    if any(key in picked for key in _NAMED) and agent is None:
+    # The name is asked only when the code gives none: an agent the scan found keeps
+    # the name `scan` printed (`--agent` renames it).
+    named_in_code = any(a.file.endswith(".py") for a in ctx.report.agents)
+    if (
+        any(key in picked for key in _NAMED)
+        and agent is None
+        and not saved.get("agent")
+        and not named_in_code
+    ):
         run.agent = slugify(prompter.text("Name for your agent", run.agent))
     for key in picked:
         component = BY_KEY[key]
@@ -371,17 +427,68 @@ def up(
             f"  set -a; . {STATE_DIR}/{ENV_FILE}; set +a"
         )
     lines.extend(f"\n{escape(note)}" for note in chosen.notes)
-    steps = run.next_steps + [
-        ("agentfox doctor", "is everything configured the way you think?"),
-        ("agentfox up", f"again any time — answers are in {STATE_DIR}/{ANSWERS_FILE}"),
-    ]
+    steps = (
+        _first_steps(run)
+        + run.next_steps
+        + run.later_steps
+        + [
+            ("agentfox doctor", "is everything configured the way you think?"),
+            ("agentfox up", f"again any time — answers are in {STATE_DIR}/{ANSWERS_FILE}"),
+        ]
+    )
     lines.append("\n[bold]Next[/]")
-    width = max(len(cmd) for cmd, _ in steps)
+    width = min(max(len(cmd) for cmd, _ in steps), 44)
     lines.extend(f"  [cyan]{escape(cmd):<{width}}[/]  [dim]{escape(why)}[/]" for cmd, why in steps)
+    hidden = [c.label.split(" — ")[0].lower() for c in CATALOGUE if _hidden(c, run)]
+    if hidden:
+        # Said once, here, rather than as greyed-out options in the first run's list.
+        lines.append(
+            f"\n[dim]Also available with AgentFox Enterprise (in Cloud, or self-hosted): "
+            f"{', '.join(hidden)}.[/]"
+        )
     console.print()
     console.print(Panel("\n".join(lines), border_style="red" if failed else "green"))
     if failed:
         raise typer.Exit(1)
+
+
+def _first_steps(run: Run) -> list[tuple[str, str]]:
+    """What to do the moment setup ends: run the app that now records, look at what
+    it saw, then attack-test it. Review and tightening come after."""
+    steps: list[tuple[str, str]] = []
+    governed = "python-app" in run.picked or "gateway" in run.picked
+    entry = run.answers.get("python-file")
+    if "python-app" in run.picked and entry and entry != "none":
+        from agentfox.apps.cli.wizard.detect import _MAIN_GUARD
+
+        try:
+            script = bool(_MAIN_GUARD.search((run.ctx.root / entry).read_text(errors="ignore")))
+        except OSError:
+            script = False
+        # `python <file>` only for a file that runs as a script; a graph module or a
+        # package entry point is started the way it always was.
+        steps.append(
+            (
+                f"python {entry}" if script else "run your app",
+                f'as usual: {entry} now calls auto("{run.agent}"), which records every call',
+            )
+        )
+    elif "python-app" in run.picked:
+        steps.append(("run your app", f'after adding the auto("{run.agent}") line shown above'))
+    elif "gateway" in run.picked:
+        steps.append(
+            ("run your app", f"with {STATE_DIR}/{ENV_FILE} loaded: its model calls go through")
+        )
+    if governed or "coding-agents" in run.picked:
+        steps.append(("agentfox findings", "what it saw and what it would have stopped"))
+    if governed:
+        steps.append(
+            (
+                f"agentfox test redteam {run.agent}",
+                "attack-test it: prompt injection, exfiltration, destructive actions",
+            )
+        )
+    return steps
 
 
 def register(app: typer.Typer) -> None:

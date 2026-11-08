@@ -82,9 +82,11 @@ def test_up_sets_up_a_project_locally(project):
     result = _up(str(project), "--yes")
     assert result.exit_code == 0, result.output
 
-    # Coding agent: Claude Code hooks for <project>-claude.
-    settings = json.loads((project / ".claude" / "settings.json").read_text())
-    assert "support-bot-claude" in json.dumps(settings)
+    # A Python agent's repository: the coding agent its developer uses (CLAUDE.md here)
+    # is not what this setup is for, so no hooks, grants or daemon by default…
+    assert not (project / ".claude" / "settings.json").exists()
+    # …and no workflow, which is opt-in (`--with ci`).
+    assert not (project / ".github").exists()
     # Python agent: one line, before the client import.
     text = (project / "main.py").read_text()
     assert 'agentfox.auto("support-bot", mode="observe")' in text
@@ -92,7 +94,8 @@ def test_up_sets_up_a_project_locally(project):
     # Answers saved for the next run.
     saved = json.loads((project / ".agentfox" / "up.json").read_text())
     assert saved["target"] == "local"
-    assert {"coding-agents", "python-app", "tools", "mcp"} <= set(saved["components"])
+    assert {"python-app", "tools", "mcp"} <= set(saved["components"])
+    assert not {"coding-agents", "ci", "monitoring", "compliance"} & set(saved["components"])
     assert saved["mode"] == "observe"
 
     from sqlalchemy import select
@@ -122,7 +125,7 @@ def test_running_up_again_changes_nothing_new(project):
     assert result.exit_code == 0, result.output
     assert (project / "main.py").read_text() == before
     assert "already calls agentfox.auto()" in result.output
-    assert "already installed" in result.output
+    assert (project / "main.py").read_text().count("agentfox.auto(") == 1
 
 
 def test_a_declared_tool_is_never_overwritten_by_a_guess(project):
@@ -368,7 +371,9 @@ def test_up_connects_to_cloud_and_keeps_the_key_out_of_git(project, cloud):
     assert "connected to" in result.output and "me@acme.test" in result.output
 
     env = project / ".agentfox" / "agentfox.env"
-    assert "AGENTFOX_API_TOKEN=nom_api_good" in env.read_text()
+    # The names auto() and the README use.
+    assert "AGENTFOX_API_KEY=nom_api_good" in env.read_text()
+    assert "AGENTFOX_URL=https://gw.acme.test" in env.read_text()
     assert stat.S_IMODE(env.stat().st_mode) == 0o600
     assert ".agentfox/agentfox.env" in (project / ".gitignore").read_text()
     saved = (project / ".agentfox" / "up.json").read_text()
@@ -595,9 +600,13 @@ def test_the_agents_own_tools_are_granted_not_left_to_default_deny(project):
 
 
 def test_the_coding_agent_may_use_the_mcp_servers_it_loads(project, home):
+    """A repository set up for a coding agent and holding no agent of its own: hooks
+    and the grants of the servers the coding agent loads are the default."""
+    (project / "main.py").unlink()
     (home / ".claude.json").write_text('{"mcpServers": {"linear": {"command": "npx"}}}')
     result = _up(str(project), "--yes")
     assert result.exit_code == 0, result.output
+    assert "support-bot-claude" in (project / ".claude" / "settings.json").read_text()
     held = _grants_of("support-bot-claude")
     # The repository's server and the one Claude Code loads from the user config.
     assert {"mcp__github__*", "mcp__linear__*"} <= held

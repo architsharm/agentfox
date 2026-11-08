@@ -417,13 +417,55 @@ def refusal_text(decision: Decision, fallback: str) -> str:
     return f"AgentFox: {decision.reason or fallback}{detail}"
 
 
+def agentfox_executable() -> str:
+    """The `agentfox` this process runs as, by absolute path, quoted for a shell.
+
+    A hook runs in whatever environment the coding agent spawns it in, which is not
+    the virtualenv AgentFox was installed into: a bare ``agentfox`` there is "command
+    not found" and every tool call goes unchecked. So the script beside this Python
+    first (the venv's own `bin/agentfox`), then the one on PATH, then this interpreter
+    running the CLI module."""
+    import shlex
+    import shutil
+    import sys
+    from pathlib import Path
+
+    name = "agentfox.exe" if sys.platform == "win32" else "agentfox"
+    beside = Path(sys.executable).parent / name
+    if beside.is_file():
+        return shlex.quote(str(beside))
+    found = shutil.which("agentfox")
+    if found:
+        return shlex.quote(str(Path(found).resolve()))
+    return f"{shlex.quote(sys.executable)} -m agentfox.apps.cli.main"
+
+
+def hook_args(harness: str, agent: str) -> str:
+    """What follows the executable in a hook command; how an installed hook is
+    recognised, wherever its executable lives."""
+    return f"hooks run --harness {harness} --agent {agent}"
+
+
 def hook_command(harness: str, agent: str) -> str:
-    """The command ``install`` writes into a harness's hook configuration."""
-    return f"agentfox hooks run --harness {harness} --agent {agent}"
+    """The command ``install`` writes into a harness's hook configuration: the absolute
+    path of this installation's `agentfox` (see `agentfox_executable`), then the args."""
+    return f"{agentfox_executable()} {hook_args(harness, agent)}"
 
 
 #: Reads :func:`hook_command` back out of a settings file: the ``--agent`` it names.
-HOOK_COMMAND_RE = re.compile(r"agentfox hooks run\b[^\"\n]*?--agent[ =]([A-Za-z0-9_.:@/-]+)")
+#: Matches the bare ``agentfox hooks run`` older installs wrote, an absolute
+#: ``…/bin/agentfox hooks run`` and ``python -m agentfox.apps.cli.main hooks run``.
+HOOK_COMMAND_RE = re.compile(
+    r"agentfox(?:\.apps\.cli\.main)?'? hooks run\b[^\"\n]*?--agent[ =]([A-Za-z0-9_.:@/-]+)"
+)
+
+
+def has_hook(text: str, harness: str, agent: str) -> bool:
+    """Whether ``text`` (a serialised hook entry) already runs our hook for this harness
+    and agent, whichever path it calls `agentfox` by: an install that wrote the bare
+    name, or another venv's path, is the same hook and is not added twice."""
+    pattern = re.escape(hook_args(harness, agent)) + r"(?![A-Za-z0-9_.:@/-])"
+    return re.search(pattern, text) is not None
 
 
 def agents_in_hook_commands(text: str) -> set[str]:
@@ -454,6 +496,9 @@ __all__ = [
     "agents_in_hook_commands",
     "decision_from_verdict",
     "downgrade",
+    "agentfox_executable",
+    "has_hook",
+    "hook_args",
     "hook_command",
     "refusal_text",
 ]
