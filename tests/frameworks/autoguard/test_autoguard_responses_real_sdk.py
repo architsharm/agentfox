@@ -359,8 +359,11 @@ async def test_after_a_handoff_the_faq_agents_own_tool_is_the_faq_agents():
     server = _Server(
         _response(_function_call("transfer_to_faq_agent", {})),
         _response(
-            {**_function_call("faq_lookup_tool", {"question": "bags?"}), "id": "fc_2",
-             "call_id": "call_2"},
+            {
+                **_function_call("faq_lookup_tool", {"question": "bags?"}),
+                "id": "fc_2",
+                "call_id": "call_2",
+            },
             response_id="r2",
         ),
         _response(_message("One bag under 50 pounds."), response_id="r3"),

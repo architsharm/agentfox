@@ -1227,7 +1227,7 @@ BY_KEY = {c.key: c for c in CATALOGUE}
 
 
 def _apply_declared_modes(run: Run) -> None:
-    """"Shipped defaults": each pack in the mode it declares. A new workspace starts
+    """ "Shipped defaults": each pack in the mode it declares. A new workspace starts
     every pack watching (`setup_workspace`); this is the choice that makes tool
     containment block, the one pack that declares enforce."""
     from agentfox.platform.policy import load_available

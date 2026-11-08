@@ -16,10 +16,18 @@ def _injection() -> EnforcementResult:
         mode="enforce",
         reason="Prompt injection detected.; System prompt extraction attempt.",
         rules_fired=[
-            {"rule_id": "injection.direct", "effect": "block", "mode": "enforce",
-             "reason": "Prompt injection detected."},
-            {"rule_id": "injection.system_prompt_leak", "effect": "block", "mode": "enforce",
-             "reason": "System prompt extraction attempt."},
+            {
+                "rule_id": "injection.direct",
+                "effect": "block",
+                "mode": "enforce",
+                "reason": "Prompt injection detected.",
+            },
+            {
+                "rule_id": "injection.system_prompt_leak",
+                "effect": "block",
+                "mode": "enforce",
+                "reason": "System prompt extraction attempt.",
+            },
         ],
     )
 
@@ -27,8 +35,7 @@ def _injection() -> EnforcementResult:
 def test_the_message_is_one_sentence_naming_the_rule():
     message = str(Blocked(_injection()))
     assert message == (
-        "Jailbreaks & prompt injection: Prompt injection detected "
-        "(also: System prompt extraction)."
+        "Jailbreaks & prompt injection: Prompt injection detected (also: System prompt extraction)."
     )
     assert ".;" not in message and "injection.direct" not in message
 
