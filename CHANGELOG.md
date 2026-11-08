@@ -11,6 +11,33 @@ the file it came from.
 
 ## [Unreleased]
 
+### Changed
+- One look across the site and the app (UI audit, 2026-11-08). App links, focus rings
+  and checkboxes use the brand rose instead of indigo; every app button is a pill; an
+  active filter chip looks like the segmented control; "Blocking" is never green; table
+  headers start with a capital; sidebar page names are set in the site's sans.
+- One name per area: the traces area is **Activity** everywhere (sidebar, title,
+  breadcrumb, back links, Cmd-K); **Testing** for its page title; the agents list is
+  **Agents** with **New agent** (a *project* is a connected repository or system).
+- App pages say things in words: compliance rationale as sentences, agent display names
+  in issue titles and activity rows, issue evidence as plain lines with IDs in a
+  copyable details row, hand-offs as "Handed off to …", "Default workspace" instead of
+  `org_default`, readable audit-log subjects, control IDs labelled as such.
+- Sign-in page: styled token button, wrapping self-hosted command, theme button, and the
+  brand wall in the site's palette. The 404 page has the public header and footer.
+- Docs: a "Contents" drawer on phones, scrolling tables, `/login` instead of the missing
+  `/signup`, and one install path (`pip install -U agentfox`, then
+  `agentfox init --key … --server …`).
+- Blog: re-shot images against the current UI, one image per post, the dark callout's
+  secondary button is visible, and screenshots are dimmed in dark mode.
+- Public copy: the footer uses the control-plane line, pricing says what is offline by
+  default, the privacy page drops source line numbers, benchmark wording no longer
+  contradicts itself (numbers unchanged).
+
+### Security
+- `docs/screens/setup-key.png` showed a complete API key; it is re-captured with the
+  key masked.
+
 ## [0.5.1] - 2026-11-08
 
 The first-run release. A new user's own agent now gets the "wow": `agentfox up` adds
