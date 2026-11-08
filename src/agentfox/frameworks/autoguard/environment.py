@@ -43,11 +43,20 @@ _FRAMEWORK_ROUTES: dict[str, tuple[str, ...]] = {
     "llamaindex": ("openai", "anthropic"),
     "autogen": ("openai", "anthropic"),
     "ragas": ("langchain", "openai"),
+    # The Agents SDK's default model is the Responses API; `OpenAIChatCompletionsModel`
+    # and the LiteLLM extension take the other routes.
+    "openai-agents": ("openai.responses", "openai", "litellm"),
 }
 
 
 def detect_frameworks() -> list[str]:
-    return sorted({name for module, name in _FRAMEWORK_MODULES.items() if module in sys.modules})
+    found = {name for module, name in _FRAMEWORK_MODULES.items() if module in sys.modules}
+    # The OpenAI Agents SDK's import name, `agents`, is a common name for an app's own
+    # package; it is the SDK only when it is shaped like one.
+    agents = sys.modules.get("agents")
+    if agents is not None and hasattr(agents, "Runner") and hasattr(agents, "function_tool"):
+        found.add("openai-agents")
+    return sorted(found)
 
 
 def _framework_routes(

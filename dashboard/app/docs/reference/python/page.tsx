@@ -137,11 +137,14 @@ openai.chat.completions.create(
 )
 print(state.calls_governed, state.calls_blocked, state.would_have_blocked)`}</Code>
       <Output>{`AgentFox is governing 'support-triage' in observe mode (development).
-  Patched: openai, openai.async
+  Patched: openai, openai.async, openai.responses, openai.responses.async, openai.responses.parse, openai.responses.parse.async
   Skipped anthropic: not installed
   Skipped litellm: not installed
   Skipped langchain: not installed
-  Governed per call: request messages, response text, and the tool calls in the response (OpenAI tool_calls, Anthropic tool_use) before your code can run them. Not the OpenAI Responses API.
+  Skipped langchain tools: not installed
+  Skipped crewai tools: not installed
+  Governed per call: request messages, response text, and the tool calls in the response (OpenAI tool_calls and Responses API function_call items, Anthropic tool_use) before your code can run them.
+  OpenAI-hosted tools (web search, file search, code interpreter) run at OpenAI, so they are recorded, not stopped.
   Observe mode: decisions are recorded, nothing is blocked in-process — not even a tool call, an enforce-mode policy or the kill switch.
 Your ticket T-1042 is open and assigned.
 2 0 1
@@ -327,8 +330,9 @@ off() -> list[str]`}</Code>
         counted), <code>session_id</code>, <code>intent</code>. The{" "}
         <code>active</code> property is true when at least one library was patched, and{" "}
         <code>framework_routes()</code> says, for each detected framework (LangGraph,
-        CrewAI, LlamaIndex and others are detected, never patched), which client library
-        its calls go through and whether that route is governed.
+        CrewAI, LlamaIndex, the OpenAI Agents SDK and others are detected; only LangChain&apos;s
+        and CrewAI&apos;s tools are patched, where they run), which client library its calls go
+        through and whether that route is governed.
       </p>
       <p>
         <code>off()</code> restores every patched entry point and returns the labels it
@@ -367,12 +371,18 @@ print(agentfox.state())`}</Code>
   "calls_blocked": 0,
   "would_have_blocked": 0
 }
-['openai', 'openai.async']
+['openai', 'openai.async', 'openai.responses', 'openai.responses.async', 'openai.responses.parse', 'openai.responses.parse.async']
 None`}</Output>
 
       <h3 id="auto-limits">What auto() does not cover</h3>
       <ul>
-        <li>The OpenAI Responses API (<code>client.responses.create</code>) is not patched.</li>
+        <li>
+          Tools OpenAI hosts in a Responses API call (web search, file search, code interpreter,
+          hosted MCP) have already run when the response arrives: they are recorded as tool spans,
+          not authorised. A request that continues a conversation held by OpenAI (
+          <code>previous_response_id</code>, <code>conversation</code>) carries only the new turn,
+          so provenance for earlier turns is recorded as unknown.
+        </li>
         <li>
           A streamed response is checked when the stream is exhausted. Chunks already
           handed to your code cannot be taken back; <code>Blocked</code> is raised at the
@@ -380,7 +390,8 @@ None`}</Output>
         </li>
         <li>
           Tool calls your code makes on its own, not because a model response asked for
-          them, are not seen. Use <a href="#sdk"><code>AgentFox</code></a> for those.
+          them, are not seen, except LangChain and CrewAI tools, which are checked where they
+          run. Use <a href="#sdk"><code>AgentFox</code></a> for the others.
         </li>
         <li>
           If the pre-flight check itself fails (database unreachable, say), the
