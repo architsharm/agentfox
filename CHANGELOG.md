@@ -11,6 +11,16 @@ the file it came from.
 
 ## [Unreleased]
 
+### Added
+- Sign in with Google or Microsoft, beside GitHub. Each new identity opens its own
+  workspace, keyed on the provider's subject (never the email), through the new
+  `POST /api/auth/oauth/provision`. A button shows only when the deployment sets that
+  provider's `*_CLIENT_ID` and `*_CLIENT_SECRET`.
+
+### Changed
+- The sign-in page is shorter: one line of explanation, one button per provider, the
+  token sign-in folded away, and the terms and playground in a footer line.
+
 ## [0.5.0] - 2026-11-07
 
 ### Added

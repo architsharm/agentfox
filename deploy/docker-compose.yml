@@ -163,6 +163,13 @@ services:
       #     GitHub button answers 503 and the token sign-in still works.
       GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
       GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      #   * Google / Microsoft sign-in (optional): callbacks
+      #     http://localhost:3000/api/auth/google/callback and .../microsoft/callback.
+      #     Each button appears only when both its values are set.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
       AGENTFOX_SERVICE_AUTH_SECRET: ${AGENTFOX_SERVICE_AUTH_SECRET:?set AGENTFOX_SERVICE_AUTH_SECRET}
       # The one deliberate exception to "server-to-server only": the public
       # playground page is a Client Component, so it fetches from the *visitor's

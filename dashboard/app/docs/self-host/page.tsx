@@ -73,7 +73,10 @@ export AGENTFOX_AUDIT_SIGNING_KEY="$(openssl rand -hex 32)"`}</Code>
         In Render choose <strong>New</strong>, <strong>Blueprint</strong>, and pick your fork. It asks for{" "}
         <code>AGENTFOX_AUDIT_SIGNING_KEY</code> once: paste a random value and keep a copy. It also asks
         for <code>GITHUB_CLIENT_ID</code> and <code>GITHUB_CLIENT_SECRET</code> for GitHub sign-in; set the
-        OAuth app&apos;s callback to <code>https://&lt;dashboard-host&gt;/api/auth/github/callback</code>.
+        OAuth app&apos;s callback to <code>https://&lt;dashboard-host&gt;/api/auth/github/callback</code>. Google and
+        Microsoft sign-in are optional: set <code>GOOGLE_CLIENT_ID</code>/<code>GOOGLE_CLIENT_SECRET</code> or{" "}
+        <code>MICROSOFT_CLIENT_ID</code>/<code>MICROSOFT_CLIENT_SECRET</code>, with callbacks at{" "}
+        <code>/api/auth/google/callback</code> and <code>/api/auth/microsoft/callback</code>.
       </p>
 
       <h2 id="python">A Python app</h2>
