@@ -1,5 +1,7 @@
 # Final numbers
 
+*Part of the judgment-tier study: how the numbers were measured. How the tiers work, and what each may decide, is in [judgment-tiers.md](../../architecture/judgment-tiers.md).*
+
 **8,096 scenarios, 82,851 labelled judgments**, across six corpora, four of them
 written by someone else. Total API spend for everything in this document: about
 **$1.10 of Jev**.

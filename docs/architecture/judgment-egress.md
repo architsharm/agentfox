@@ -1,5 +1,8 @@
 # The guardrail must not be the breach
 
+**What leaves the machine when a hosted judgment tier is enabled, and the gate in front of it.**
+Which tier may decide what is in [judgment-tiers.md](judgment-tiers.md).
+
 A PII detector that posts the text to a third party to ask whether it contains
 PII has not protected anything. It has performed the disclosure it was
 installed to prevent, and added a second copy of the data in someone else's
@@ -23,20 +26,11 @@ refuse to run without `--allow-egress "<reason>"`, and they say which datasets
 are real personal data before anything leaves (`benchmarks/_common/egress.py`,
 and the rule in [`benchmarks/README.md`](../../benchmarks/README.md#sending-benchmark-data-to-a-third-party-api)).
 
-## What was actually wrong
+## Why there is one gateway
 
-`JevClient` (`capabilities/judgment/jev.py`) never checked `allow_egress`. Every other
-outbound caller in this codebase does — `platform/providers/remote.py`,
-`platform/providers/enterprise.py`, `core/webhooks.py`, `ee/src/agentfox_ee/monitoring/alerts.py` — and
-`capabilities/detection/adapters/presidio.py` already carries a docstring about
-this exact failure, from the time a dependency downloaded a 400MB model from
-inside a guarded request:
-
-> `allow_egress` was false throughout; it gates our own outbound calls and
-> never saw this one.
-
-That is the same bug a second time. The product default is zero egress, and
-judgment quietly wasn't covered by it.
+The judgment client once called the hosted model without checking `allow_egress`, which every
+other outbound caller checks. That is why product code goes through `JudgmentGateway`, and why
+the client also refuses on its own (below).
 
 ## The design
 
@@ -51,12 +45,19 @@ Three backends, chosen by the operator, defaulting to the safe one.
 Plus `judgment_redact_before_egress` (default on). If the local redactor cannot
 load, the payload is not sent, whatever else is set.
 
-`judgment_fail_closed` (default off, like `fail_mode`) is about outages, not
-egress: on, a judge that was asked and did not answer blocks an enforcing
-decision whose rules rely on what it finds (`pipeline.judge_outage`). A refusal
-by this gate is never an outage. `EgressRefused` carries `cause="refused"`, so
-`pii_egress = "block"` on a payload containing an email address means "not
-judged remotely", not "the judge is down".
+For personal data there is an explicit three-way choice, because the right answer
+differs by deployment:
+
+| `judgment_pii_egress` | behaviour |
+|---|---|
+| `block` | Nothing with detected PII leaves, redacted or not. The remote judgment is simply not made. **The only setting under which a subject's data cannot reach a vendor.** |
+| `redact` (default) | Mask what the local detector finds, send the rest. Costs about one point of the recall gain; about 82% of PII is not found locally and still leaves (see below). |
+| `allow` | Send as-is. A deliberate downgrade, logged at warning. |
+
+A refusal by this gate is never an outage. `EgressRefused` carries `cause="refused"`, so
+`pii_egress = "block"` on a payload containing an email address means "not judged remotely",
+not "the judge is down". What a real outage does is `judgment_fail_closed`, in
+[judgment-tiers.md](judgment-tiers.md).
 
 **`JudgmentGateway` is the only thing product code should call.** It is what
 holds the gate and the redaction; calling `JevClient` directly skips both,

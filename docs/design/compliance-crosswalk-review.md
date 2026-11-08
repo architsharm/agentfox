@@ -1,12 +1,12 @@
 # Compliance crosswalk review: our control catalog against another public mapping
 
-Companion to [control-catalog.md](control-catalog.md). This review checks our framework mappings against the published compliance mappings in Microsoft's MIT-licensed agent governance toolkit (`docs/compliance/*.md`, upstream commit `c767f83`). We wanted a second, independently written mapping to catch errors in ours.
+Companion to [control-catalog.md](control-catalog.md). Reviewed 2026-10-09; status re-checked against `controls.yaml` on 2026-11-07 (release 0.5.0). This review checks our framework mappings against the published compliance mappings in Microsoft's MIT-licensed agent governance toolkit (`docs/compliance/*.md`, upstream commit `c767f83`). We wanted a second, independently written mapping to catch errors in ours.
 
 > **Our mappings are still drafts.** Every mapping in `controls.yaml` stays `review_status: draft`. A second vendor's self-assessment is not an auditor, and agreeing with it proves nothing. Where the two disagree, this file says which framework text we checked and what we would do. Nothing here is legal advice.
 
 **What the two documents are.** The two mappings answer different questions, which explains most of the gaps in both directions.
 
-- **Ours** maps 43 platform controls to framework identifiers. Each control has evidence computed from telemetry.
+- **Ours** mapped 43 platform controls to framework identifiers at the time (44 now, with NOM-RTG-14). Each control has evidence computed from telemetry.
 - **Theirs** maps their product's modules to a framework and grades each item Full, Partial or Gap.
 
 So "they map it and we do not" often means they claim a product feature covers an organisational obligation that we deliberately list as a gap.
@@ -55,7 +55,7 @@ The biggest finding is that we do not map the 2026 Top 10 at all. The 2026 list 
 | ASI07 Insecure Inter-Agent Communication | Full | NOM-IAM-08 | Add |
 | ASI08 Cascading Agent Failures | Full | NOM-RTG-08 (runaway loops), NOM-RTG-09 (cascade analysis), NOM-DSC-04 | Add |
 | ASI09 Human-Agent Trust Exploitation | Partial | NOM-IAM-03, NOM-RTG-10. Approvals are bound to the exact arguments; `benchmarks/toolkit_corpus/` measured a forged and a swapped approval, and both were held | Add |
-| ASI10 Rogue Agents | Full | NOM-DSC-02, NOM-EVL-02. The kill switch and quarantine exist in code but have no control (see §4) | Add once a kill-switch control exists |
+| ASI10 Rogue Agents | Full | NOM-DSC-02, NOM-EVL-02, and NOM-RTG-14 (kill switch and quarantine, added 2026-10-09) | Add |
 
 **Rows we map that they do not:**
 
@@ -122,7 +122,7 @@ Both documents are about the final Regulation (EU) 2024/1689. Theirs is an artic
 | Article | Their claim | Recommended action |
 |---|---|---|
 | Art. 4 AI literacy | Gap, out of scope | Add to our `gaps` list as organisational, so the gap is stated rather than silent |
-| Art. 14(4)(e) stop mechanism (we map Art. 14 generally) | Partial, kill switch | We have a kill switch and quarantine in code, verified by the `cb8` containment scenario, but **no control in the catalog**. Propose a control (or extend NOM-RTG-10) mapped to Art. 14(4)(e), NIST MANAGE 2.4 and ASI10. |
+| Art. 14(4)(e) stop mechanism (we map Art. 14 generally) | Partial, kill switch | **Done in part.** NOM-RTG-14 now covers the kill switch and quarantine, mapped to Art. 14 (general), NIST MANAGE 2.4 and OWASP Agentic T13. Narrowing its EU citation to Art. 14(4)(e) and adding ASI10 wait on the review gate and on the 2026 list (§1). |
 | Art. 5 prohibited practices | Says the toolkit "can detect and block" them via policy rules | Do not follow. Art. 5 prohibits a system's purpose, which a content rule cannot decide. Leave unmapped. |
 
 **Articles we map that they do not:**
@@ -144,7 +144,7 @@ Some of these appear only in their "scope limitations" list. Recommended action:
 |---|---|---|
 | Serious-incident reporting article | Their scope table cites **Art. 62** for serious incident reporting (`eu-ai-act-checklist.md:502`). That is the numbering in the Commission's 2021 proposal. In the final Regulation it is **Art. 73**, which is what NOM-AUD-04 maps. | None for us. Ours is correct. |
 | Art. 10 (data governance) | They rate it out of scope, because it governs training, validation and testing data sets. We map NOM-RTG-02 (runtime PII), NOM-IAM-07 (entitlement) and NOM-AUD-05 (retention) to it. | **Review; likely remove.** Runtime redaction and entitlement are not Art. 10 data-set governance, and their reading is the more defensible one. Not changed here because removal is a judgement call that belongs to the §B.6 review. |
-| Art. 19 / Art. 26(6) six-month log retention | They flag their own 90-day default as a conformity blocker. We map Art. 19 to NOM-AUD-02 and NOM-AUD-05. Our seed sets `audit` retention to 2555 days but `prompt_content` to 90 days (`fixtures/seed.py`), nothing enforces a 180-day floor, and we found no code that deletes by `retain_days`. NOM-AUD-05's status rule only checks that a policy exists. | Decide whether `prompt_content` counts as Art. 12 logs for high-risk agents. If it does, set a 180-day floor for those agents and make NOM-AUD-05 check it. |
+| Art. 19 / Art. 26(6) six-month log retention | They flag their own 90-day default as a conformity blocker. We map Art. 19 to NOM-AUD-02 and NOM-AUD-05. Our seed sets `audit` retention to 2555 days but `prompt_content` to 90 days (`fixtures/seed.py`). Since 2026-10-09 the `retention.purge` job deletes by `retain_days` (`capabilities/compliance/retention.py`), and NOM-AUD-05 needs a recorded run as well as a policy. Nothing enforces a 180-day floor. | Decide whether `prompt_content` counts as Art. 12 logs for high-risk agents. If it does, set a 180-day floor for those agents and make NOM-AUD-05 check it. |
 | Art. 13 (transparency to deployers) on NOM-RTG-11 and NOM-RTG-12 | Grounding and abstention help users, but Art. 13 is about instructions for use and information the provider gives deployers | Review |
 
 ## 5. CIS Controls v8.1
@@ -209,13 +209,16 @@ Their LLM mapping says it uses the **2023 v1.1** numbering (`owasp-llm-top10-map
 
 ## Summary of recommended actions
 
-1. Add the OWASP Top 10 for Agentic Applications (2026) as a framework, using the draft crosswalk in §1.
-2. Add a kill-switch / stop control mapped to EU AI Act Art. 14(4)(e), NIST MANAGE 2.4 and ASI10.
-3. Review, and likely remove, the EU AI Act Art. 10 mappings on runtime controls.
-4. Decide the Art. 19 / 26(6) log-retention floor for high-risk agents, and make NOM-AUD-05's status rule check it.
-5. Resolve the T16 label inconsistency.
-6. Map LLM07 (partial).
-7. Consider NIST GOVERN 6.1, MEASURE 3.1, MANAGE 1.3 and MANAGE 3.1, and drop MEASURE 2.11 from NOM-RTG-05.
-8. Optional: a small CIS v8.1 mapping (§5), and ISO clauses 6.1.2–6.1.4, 7.5 and 9.1 as evidence (not coverage).
+State as of 2026-11-07, checked against `controls.yaml`:
+
+1. Add the OWASP Top 10 for Agentic Applications (2026) as a framework, using the draft crosswalk in §1. **Open.** The catalog still has only `owasp-agentic` (T1–T15). The public guide `/docs/guides/owasp-agentic-top-10` walks through ASI01–ASI10, but no mapping exists.
+2. Add a kill-switch / stop control mapped to EU AI Act Art. 14(4)(e), NIST MANAGE 2.4 and ASI10. **Done in part:** NOM-RTG-14, mapped to Art. 14, MANAGE 2.4 and T13 (see §4).
+3. Review, and likely remove, the EU AI Act Art. 10 mappings on runtime controls. **Open.** NOM-IAM-07, NOM-RTG-02 and NOM-AUD-05 still cite Art. 10.
+4. Decide the Art. 19 / 26(6) log-retention floor for high-risk agents, and make NOM-AUD-05's status rule check it. **Open.** Deletion by `retain_days` now runs; the floor does not exist.
+5. Resolve the T16 label inconsistency. **Open.** NOM-IAM-08 still maps T16.
+6. Map LLM07 (partial). **Open.**
+7. Consider NIST GOVERN 6.1, MEASURE 3.1, MANAGE 1.3 and MANAGE 3.1, and drop MEASURE 2.11 from NOM-RTG-05. **Open.**
+8. Optional: a small CIS v8.1 mapping (§5), and ISO clauses 6.1.2–6.1.4, 7.5 and 9.1 as evidence (not coverage). **Open.**
+9. Add Art. 4 (AI literacy) to the EU AI Act `gaps` list (§4). **Open.**
 
 Every one of these goes through the §B.6 review gate. Until then, the catalog stays draft.

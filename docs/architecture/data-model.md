@@ -2,15 +2,15 @@
 
 Companion to [the PRD](../design/PRD.md). Implemented in `src/agentfox/core/models/` (SQLAlchemy 2.0), with schema changes as Alembic revisions in `migrations/versions/`. SQLite by default (zero-infra, offline — NFR-9); Postgres via `AGENTFOX_DATABASE_URL`.
 
-All tables carry `id` (prefixed ULID-ish string), `created_at`, `updated_at`, and `org_id` — multi-tenancy is enforced structurally at the session level (`core/tenancy.py`), not just schema-present; see [../design/gap-analysis.md](../design/gap-analysis.md) Tier 1 §1.2. This appendix lists the key tables and columns; the models are the complete list.
+All tables carry `id` (prefixed ULID-ish string), `created_at`, `updated_at`, and `org_id` — multi-tenancy is enforced structurally at the session level (`core/tenancy.py`), not just schema-present. This appendix lists the key tables and columns; the models are the complete list.
 
 ---
 
 ## D.1 Pillar 1 — Discovery & Registry
 
-**`agents`** — `slug` (unique), `name`, `description`, `purpose`, `owner_email`, `owner_team`, `environment`, `risk_tier` (`minimal|limited|high|prohibited` — EU AI Act aligned), `framework` (detected, P1-6), `status` (`active|inactive|shadow|retired`), `declared_models[]`, `declared_tools[]`, `data_classes[]`, `first_seen_at`, `last_seen_at`, `registered` (bool — false ⇒ shadow).
+**`agents`** — `slug` (unique per org), `name`, `description`, `purpose`, `owner_email`, `owner_team`, `environment`, `risk_tier` (`minimal|limited|high|prohibited` — EU AI Act aligned), `framework` (detected, P1-6), `status` (`active|inactive|shadow|retired`), `declared_models[]`, `declared_tools[]`, `data_classes[]`, `first_seen_at`, `last_seen_at`, `registered` (bool — false ⇒ shadow), `project` (the repository `agentfox init` mapped it from; provenance only, a project is computed from lineage), `source_scan_run_id?` (the scan that proposed it), `guardrails_snapshot` (library copies kept when its project is disconnected), `endpoint_url?`, `docs_url?`, `openapi_spec_url?`, `is_seed`.
 
-**`tools`** — `key` (e.g. `payments.transfer`), `name`, `kind` (`function|mcp|http|retrieval|subagent`), `impact` (`read|write|high_impact|irreversible`), `schema_json`, `mcp_server_id?`.
+**`tools`** — `key` (e.g. `payments.transfer`, unique per org), `name`, `kind` (`function|mcp|http|retrieval|subagent`), `impact` (`read|write|high_impact|irreversible`), `schema_json`, `mcp_server_id?`, `description`, `output_trust` (whether values copied from its output count as untrusted), `triggers_json` (what calling it sets off), `annotations_json` (MCP impact hints).
 
 `tools.impact` is the axis policy reasons over. `irreversible` (money moved, email sent, record deleted) is the class that most warrants HITL (P2-3) and taint blocking (P3-4).
 
@@ -27,10 +27,11 @@ All tables carry `id` (prefixed ULID-ish string), `created_at`, `updated_at`, an
 
 **`identities`** — the NHI record. `agent_id`, `principal` (unique), `kind` (`agent|service|human`), `status` (`active|suspended|revoked`), `last_used_at`, `posture` (`healthy|stale|over_privileged|orphaned`).
 **`credentials`** — `identity_id`, `key_prefix`, `key_hash` (argon2id), `issued_at`, `expires_at`, `rotated_from_id?`, `revoked_at?`, `last_used_at`. Plaintext exists only in the issuance response.
-**`capabilities`** — `identity_id`, `tool_key` (glob allowed), `actions[]`, `constraints_json` (argument-level, e.g. `{"amount": {"lt": 1000}}`), `requires_approval` (bool), `max_taint` (`none|user|tool_result|retrieved`), `granted_by`, `expires_at?`.
+**`capabilities`** — `identity_id`, `tool_key` (glob allowed), `actions[]`, `constraints_json` (argument-level, e.g. `{"amount": {"lt": 1000}}`), `requires_approval` (bool), `max_taint` (`none|user|retrieved|tool_result|subagent|memory`), `granted_by`, `expires_at?`.
 **`delegation_edges`** — `parent_identity_id`, `child_identity_id`, `capability_diff_json`, `trace_id`. **Write-time invariant: child capabilities ⊆ parent capabilities.** Widening is rejected, not audited after the fact (P2-5).
 **`approval_requests`** — `decision_id`, `trace_id`, `agent_id`, `tool_key`, `arguments_json`, `reason`, `requested_at`, `expires_at`, `status` (`pending|approved|denied|expired|used`), `resolver_user_id?`, `resolution_rationale?`, `timeout_action` (`deny|allow`, default `deny`). `tool_key` is `message:<surface>` for a held message, whose `arguments_json` carries a masked excerpt and `content_sha256`. On approval `expires_at` restarts as the redemption window. **`used` is final:** a retry presenting the approval for the same agent, tool and arguments flips `approved → used` in a conditional update, so an approval lets exactly one call through (P2-3).
 **`users`**, **`api_tokens`** — control-plane RBAC (§C.4); the role is `users.role`. `api_tokens`: `user_id`, `name`, `key_prefix`, `key_hash` (argon2id), `expires_at?`, `revoked_at?`. Signing out sets `revoked_at` on that session's token.
+**`scan_runs`** — one repository or hosted-API scan: `connection_id?`, `source_kind`, `repo_full_name?`, `target_url?`, `ref`, `status`, `summary_json`. The draft agents a scan proposes point back to it.
 **`github_connections`** — `github_user_id`, `github_login`, `access_token_encrypted`, `connected_by_user_id`, `webhook_secret_encrypted?` (the secret GitHub signs push deliveries with, encrypted; null means only the deployment-wide `github_webhook_secret` can verify this connection's deliveries).
 
 ---
@@ -46,15 +47,18 @@ All tables carry `id` (prefixed ULID-ish string), `created_at`, `updated_at`, an
 
 **`budgets`** — `scope_type`/`scope_id`, `window`, `max_calls`, `max_tokens`, `max_cost_usd`, `max_depth`, and running counters (P3-10).
 
+Customer-authored rules and switches ([ADR 0002](../adr/0002-customer-authored-rules.md)): **`custom_rules`** (`key`, `kind`: terms, patterns, topics, a sequence or a built-in validator, `polarity`, `entries_json`, `config_json`, `surfaces_json`, `agents_json`, `enabled`, `version`), compiled into the managed `custom` pack; **`detector_settings`** and **`agent_detector_settings`** (a detector switched on or off for the workspace or one agent); **`custom_models`** (a workspace's own classifier endpoint, with its `threshold`, `timeout_ms`, `fail_mode` and encrypted auth secret); **`external_authorizers`** (a customer's own allow/deny service asked before chosen tools run). The guardrail tables also hold the grounding, escalation, memory and messaging state (`knowledge_boundaries`, `source_records`, `handoffs`, `conversation_turns`, `memory_entries`, `agent_message_log`, …) and the workspace's `judgment_posture`.
+
 ---
 
 ## D.4 Pillar 4 — Evaluation & Reliability
 
 **`eval_suites`** — `key`, `name`, `version`, `description`, `tags[]`.
 **`eval_cases`** — `suite_id`, `input_json`, `expected_json?`, `context_json?` (for groundedness), `labels[]`, `split`, `source_trace_id?` (promoted from production), `weight`.
-**`scorers`** — `key`, `kind` (`exact|fuzzy|json_schema|regex|groundedness|self_consistency|safety|latency|cost|tool_trajectory|llm_judge|custom`), `config_json`, `judge_model?` (pinned — X-4), `rubric?`.
+Scorers are code, not rows (`capabilities/evaluation/scorers.py`); a run names the scorer keys it used.
 **`eval_runs`** — `suite_id`, `target_json` (agent | model | provider — enables P4-8), `scorer_keys[]`, `baseline_run_id?`, `status`, `started_at`, `finished_at`, `summary_json`, `runner` (`native|promptfoo`), `code_version`, `policy_version`.
 **`eval_results`** — `run_id`, `case_id`, `scorer_key`, `score`, `passed`, `output_json`, `detail_json`, `duration_ms`, `cost_usd`.
+**`eval_annotations`** — a person's verdict on one result (`eval_result_id`, `verdict`, `note`, `annotator`; one per annotator per result).
 **`baselines`** — `suite_id`, `run_id`, `label`, `thresholds_json` (per-scorer regression tolerance — the gate semantics of P4-1).
 **`drift_windows`** — `agent_id`, `scorer_key`, `window_start`/`end`, `n`, `mean`, `p50`, `p95`, `psi`, `ks`, `baseline_window_id?`, `drifted` (bool).
 **`slos`** — `agent_id`, `scorer_key`, `objective`, `window`, `target`, `current`, `error_budget_remaining`.
@@ -85,6 +89,7 @@ digest         = SHA-256(f"{seq}|{occurred_at_iso}|{action}|{payload_digest}|{pr
 
 **`evidence_packages`** — `scope_json` (agents × period × controls), `requested_by`, `built_at`, `manifest_json` (per-file SHA-256), `chain_verification_json`, `code_version`, `catalog_version`, `path`. Chain-of-custody per P5-7.
 **`retention_policies`** — `data_class`, `retain_days`, `redact_fields[]`.
+**`retention_runs`** — one purge: `trigger`, `requested_by`, `status`, `results_json`, `error`.
 **`legal_holds`** — `scope_json`, `reason`, `placed_by`, `placed_at`, `released_at?`. Overrides retention deletion.
 
 ---
@@ -93,12 +98,13 @@ digest         = SHA-256(f"{seq}|{occurred_at_iso}|{action}|{payload_digest}|{pr
 
 **`policies`** — `key`, `name`, `description`, `kind` (`declarative|rego`), `owner`.
 **`policy_versions`** — `policy_id`, `version` (int, monotonic), `body` (YAML or Rego), `compiled_json`, `author`, `created_at`, `notes`. **Immutable.**
-**`policy_bindings`** — `policy_version_id`, `scope_json` (agent/env/tool), `mode` (`observe|enforce`), `effective_from`, `effective_to?`. Observe-by-default is the R3 mitigation.
-**`decisions`** — `trace_id`, `span_id`, `agent_id`, `identity_id`, `surface`, `tool_key?`, `verdict`, `rules_fired_json`, `policy_version_id` (**always the exact version in force — X-4**), `detector_run_ids[]`, `taint_summary_json`, `latency_ms`, `mode`, `approval_id?`.
+**`policy_bindings`** — `policy_version_id`, `scope_json` (agent/env/tool), `mode` (`observe|enforce`), `level` and `scope_id` (where in the `org → team → agent → user` hierarchy it binds; an agent's own layer `agent.<slug>` binds at `agent`), `compose` (`extend|restrict|override`), `effective_from`, `effective_to?`. Observe-by-default is the R3 mitigation.
+**`decisions`** — `trace_id`, `span_id`, `agent_id`, `identity_id`, `surface`, `tool_key?`, `verdict`, `rules_fired_json`, `policy_version_id` and `policy_version_ids` (**every version in force — X-4**), `detector_run_ids[]`, `taint_summary_json`, `latency_ms`, `mode`, `approval_id?`.
 **`simulation_runs`** — `policy_version_id`, `candidate_body`, `scope_json`, `replayed_count`, `diff_json` (`newly_blocked|newly_allowed|newly_escalated|unchanged`), `run_by` (P2-7).
 
 **`controls`** — `key` (`NOM-RTG-01`), `title`, `objective`, `family`, `pillar`, `implemented_by[]` (FR ids), `evidence_sources[]`, `status_rule_json`, `catalog_version`.
 **`framework_mappings`** — `control_key`, `framework` (`eu-ai-act|nist-ai-rmf|iso-42001|soc2|owasp-llm|owasp-agentic|mitre-atlas`), `reference` (`Art. 15`, `MEASURE 2.7`, `LLM01`…), `note`, `review_status` (`draft|reviewed`), `reviewed_by?`, `reviewed_at?`. **`draft` mappings ship in evidence packages chip-labeled `DRAFT — UNVERIFIED / NOT LEGAL ADVICE`** rather than being excluded (Appendix B §B.6).
+**`control_reviews`** — a person attesting one control against one framework: `control_key`, `framework`, `outcome`, `note`, `reviewer`, `reviewed_at`, `expires_at?`, `evidence_json`, `audit_seq` (Enterprise sign-off).
 **`control_statuses`** — `control_key`, `scope_json`, `status` (`effective|degraded|failing|not_implemented|not_applicable`), `computed_at`, `evidence_json`, `rationale`. Computed, never attested (P6-4).
 **`risk_assessments`** — `agent_id`, `eu_ai_act_class`, `inherent_risk`, `mitigations_json`, `residual_risk`, `assessor`, `assessed_at`, `next_review_at`, `answers_json`, `signed_off_by?`.
 **`obligations`** — `framework`, `reference`, `title`, `effective_date`, `applies_when_json`, and derived `in_scope_agent_ids[]`, `status` (P6-5).
@@ -117,7 +123,16 @@ Findings a monitor raises have `subject_type="monitor"` and types `monitor_letha
 
 ---
 
-## D.8 Key relationships
+## D.8 Onboarding, projects and platform connections
+
+**`onboarding_sessions`** — one per user: `init_key` (which `api_tokens` row is the user's older `afi_` setup key; never the key itself), `state` (the setup card's steps), the reported `structure`, `runner_seen_at`, `guardrails`.
+**`onboarding_projects`** — one per `(org, project)`: the `structure` (agents, tools, edges) `agentfox init --key` reported for that repository, `structure_at`, `runner_seen_at`, `connected_by`.
+**`onboarding_runs`** — one attack-test run: `project`, `phase` (before or after the basic guardrails), `status`, `guards`, `sets`, the `structure` it ran on, `results`, `totals`, and `lease_expires_at`. A local runner claims a run with a lease it renews on each report; a lapsed lease fails the run with a reason, and results only append.
+**`platform_connections`** — a hosted platform agent whose tool calls reach `/v1/hooks/{platform}/{id}`: `agent_id`, `platform` (`vapi|retell|copilot_studio`), `upstream_url?` (the customer's tool server, `https` on a public host, re-checked before each forward), `secret_encrypted` (Vapi secret, Retell API key; included in key rotation), `config_json` (for Copilot Studio, the Entra tenant and app ids), `enabled`, `created_by`.
+
+---
+
+## D.9 Key relationships
 
 ```
 Agent 1──n Identity 1──n Credential
@@ -144,6 +159,6 @@ EvidencePackage ──▶ {Traces, Decisions, AuditEntries, EvalRuns, ControlSta
 Control ──n FrameworkMapping ; Control ──n ControlStatus
 ```
 
-## D.9 Indices that matter
+## D.10 Indices that matter
 
 `traces(agent_id, started_at)` · `spans(trace_id, started_at)` · `decisions(agent_id, verdict, created_at)` · `decisions(trace_id)` · `audit_entries(seq)` unique · `detection_findings(entity_type, created_at)` · `lineage_edges(src_id, dst_id, relation)` unique · `findings(status, severity, created_at)` · `eval_results(run_id, case_id, scorer_key)` unique · `control_statuses(control_key, computed_at)` · `monitors(org_id, kind, target)` unique · `monitors(enabled, next_run_at)` · `jobs(status, enqueued_at)`.
