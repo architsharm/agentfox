@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from agentfox.capabilities.business.graph import combine as combine_business
 from agentfox.capabilities.containment.findings import (
+    applied_verdict,
     detector_verdict,
     is_detector_rule,
     matches_detector_rule,
@@ -218,6 +219,20 @@ class _Evaluation:
     redeemed_approval: Any = None
     latency_ms: float = 0.0
     reason: str = ""
+
+
+def _deciding_mode(verdict: str, effective: str, packs_mode: str) -> str:
+    """The mode of what decided the call, not of the packs bound around it.
+
+    A verdict that was applied came from a rule that enforces (a pack in enforce, a
+    grant, a destructive statement, the kill switch); a stronger verdict that was
+    only recorded came from one that watches. A response reading ``mode: observe``
+    beside an escalation a person must approve said the opposite of what happened."""
+    if verdict != "allow":
+        return "enforce"
+    if effective != "allow":
+        return "observe"
+    return packs_mode
 
 
 class Enforcer(
@@ -1409,6 +1424,7 @@ class Enforcer(
             if refused:
                 reason = f"{reason}; the approval presented was not used: {refused}"
         call.reason = reason
+        call.mode = _deciding_mode(call.verdict, call.effective, call.mode)
 
         result = EnforcementResult(
             verdict=call.verdict,
@@ -1460,6 +1476,14 @@ class Enforcer(
         """Record the decision, its findings, any approval request, the span, the audit entry."""
         agent, surface, trace_id = call.agent, call.surface, call.trace_id
         verdict, effective, rules_fired = call.verdict, call.effective, call.rules_fired
+        if surface == "tool_args":
+            # What happened, not what was decided: a call the caller ran anyway (auto()
+            # in observe mode, the no-grants carve-out) is recorded as allowed, and its
+            # rules as would-have-blocked; the scope is kept on the decision.
+            verdict = applied_verdict(
+                verdict, rules_fired, getattr(self, "_containment_scope", ("enforced", frozenset()))
+            )
+        mode = call.mode if verdict == call.verdict else "observe"
         # --- 9. persist decision, findings, audit ------------------------
         decision_row = Decision(
             trace_id=trace_id,
@@ -1474,7 +1498,7 @@ class Enforcer(
             detector_run_ids=call.detector_run_ids,
             taint_summary_json=call.taint_summary,
             latency_ms=call.latency_ms,
-            mode=call.mode,
+            mode=mode,
         )
         self.session.add(decision_row)
         self.session.flush()
