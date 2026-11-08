@@ -43,8 +43,8 @@ _CONFIG_TEMPLATE = """# AgentFox configuration.
 [agentfox]
 environment = "{environment}"
 
-# Default mode for a policy that does not declare its own. Packs that declare a mode
-# keep it (the shipped tool-containment pack declares enforce).
+# Default mode for a policy that does not declare its own. `agentfox init` starts every
+# shipped pack in observe; `agentfox policy enforce <key>` starts one blocking.
 default_policy_mode = "{default_policy_mode}"
 
 # Zero egress: no model call leaves this machine unless you turn it on.
@@ -174,7 +174,9 @@ def init(
     key: str = typer.Option(
         "",
         "--key",
-        help="Your onboarding key from the dashboard's Connect screen. Maps the agent in "
+        help="Your onboarding key from the dashboard's Connect screen; with --server and "
+        "no --key, AGENTFOX_API_KEY is used, which keeps the key out of `ps` and your "
+        "shell history. Maps the agent in "
         "this repo (reading the code, never running it), reports its names and shapes, and "
         "stays connected to run the attack tests on this machine: those do run your agent, "
         "with every tool faked.",
@@ -189,12 +191,21 @@ def init(
     """Set everything up. Idempotent, offline, and safe to run twice.
 
     Creates the database, applies migrations, loads the control catalog and the
-    shipped policy packs, each in the mode it declares (baseline and
-    eu-ai-act-high-risk observe; tool-containment enforces; coding-agent only for
-    agents this repo's coding-harness hooks govern), and writes a
+    shipped policy packs, every one watching (observe) until you switch it to blocking
+    with `agentfox policy enforce <key>`; coding-agent only for agents this repo's
+    coding-harness hooks govern. Missing grants, destructive commands and tampering
+    with AgentFox are refused from the start. It writes an
     agentfox.toml carrying the real runtime defaults so they are visible rather than
     implicit. AGENTFOX_* environment variables override that file.
     """
+    if not key and server:
+        # The key from the environment, so it is in neither `ps` nor the shell's
+        # history: `export AGENTFOX_API_KEY=...` then `agentfox init --server ...`.
+        # Only with a server named: a plain `init` sets up this machine, even in a
+        # shell where the app's own key is exported.
+        import os
+
+        key = os.environ.get("AGENTFOX_API_KEY", "").strip()
     if key:
         from agentfox.capabilities.onboarding.client import connect
 
@@ -225,10 +236,12 @@ def setup_workspace(
     first step and gives its own. ``brief`` prints one line instead of the pack list,
     for a caller that sets the modes and hooks itself and reports them after."""
     from rich.markup import escape
+    from sqlalchemy import select
 
     from agentfox.capabilities.compliance import load_catalog, sync_catalog
     from agentfox.core.config import get_settings
     from agentfox.core.db import init_db, session_scope
+    from agentfox.core.models import Policy
     from agentfox.harnesses import hooked_agents
     from agentfox.platform.policy import current_binding, load_available, save_policy
     from agentfox.platform.policy.coding import retire_tool_wildcard, scope_coding_pack
@@ -274,25 +287,36 @@ def setup_workspace(
         documents, coding_agents = scope_coding_pack(load_available(), hooked_agents(path))
         if coding_agents == []:
             retire_tool_wildcard(session)
-        # A pack already installed keeps the mode it is in: the one it declares is only
-        # its first. Run after `agentfox up` (which puts every pack in observe), `init`
-        # must not quietly turn tool-containment back to blocking.
+        # A new workspace starts every pack watching, tool-containment included: a
+        # rule that holds a normal $50 transfer for a person on the first day blocks a
+        # real customer. Blocking is a step the user takes (`agentfox policy enforce
+        # tool-containment`, or Start blocking in the dashboard). A pack already
+        # installed keeps the mode it is in, so running `init` again never changes it.
+        # A missing grant, a destructive statement (`rm -rf ~/`) and tampering with
+        # AgentFox are refused whatever mode the packs are in.
         modes: dict[str, str] = {}
+        kept: set[str] = set()
         for document in documents:
+            existing = session.scalar(select(Policy).where(Policy.key == document.key))
+            if existing is not None and current_binding(session, existing.id)[0] is not None:
+                kept.add(document.key)
             policy, _version = save_policy(
-                session, document, author="init", notes="loaded by agentfox init", keep_mode=True
+                session,
+                document,
+                author="init",
+                notes="loaded by agentfox init",
+                bind_mode="observe",
+                keep_mode=True,
             )
             live, _ = current_binding(session, policy.id)
-            modes[document.key] = live.mode if live is not None else document.mode
-        # Say the truth per pack: a blanket "observe mode" was wrong the moment one
-        # shipped pack (tool-containment) declared enforce.
+            modes[document.key] = live.mode if live is not None else "observe"
         say(f"  [green]✓[/] {len(documents)} policy pack(s) loaded")
         for document in sorted(documents, key=lambda d: d.key):
             mode = modes[document.key]
             colour = "red" if mode == "enforce" else "yellow"
             meaning = _MODE_MEANING.get(mode, "")
-            kept = "  [dim](kept)[/]" if mode != document.mode else ""
-            say(f"      {document.key:<24} [{colour}]{mode}[/]  [dim]{meaning}[/]{kept}")
+            note = "  [dim](kept)[/]" if document.key in kept else ""
+            say(f"      {document.key:<24} [{colour}]{mode}[/]  [dim]{meaning}[/]{note}")
         if coding_agents:
             say(f"      [dim]coding-agent applies to: {', '.join(coding_agents)}[/]")
         elif coding_agents == []:
@@ -304,8 +328,14 @@ def setup_workspace(
         enforcing = [d.key for d in documents if modes[d.key] == "enforce"]
         if enforcing:
             say(
-                f"      [dim]{', '.join(enforcing)} blocks from the start — "
+                f"      [dim]{', '.join(enforcing)} blocks — "
                 "demote with `agentfox policy observe <key>`.[/]"
+            )
+        elif "tool-containment" in modes:
+            say(
+                "      [dim]Missing grants, destructive commands and tampering are still "
+                "refused. When the would-block decisions look right: "
+                "`agentfox policy enforce tool-containment`.[/]"
             )
 
     config_path = Path(path) / "agentfox.toml"

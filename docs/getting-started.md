@@ -129,9 +129,9 @@ Setting up AgentFox
       agent-integrity          observe  recorded, nothing blocked
       baseline                 observe  recorded, nothing blocked
       eu-ai-act-high-risk      observe  recorded, nothing blocked
-      tool-containment         enforce  violations are blocked now
+      tool-containment         observe  recorded, nothing blocked
       coding-agent not enabled — no coding-agent hooks in this repo. `agentfox admin hooks install --agent <slug> --write` turns it on for that agent.
-      tool-containment blocks from the start — demote with `agentfox policy observe <key>`.
+      Missing grants, destructive commands and tampering are still refused. When the would-block decisions look right: `agentfox policy enforce tool-containment`.
   ✓ wrote agentfox.toml
 ```
 
@@ -147,15 +147,19 @@ If the agent you want to govern is Claude Code or Codex itself, `agentfox admin 
 registers the agent, declares the harness's built-in tools with their real impact and grants them to it, and binds the coding-agent pack in
 observe, so ordinary work is not refused by default deny. Destructive commands are still refused.
 
-Read the mode column carefully, because it is the whole shape of the product. The
-detector-driven packs start in **observe**: they record what they would have done and block
-nothing. `tool-containment` starts in **enforce**, because it does not guess. It refuses calls that
-no capability grants, and calls that carry untrusted arguments into an irreversible tool. Those are
-structural facts, not classifier scores, so they can block on day one without producing false
-positives that get the whole thing switched off.
+Read the mode column carefully, because it is the whole shape of the product. Every pack
+starts in **observe**: it records what it would have done and blocks nothing your users do.
+A few things are refused from the first call whatever the packs' modes, because they are
+structural facts rather than classifier scores: a tool the agent was not granted (once it
+holds any grant), a destructive statement such as `rm -rf ~/` or `DROP TABLE`, and an agent
+switching AgentFox off. `tool-containment` is the pack built to block: it holds an
+irreversible call with no stated task, or with arguments copied from untrusted content, for a
+person. Switch it on with `agentfox policy enforce tool-containment` (or Start blocking in the
+dashboard, after its simulation) once its would-block decisions look right. A second
+`agentfox init` keeps whatever mode each pack is in.
 
-**What this proves:** the control plane exists locally, with no service to sign up for, and the one
-layer that blocks from the start is the one that does not rely on detection.
+**What this proves:** the control plane exists locally, with no service to sign up for, and
+nothing your users do is blocked until you say so.
 
 ---
 

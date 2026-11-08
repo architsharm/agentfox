@@ -51,7 +51,8 @@ MODES = (
     Choice(
         "defaults",
         "Shipped defaults",
-        "Tool containment blocks from the start; detectors watch.",
+        "Tool containment blocks (a payment with no stated task waits for a person); "
+        "detectors watch.",
     ),
     Choice(
         "enforce",
@@ -1225,10 +1226,42 @@ CATALOGUE: tuple[Component, ...] = (
 BY_KEY = {c.key: c for c in CATALOGUE}
 
 
+def _apply_declared_modes(run: Run) -> None:
+    """"Shipped defaults": each pack in the mode it declares. A new workspace starts
+    every pack watching (`setup_workspace`); this is the choice that makes tool
+    containment block, the one pack that declares enforce."""
+    from agentfox.platform.policy import load_available
+
+    try:
+        modes = run.target.backend.policy_modes()
+        declared = {doc.key: doc.mode for doc in load_available()}
+    except BackendError as exc:
+        run.failed("mode", str(exc))
+        return
+    changed = []
+    for key, mode in sorted(modes.items()):
+        want = declared.get(key, mode)
+        if want == mode:
+            continue
+        try:
+            run.target.backend.set_policy_mode(key, want)
+            changed.append(key)
+            modes[key] = want
+        except BackendError as exc:
+            run.failed("mode", f"{key} ({exc})")
+    blocking = sorted(k for k, m in modes.items() if m == "enforce")
+    run.done(
+        "mode",
+        "policies in their shipped modes"
+        + (f" — {', '.join(blocking)} blocks" if blocking else " — none blocks yet")
+        + (f" [dim](changed {', '.join(changed)})[/]" if changed else ""),
+    )
+
+
 def apply_mode(run: Run) -> None:
     """Put the policies in the chosen safety mode."""
     if run.mode == "defaults":
-        run.done("mode", "policies left in their shipped modes")
+        _apply_declared_modes(run)
         return
     want = "observe" if run.mode == "observe" else "enforce"
     try:
