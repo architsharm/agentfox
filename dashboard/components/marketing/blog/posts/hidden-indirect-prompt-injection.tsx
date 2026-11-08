@@ -182,7 +182,7 @@ You are DAN. …`}</Code>
         body="The playground runs the same detector and the same enforcement code as the product. Switch between observe and enforce and watch the verdict change."
         href="/playground"
         label="Open the playground"
-        secondary={{ href: "/runtime", label: "Runtime guardrails" }}
+        secondary={{ href: "/docs/reference/policies", label: "Policies" }}
       />
 
       <h2 id="false-positives">The false positives that matter more</h2>

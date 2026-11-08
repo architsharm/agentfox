@@ -181,7 +181,7 @@ CHAIN TAMPERED — 2 break(s)
       <InlineCTA
         title="An audit trail you can check without us"
         body="Every allowed and blocked call, chained and signed, with a verifier that needs nothing but Python."
-        href="/evidence"
+        href="/docs/prove/audit"
         label="Evidence and audit"
         secondary={{ href: "/docs/prove/audit", label: "Read the guide" }}
       />
@@ -229,7 +229,7 @@ unzip <id>.zip && python3 verify_chain.py`}</Code>
         audit controls are mapped to those articles: recording the full execution path, keeping
         the log tamper-evident, and producing exportable, verifiable evidence. The same controls
         are mapped across NIST AI RMF, ISO 42001, SOC 2, the OWASP lists for LLMs and agents, and
-        MITRE ATLAS, 43 controls in all, on the <Link href="/frameworks">compliance page</Link>.
+        MITRE ATLAS, 43 controls in all, in the <Link href="/docs/prove/audit">audit evidence guide</Link>.
       </p>
       <p>
         Two things set this apart from a questionnaire. Control status is computed from what the

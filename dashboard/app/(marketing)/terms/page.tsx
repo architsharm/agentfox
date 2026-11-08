@@ -240,7 +240,7 @@ export default function Terms() {
               </p>
               <p className="mk-fine" style={{ marginTop: 26 }}>
                 Also here: <Link href="/privacy">privacy</Link>,{" "}
-                <Link href="/security">security</Link>, <Link href="/legal">legal</Link>.
+                <Link href="/security">security</Link>.
               </p>
             </div>
           </div>

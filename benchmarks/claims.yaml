@@ -68,7 +68,7 @@ claims:
       - {file: docs/design/PRD.md, text: "{n} of {d} attack pairs are contained at session-level taint"}
       - {file: docs/evaluation/responding-to-the-critique.md, text: "{n} of {d} attack pairs were contained at session-level taint"}
       # The website. Not markdown, but the same normalised substring check applies.
-      - {file: dashboard/app/(marketing)/benchmark/page.tsx, text: "session-level taint contained {n} of {d} attack pairs"}
+      - {file: "dashboard/app/(marketing)/benchmark/page.tsx", text: '["Session-level taint (default)", "24 / 97", "{n} / {d}"]'}
       - {file: dashboard/app/docs/benchmarks/page.tsx, text: "Session-level taint (the default): {n} of {d} attack pairs contained"}
       - {file: dashboard/app/(product)/login/page.tsx, text: '["{n} of {d}", "attack pairs contained"]'}
       - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} attack pairs contained with session-level taint"}
@@ -92,8 +92,7 @@ claims:
       - {file: docs/design/PRD.md, text: "a cost of {n} of {d} benign tasks running without escalation"}
       - {file: docs/evaluation/responding-to-the-critique.md, text: "{n} of {d} benign tasks ran without escalation"}
       - {file: benchmarks/agentdojo/README.md, text: "Session-level taint (shipped default) | {n}/{d} ({pct}% {ci}) | 588/588 | 702/702"}
-      - {file: dashboard/app/(marketing)/benchmark/page.tsx, text: "only {n} of {d} benign tasks ran without escalating to a human"}
-      - {file: dashboard/app/(marketing)/benchmark/page.tsx, text: '["Session-level taint (shipped default)", "{n}/{d} ({pct}% {ci})", "588/588", "702/702"]'}
+      - {file: "dashboard/app/(marketing)/benchmark/page.tsx", text: '["Session-level taint (default)", "{n} / {d}", "588 / 588"]'}
       - {file: dashboard/app/docs/benchmarks/page.tsx, text: "only {n} of {d} benign tasks ({pct}% {ci}) ran without escalating to a human"}
       - {file: docs/design/architecture-differentiation.md, text: "{n}/{d} benign tasks ({pct}% {ci}) run without escalating to a human"}
       # The blog.
@@ -752,8 +751,8 @@ claims:
       - {file: benchmarks/latency/README.md, text: "took {af} ms at the median there, against {lg} ms"}
       - {file: benchmarks/latency/README.md, text: "its deterministic checks alone {det} ms"}
       - {file: benchmarks/README.md, text: "{af} ms against LLM Guard's injection scanner at {lg} ms"}
-      - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: 'figure: "{af}",'}
-      - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: "against {lg} ms for LLM Guard's prompt-injection scanner"}
+      - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: 'checks: "Injection, PII, secrets, unsafe content, code", ms: {af}'}
+      - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: "against {lg} ms for LLM Guard&apos;s prompt-injection scanner"}
       - {file: "dashboard/app/(marketing)/benchmark/latency/page.tsx", text: "its deterministic checks, {det} ms on their own"}
       - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "its deterministic checks took {det} ms"}
       - {file: dashboard/components/marketing/blog/posts/ai-agent-guardrail-latency.tsx, text: "its default checks took <strong>{af} ms</strong>"}
@@ -778,8 +777,9 @@ claims:
     quoted_in:
       - {file: benchmarks/injection/model_choice/README.md, text: "{pig}% held-out recall at {pigp}% precision, against {p86}% for Prompt Guard 2 86M and {p22}% for Prompt Guard 2 22M"}
       - {file: benchmarks/injection/model_choice/README.md, text: "{f86}% and 0% of NotInject, against PIGuard's {fpig}%"}
-      - {file: "dashboard/app/(marketing)/benchmark/page.tsx", text: "{pig}% of held-out injections at {pigp}% precision against {p86}% for Prompt Guard 2 86M and {p22}% for 22M"}
-      - {file: "dashboard/app/(marketing)/benchmark/page.tsx", text: "{f86}% and 0% of NotInject, against PIGuard&apos;s {fpig}%"}
+      - {file: "dashboard/app/(marketing)/benchmark/page.tsx", text: '["AgentFox default (PIGuard and patterns)", "{pig}%", "29.6%", "76.0%", "{fpig}%"]'}
+      - {file: "dashboard/app/(marketing)/benchmark/page.tsx", text: '["Prompt Guard 2, 22M", "{p22}%"'}
+      - {file: "dashboard/app/(marketing)/benchmark/page.tsx", text: '["Prompt Guard 2, 86M", "{p86}%", "38.4%", "44.7%", "{f86}%"]'}
 
 retired:
   - id: agentdojo.label_assigned_benign_utility

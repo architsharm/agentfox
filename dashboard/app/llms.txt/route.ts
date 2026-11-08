@@ -27,37 +27,15 @@
  */
 
 import { BLOG_POSTS, blogPath } from "@/lib/marketing/blog";
-import { FLAT, HOME, PRODUCT as NAV_PRODUCT, RESOURCES, SECONDARY } from "@/lib/marketing/nav";
+import { ALL_PAGES } from "@/lib/marketing/nav";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL, REPO_URL } from "@/lib/site";
 
 export const dynamic = "force-static";
 
-/**
- * The index, derived from lib/marketing/nav.ts.
- *
- * It used to be a hand-kept list here, with its own copy of every page's
- * description. Two consequences, both real: three pages existed for a week
- * without appearing in this file, and the sentence an assistant read about a
- * page was a different sentence from the one a person read in the menu.
- * Deriving it fixes both — the note under a menu item and the note an
- * assistant is given are now the same string.
- */
+/** The index, derived from lib/marketing/nav.ts so it cannot drift from the site. */
 type Link = { path: string; note: string };
 
-// `summary` where a page has one: a menu line is six words and an
-// assistant has room for the sentence.
-const asLinks = (items: { href: string; note: string; summary?: string }[]): Link[] =>
-  items.map((i) => ({ path: i.href, note: i.summary ?? i.note }));
-
-const PRODUCT_LINKS: Link[] = asLinks([
-  HOME,
-  ...NAV_PRODUCT.sections.flatMap((group) => group.items),
-]);
-
-/** Published separately, because it is the part of the site nobody else has. */
-const RESOURCE_LINKS: Link[] = asLinks(RESOURCES.sections.flatMap((group) => group.items));
-
-const MORE_LINKS: Link[] = asLinks([...FLAT, ...SECONDARY]);
+const PAGE_LINKS: Link[] = ALL_PAGES.map((p) => ({ path: p.href, note: p.note }));
 
 /** Every post, with its meta description: the same sentence a search result shows. */
 const BLOG_LINKS: Link[] = BLOG_POSTS.map((p) => ({ path: blogPath(p.slug), note: `${p.title}. ${p.description}` }));
@@ -98,14 +76,7 @@ export function GET(): Response {
     "",
     FACTS.map((f) => `- ${f}`).join("\n"),
     "",
-    section("Product", PRODUCT_LINKS),
-    "",
-    // Its own heading rather than more rows under Product. An assistant
-    // deciding what to recommend is exactly the reader who should be told
-    // that the coverage page lists what this does *not* catch.
-    section("Evidence you can check", RESOURCE_LINKS),
-    "",
-    section("More", MORE_LINKS),
+    section("Pages", PAGE_LINKS),
     "",
     section("Blog", BLOG_LINKS),
     "",

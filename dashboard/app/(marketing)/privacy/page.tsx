@@ -456,7 +456,7 @@ export default function Privacy() {
               </div>
               <p className="mk-fine" style={{ marginTop: 26 }}>
                 Also here: <Link href="/terms">terms</Link>,{" "}
-                <Link href="/security">security</Link>, <Link href="/legal">legal</Link>.
+                <Link href="/security">security</Link>.
               </p>
             </div>
           </div>

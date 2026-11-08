@@ -1,18 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { MarketingNav } from "@/components/marketing/nav";
-import { Footer } from "@/components/marketing/sections";
+import { Contents, DocSection, Limits, Rerun, Source, Table } from "@/components/lp/bench";
+import { Reveal } from "@/components/lp/client";
+import { FlowArt } from "@/components/lp/FlowArt";
+import { Arrow, LpCta, LpFooter, LpNav } from "@/components/lp/parts";
 import { publicPageMetadata } from "@/lib/site";
 
-/**
- * Public latency benchmark: what a guard check adds, on traffic replayed from real agent
- * repositories, and how it compares with other guards on the same machine.
+export const dynamic = "force-dynamic";
+
+/*
+ * Every figure is copied from a results file and bound in benchmarks/claims.yaml, so a
+ * rerun that moves a number fails CI here too:
  *
- * Every figure is copied from a results file in the repository and bound in
- * benchmarks/claims.yaml, so a rerun that moves a number fails CI here too:
- *
- *   benchmarks/latency/results/headline.json        the 109-repository study
+ *   benchmarks/latency/results/headline.json               the 109-repository study
  *   benchmarks/latency/head_to_head/results/summary.json   the head-to-head
  */
 
@@ -23,47 +24,38 @@ export const metadata: Metadata = publicPageMetadata({
   path: "/benchmark/latency",
 });
 
-const REPO = "https://github.com/architsharm/agentfox";
-
-function Source({ children }: { children: React.ReactNode }) {
-  return <p className="source">Source: {children}</p>;
-}
-
-const CLAIMS: { question: string; figure: string; unit?: string; detail: string; limit: string }[] = [
+const STATS: { figure: string; unit: string; label: string; vs: string }[] = [
   {
-    question: "What does a check add?",
     figure: "57.4",
-    unit: " ms",
-    detail:
-      "median per check with the default detectors, the ML prompt-injection classifier included; 302 ms at p95.",
-    limit:
-      "Engine time on a laptop CPU with no GPU, network and the agent's own model excluded, cache off. Long text costs more: 188 ms at the median between 200 and 600 characters.",
+    unit: "ms",
+    label: "median per check, with the ML classifier",
+    vs: "With the ML prompt-injection classifier included; 302 ms at p95.",
   },
   {
-    question: "And without the model?",
+    figure: "3.1",
+    unit: "ms",
+    label: "median per tool call",
+    vs: "Tool calls are checked on structure, so they skip the classifier.",
+  },
+  {
     figure: "2.3",
-    unit: " ms",
-    detail: "median per check for the deterministic detectors alone: patterns, PII, secrets, schema, unicode, insecure code.",
-    limit: "These catch less on their own; the classifier is what reads an injection phrased in ordinary words.",
-  },
-  {
-    question: "Against LLM Guard?",
-    figure: "63.1",
-    unit: " ms",
-    detail:
-      "median for AgentFox's default checks on short messages, against 56.1 ms for LLM Guard's prompt-injection scanner on the same messages and machine.",
-    limit:
-      "LLM Guard's scanner detects injection only; AgentFox also runs PII, secrets and the rest, over HTTP. Speed only, not accuracy.",
+    unit: "ms",
+    label: "median without the model",
+    vs: "Patterns, PII, secrets, schema, unicode and code checks only.",
   },
 ];
 
-const CONTENTS: { id: string; title: string }[] = [
-  { id: "layers", title: "Per check and per agent turn" },
-  { id: "head-to-head", title: "Head to head on one machine" },
-  { id: "drivers", title: "What moves latency, and what does not" },
-  { id: "published", title: "What other vendors publish" },
-  { id: "method", title: "Method and limits" },
-  { id: "reproduce", title: "How to reproduce it" },
+/** Short messages, p50 ms, from the head-to-head. `checks` is what each one looks for. */
+const RACE: { name: string; checks: string; ms: number; ours?: boolean }[] = [
+  { name: "AgentFox, no model", checks: "7 kinds of check", ms: 7.4, ours: true },
+  { name: "Prompt Guard 2 22M", checks: "Injection, jailbreaks", ms: 25.5 },
+  { name: "Prompt Guard 2 86M", checks: "Injection, jailbreaks", ms: 54.4 },
+  { name: "LLM Guard, injection scanner", checks: "Injection", ms: 56.1 },
+  { name: "AgentFox default", checks: "Injection, PII, secrets, unsafe content, code", ms: 63.1, ours: true },
+  { name: "Guardrails AI, DetectJailbreak", checks: "Jailbreaks", ms: 99.4 },
+  { name: "LLM Guard, nine scanners", checks: "Injection, PII, secrets, toxicity, more", ms: 249 },
+  { name: "OpenAI moderation (hosted)", checks: "Harm categories", ms: 387 },
+  { name: "NeMo Guardrails, self-check", checks: "One LLM policy check", ms: 758 },
 ];
 
 const LAYERS: [string, string, string, string][] = [
@@ -97,217 +89,215 @@ const PUBLISHED: [string, string, string, string][] = [
   ["Palo Alto Prisma AIRS", "https://docs.paloaltonetworks.com/prisma-airs/ai-runtime-security/airs-vm-firewall/performance-in-prisma-airs", "about 700 ms added", "Network firewall intercept mode"],
 ];
 
+const SECTIONS = [
+  { id: "head-to-head", label: "Head to head on one machine" },
+  { id: "layers", label: "Per check and per agent turn" },
+  { id: "drivers", label: "What makes a check slower" },
+  { id: "published", label: "What other vendors publish" },
+  { id: "method", label: "How it was measured" },
+  { id: "reproduce", label: "Rerun it yourself" },
+];
+
 export default function LatencyBenchmarkPage() {
+  const max = Math.max(...RACE.map((r) => r.ms));
   return (
-    <div className="mk">
-      <MarketingNav />
+    <div className="lp">
+      <Reveal />
+      <LpNav />
       <main>
-        <section className="mk-section mk-page-hero mk-ink-act">
-          <div className="mk-wrap">
-            <div>
-              <h1 className="mk-h1">What a guard check adds to your agent</h1>
-              <p className="mk-lede" style={{ marginTop: 18 }}>
-                Measured on 41,520 guard calls replayed from 109 real agent repositories,
-                and against other guards on the same machine.
-              </p>
-            </div>
-            <div className="bm-claims">
-              {CLAIMS.map((c) => (
-                <div key={c.question} className="bm-claim">
-                  <h2>{c.question}</h2>
-                  <p className="figure figure-lg bm-claim-figure">
-                    {c.figure}
-                    {c.unit && <span className="unit">{c.unit}</span>}
-                  </p>
-                  <p className="bm-claim-detail">{c.detail}</p>
-                  <p className="bm-claim-limit">{c.limit}</p>
+        <section className="lp-hero lp-hero-short">
+          <FlowArt mode="ribbon" />
+          <div className="lp-hero-copy">
+            <span className="lp-pill">Latency benchmark</span>
+            <h1>
+              What a guard check
+              <br />
+              <span className="lp-muted">adds to your agent</span>
+            </h1>
+            <p className="lp-lead">
+              Measured on 41,520 guard calls replayed from 109 real agent repositories, and against other guards on the same
+              machine.
+            </p>
+          </div>
+        </section>
+
+        <section className="lp-section lp-section-tight">
+          <div className="lp-wrap">
+            <div className="lp-stats" data-reveal>
+              {STATS.map((s) => (
+                <div key={s.label} className="lp-stat">
+                  <span className="lp-stat-n">
+                    {s.figure}
+                    <small> {s.unit}</small>
+                  </span>
+                  <span className="lp-stat-l">{s.label}</span>
+                  <span className="lp-stat-vs">{s.vs}</span>
                 </div>
               ))}
             </div>
-            <nav className="bm-index" style={{ marginTop: 28 }} aria-label="Sections">
-              {CONTENTS.map((c, i) => (
-                <a key={c.id} href={`#${c.id}`}>
-                  <i>{String(i + 1).padStart(2, "0")}</i>
-                  <span>{c.title}</span>
-                </a>
-              ))}
-            </nav>
+            <p className="lp-note">
+              Engine time on a laptop CPU with no GPU. The network and the agent&apos;s own model are excluded.
+            </p>
+            <Contents items={SECTIONS} />
           </div>
         </section>
 
-        <section className="mk-section">
-          <div className="mk-wrap">
-            <article className="bm-doc">
-              <p className="lede">
-                Each repository was mapped with <code className="mono">agentfox init</code>, and its own
-                agents, tools and handoffs drove the traffic: single turns, five-turn sessions and
-                multi-agent handoffs, through the same guard endpoints an SDK calls.
-              </p>
+        <div className="lp-wrap lp-doc">
+          <DocSection
+            id="head-to-head"
+            n={1}
+            title="Head to head on one machine"
+            lead="Every guard ran on the same 880 messages, on the same laptop CPU, one request at a time. AgentFox runs five kinds of check in about the time the others take for one."
+          >
+            <div className="lp-race" data-reveal>
+              <div className="lp-race-head">
+                <h3>Median time per short message</h3>
+                <span>milliseconds · lower is faster</span>
+              </div>
+              <div className="lp-pairs-in">
+                {RACE.map((r) => (
+                  <div key={r.name} className={`lp-pair-row${r.ours ? " is-ours" : ""}`}>
+                    <span className="lp-pair-name">
+                      {r.name}
+                      <small>{r.checks}</small>
+                    </span>
+                    <span className="lp-pair-track">
+                      <i style={{ "--w": `${Math.max(0.8, (r.ms / max) * 100)}%` } as React.CSSProperties} />
+                    </span>
+                    <span className="lp-pair-v">{r.ms} ms</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <p>
+              Base-size models (AgentFox&apos;s classifier, the one in LLM Guard&apos;s scanner, Prompt Guard 2 86M) all take
+              about 50 ms. AgentFox adds an HTTP round trip and its deterministic checks, 7.4 ms on their own. Its default
+              checks take 63.1 ms, against 56.1 ms for LLM Guard&apos;s prompt-injection scanner, which looks for injection only.
+            </p>
+            <Table
+              head={["System", "Checks for", "Short messages, p50 / p95 (ms)", "Long messages, p50 / p95 (ms)"]}
+              rows={HEAD_TO_HEAD.map(([name, detects, short, long]) => ({
+                cells: [name, detects, short, long],
+                ours: name === "AgentFox default",
+              }))}
+              source={{ label: "benchmarks/latency/head_to_head", path: "benchmarks/latency/head_to_head/results/summary.json" }}
+            />
+            <p>
+              On long messages AgentFox reads the first 4,000 characters, where the others stop at 512 tokens. It does more work
+              there, at a p95 of 412 ms, and reads every message to the end. With every LLM judge inline, AgentFox is about 100
+              ms slower than NeMo&apos;s single self-check, because its judge answers three questions where NeMo asks one. By
+              default a judge only waits inline when an enforcing rule relies on it.
+            </p>
+            <Limits
+              items={[
+                <>
+                  This measures speed only. What each guard catches is on the <Link href="/benchmark">security benchmark</Link>.
+                </>,
+              ]}
+            />
+          </DocSection>
 
-              <h2 id="layers">1. Per check and per agent turn</h2>
-              <p>
-                Tool calls are the cheapest step in every layer, 3.1 ms at the median with the
-                default detectors. Text the classifier must read (inputs, tool results, replies) carries
-                the cost. A turn is every guard call it makes, summed: four for a single turn.
-              </p>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Layer</th>
-                    <th>What runs</th>
-                    <th>Per check, p50 / p95 (ms)</th>
-                    <th>Per single-agent turn, p50 (ms)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {LAYERS.map(([layer, what, check, turn]) => (
-                    <tr key={layer}>
-                      <td>{layer}</td>
-                      <td>{what}</td>
-                      <td className="mono">{check}</td>
-                      <td className="mono">{turn}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <p>
-                Messages under 200 characters take 54.5 ms at the median and 83.5 ms at p95 with the
-                default detectors. Between 200 and 600 characters they take 188 ms and 374 ms: text
-                over 200 characters gets a 1,000 ms check budget, so the classifier finishes reading it
-                rather than returning without a verdict. With judges on, a judge waits inline only when
-                an enforcing rule relies on it, the default, so most checks do not wait for it; replies
-                pay the commitment check, about 0.88 s.
-              </p>
-              <Source>
-                <code className="mono">benchmarks/latency/results/headline.json</code>, from{" "}
-                <a href={`${REPO}/tree/main/benchmarks/latency`}>benchmarks/latency</a>
-              </Source>
+          <DocSection
+            id="layers"
+            n={2}
+            title="Per check and per agent turn"
+            lead="Each repository was mapped with agentfox init, and its own agents, tools and handoffs drove the traffic: single turns, five-turn sessions and multi-agent handoffs, through the same endpoints the SDK calls."
+          >
+            <Table
+              head={["Layer", "What runs", "Per check, p50 / p95 (ms)", "Per single-agent turn, p50 (ms)"]}
+              rows={LAYERS.map(([layer, what, check, turn]) => ({ cells: [layer, what, check, turn], ours: layer === "Default" }))}
+              source={{ label: "benchmarks/latency/results/headline.json", path: "benchmarks/latency/results/headline.json" }}
+            />
+            <p>
+              Tool calls are the cheapest step in every layer, 3.1 ms at the median with the default detectors. Text the
+              classifier has to read (inputs, tool results, replies) is where the time goes. A single turn makes four guard
+              calls, summed in the last column.
+            </p>
+            <p>
+              Messages under 200 characters take 54.5 ms at the median and 83.5 ms at p95. Between 200 and 600 characters they
+              take 188 ms and 374 ms, because longer text gets a 1,000 ms budget so the classifier can finish reading it. Replies
+              with judges on pay the commitment check, about 0.88 s.
+            </p>
+          </DocSection>
 
-              <h2 id="head-to-head">2. Head to head on one machine</h2>
-              <p>
-                Every system ran on the same 880 messages, on the same machine, on CPU, under the same
-                Python, one request at a time, with AgentFox at each of its levels. Base-size models
-                (AgentFox&apos;s classifier, the one in LLM Guard&apos;s scanner, Prompt Guard 2 86M)
-                all take about 50 ms; AgentFox adds an HTTP round trip and its deterministic checks,
-                7.4 ms on their own.
-              </p>
-              <table>
-                <thead>
-                  <tr>
-                    <th>System</th>
-                    <th>Detects</th>
-                    <th>Short messages, p50 / p95 (ms)</th>
-                    <th>Long messages, p50 / p95 (ms)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {HEAD_TO_HEAD.map(([name, detects, short, long]) => (
-                    <tr key={name}>
-                      <td>{name}</td>
-                      <td className="small">{detects}</td>
-                      <td className="mono">{short}</td>
-                      <td className="mono">{long}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <p>
-                On long messages AgentFox reads the first 4,000 characters, where the others stop at 512
-                tokens, so it does more work, at a long-message p95 of 412 ms, and reads every one to the
-                end. In its default mode a judge waits only when a rule relies
-                on it; with every judge inline, AgentFox is about 100 ms slower than NeMo&apos;s single
-                self-check, mostly because its judge answers three questions where NeMo asks one.
-              </p>
-              <Source>
-                <code className="mono">benchmarks/latency/head_to_head/results/summary.json</code>
-              </Source>
+          <DocSection id="drivers" n={3} title="What makes a check slower">
+            <div className="lp-cards lp-cards-2" data-reveal>
+              <article className="lp-card">
+                <h3>Message length: yes</h3>
+                <p>The classifier reads text in 256-token windows, so a 500-character tool result costs several times a short question.</p>
+              </article>
+              <article className="lp-card">
+                <h3>Where it runs: yes</h3>
+                <p>A hosted guard pays the network on every call. From Bengaluru to a US region that is about 310 ms before any check runs. Run the gateway next to the agent.</p>
+              </article>
+              <article className="lp-card">
+                <h3>Session length: no</h3>
+                <p>Per-check latency is flat from the first turn of a session to the fifth.</p>
+              </article>
+              <article className="lp-card">
+                <h3>Framework: barely</h3>
+                <p>LangGraph, CrewAI, AutoGen, the OpenAI Agents SDK, ADK and the rest land within a few milliseconds of each other per check.</p>
+              </article>
+            </div>
+          </DocSection>
 
-              <h2 id="drivers">3. What moves latency, and what does not</h2>
-              <ul>
-                <li>
-                  <strong>Message length moves it.</strong> The classifier reads text in 256-token windows,
-                  so a 500-character tool result costs several times a short question.
-                </li>
-                <li>
-                  <strong>Session length does not.</strong> Per-check latency is flat from the first turn of
-                  a session to the fifth.
-                </li>
-                <li>
-                  <strong>Framework and repository shape barely do.</strong> Single-agent, independent-agent
-                  and multi-agent repositories, and LangGraph, CrewAI, AutoGen, the OpenAI Agents SDK, ADK
-                  and the rest, land within a few milliseconds of each other per check.
-                </li>
-                <li>
-                  <strong>Where it runs does.</strong> A hosted guard pays the network every call; from
-                  Bengaluru to a US region that is about 260 ms before the guard does anything. Run the
-                  gateway beside the agent.
-                </li>
-              </ul>
+          <DocSection
+            id="published"
+            n={4}
+            title="What other vendors publish"
+            lead="Few vendors publish latency, and fewer say under what conditions. Azure Prompt Shields, AWS Bedrock Guardrails, Google Model Armor, OpenAI Moderation, Llama Guard and Guardrails AI publish none. These are the figures we found, as their authors state them."
+          >
+            <Table
+              head={["Product", "Published latency", "Conditions"]}
+              rows={PUBLISHED.map(([name, href, figure, conditions]) => ({
+                cells: [
+                  <a key="n" href={href} target="_blank" rel="noreferrer" className="lp-table-link">
+                    {name}
+                  </a>,
+                  figure,
+                  conditions,
+                ],
+              }))}
+            />
+          </DocSection>
 
-              <h2 id="published">4. What other vendors publish</h2>
-              <p>
-                Few vendors publish latency, and fewer say under what conditions. Azure Prompt Shields, AWS
-                Bedrock Guardrails, Google Model Armor, OpenAI Moderation, Llama Guard and Guardrails AI
-                publish none. These are the figures we found, as their authors state them:
-              </p>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Product</th>
-                    <th>Published latency</th>
-                    <th>Conditions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {PUBLISHED.map(([name, href, figure, conditions]) => (
-                    <tr key={name}>
-                      <td>
-                        <a href={href}>{name}</a>
-                      </td>
-                      <td>{figure}</td>
-                      <td className="small">{conditions}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <DocSection id="method" n={5} title="How it was measured">
+            <Limits
+              items={[
+                "119 agent repositories were examined; 109 produced an agent map and were tested: 76 public, 26 held out from the mapper work and 7 local, four of them private and anonymised.",
+                "Apple M1 Pro, CPU only, one gateway worker on SQLite, Python 3.12 as in the production image. A server with more workers and a server database will do better, so read these as a floor.",
+                "Engine time is the gateway's own time per check. The agent's model and the network are excluded unless a row says otherwise.",
+                "The default layer is reported with the score cache off, because the attack suite repeats text and the cache would flatter it.",
+              ]}
+            />
+          </DocSection>
 
-              <h2 id="method">5. Method and limits</h2>
-              <ul>
-                <li>
-                  119 agent repositories were examined; 109 produced an agent map and were tested,
-                  76 public, 26 held out from the mapper work and 7 local, four of them private and anonymised.
-                </li>
-                <li>
-                  Apple M1 Pro, CPU only, one gateway worker on SQLite, Python 3.12 as in the production image.
-                  A server with more workers and a server database will do better; read these as a floor.
-                </li>
-                <li>
-                  Engine time is the gateway&apos;s own time per check. The agent&apos;s model and the network
-                  are excluded, except where a row says otherwise.
-                </li>
-                <li>
-                  The default layer is reported with the score cache off: the attack suite repeats text, and
-                  the cache would flatter it.
-                </li>
-                <li>This measures speed. What each guard catches is on the <Link href="/benchmark">security benchmarks</Link> page.</li>
-              </ul>
+          <DocSection
+            id="reproduce"
+            n={6}
+            title="Rerun it yourself"
+            lead="Every recorded call, the scripts and the head-to-head harness are in benchmarks/latency."
+          >
+            <Rerun
+              commands={[
+                "python -m benchmarks.latency.fetch_repos var/latency/repos",
+                "python -m benchmarks.latency.map_repos var/latency/repos var/latency",
+                "python -m benchmarks.latency.run_latency var/latency/maps var/latency/run",
+                "python -m benchmarks.latency.report var/latency var/latency/results run",
+              ]}
+            />
+            <Source label="benchmarks/latency" path="benchmarks/latency/README.md" />
+            <p className="lp-doc-more">
+              <Link href="/benchmark">
+                Security benchmarks: what each guard catches <Arrow />
+              </Link>
+            </p>
+          </DocSection>
+        </div>
 
-              <h2 id="reproduce">6. How to reproduce it</h2>
-              <pre className="hero-code">
-                python -m benchmarks.latency.fetch_repos var/latency/repos{"\n"}
-                python -m benchmarks.latency.map_repos var/latency/repos var/latency{"\n"}
-                python -m benchmarks.latency.run_latency var/latency/maps var/latency/run{"\n"}
-                python -m benchmarks.latency.report var/latency var/latency/results run
-              </pre>
-              <p>
-                Every recorded call, the scripts and the head-to-head harness are in{" "}
-                <a href={`${REPO}/tree/main/benchmarks/latency`}>benchmarks/latency</a>.
-              </p>
-            </article>
-          </div>
-        </section>
+        <LpCta />
       </main>
-      <Footer />
+      <LpFooter />
     </div>
   );
 }

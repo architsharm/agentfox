@@ -34,8 +34,6 @@ const NOT_IN_NAV = new Set([
   "/login",
   // The signed-in application. Private, behind middleware.
   "/app",
-  // Landing-page variants under review (app/(lp)). noindex until one is chosen.
-  "/lp",
 ]);
 
 /** Directory names Next.js does not turn into a plain public path. */

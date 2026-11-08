@@ -229,7 +229,7 @@ agentfox test gate support-quality --junit reports/agentfox-junit.xml --sarif re
       <h2 id="what-it-does-not-prove">What it does not prove</h2>
       <p>
         We map every way we know an agent can fail, and score the product against it on the{" "}
-        <Link href="/coverage">coverage page</Link>. Today that is:
+        <Link href="/docs/limits">limits page</Link>. Today that is:
       </p>
       <StatRow>
         <Stat value={String(coverage.scenarios)} label="failure scenarios mapped" source="lib/generated/coverage.json" />
@@ -277,7 +277,7 @@ agentfox test gate support-quality --junit reports/agentfox-junit.xml --sarif re
         alt="The AgentFox coverage page: failure scenarios scored against what the product catches, by cause, with the gaps listed."
         caption={
           <>
-            The <Link href="/coverage">coverage page</Link> cuts the same scenarios by cause:
+            The <Link href="/docs/limits">limits page</Link> lists the gaps by cause:
             external, internal, autonomous and intrinsic.
           </>
         }

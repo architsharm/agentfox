@@ -167,14 +167,14 @@ export function Body() {
         That is still useful. <code>PostToolUse</code> is where an injection arriving inside a
         fetched page or a file&apos;s contents is caught, before the model acts on it. It is the
         right hook for detection. It is the wrong hook for anything you need to prevent, which
-        is exactly the distinction our <Link href="/hooks">coding agents page</Link> is built
+        is exactly the distinction our <Link href="/docs/connect/coding-agents">coding agents guide</Link> is built
         around.
       </p>
 
       <InlineCTA
         title="Which hook does what, in one page"
         body="The evidence behind each row, the Claude Code version it was checked on, and what each hook can and cannot do."
-        href="/hooks"
+        href="/docs/connect/coding-agents"
         label="Coding agent guardrails"
         secondary={{ href: "/docs/connect/coding-agents", label: "Setup guide" }}
       />
@@ -267,7 +267,7 @@ agentfox admin hooks daemon                               # a warm process the h
         <li>
           <strong>Local only.</strong> Hooks cover the Claude Code harness on the machine they
           are installed on. Cloud sessions and other coding agents need the{" "}
-          <Link href="/control-points">gateway or the SDK</Link>.
+          <Link href="/docs/concepts">gateway or the SDK</Link>.
         </li>
         <li>
           <strong>Shell rules are narrow deny-lists.</strong> They are deliberate and readable,

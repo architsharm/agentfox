@@ -13,9 +13,9 @@ const nextConfig = {
   // unstyled. `NEXT_DIST_DIR=.next-dev npm run dev` keeps them apart. Unset, this
   // is exactly the previous behaviour, so CI and Vercel are unaffected.
   distDir: process.env.NEXT_DIST_DIR || ".next",
-  // Docs URLs that moved. Permanent, so old links, in-app links and search results land
+  // URLs that moved. Permanent, so old links, in-app links and search results land
   // on the new page; this is the only list of them. Each points at the final page, never
-  // at another redirect. Pages are listed in lib/docs/pages.ts.
+  // at another redirect. Docs pages are listed in lib/docs/pages.ts.
   async redirects() {
     return [
       ["/docs/install", "/docs/reference/install"],
@@ -66,6 +66,22 @@ const nextConfig = {
       // The operator plugin was called "the harness" until "harness" came to mean a
       // coding agent AgentFox governs.
       ["/docs/harness", "/docs/connect/coding-agents"],
+      // Marketing pages folded into the home page, the benchmark or the docs.
+      ["/product", "/"],
+      ["/how-it-works", "/docs/concepts"],
+      ["/control-points", "/docs/concepts"],
+      ["/hooks", "/docs/connect/coding-agents"],
+      ["/mcp", "/docs/connect/mcp"],
+      ["/discovery", "/docs/discover"],
+      ["/grants", "/docs/govern"],
+      ["/runtime", "/docs/reference/policies"],
+      ["/evidence", "/docs/prove/audit"],
+      ["/frameworks", "/docs/prove/audit"],
+      ["/coverage", "/docs/limits"],
+      ["/compare", "/benchmark"],
+      ["/legal", "/terms"],
+      ["/lp", "/"],
+      ["/lp/:path*", "/"],
     ].map(([source, destination]) => ({ source, destination, permanent: true }));
   },
 };

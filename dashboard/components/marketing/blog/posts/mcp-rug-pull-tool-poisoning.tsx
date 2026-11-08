@@ -232,7 +232,7 @@ critical issue(s) found — exit 1`}</Output>
       <InlineCTA
         title="See the six MCP risks side by side"
         body="Rug pulls, poisoning, poisoned results, undeclared tools, over-scoped servers and credential sprawl. Two of the six are marked as gaps."
-        href="/mcp"
+        href="/docs/connect/mcp"
         label="MCP security overview"
         secondary={{ href: "/docs/connect/mcp", label: "Read the guide" }}
       />
@@ -283,14 +283,14 @@ agentfox policy proposals approve <id> --actor bob   --note "reviewed the diff"`
       </ul>
       <p>
         These are scored with everything else on the{" "}
-        <Link href="/coverage">coverage page</Link>, alongside the scenarios we do catch.
+        <Link href="/docs/limits">limits page</Link>, alongside the scenarios we do catch.
       </p>
 
       <h2 id="checklist">A checklist for MCP servers</h2>
       <ol>
         <li>
           Inventory every server in every client config, including laptops, with{" "}
-          <code>agentfox scan mcp</code>. See <Link href="/discovery">discovery</Link>.
+          <code>agentfox scan mcp</code>. See <Link href="/docs/discover">scanning a repository</Link>.
         </li>
         <li>Pin package versions. An unpinned <code>npx</code> server can change on any launch.</li>
         <li>

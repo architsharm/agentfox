@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { CATEGORY_CAP } from "./(marketing)/how-it-works/_public";
+import { CATEGORY_CAP } from "@/lib/marketing/category";
 import { SITE_URL, SUPPORT_EMAIL, publicPageMetadata, HOME_TITLE, HOME_DESCRIPTION } from "@/lib/site";
 import { REPO } from "@/components/marketing/nav";
 import { Production } from "@/components/lp/Production";
 
-import "./(lp)/lp.css";
 
 export const dynamic = "force-dynamic";
 

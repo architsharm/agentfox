@@ -52,7 +52,8 @@ function pageRoutes(): RegExp[] {
 /** Source files that render the signed-in app. Tests and the public site excluded. */
 function appSources(): string[] {
   return [...walk(join(APP, "(product)", "app")), ...walk(join(ROOT, "components"))].filter(
-    (f) => /\.tsx?$/.test(f) && !f.includes(".test.") && !f.includes(`${sep}marketing${sep}`),
+    (f) =>
+      /\.tsx?$/.test(f) && !f.includes(".test.") && !f.includes(`${sep}marketing${sep}`) && !f.includes(`${sep}lp${sep}`),
   );
 }
 
