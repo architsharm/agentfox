@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { SESSION_COOKIE } from "@/lib/product/api";
 import { Logo } from "@/components/product/Logo";
 import { configuredSignIns } from "@/lib/product/oauth";
+import { ThemeButton } from "@/components/lp/client";
 
 export const dynamic = "force-dynamic";
 
@@ -102,6 +103,9 @@ export default async function Login({
   return (
     <main className="auth">
       <div className="auth-form">
+        <div className="auth-theme lp-x">
+          <ThemeButton />
+        </div>
         <div className="auth-inner">
           <Link href="/" className="auth-brand">
             <Logo size={26} />
@@ -164,13 +168,13 @@ export default async function Login({
                 aria-label="API token"
                 required
               />
-              <button type="submit" className="btn">
+              <button type="submit" className="btn-primary auth-submit">
                 Sign in
               </button>
-              <p className="small muted">
-                Self-hosted? Create one on the gateway host with{" "}
+              <p className="small muted">Self-hosted? Create one on the gateway host with</p>
+              <pre className="auth-cmd">
                 <code>agentfox admin users create you@example.com --role owner --token</code>
-              </p>
+              </pre>
             </form>
           </details>
 
@@ -186,7 +190,10 @@ export default async function Login({
       <aside className="auth-wall" aria-label="What AgentFox does">
         <div className="auth-wall-inner">
           <h2>Guardrails that don&apos;t block your real customers</h2>
-          <p>Replayed on AgentDojo with every detector switched off.</p>
+          <p>
+            The headline results from our <Link href="/benchmark">security benchmarks</Link>: AgentDojo&apos;s attack pairs,
+            and an attacker who rewrites each attack after seeing our verdict.
+          </p>
           <div className="auth-stats">
             {PROOF.map(([n, label]) => (
               <div key={label} className="auth-stat">

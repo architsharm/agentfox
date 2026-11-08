@@ -214,6 +214,9 @@ body {
 
 a { color: inherit; text-decoration: none; }
 a:hover { text-decoration: underline; }
+/* Without this, code outside the app shell (sign-in, 404) fell back to the
+   browser's Courier. Everything else sets its own; this is the floor. */
+:where(code, kbd, samp) { font-family: var(--mono); }
 
 /* Links inside running text have to LOOK like links.
  *
@@ -331,42 +334,59 @@ td a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .auth-token summary { cursor: pointer; }
 .auth-token form { display: grid; gap: 8px; margin-top: 10px; }
 .auth-token input { width: 100%; }
-.auth-token form .btn { justify-self: start; }
-.auth-token code { word-break: break-all; }
+.auth-token form .auth-submit { justify-self: start; height: 40px; padding: 0 20px; font-size: var(--t-small); }
+.auth-token form p { margin: 6px 0 0; }
+/* The self-hosted command as a block of its own, in the site's mono, wrapping at
+   spaces. Inline it broke mid-word ("user / s create") in the browser's default
+   Courier, because nothing outside the app shell set a family for <code>. */
+.auth-cmd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; font-family: var(--af-mono); font-size: 12px; line-height: 1.6; }
+.auth-cmd code { font-family: inherit; }
+.auth-form { position: relative; }
+.auth-theme { position: absolute; top: 16px; right: 16px; }
 
 .auth-foot { margin-top: 28px; line-height: 1.7; }
 
 /* The brand wall does not follow the theme, and that is deliberate: it is a surface
-   of the mark, like the mark itself, and the navy reads on either ground. White on
-   #012455 is 15.4:1, so everything on it clears AA by a wide margin. */
+   of the mark. It is the same object as the closing band on the public pages
+   (.lp-cta in lp.css): the near-black ink with the rose glow behind it, so the
+   page somebody signs in on looks like the site they came from. It used to be
+   #012455, a navy nothing else on the site uses. #ecedf1 on #0e0f13 is 16.6:1. */
 .auth-wall {
+  position: relative;
+  overflow: hidden;
   display: none;
-  background: #012455;
-  color: #ffffff;
+  background: #0e0f13;
+  color: #ecedf1;
   padding: 48px;
   align-items: center;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+.auth-wall::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 760px;
+  height: 420px;
+  transform: translate(-50%, -55%);
+  background: radial-gradient(closest-side, color-mix(in srgb, #c8285a 38%, transparent), transparent);
+  pointer-events: none;
 }
 @media (min-width: 900px) { .auth-wall { display: flex; } }
-.auth-wall-inner { max-width: 380px; margin: 0 auto; }
-.auth-wall-eyebrow {
-  font-size: var(--t-micro);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #ffb08a;
-}
+.auth-wall-inner { position: relative; max-width: 380px; margin: 0 auto; }
 .auth-wall-inner h2 {
-  margin: 14px 0 0;
+  margin: 0;
   font-size: var(--t-title);
   line-height: 1.16;
   letter-spacing: -0.022em;
   font-weight: 600;
 }
-.auth-wall-inner p { margin: 14px 0 0; font-size: var(--t-small); line-height: 1.55; color: rgba(255, 255, 255, 0.72); }
-.auth-stats { margin-top: 34px; display: grid; gap: 1px; background: rgba(255, 255, 255, 0.14); border-radius: var(--r-3); overflow: hidden; }
-.auth-stat { background: #012455; padding: 16px 18px; }
-.auth-stat b { display: block; font-size: var(--t-subhead); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.auth-stat span { display: block; margin-top: 2px; font-size: var(--t-micro); color: rgba(255, 255, 255, 0.72); }
+.auth-wall-inner p { margin: 14px 0 0; font-size: var(--t-small); line-height: 1.55; color: #b4b8c5; }
+.auth-wall-inner p a { color: #f0668d; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.auth-stats { margin-top: 34px; display: grid; gap: 1px; background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: var(--r-3); overflow: hidden; }
+.auth-stat { background: #15161c; padding: 16px 18px; }
+.auth-stat b { display: block; font-size: var(--t-subhead); font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: #f0668d; }
+.auth-stat span { display: block; margin-top: 2px; font-size: var(--t-micro); color: #b4b8c5; }
 
 /* --- Buttons ------------------------------------------------------------- */
 

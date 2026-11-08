@@ -12,7 +12,7 @@ import { SESSION_COOKIE } from "@/lib/product/api";
 
 import { Logo } from "@/components/product/Logo";
 import { CopyChip, ThemeButton } from "./client";
-import { REPO_URL, SUPPORT_EMAIL } from "@/lib/site";
+import { HOME_DESCRIPTION, REPO_URL, SUPPORT_EMAIL } from "@/lib/site";
 
 
 const GITHUB_PATH =
@@ -119,7 +119,7 @@ export function LpFooter() {
             <Logo size={22} />
             <span>AgentFox</span>
           </span>
-          <p>Runtime guardrails for AI agents. Open source under Apache-2.0.</p>
+          <p>{HOME_DESCRIPTION} Open source under Apache-2.0.</p>
           <a href={`mailto:${SUPPORT_EMAIL}`} className="lp-foot-mail">
             {SUPPORT_EMAIL}
           </a>
