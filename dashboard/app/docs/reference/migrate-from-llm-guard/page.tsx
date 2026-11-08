@@ -298,7 +298,7 @@ Refused: Prompt-injection or jailbreak attempt detected in user input.; System-p
         <code>validator.</code> in front takes settings, so it runs as a rule (
         <Link href="#rules">next section</Link>).
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>LLM Guard scanner</th><th>Side</th><th>AgentFox</th><th>Notes</th></tr>
         </thead>
@@ -312,7 +312,7 @@ Refused: Prompt-injection or jailbreak attempt detected in user input.; System-p
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
       <p>
         Every detector, its surfaces and the extra it needs are in{" "}
         <Link href="/docs/reference/detectors">Detectors and findings</Link>.
@@ -435,7 +435,7 @@ CHAIN INTACT — 44 entries verified (seq 1..44)`}</Output>
         injection through tool output: 10 attacks and 10 benign documents using the same
         trigger words.
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th></th><th>Precision</th><th>Attacks caught</th><th>False positives</th></tr>
         </thead>
@@ -443,7 +443,7 @@ CHAIN INTACT — 44 entries verified (seq 1..44)`}</Output>
           <tr><td>llm-guard</td><td>81.8%</td><td>9 of 10</td><td>2</td></tr>
           <tr><td>AgentFox</td><td>66.7%</td><td>10 of 10</td><td>5</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         llm-guard is more precise on this set; AgentFox caught one more attack at the cost
         of three more false positives. Twenty cases is a small sample, so read it as a

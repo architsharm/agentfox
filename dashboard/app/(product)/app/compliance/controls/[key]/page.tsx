@@ -65,7 +65,7 @@ export default async function ControlPage({
         title={c.title}
         meta={
           <>
-            <span className="k-mono k-muted">{c.key}</span> <StatusPill value={ev.status} />
+            <span className="k-muted" title="Control ID in the AgentFox control catalogue. The NOM- prefix is kept so evidence already exported still matches.">Control ID <span className="k-mono">{c.key}</span></span> <StatusPill value={ev.status} />
           </>
         }
       />

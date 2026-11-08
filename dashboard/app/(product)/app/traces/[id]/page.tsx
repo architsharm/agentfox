@@ -76,9 +76,9 @@ export default async function RunDetail({
   } catch (e: any) {
     return (
       <>
-        <Header title="Run" back={{ href: "/app/traces", label: "Runs" }} />
+        <Header title="Run" back={{ href: "/app/traces", label: "Activity" }} />
         {e instanceof ApiError && e.status === 404 ? (
-          <NotFound what="run" detail={id} back={{ href: "/app/traces", label: "Runs" }} />
+          <NotFound what="run" detail={id} back={{ href: "/app/traces", label: "Activity" }} />
         ) : (
           <ApiDown {...apiErrorProps(e)} />
         )}
@@ -105,7 +105,7 @@ export default async function RunDetail({
   return (
     <>
       <Header
-        back={{ href: "/app/traces", label: "Runs" }}
+        back={{ href: "/app/traces", label: "Activity" }}
         title={title}
         meta={
           <>
@@ -227,7 +227,7 @@ function Steps({ spans }: { spans: any[] }) {
             <th>Step</th>
             <th>Kind</th>
             <th style={{ width: "35%" }}>Time</th>
-            <th className="num">ms</th>
+            <th className="num">Time (ms)</th>
           </tr>
         </thead>
         <tbody>
@@ -262,7 +262,7 @@ function Checks({ runs, runId }: { runs: any[]; runId: string }) {
             <th>Detector</th>
             <th>Where</th>
             <th>Found</th>
-            <th className="num">ms</th>
+            <th className="num">Time (ms)</th>
             <th className="tight">Was it right?</th>
           </tr>
         </thead>

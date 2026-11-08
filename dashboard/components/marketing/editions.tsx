@@ -112,8 +112,8 @@ export function Editions({
               <span className="mk-chip mk-chip-go">Free forever</span>
             </div>
             <p className="mk-body">
-              Apache-2.0, with no licence key and no limit on agents: enforcement, every detector and
-              the dashboard, running offline. Compliance, evidence packages, monitoring and access
+              Apache-2.0, with no licence key and no limit on agents: enforcement, the detectors and
+              the dashboard, running offline (the optional classifier is a one-time download). Compliance, evidence packages, monitoring and access
               checks are AgentFox Enterprise, source-available and free in production for up to four
               agents.{" "}
               <Link href="/docs/quickstart">Install guide</Link>.
@@ -222,14 +222,14 @@ export function OpenSourcePromise() {
 
 const OSS_FACTS: { label: string; body: string; where: string }[] = [
   {
-    label: "Licence",
-    body: "Apache-2.0 in full. It stays that way.",
+    label: "Apache-2.0",
+    body: "The full Apache License 2.0, no added terms. It stays that way.",
     where: "LICENSE",
   },
   {
-    label: "Offline",
-    body: "No API key, no downloaded weights.",
-    where: "No API key, no weights",
+    label: "Offline by default",
+    body: "No API key and nothing leaves the machine. The core install ships no model weights; the injection classifier is an optional download.",
+    where: "agentfox admin detectors pull",
   },
   {
     label: "No telemetry",

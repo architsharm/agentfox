@@ -98,7 +98,7 @@ agentfox scan --fail --no-submit`}</Code>
       </ul>
 
       <h2>If something goes wrong</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>You see</th>
@@ -125,7 +125,7 @@ agentfox scan --fail --no-submit`}</Code>
             </td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <NextSteps
         items={[

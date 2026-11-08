@@ -44,7 +44,7 @@ export default function Page() {
       <Code>{`agentfox doctor`}</Code>
 
       <h2>Common problems</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>You see</th>
@@ -59,7 +59,7 @@ export default function Page() {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
 
       <h2 id="incident">When an agent misbehaves</h2>
       <ol>

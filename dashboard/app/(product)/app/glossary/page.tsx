@@ -119,7 +119,7 @@ export default function Glossary() {
                 which rules fired, what the outbound effect was. Its{" "}
                 <strong>Verdict</strong> is just the outcome value on that record (allow,
                 block, escalate, redact...) — see it as a colored tag on{" "}
-                <a href="/app/traces">Traces</a>. A Decision is not itself a Finding: a single
+                <a href="/app/traces">Activity</a>. A Decision is not itself a Finding: a single
                 blocked call is expected, routine enforcement working correctly.
               </td>
             </tr>

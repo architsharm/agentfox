@@ -11,7 +11,7 @@ import { publicApiBase } from "@/lib/env";
 import { NoticeToast } from "@/components/product/NoticeToast";
 import { campaignNumbers } from "@/lib/product/attackTest";
 
-export const metadata: Metadata = appPageMetadata("Test", "Check rules and agents before they meet real traffic.");
+export const metadata: Metadata = appPageMetadata("Testing", "Check rules and agents before they meet real traffic.");
 export const dynamic = "force-dynamic";
 
 type SP = Record<string, string | undefined>;
@@ -33,7 +33,7 @@ export default async function Test({ searchParams }: { searchParams: Promise<SP>
 
   return (
     <>
-      <Header title="Test" />
+      <Header title="Testing" />
       <Tabs items={TABS.map((t) => ({ ...t, href: href("/app/test", { tab: t.key === "try" ? undefined : t.key }) }))} active={tab} />
       <NoticeToast notice={sp.review_notice} error={sp.review_error} />
       {tab === "try" && <Try agents={live} />}
@@ -342,6 +342,7 @@ async function Reliability({ agents }: { agents: any[] }) {
           <Empty>No targets yet.</Empty>
         )}
       </Card>
+      <div style={{ height: 16 }} />
       <Grid cols={2}>
         <Card title="New target">
           <form action="/api/eval/slos" method="POST" className="k-form">
@@ -359,7 +360,12 @@ async function Reliability({ agents }: { agents: any[] }) {
                 <option value="7d">7 days</option>
                 <option value="30d">30 days</option>
               </select>
-              <input className="k-input" type="number" name="target" step="0.01" min="0" max="1" defaultValue="0.9" style={{ width: 90 }} aria-label="Target (0–1)" />
+              {/* Was an unlabelled "0.9" box: say what the number is. */}
+              <label className="k-pills k-muted" style={{ gap: 8 }}>
+                Target pass rate
+                <input className="k-input" type="number" name="target" step="0.01" min="0" max="1" defaultValue="0.9" style={{ width: 90 }} aria-label="Target pass rate, 0 to 1" />
+                <span>(0–1)</span>
+              </label>
             </div>
             <input className="k-input" name="objective" placeholder="95% of answers stay grounded" aria-label="Objective" />
             <div><button type="submit" className="k-btn-primary">Add target</button></div>

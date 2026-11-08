@@ -82,7 +82,7 @@ agentfox.auto(agent="support-triage", mode="observe")`}</Code>
 export AGENTFOX_API_KEY=nom_api_…`}</Code>
 
       <h2 id="modes">Observe or enforce</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th><code>mode</code></th>
@@ -103,7 +103,7 @@ export AGENTFOX_API_KEY=nom_api_…`}</Code>
             <td>Anything a rule would stop, even one still in Watch. Use it in tests and CI.</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         A stopped call raises <code>agentfox.Blocked</code>. A refused LangChain tool hands the agent
         the refusal as the tool&apos;s result instead, and the run carries on.
@@ -151,7 +151,7 @@ govern(fox, triage_agent)  # its hand-offs and tools too`}</Code>
       </Callout>
 
       <h2>If something goes wrong</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>You see</th>
@@ -178,7 +178,7 @@ govern(fox, triage_agent)  # its hand-offs and tools too`}</Code>
             </td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <NextSteps
         items={[

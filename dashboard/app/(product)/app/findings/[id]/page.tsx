@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { appPageMetadata } from "@/lib/site";
-import { ApiError, api, apiErrorProps } from "@/lib/product/api";
+import { ApiError, api, apiErrorProps, safeApi } from "@/lib/product/api";
+import { agentName, agentNames, withAgentNames } from "@/lib/product/names";
 import { ApiDown, NotFound, findingTypeInfo } from "@/components/ui";
 import { Card, Header, Meta, Pill, SeverityPill, ago, num } from "@/components/kit";
 import { FindingEvidence } from "@/components/product/FindingEvidence";
@@ -50,6 +51,8 @@ export default async function IssueDetail({
       </>
     );
   }
+  const names = agentNames((await safeApi<any>("/api/agents", { agents: [] })).agents);
+  if (f.evidence?.reason) f = { ...f, evidence: { ...f.evidence, reason: withAgentNames(f.evidence.reason, names) } };
   const type = findingTypeInfo(f.type);
   const st = STATUS[f.status] || { label: f.status, tone: "outline" as const };
   const remedies: Remedy[] = f.remedies || [];
@@ -59,7 +62,7 @@ export default async function IssueDetail({
     <>
       <Header
         back={{ href: "/app/findings", label: "Issues" }}
-        title={sentence(f.title)}
+        title={sentence(withAgentNames(f.title, names))}
         hint={type.blurb}
         meta={
           <>
@@ -70,7 +73,7 @@ export default async function IssueDetail({
       />
       <Meta
         items={[
-          ["Agent", f.agent_slug ? <Link href={`/app/projects/${encodeURIComponent(f.agent_slug)}`}>{f.agent_slug}</Link> : f.subject_id || "—"],
+          ["Agent", f.agent_slug ? <Link href={`/app/projects/${encodeURIComponent(f.agent_slug)}`}>{agentName(names, f.agent_slug)}</Link> : f.subject_id || "—"],
           ["Kind", type.label],
           ["Times", num(f.occurrences || 1)],
           ["First", ago(f.created_at)],

@@ -81,7 +81,7 @@ export function LibraryDetail({ v }: { v: LibraryView }) {
         items={[
           ["Rules", String(v.rules)],
           ["On", v.on],
-          ["Mode", v.mode ? <Pill tone={v.mode === "blocking" ? "neutral" : "outline"}>{v.mode === "blocking" ? "Blocking" : v.mode === "mixed" ? "Some blocking, some watching" : "Watching"}</Pill> : "—"],
+          ["Mode", v.mode ? <Pill tone={v.mode === "blocking" ? "brand" : "outline"}>{v.mode === "blocking" ? "Blocking" : v.mode === "mixed" ? "Some blocking, some watching" : "Watching"}</Pill> : "—"],
         ]}
       />
       {v.note && <p className="lib-detail-note">{v.note}</p>}

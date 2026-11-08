@@ -15,7 +15,7 @@ type Row = string[];
 
 function Table({ head, rows }: { head: string[]; rows: Row[] }) {
   return (
-    <table>
+    <div className="docs-table"><table>
       <thead>
         <tr>{head.map((h) => <th key={h}>{h}</th>)}</tr>
       </thead>
@@ -26,7 +26,7 @@ function Table({ head, rows }: { head: string[]; rows: Row[] }) {
           </tr>
         ))}
       </tbody>
-    </table>
+    </table></div>
   );
 }
 
@@ -368,7 +368,7 @@ input       block    SAFETY.ILLICIT`}</Output>
       </p>
 
       <h2 id="budget">Budget and failure</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Setting</th><th>Default</th><th>Meaning</th></tr>
         </thead>
@@ -378,7 +378,7 @@ input       block    SAFETY.ILLICIT`}</Output>
           <tr><td><code>request_budget_ms</code></td><td>350</td><td>Every check one governed call makes, together.</td></tr>
           <tr><td><code>fail_mode</code></td><td><code>open</code></td><td>What a degraded check does: <code>open</code> lets it through and records the gap; <code>closed</code> blocks it as <code>pipeline.fail_closed</code> when the decision is enforcing. A pack&apos;s own <code>fail_mode: closed</code> also applies (below). A detector that errors (raises, or reports an error) is degraded exactly like one that times out, and the block&apos;s reason names the error. An LLM judge that does not answer is degraded the same way, and the judgment posture can also block it as <code>pipeline.judge_outage</code>.</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         A detector that times out, errors or is skipped for budget is listed in the
         decision&apos;s <code>degraded</code>, raises a <code>budget_breach</code>{" "}
@@ -412,7 +412,7 @@ block block degraded: ['secrets.native', 'injection.heuristic', 'pii.native', 's
         <code>injection.judgment</code> or <code>pii.judgment</code> to the enabled
         detectors (<Link href="/docs/reference/config#judgment">settings</Link>).
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Tier</th><th>What it is</th><th>Needs</th></tr>
         </thead>
@@ -423,7 +423,7 @@ block block degraded: ['secrets.native', 'injection.heuristic', 'pii.native', 's
           <tr><td><code>jev</code></td><td>A hosted judgment model</td><td><code>JEV_API_KEY</code> and <code>AGENTFOX_ALLOW_EGRESS=true</code></td></tr>
           <tr><td><code>llm</code></td><td>A hosted general model as judge</td><td>A provider key, <code>judgment_llm_provider</code> / <code>judgment_llm_model</code>, and egress</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <ul>
         <li>
           A routing table decides which tier may answer which kind of question, from
@@ -450,7 +450,7 @@ block block degraded: ['secrets.native', 'injection.heuristic', 'pii.native', 's
         app. Creating and revoking (<code>DELETE /api/guardrails/suppressions/&#123;id&#125;</code>)
         are on the audit chain, and each suppressed detection is recorded on its decision.
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Field</th><th>Default</th><th>Meaning</th></tr>
         </thead>
@@ -461,7 +461,7 @@ block block degraded: ['secrets.native', 'injection.heuristic', 'pii.native', 's
           <tr><td><code>ttl_days</code></td><td>30</td><td>1 to 365. Every suppression expires.</td></tr>
           <tr><td><code>reason</code></td><td><code>""</code></td><td>Why it is acceptable. Recorded with the suppression.</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         <code>GET /api/guardrails/suppressions</code> lists them with hit counts and a{" "}
         <code>health</code> block (never hit, expiring within 7 days). A detector that
@@ -560,7 +560,7 @@ agentfox findings --json --limit 1`}</Code>
 
       <h2 id="scan">What scans report</h2>
       <h3 id="scan-json">agentfox scan --json</h3>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Key</th><th>What it holds</th></tr>
         </thead>
@@ -572,11 +572,11 @@ agentfox findings --json --limit 1`}</Code>
           <tr><td><code>lethal_trifectas</code></td><td>Agents that can read private data, read untrusted input and send data out, with the tools behind each and a fix.</td></tr>
           <tr><td>Counts</td><td><code>files_scanned</code>, <code>code_files_scanned</code>, <code>model_calls</code>, <code>ungoverned_model_calls</code>, <code>coverage</code>, <code>tools</code>, <code>mcp_servers</code>, <code>counts</code>, <code>frameworks</code>, <code>inconclusive</code>, <code>errors</code>.</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p><code>--json</code> never prompts. Tool names and models are not sent by <code>scan --submit</code>.</p>
 
       <h3 id="scan-machine">Files agentfox scan machine reads</h3>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Client</th><th>Config file</th></tr>
         </thead>
@@ -590,7 +590,7 @@ agentfox findings --json --limit 1`}</Code>
           <tr><td>VS Code</td><td><code>Code/User/mcp.json</code> and <code>Code/User/settings.json</code> there</td></tr>
           <tr><td>Cline</td><td><code>cline_mcp_settings.json</code> in VS Code&apos;s global storage for the extension</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         Skills are read from <code>~/.claude/skills</code>, <code>~/.claude/plugins</code>,{" "}
         <code>~/.codex/skills</code> and <code>~/.agents/skills</code>.
@@ -598,7 +598,7 @@ agentfox findings --json --limit 1`}</Code>
 
       <h3 id="monitor-findings">Monitor findings (AgentFox Enterprise)</h3>
       <p>Raised by <code>agentfox scan monitors</code> when a watched source changes between runs.</p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Type</th><th>Severity</th><th>When</th></tr>
         </thead>
@@ -612,7 +612,7 @@ agentfox findings --json --limit 1`}</Code>
           <tr><td><code>monitor_api_new_endpoint</code></td><td>low</td><td>A new endpoint.</td></tr>
           <tr><td><code>monitor_failing</code></td><td>medium</td><td>The monitor failed <code>monitor_failure_threshold</code> runs in a row (3).</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h2 id="numbers">How good is detection</h2>
       <p>

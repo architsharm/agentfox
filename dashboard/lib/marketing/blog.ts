@@ -81,7 +81,7 @@ export const BLOG_POSTS: BlogPost[] = [
     readMinutes: 7,
     image: {
       src: "/blog/latency-benchmark.png",
-      alt: "The AgentFox latency benchmark page: per-check latency for the deterministic, default and extended layers.",
+      alt: "The AgentFox latency benchmark page: median latency per check with the ML classifier, per tool call, and without the model.",
       width: 1600,
       height: 900,
     },
@@ -108,10 +108,10 @@ export const BLOG_POSTS: BlogPost[] = [
     published: "2026-10-17",
     readMinutes: 6,
     image: {
-      src: "/product/refusal.png",
-      alt: "A payments.transfer call refused with capability.denied: no capability grants this agent the requested tool and action.",
+      src: "/blog/release-0-5.png",
+      alt: "The AgentFox agent map for a payments agent after setup: its model, four tools, the rails where guardrails apply, and the attack test panel.",
       width: 1600,
-      height: 670,
+      height: 900,
     },
     pillars: [
       { href: "/docs/quickstart", label: "Quickstart", why: "From pip install to a governed agent." },
@@ -136,9 +136,9 @@ export const BLOG_POSTS: BlogPost[] = [
     readMinutes: 7,
     image: {
       src: "/product/injection-observed.png",
-      alt: "A retrieved document carrying an override instruction, recorded in observe mode as would block in enforce.",
+      alt: "An AgentFox run whose retrieved document carries an instruction: allowed while the rule watches, and marked would block.",
       width: 1600,
-      height: 707,
+      height: 900,
     },
     pillars: [
       { href: "/docs/reference/detectors", label: "Detector reference", why: "unicode.tags and every other detector, with surfaces." },
@@ -164,7 +164,7 @@ export const BLOG_POSTS: BlogPost[] = [
     readMinutes: 8,
     image: {
       src: "/blog/mcp-page.png",
-      alt: "The AgentFox MCP security page: six MCP risks, four covered and two marked as gaps.",
+      alt: "The AgentFox docs page for MCP servers: scan the servers in a repository and on your machine, then pin each server's version.",
       width: 1600,
       height: 900,
     },
@@ -191,10 +191,10 @@ export const BLOG_POSTS: BlogPost[] = [
     published: "2026-10-06",
     readMinutes: 9,
     image: {
-      src: "/product/refusal.png",
-      alt: "A payments.transfer call refused with capability.denied: no capability grants this agent the requested tool and action.",
+      src: "/blog/containment-issue.png",
+      alt: "An AgentFox issue: a payments.transfer above the agent's granted limit, blocked as outside the limits of its permission, with the reason in plain words.",
       width: 1600,
-      height: 670,
+      height: 900,
     },
     pillars: [
       { href: "/benchmark", label: "Benchmarks", why: "The containment and AgentDojo results, losses included." },
@@ -219,7 +219,7 @@ export const BLOG_POSTS: BlogPost[] = [
     readMinutes: 7,
     image: {
       src: "/blog/hooks-page.png",
-      alt: "The AgentFox coding agents page, showing which Claude Code hooks can stop a call.",
+      alt: "The AgentFox docs page for Claude Code and Codex: the hooks that check shell commands, file edits and MCP calls before they run.",
       width: 1600,
       height: 900,
     },
@@ -274,9 +274,9 @@ export const BLOG_POSTS: BlogPost[] = [
     readMinutes: 8,
     image: {
       src: "/product/injection-blocked.png",
-      alt: "A retrieved document carrying an instruction to transfer funds, blocked before it reached the model as indirect prompt injection.",
+      alt: "An AgentFox run where a retrieved document carried an instruction: the tool result is blocked as injection in documents or tool results.",
       width: 1600,
-      height: 660,
+      height: 900,
     },
     pillars: [
       { href: "/docs/reference/policies", label: "Policies", why: "Every rule and what it checks." },
@@ -302,7 +302,7 @@ export const BLOG_POSTS: BlogPost[] = [
     readMinutes: 8,
     image: {
       src: "/blog/evidence-page.png",
-      alt: "The AgentFox evidence and audit page: every allowed and blocked call recorded in a chain you can verify.",
+      alt: "The AgentFox docs page for the audit trail: every allowed and blocked call recorded in a chain you can verify.",
       width: 1600,
       height: 900,
     },

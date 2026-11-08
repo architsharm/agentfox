@@ -89,7 +89,7 @@ export default function Page() {
         Each tool has an impact, guessed from its name and description. Check it in the{" "}
         <strong>Risk</strong> column: a tool that moves money but is marked Read only is not protected.
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>Risk</th>
@@ -102,7 +102,7 @@ export default function Page() {
           <tr><td>High impact</td><td>Held for approval unless the user typed it.</td></tr>
           <tr><td>Irreversible</td><td>Held for approval unless the user typed it.</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         A value copied out of a lower-impact tool&apos;s output into a higher-impact tool is refused
         outright. If that flow is intended, for example an address from your own CRM, mark the CRM
@@ -116,7 +116,7 @@ export default function Page() {
         list than the setting allows sends the call for approval. See{" "}
         <Link href="/docs/concepts#provenance">Core concepts</Link>.
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>Setting</th>
@@ -130,7 +130,7 @@ export default function Page() {
           <tr><td>+ other agents</td><td>also came from a sub-agent</td></tr>
           <tr><td>Anything</td><td>came from anywhere, memory included</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <NextSteps
         items={[

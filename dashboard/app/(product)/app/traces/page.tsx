@@ -10,8 +10,9 @@ import { RANGE_DAYS, filtersFrom, keep, metricsQs, observeTabs, verdictsFor } fr
 import { ensureRange } from "@/lib/product/range";
 import { RangeProvider } from "@/components/kit/RangeContext";
 import { ruleTitle } from "@/lib/product/vocab";
+import { agentNames } from "@/lib/product/names";
 
-export const metadata: Metadata = appPageMetadata("Runs");
+export const metadata: Metadata = appPageMetadata("Activity");
 export const dynamic = "force-dynamic";
 
 type SP = Record<string, string | undefined>;
@@ -52,7 +53,7 @@ export default async function Runs({ searchParams }: { searchParams: Promise<SP>
   } catch (e: any) {
     return (
       <>
-        <Header title="Observe" />
+        <Header title="Activity" />
         <ApiDown {...apiErrorProps(e)} />
       </>
     );
@@ -69,7 +70,7 @@ export default async function Runs({ searchParams }: { searchParams: Promise<SP>
   return (
     <RangeProvider range={sp.range}>
     <>
-      <Header title="Observe" />
+      <Header title="Activity" />
       <Tabs items={observeTabs(f)} active="runs" />
       <FilterBar
         agents={(agents.agents || []).map((a: any) => ({ slug: a.slug, name: a.name }))}
@@ -98,7 +99,7 @@ export default async function Runs({ searchParams }: { searchParams: Promise<SP>
         </div>
       )}
       <Card flush>
-        <RunsTable runs={data.traces} />
+        <RunsTable runs={data.traces} names={agentNames(agents.agents)} />
       </Card>
     </>
     </RangeProvider>

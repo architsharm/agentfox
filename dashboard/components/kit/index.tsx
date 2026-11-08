@@ -250,7 +250,7 @@ export function Sparkline({ values, width = 72, height = 22 }: { values: number[
 
 // --- Status ------------------------------------------------------------------
 
-export type Tone = "neutral" | "ok" | "warn" | "held" | "bad" | "info" | "outline";
+export type Tone = "neutral" | "ok" | "warn" | "held" | "bad" | "info" | "outline" | "brand";
 
 export function Pill({ tone = "neutral", children, title }: { tone?: Tone; children: ReactNode; title?: string }) {
   return (
@@ -274,8 +274,8 @@ export function ActionPill({ effect }: { effect?: string | null }) {
 
 export function ModePill({ mode }: { mode?: string | null }) {
   if (!mode) return <Pill tone="outline">Off</Pill>;
-  // Blocking is live, not "good": never green beside a red Block (neutral, with the dot); watching is an outline.
-  return <Pill tone={modeKey(mode) === "enforce" ? "neutral" : "outline"}>{modeLabel(mode)}</Pill>;
+  // Never green: green means a call was allowed, and Blocking is the opposite.
+  return <Pill tone={modeKey(mode) === "enforce" ? "brand" : "outline"}>{modeLabel(mode)}</Pill>;
 }
 
 export function SeverityPill({ value }: { value?: string | null }) {

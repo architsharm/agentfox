@@ -10,7 +10,7 @@ import { Modal } from "@/components/product/Modal";
 import { groupProposed, memberRelation } from "@/lib/product/proposedSystems";
 import { NoticeToast } from "@/components/product/NoticeToast";
 
-export const metadata: Metadata = appPageMetadata("Projects", "Every project in this workspace: one per AI agent.");
+export const metadata: Metadata = appPageMetadata("Agents", "Every agent in this workspace.");
 export const dynamic = "force-dynamic";
 
 type SP = Record<string, string | undefined>;
@@ -23,7 +23,7 @@ export default async function Projects({ searchParams }: { searchParams: Promise
   } catch (e: any) {
     return (
       <>
-        <Header title="Projects" />
+        <Header title="Agents" />
         <ApiDown {...apiErrorProps(e)} />
       </>
     );
@@ -51,7 +51,7 @@ export default async function Projects({ searchParams }: { searchParams: Promise
 
   return (
     <>
-      <Header title="Projects" actions={<NewProject />} />
+      <Header title="Agents" actions={<NewAgent />} />
       <Tabs
         active={tab}
         items={[
@@ -83,7 +83,7 @@ export default async function Projects({ searchParams }: { searchParams: Promise
                         <button type="submit" className="k-btn-ghost">Dismiss</button>
                       </form>
                       <form action={`/api/agents/${a.id}/approve`} method="POST">
-                        <button type="submit" className={system ? "k-btn" : "k-btn-primary"}>Add project</button>
+                        <button type="submit" className={system ? "k-btn" : "k-btn-primary"}>Add agent</button>
                       </form>
                     </div>
                   </li>
@@ -92,7 +92,7 @@ export default async function Projects({ searchParams }: { searchParams: Promise
                 return [
                   <li key={`system:${g.root.id}`}>
                     <div className="k-list-main">
-                      <span className="k-name">Multi-agent system · {g.members.length} projects</span>
+                      <span className="k-name">Multi-agent system · {g.members.length} agents</span>
                       <span className="muted">The agents its code hands work to are listed under it</span>
                     </div>
                     <div className="k-list-end">
@@ -115,7 +115,7 @@ export default async function Projects({ searchParams }: { searchParams: Promise
             <table className="k-table">
               <thead>
                 <tr>
-                  <th>Project</th>
+                  <th>Agent</th>
                   <th>Owner</th>
                   <th className="tight">Risk</th>
                   <th style={{ width: "18%" }}>Last {RANGE_WORDS[range]}</th>
@@ -166,7 +166,7 @@ export default async function Projects({ searchParams }: { searchParams: Promise
             </table>
           ) : (
             <Empty action={<Link href="/app/start" className="k-btn-primary">Connect an agent</Link>}>
-              {tab === "attention" ? "Every project is registered and owned." : "No projects yet."}
+              {tab === "attention" ? "Every agent is registered and owned." : "No agents yet."}
             </Empty>
           )}
         </Card>
@@ -175,9 +175,9 @@ export default async function Projects({ searchParams }: { searchParams: Promise
   );
 }
 
-function NewProject() {
+function NewAgent() {
   return (
-    <Modal trigger="New project" triggerClassName="k-btn-primary" title="New project">
+    <Modal trigger="New agent" triggerClassName="k-btn-primary" title="New agent">
       <form action="/api/agents" method="POST" className="k-form">
         <div className="k-field">
           <label htmlFor="r-slug">ID</label>

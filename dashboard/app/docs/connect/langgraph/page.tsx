@@ -86,7 +86,7 @@ out = graph.invoke(Command(resume={"approved": True}), config)`}</Code>
       </Callout>
 
       <h2>What happens on a refusal</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>Verdict</th>
@@ -110,10 +110,10 @@ out = graph.invoke(Command(resume={"approved": True}), config)`}</Code>
             <td>A model node&apos;s reply is rewritten with the personal data or secret hidden.</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h2>If something goes wrong</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>You see</th>
@@ -141,7 +141,7 @@ out = graph.invoke(Command(resume={"approved": True}), config)`}</Code>
             <td>Declare <code>__agentfox__</code> in your state (step 3).</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <NextSteps
         items={[

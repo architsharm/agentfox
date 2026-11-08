@@ -33,12 +33,19 @@ const SRC = `${REPO_URL}/blob/main`;
  * phone gets a horizontal scrollbar on a page about trustworthiness.
  */
 function Ref({ children }: { children: React.ReactNode }) {
+  // The files, not their line numbers: line numbers go stale with every edit and
+  // read as noise to anyone who is not about to open the file.
+  const files = Array.from(
+    new Set(
+      String(Array.isArray(children) ? children.join("") : children)
+        .split(/[;\n]/)
+        .map((s) => s.replace(/:[\d\s,–-]*$/, "").trim())
+        .filter(Boolean),
+    ),
+  );
   return (
-    <p
-      className="mk-mono"
-      style={{ color: "var(--mk-muted)", margin: "10px 0 0", overflowWrap: "anywhere" }}
-    >
-      {children}
+    <p className="mk-mono" style={{ color: "var(--mk-muted)", margin: "10px 0 0", overflowWrap: "anywhere" }}>
+      Source: {files.join(", ")}
     </p>
   );
 }
@@ -47,7 +54,7 @@ export default function Privacy() {
   return (
     <div className="mk">
       <MarketingNav />
-      <main>
+      <main className="mk-prose">
         <section className="mk-section mk-page-hero mk-ink-act">
           <div className="mk-wrap">
             <div className="mk-narrow">

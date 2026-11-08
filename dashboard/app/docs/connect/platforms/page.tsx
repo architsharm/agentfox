@@ -20,7 +20,7 @@ export default function Page() {
         pointing the platform&apos;s tool URL at AgentFox.
       </p>
 
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>Platform</th>
@@ -50,7 +50,7 @@ export default function Page() {
             <td>A Lambda REQUEST interceptor (below)</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         An allowed call goes on to your own tool server unchanged. A refused one never reaches it: the
         agent says the action was not done, or that it was sent for approval. Once a person approves,

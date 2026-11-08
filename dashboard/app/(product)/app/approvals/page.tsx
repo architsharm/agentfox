@@ -111,7 +111,7 @@ async function Pending({ approvals }: { approvals: any[] }) {
                   </div>
                 )}
                 <div className="k-muted" style={{ fontSize: "var(--t-micro)" }}>
-                  {firstSentence(a.reason)} · expires <Countdown at={a.expires_at} /> · <span className="k-mono" title="The id the agent quoted to the user">{a.id}</span>
+                  {firstSentence(a.reason)} · expires <Countdown at={a.expires_at} /> · reference <span className="k-mono" title="The reference the agent quoted to the user">{a.id}</span>
                   {" · "}
                   <Link href={`/app/approvals/${a.id}`}>Details</Link>
                   {a.trace_id && (

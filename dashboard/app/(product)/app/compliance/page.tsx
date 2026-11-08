@@ -200,7 +200,7 @@ export default async function Compliance({
                     <tr key={c.key} id={c.key}>
                       <td className="small wrap" style={{ maxWidth: 240 }}>
                         <Link href={`/app/compliance/controls/${c.key}`}>{c.title}</Link>
-                        <div className="mono small muted">{c.key}</div>
+                        <div className="small muted" title="Control ID in the AgentFox control catalogue. The NOM- prefix is kept so evidence already exported still matches.">Control ID <span className="mono">{c.key}</span></div>
                       </td>
                       <td className="small wrap muted" style={{ maxWidth: 330 }}>{c.objective}</td>
                       <td><ControlStatus value={c.status} /></td>
@@ -419,7 +419,7 @@ function NeedsWork({ controls }: { controls: any[] }) {
               <Link href={`/app/compliance/controls/${c.key}`} className="nw-title">
                 {c.title}
               </Link>
-              <span className="mono nw-key">{c.key}</span>
+              <span className="nw-key" title="Control ID in the AgentFox control catalogue. The NOM- prefix is kept so evidence already exported still matches.">Control <span className="mono">{c.key}</span></span>
             </div>
             <p className="nw-why">{c.rationale || "No rationale recorded."}</p>
           </li>

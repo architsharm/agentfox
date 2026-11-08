@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { publicPageMetadata, SUPPORT_EMAIL } from "@/lib/site";
+import { publicPageMetadata } from "@/lib/site";
 import { MarketingNav } from "@/components/marketing/nav";
 import { Footer } from "@/components/marketing/sections";
 import { Editions, OpenSourcePromise } from "@/components/marketing/editions";
@@ -46,8 +46,7 @@ export default async function Pricing({
           <div className="mk-wrap">
             <h1 className="mk-h1 mk-up mk-d1">Pricing</h1>
             <p className="mk-lede mk-up mk-d2" style={{ marginTop: 20 }}>
-              Free to self-host under Apache-2.0. The hosted preview is free too. Questions?{" "}
-              <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+              Free to self-host under Apache-2.0. The hosted preview is free too.
             </p>
           </div>
         </section>
