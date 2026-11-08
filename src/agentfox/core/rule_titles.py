@@ -68,6 +68,8 @@ RULE_TITLES: dict[str, str] = {
     "answerability.out_of_scope_entity": "About something it does not know (abstained)",
     "answerability.unsupported_question_type": "A kind of question it may not answer (abstained)",
     "answerability.out_of_domain": "Outside its topics (abstained)",
+    "approval.redeemed": "Approved by a person",
+    "approval.denied": "Denied by a person",
 }
 
 #: Rules raised in process, which the dashboard does not list under these ids.

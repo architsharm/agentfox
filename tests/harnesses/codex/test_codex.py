@@ -99,11 +99,21 @@ def daemon(monkeypatch):
 
 
 @pytest.fixture
-def installed(tmp_path, daemon):
+def watching(tmp_path, daemon):
+    """A fresh install: `init` starts every pack watching (0.5.2)."""
     assert runner.invoke(app, ["init", "--path", str(tmp_path)]).exit_code == 0
     result = install(tmp_path)
     assert result.exit_code == 0, result.output
     return tmp_path
+
+
+@pytest.fixture
+def installed(watching):
+    """Tool containment switched to blocking, as a team does once the decisions look
+    right: what the refusal paths below are about."""
+    result = runner.invoke(app, ["policy", "enforce", "tool-containment"])
+    assert result.exit_code == 0, result.output
+    return watching
 
 
 def hook(payload: dict) -> dict:
@@ -165,6 +175,13 @@ def test_a_call_held_for_approval_is_refused_with_the_reason(installed):
     assert body["hookSpecificOutput"]["permissionDecision"] == "deny"
     assert "action.infrastructure_mutation" in reason(body)
     assert "ask" not in json.dumps(body)
+
+
+def test_a_fresh_install_records_a_credential_read_without_refusing_it(watching):
+    """Watch mode first: until tool containment blocks, the read runs and the decision
+    says what would have happened."""
+    assert hook(bash("cat ~/.aws/credentials")) == {}
+    assert decisions("tool_args")
 
 
 def test_an_ask_is_never_sent_to_codex():

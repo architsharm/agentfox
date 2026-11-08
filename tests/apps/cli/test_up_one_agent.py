@@ -165,4 +165,4 @@ def test_init_after_up_keeps_the_modes_up_set(project):  # noqa: F811
         policy = session.scalar(select(Policy).where(Policy.key == "tool-containment"))
         assert current_binding(session, policy.id)[0].mode == "observe"
     assert "tool-containment observe" in " ".join(result.output.split())
-    assert "(kept)" in result.output
+    # "(kept)" marks only a pack someone switched to blocking; both watch here.
