@@ -4,18 +4,18 @@
 
 # AgentFox
 
-**Open-source guardrails and a tool-call firewall for AI agents.**
+**Find, govern and protect every AI agent you run.**
+**Guardrails that don't block your real customers.**
 
-AgentFox checks what your agent may read, may claim and may do, and refuses the rest. It
-contains prompt injection at the tool call, so it holds after the model has already been
-convinced. Works with OpenAI, Anthropic, LiteLLM, LangChain, LangGraph, MCP servers,
-Claude Code and Codex.
+Open source. Attack-test your own agent in about three minutes, then watch the same attacks
+get stopped. Works with the OpenAI Agents SDK, LangGraph, LangChain, CrewAI, AutoGen,
+OpenAI, Anthropic, LiteLLM, MCP servers, Claude Code and Codex.
 
-[![CI](https://github.com/architsharm/agentfox/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/architsharm/agentfox/actions/workflows/ci.yml) [![Licence](https://img.shields.io/badge/licence-Apache--2.0-2f6feb.svg)](LICENSE) [![Python](https://img.shields.io/badge/python-3.11%2B-2f6feb.svg)](pyproject.toml) [![PyPI](https://img.shields.io/pypi/v/agentfox.svg?color=2f6feb)](https://pypi.org/project/agentfox/) [![Status](https://img.shields.io/badge/status-early%20release-8a5a00.svg)](docs/status.md) [![Playground](https://img.shields.io/badge/playground-no%20account-c23600.svg)](https://useagentfox.com/playground)
+[![CI](https://github.com/architsharm/agentfox/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/architsharm/agentfox/actions/workflows/ci.yml) [![Licence](https://img.shields.io/badge/licence-Apache--2.0-2f6feb.svg)](LICENSE) [![Python](https://img.shields.io/badge/python-3.11%2B-2f6feb.svg)](pyproject.toml) [![PyPI](https://img.shields.io/pypi/v/agentfox.svg?color=2f6feb)](https://pypi.org/project/agentfox/) [![Playground](https://img.shields.io/badge/playground-no%20account-c23600.svg)](https://useagentfox.com/playground)
 
-**[▶ Try it live, no account](https://useagentfox.com/playground)** &nbsp;·&nbsp; [🚀 Self-host it](docs/product-tour.md#self-hosting) &nbsp;·&nbsp; [📊 Every benchmark](https://useagentfox.com/benchmark) &nbsp;·&nbsp; [⚖ How we compare](https://useagentfox.com/compare)
+**[▶ Try it in the browser, no account](https://useagentfox.com/playground)** &nbsp;·&nbsp; [Docs](https://useagentfox.com/docs) &nbsp;·&nbsp; [Benchmarks](https://useagentfox.com/benchmark) &nbsp;·&nbsp; [Discussions](https://github.com/architsharm/agentfox/discussions)
 
-[Docs](https://useagentfox.com/docs) · [Getting started](docs/getting-started.md) · [Architecture](ARCHITECTURE.md) · [Contributing](CONTRIBUTING.md) · [What is built](docs/status.md) · [Discussions](https://github.com/architsharm/agentfox/discussions)
+If AgentFox is useful to you, a ⭐ helps other people find it.
 
 </div>
 
@@ -28,64 +28,63 @@ Claude Code and Codex.
 
 ## What it does
 
-AgentFox sits on your agent's model and tool calls, in-process or as an HTTP gateway, and
-decides whether each one may happen. Every tool carries a declared impact tier, every agent
-holds explicit capability grants with argument limits, and every argument carries the
-provenance of where its value came from. A transfer whose recipient came out of a retrieved
-document is refused because of *where the value came from*, not because a detector
-recognised the payload. Every decision lands in a tamper-evident audit chain that an auditor
-can verify without trusting us.
+| | |
+|---|---|
+| **Discover** | Reads your code (never runs it) and maps every agent, the tools it can call, the MCP servers and skills it loads, and who hands work to whom. |
+| **Govern** | Each agent gets only the tools its own code hands it, with limits on the values it may pass (an amount cap, an allowed recipient). Anything else is refused or held for a person. |
+| **Protect** | Checks every model and tool call at runtime: prompt injection, instructions hidden in documents and tool results, personal data and secrets leaving in replies. Starts in watch mode, so nothing your users do is blocked until you say so. |
+| **Test** | Attacks your real agent with its own tools faked, shows what got through, then shows the same attacks against your guardrails. |
+| **Prove** | Every decision lands in a tamper-evident audit trail you can verify without trusting us. |
 
-| | Question | On by default |
-|---|---|---|
-| **Read** | Is this person allowed to see this retrieved content? | You call it from your retrieval code |
-| **Answer** | Is this inside what the agent knows? | After you declare a knowledge boundary |
-| **Act** | Was this agent granted this call, with these values, from these sources? | **Yes**: `tool-containment` ships enforcing |
+The part that does not depend on catching the attack: a transfer whose recipient came out of a
+retrieved document is refused because of *where the value came from*, not because a detector
+recognised the payload.
 
 ## Quickstart
 
 Python 3.11 or newer.
 
-### With the dashboard
+### Attack your own agent (about three minutes)
 
-1. Sign up at [useagentfox.com](https://useagentfox.com/login). The Agents page opens on
-   **Connect your first agent**. Press **Create a key**: a workspace API key
-   (`nom_api_…`), shown once.
-2. In your repository, run the command the card shows, with your key and server filled in:
+1. [Sign in](https://useagentfox.com/login); signing in creates your workspace. Press
+   **Create a key**.
+2. In your agent's repository, with its dependencies installed, run the command the page shows:
 
    ```bash
-   pip install agentfox
+   pip install -U agentfox
    agentfox init --key nom_api_… --server https://…
    ```
 
-   `init` reads your code without running it and reports the agents and tools it found.
-   It then asks *Add one line to main.py so your app's calls show up in AgentFox?* Yes
-   adds `agentfox.auto("<agent>")` to the file that runs the agent and saves the key in
-   `.agentfox/agentfox.env` (owner-only, git-ignored). Leave it running: it runs the
-   attack tests on your machine.
-3. Press **Add N agents to AgentFox**. Each agent is allowed the tools its own code
-   hands it: read tools with any arguments, tools that change something or send data out
-   only with values from what the user asked.
-4. The first attack test runs by itself. **Add and test again** adds the basic
-   guardrails (prompt attacks in what users send, instructions hidden in tool results and
-   documents, personal data and secrets in replies) and shows what got through before and
-   after. On a new agent they go live blocking; on one with real traffic they watch until
-   you switch them on.
-5. Run your app. Its calls show up on the agent's **Activity** tab.
+   `init` reads your code without running it and reports the agents and tools it found. Leave it
+   running: the attack test runs your agent on your machine, with every tool faked so nothing
+   real happens.
+3. Press **Add N agents to AgentFox**. The attack test starts by itself and shows, per kind of
+   attack, how many got through.
+4. Press **Add and test again**. Basic guardrails go on and the same attacks run again, so you
+   see the before and after side by side, including how many normal requests were still
+   answered.
+5. Add the one line `init` prints (`agentfox.auto("<agent>")`) and run your app. Its calls show
+   up on the agent's **Activity** tab.
 
 ### From the command line only
 
 ```bash
 pip install agentfox
-agentfox scan        # names every agent it found, ends with: agentfox up
-agentfox up          # registers them, declares their tools, adds agentfox.auto()
-python main.py       # run your app as usual
-agentfox findings    # what it saw, and what it would have stopped
+agentfox scan                    # names every agent it found, ends with: agentfox up
+agentfox up                      # registers them, declares their tools, adds agentfox.auto()
+python main.py                   # run your app as usual
+agentfox findings                # what it saw, and what it would have stopped
+agentfox test redteam <agent>    # attack-test it
 ```
 
 `up` uses the names the code gives your agents, the same names `scan` printed, and adds
-`agentfox.auto()` to Python apps, LangGraph, LangChain, CrewAI and AutoGen included. It
-starts in watch mode. Everything stays on your machine.
+`agentfox.auto("<agent>")` to the file that starts one (a `pyproject.toml` script, the graph
+`langgraph.json` loads, or the file that runs it, `src/` included), for Python apps on
+LangGraph, LangChain, CrewAI, AutoGen and the OpenAI Agents SDK. It starts in watch mode and
+changes nothing else by default: coding-agent hooks, the GitHub workflow and the local API are
+`--with coding-agents`, `--with ci` and `--with view`. Everything stays on your machine; a pip
+install has no web dashboard (`agentfox findings` is the terminal view), which comes with
+AgentFox Cloud or the self-hosted stack.
 
 ### One key everywhere
 
@@ -109,16 +108,20 @@ is checked before your code can run it; a refused one raises `agentfox.Blocked`.
 - **Your coding agent:** in a project where you use Claude Code or Codex,
   `agentfox up --with coding-agents` writes the hooks, grants the agent its built-in tools
   and starts in watch mode, except shapes such as `rm -rf ~/`, which are refused from the
-  start. Install AgentFox with `uv tool install agentfox` (or `pipx`) so the hooks find it
-  from any directory.
+  start. In a repository set up for a coding agent with no agent of its own, `agentfox up`
+  does this by default. The hooks call AgentFox by absolute path, so they work from a
+  virtualenv install too.
 - **Behind a LiteLLM proxy:** one block in the proxy's `config.yaml` checks every agent
   behind it ([guide](https://useagentfox.com/docs/guides/litellm)).
 - **Look around first:** `agentfox init && agentfox demo`. `init` creates a SQLite database
   and loads 44 controls and the policy packs in about a second; `demo` runs a thirteen-step
-  walkthrough in about five. Both are offline: no API key, no downloaded weights, no network
-  egress.
+  walkthrough in about five, in a database of its own (`~/.agentfox/demo.db`), so your
+  project's `agentfox findings` never shows the demo's made-up agents. Both are offline: no
+  API key, no downloaded weights, no network egress.
 - **Scan this directory without installing:**
   `curl -fsSL https://raw.githubusercontent.com/architsharm/agentfox/main/scripts/quickscan.sh | bash`
+  installs the published release into a throwaway virtualenv (`| bash -s -- --main` for the
+  current main).
 - **On every pull request:** the GitHub Action annotates lethal trifectas, ungoverned model
   calls and poisoned skills, and fails the check on the kinds you list in `fail-on`:
 
@@ -138,7 +141,7 @@ agentfox serve                              # gateway + control-plane API on 127
 agentfox admin users create you@example.com --token   # first operator + API token, shown once
 
 curl -s -X POST http://localhost:8080/v1/guard/tool_call \
-  -H "Authorization: Bearer $AGENTFOX_TOKEN" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AGENTFOX_API_KEY" -H "Content-Type: application/json" \
   -d '{"agent":"payments-ops","tool":"payments.transfer",
        "arguments":{"amount":250,"currency":"USD","to":"acct_991"},
        "provenance":{"to":"tool_result","amount":"user"},
@@ -167,6 +170,9 @@ when the condition clears. Setup and every finding type:
 [Monitor connected sources](https://useagentfox.com/docs/guides/monitoring).
 
 ## What we measured
+
+The detector comparison behind these numbers is peer reviewed: *No Tier Wins Everywhere*, accepted
+at WAITI 2026, a workshop of ACSAC 2026 ([artifact](https://github.com/architsharm/waiti2026-artifact)).
 
 We do not claim adversarial robustness, and we do not believe anyone can.
 [*The Attacker Moves Second*](https://arxiv.org/abs/2510.09023) (Nasr, Carlini, Schulhoff et al.,

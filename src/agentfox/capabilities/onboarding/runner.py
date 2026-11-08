@@ -460,6 +460,43 @@ def _install_openai_agents() -> None:
     _set(tool_cls, "on_invoke_tool", property(getter, setter))
 
 
+#: Undo steps for what isn't an attribute patch (the Agents SDK's tracing switch).
+_UNDO: list[Callable[[], None]] = []
+
+
+def _quiet_sdk_tracing() -> None:
+    """Switch the Agents SDK's own tracing off while a suite runs: its exporter sends
+    every faked run to OpenAI's trace store and prints ``[non-fatal] Tracing client
+    error`` lines into AgentFox's progress output. Only when the SDK is already loaded
+    (the same reason as `_install_openai_agents`)."""
+    tracing = sys.modules.get("agents.tracing")
+    get = getattr(tracing, "get_trace_provider", None)
+    if get is None:
+        return
+    try:
+        provider = get()
+    except Exception:  # noqa: BLE001 - no provider set up: nothing to quiet
+        return
+    if not callable(getattr(provider, "set_disabled", None)):
+        return
+    had = "_manual_disabled" in vars(provider)
+    previous = vars(provider).get("_manual_disabled")
+    provider.set_disabled(True)
+
+    def undo() -> None:
+        if had and previous is not None:
+            provider.set_disabled(previous)
+            return
+        provider.__dict__["_manual_disabled"] = previous
+        refresh = getattr(provider, "_refresh_disabled_flag", None)
+        if callable(refresh):
+            refresh()
+        elif not had:
+            provider.set_disabled(False)
+
+    _UNDO.append(undo)
+
+
 @contextmanager
 def faking() -> Iterator[None]:
     """While active: every framework tool call is faked, and real side effects are
@@ -471,6 +508,7 @@ def faking() -> Iterator[None]:
             _install_audit_hook()
             _install_langchain()
             _install_openai_agents()
+            _quiet_sdk_tracing()
         _ACTIVE += 1
     try:
         yield
@@ -488,6 +526,11 @@ def faking() -> Iterator[None]:
                             pass
                 _PATCHES.clear()
                 _PATCHED_CLASSES.clear()
+                while _UNDO:
+                    try:
+                        _UNDO.pop()()
+                    except Exception:  # noqa: BLE001 - never fail the suite on undo
+                        pass
 
 
 # --- The side-effect backstop ------------------------------------------------------------
@@ -591,6 +634,22 @@ def _install_audit_hook() -> None:
 _LOAD_LOCK = threading.Lock()
 
 
+def _module_dirs(root: Path, module: str) -> list[Path]:
+    """The directories holding ``module``'s own file, under the repository or its src/.
+
+    A file loaded as a script (``python src/agent/agent.py``, or a ``langgraph.json``
+    graph path) imports its siblings by bare name (``from prompts import ...``), because
+    its own directory is on ``sys.path``. Importing it as ``agent.agent`` does not put it
+    there, so those imports fail although nothing is missing."""
+    rel = Path(*module.split("."))
+    out = []
+    for base in (root / "src", root):
+        for candidate in (base / rel.with_suffix(".py"), base / rel / "__init__.py"):
+            if candidate.is_file() and candidate.parent not in out:
+                out.append(candidate.parent)
+    return out
+
+
 def load_agent(root: str | Path, module: str, attr: str) -> Any:
     """Import the user's module and return the named object. The working directory and
     ``sys.path`` are put back as they were afterwards."""
@@ -602,7 +661,26 @@ def load_agent(root: str | Path, module: str, attr: str) -> Any:
             for p in (root / "src", root):
                 if str(p) not in sys.path:
                     sys.path.insert(0, str(p))
-            return getattr(importlib.import_module(module), attr)
+            try:
+                return getattr(importlib.import_module(module), attr)
+            except ModuleNotFoundError as exc:
+                # Only when what is missing sits right beside the file: then the file
+                # imports its siblings by bare name, as a script or a langgraph.json
+                # graph does. Added on retry and last, so its directory never decides
+                # what the package itself resolves to (src/agent/agent.py must not
+                # turn `agent` into a module).
+                dirs = _module_dirs(root, module)
+                missing = (exc.name or "").split(".")[0]
+                if not missing or not any(
+                    (d / f"{missing}.py").is_file() or (d / missing / "__init__.py").is_file()
+                    for d in dirs
+                ):
+                    raise
+                for p in dirs:
+                    if str(p) not in sys.path:
+                        sys.path.append(str(p))
+                importlib.invalidate_caches()
+                return getattr(importlib.import_module(module), attr)
         finally:
             os.chdir(cwd)
             sys.path[:] = path
@@ -673,6 +751,58 @@ def _sdk_unfakeable(agent: Any) -> list[str]:
     return bad
 
 
+def _sdk_context_type(agent: Any, modules: list[Any]) -> type | None:
+    """The run-context type an Agents SDK agent expects, if its code names one: the
+    ``Agent[SomeContext](...)`` it was built as (on it or on an agent it hands off
+    to), else a ``RunContextWrapper[SomeContext]`` annotation on a function in the
+    repository (a tool or hand-off callback)."""
+    import typing
+
+    seen: set[int] = set()
+    stack = [agent]
+    while stack:
+        a = stack.pop()
+        if a is None or id(a) in seen:
+            continue
+        seen.add(id(a))
+        args = typing.get_args(getattr(a, "__orig_class__", None))
+        if args and isinstance(args[0], type):
+            return args[0]
+        for h in getattr(a, "handoffs", None) or []:
+            stack.append(getattr(h, "agent", None) or h)
+    wrapper = getattr(sys.modules.get("agents.run_context"), "RunContextWrapper", None)
+    if wrapper is None:
+        return None
+    for m in modules:
+        for value in list(vars(m).values()):
+            if not inspect.isfunction(value) or getattr(value, "__module__", "") != m.__name__:
+                continue
+            try:
+                hints = typing.get_type_hints(value)
+            except Exception:  # noqa: BLE001 - an annotation we can't resolve says nothing
+                continue
+            for hint in hints.values():
+                if typing.get_origin(hint) is wrapper:
+                    found = typing.get_args(hint)
+                    if found and isinstance(found[0], type):
+                        return found[0]
+    return None
+
+
+def default_context(kind: type) -> tuple[Any, str | None]:
+    """A fresh instance of a run-context type, built with its defaults (a pydantic
+    model, a dataclass or any class constructible with no arguments), or (None, why
+    it couldn't be built)."""
+    try:
+        return kind(), None
+    except Exception:  # noqa: BLE001 - required fields with no defaults
+        return None, kind.__name__
+
+
+#: A result's reason when an agent needs a run context AgentFox couldn't build.
+NEEDS_CONTEXT = "Not run: {name} needs a run context AgentFox couldn't build ({kind})."
+
+
 @dataclass
 class Driver:
     """How one agent is run: ``call(message) -> reply``, or why it can't be."""
@@ -682,6 +812,10 @@ class Driver:
     refuse: str | None = None
     install: Callable[[], None] = lambda: None
     restore: Callable[[], None] = lambda: None
+    #: The agent expects a run context AgentFox couldn't build: an attack that then
+    #: fails on the missing context is reported not run with this reason, not as the
+    #: agent's error.
+    context_missing: str | None = None
 
 
 _SDK_LOOP: asyncio.AbstractEventLoop | None = None
@@ -785,13 +919,44 @@ def make_driver(
             )
         from agents import Runner
 
+        try:  # tools are faked: the SDK's trace export would only add noise
+            from agents import RunConfig
+
+            config: dict[str, Any] = {"run_config": RunConfig(tracing_disabled=True)}
+        except (ImportError, TypeError):
+            config = {}
+
+        # The run context the app passes (`Runner.run(..., context=AirlineContext())`):
+        # without it, tools and hand-off callbacks that read it fail on None. A fresh
+        # default instance per attack, so one attack's writes never reach the next.
+        kind = _sdk_context_type(obj, modules or [])
+        missing = None
+        if kind is not None:
+            _probe, why = default_context(kind)
+            if why is not None:
+                missing = NEEDS_CONTEXT.format(name=name, kind=why)
+
         def run_sdk(message: str, agent: Any = obj) -> str:
+            extra = dict(config)
+            if kind is not None and missing is None:
+                extra["context"] = default_context(kind)[0]
             # Not `run_sync`: it makes a new event loop per call, and the SDK's shared
             # OpenAI client binds to the first one, so concurrent attacks failed with
             # "bound to a different event loop". Every run goes to one loop instead.
-            return _reply_text(_on_sdk_loop(lambda: Runner.run(agent, message, max_turns=12)))
+            return _reply_text(
+                _on_sdk_loop(lambda: Runner.run(agent, message, max_turns=12, **extra))
+            )
 
-        return Driver(name, call=run_sdk)
+        return Driver(name, call=run_sdk, context_missing=missing)
+    if not hasattr(obj, "invoke") and callable(getattr(obj, "compile", None)):
+        # A LangGraph builder (`create_swarm(...)`, `StateGraph(...)`): the app runs what
+        # `.compile()` returns, so the test does too.
+        try:
+            compiled = obj.compile()
+        except Exception:  # noqa: BLE001 - a builder that cannot compile is not run
+            compiled = None
+        if compiled is not None and hasattr(compiled, "invoke"):
+            obj = compiled
     if hasattr(obj, "invoke"):
         keys = getattr(obj, "input_keys", None)
         legacy = isinstance(keys, (list, tuple)) and "input" in keys and "messages" not in keys
@@ -968,6 +1133,21 @@ def run_attack(driver: Driver, attack: Attack, run: _Run) -> dict[str, Any]:
                     reply = str(v.content)
     finally:
         _CTX.reset(token)
+    if error and driver.context_missing and "NoneType" in error:
+        # The agent failed on the run context AgentFox couldn't give it: that says
+        # nothing about the agent, so the attack wasn't run rather than errored.
+        reason = driver.context_missing
+        return {
+            **base,
+            "outcome": "not_run",
+            "gotThrough": False,
+            "error": None,
+            "reason": reason,
+            "sentence": reason,
+            "toolCall": "",
+            "severity": 0,
+            "calls": [],
+        }
     if run.guard_error:
         # Not a verdict: an attack AgentFox couldn't check is errored, never stopped.
         run.interventions = [i for i in run.interventions if i.get("reason") != UNCHECKED]
@@ -1315,6 +1495,54 @@ def explain_model_error(error: str) -> str:
             "Check that your agent runs on its own, then try again."
         )
     return f"Your agent's model returned errors, so the attacks couldn't run: {error[:240]}"
+
+
+def explain_not_run(reason: str) -> str:
+    """Why an agent's attacks weren't run (a result's ``reason``), as a plain sentence
+    with what to do about it, for a test where nothing ran at all."""
+    import re
+
+    text = (reason or "").strip()
+    if text.lower().startswith("not run:"):
+        text = text[len("not run:") :].strip()
+    loaded = re.match(r"couldn't (load|build) (\S+?): (.*)$", text, re.S)
+    if loaded:
+        verb, what, error = loaded.groups()
+        missing = re.search(r"No module named '([^']+)'", error)
+        if missing:
+            return (
+                f"AgentFox couldn't import your agent ({what}): the module "
+                f"'{missing.group(1)}' it needs isn't installed where agentfox init runs. "
+                "Install your agent's dependencies in that environment (or run init from "
+                "the one your agent runs in), then run the test again."
+            )
+        if "ImportError" in error or "ModuleNotFoundError" in error:
+            return (
+                f"AgentFox couldn't import your agent ({what}): {_brief(error)}. Install your "
+                "agent's dependencies where agentfox init runs, then run the test again."
+            )
+        return (
+            f"AgentFox couldn't {verb} your agent ({what}): {_brief(error)}. Check that it "
+            "imports on its own, then run the test again."
+        )
+    if "couldn't find where" in text:
+        return (
+            f"{text[:1].upper()}{text[1:].rstrip('.')}. Point agentfox init at the agent "
+            "(or the function that builds it), then run the test again."
+        )
+    if "isn't in AgentFox's registry" in text:
+        return (
+            f"{text.rstrip('.')}. Add it under Projects (or run agentfox init again), then "
+            "run the test again."
+        )
+    if "needs a run context" in text:
+        return (
+            f"{text.rstrip('.')}. Give its fields defaults so it can be built with no "
+            "arguments, then run the test again."
+        )
+    if text.startswith("it needs a tool"):
+        return f"The attack sets chosen don't apply to this agent: {text.rstrip('.')}."
+    return f"{text[:1].upper()}{text[1:]}" if text else "AgentFox couldn't run your agent."
 
 
 #: Packages whose exceptions are a model's or its client's, beyond ``PROVIDERS``.

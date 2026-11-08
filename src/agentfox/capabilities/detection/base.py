@@ -301,12 +301,44 @@ def warm_all() -> None:
             log.exception("detector %s failed to warm; it stays cold", key)
 
 
-def warn_unrunnable(*, enabled_only: bool = True) -> list[str]:
+def _already_warned(key: str, reason: str) -> bool:
+    """Whether this installation already said that ``key`` cannot run, for the same
+    reason, and records that it now has. Kept in the run directory (`run_dir`), so
+    a changed reason (a different missing package) is said again."""
+    import json
+
+    from agentfox.core.config import run_dir
+
+    path = run_dir() / "unrunnable-detectors.json"
+    try:
+        said = json.loads(path.read_text())
+    except (OSError, ValueError):
+        said = {}
+    if not isinstance(said, dict):
+        said = {}
+    if said.get(key) == reason:
+        return True
+    said[key] = reason
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(said, sort_keys=True))
+    except OSError:
+        pass  # unwritable state: warn every time rather than never
+    return False
+
+
+def warn_unrunnable(*, enabled_only: bool = True, once: bool = False) -> list[str]:
     """Log each enabled detector that cannot run here, with the fix. Returns their keys.
 
     The pipeline skips such a detector without a word, which is right per request
     and wrong at startup: `injection.classifier` is on by default, and a deployment
     without its model would otherwise run regex only while believing otherwise.
+
+    ``once``: for an application governed in-process (`agentfox.auto()`, the SDK),
+    where "startup" is every run of somebody's script. The warning is logged the first
+    time per installation and reason, then at debug level; `agentfox doctor` keeps
+    listing it. A server (the gateway, the hook daemon) warns on every start: its log
+    is where an operator looks.
     """
     from agentfox.capabilities.detection.models import models_for
     from agentfox.core.config import get_settings
@@ -326,9 +358,14 @@ def warn_unrunnable(*, enabled_only: bool = True) -> list[str]:
         except Exception as exc:  # noqa: BLE001 - a startup warning must never raise
             reason = str(exc)
         missing.append(key)
+        reason = str(reason or "its dependency is not installed")
+        if once and _already_warned(key, reason):
+            log.debug("agentfox: detector %s cannot run here (%s); skipped.", key, reason)
+            continue
         log.warning(
-            "agentfox: detector %s is enabled but cannot run here (%s); it is skipped.",
+            "agentfox: detector %s is enabled but cannot run here (%s); it is skipped.%s",
             key,
-            reason or "its dependency is not installed",
+            reason,
+            " Said once; `agentfox doctor` lists it." if once else "",
         )
     return missing

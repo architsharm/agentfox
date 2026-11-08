@@ -188,7 +188,7 @@ function LlmNode({ data }: NodeProps<Node<{ models: string[]; selected?: boolean
           {data.models.length > 1 ? ` +${data.models.length - 1}` : ""}
         </strong>
       ) : (
-        <strong className="gm-sub">model not found in code</strong>
+        <strong className="gm-sub" title="No model is named in the code: the framework default, or one chosen at run time. It shows here once the agent runs.">default or set at run time</strong>
       )}
     </div>
   );
@@ -1034,7 +1034,7 @@ function AgentPanel({ map, facts, actor, back }: { map: AgentMap; facts?: AgentF
         <tbody>
           <tr><td className="muted">Owner</td><td>{facts?.owner || "Not assigned"}</td></tr>
           <tr><td className="muted">Risk</td><td>{RISK[facts?.risk || ""] || "Not set"}</td></tr>
-          <tr><td className="muted">{models.length > 1 ? "Models" : "Model"}</td><td className="k-mono gm-break">{models.join(", ") || "Not found"}</td></tr>
+          <tr><td className="muted">{models.length > 1 ? "Models" : "Model"}</td><td className="k-mono gm-break">{models.join(", ") || "The framework default, or set at run time"}</td></tr>
           <tr><td className="muted">Framework</td><td>{facts?.framework || map.agent.framework || "—"}</td></tr>
           <tr><td className="muted">Circuit breaker</td><td><Pill tone={breakerTone}>{breaker}</Pill></td></tr>
           <tr>
@@ -1068,7 +1068,7 @@ function LlmPanel({ map, back }: { map: AgentMap; back: ReactNode }) {
           ))}
         </ul>
       ) : (
-        <p className="gm-sub">No model found in this agent&apos;s code yet. It shows here once a call goes through AgentFox.</p>
+        <p className="gm-sub">The code doesn&apos;t name a model, so it uses the framework&apos;s default or one chosen at run time. It shows here once a call goes through AgentFox.</p>
       )}
       <p className="gm-sub">
         The Prompt and Response rails on either side of it are where its calls are checked. Which AI judges run, and what data

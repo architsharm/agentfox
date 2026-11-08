@@ -39,6 +39,16 @@ def hooks_daemon(
         warm()
     daemon.start()
     console.print("  [green]ready[/]  [dim]ctrl-c to stop[/]")
+    import signal
+
+    def _terminate(signum: int, _frame: object) -> None:
+        # `kill <pid>` (SIGTERM) and a closed terminal (SIGHUP) end the process without
+        # unwinding, which left the socket file behind for the next client to trip on.
+        raise KeyboardInterrupt
+
+    for sig in (signal.SIGTERM, getattr(signal, "SIGHUP", None)):
+        if sig is not None:
+            signal.signal(sig, _terminate)
     try:
         daemon.serve_forever()
     except KeyboardInterrupt:
@@ -248,11 +258,14 @@ def hooks_status() -> None:
     """Is the daemon up, and does a deny on this harness actually stop anything?"""
     from agentfox.harnesses import capability
     from agentfox.hooks import ping, socket_path
+    from agentfox.hooks.client import remove_stale_socket
 
     path = socket_path()
     up = ping()
     console.print(f"  socket    [dim]{path}[/]")
     console.print(f"  daemon    {'[green]listening[/]' if up else '[red]not running[/]'}")
+    if not up and remove_stale_socket(path):
+        console.print("            [dim]removed the socket a stopped daemon left behind[/]")
     if not up:
         console.print("            [dim]start it with `agentfox admin hooks daemon`[/]")
 

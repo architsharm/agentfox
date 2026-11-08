@@ -181,15 +181,17 @@ function VerdictGlyph({ shape }: { shape: "through" | "stop" | "hold" | "altered
   );
 }
 
-export function Verdict({ value }: { value?: string | null }) {
+/** `label` replaces the word, for pages written for visitors rather than operators
+ *  (the playground says "blocked", the run table says "block"). */
+export function Verdict({ value, label }: { value?: string | null; label?: string }) {
   if (!value) return <span className="muted">—</span>;
   const shape = VERDICT_SHAPE[value];
   const tone = VERDICT_TONE[value] || "";
-  if (!shape) return <span className={`tag ${tone}`}>{value}</span>;
+  if (!shape) return <span className={`tag ${tone}`}>{label ?? value}</span>;
   return (
     <span className={`verdict verdict-${tone}`}>
       <VerdictGlyph shape={shape} />
-      <span>{value}</span>
+      <span>{label ?? value}</span>
     </span>
   );
 }

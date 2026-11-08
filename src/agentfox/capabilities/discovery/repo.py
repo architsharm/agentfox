@@ -38,6 +38,7 @@ import logging
 import os
 import re
 import subprocess
+from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -189,20 +190,87 @@ _TOOL_CONSTRUCTORS = (
     "FunctionTool.from_defaults",
 )
 
-#: Framework orchestration entrypoints — CrewAI's `Crew(...).kickoff()` and
-#: LangGraph's `StateGraph(...).compile()` wrap the model call rather than making it
-#: directly, so a repo built on either framework can show zero `_MODEL_CALLS` matches
-#: while clearly running an agent (confirmed against a real crewAI-examples clone:
-#: framework detected, 17 tools found, `model_calls: 0` — a false "nothing to govern"
-#: read on the exact frameworks the report says it found). Requires the defining
-#: file to have actually imported the framework (checked in `scan_file`), since
-#: `compile` and `Crew`/`Agent`-shaped names are too common to trust on their own.
+#: Constructors that *define* an agent system without running it: CrewAI's
+#: `Crew(...)` and LangGraph's `StateGraph(...)`. Reported as `agent_definition`
+#: sites, for the inventory, and deliberately **not** counted as model calls: a
+#: definition calls nothing, and counting each one (2,031 of them in LangGraph's own
+#: repository, plus every `re.compile` in a file that imported LangGraph) made the
+#: coverage line read "2039 of 8 model call sites". Requires the defining file to have
+#: imported the framework (checked in `scan_file`), since `Crew`-shaped names are too
+#: common to trust on their own. What *runs* one of these (`crew.kickoff()`,
+#: `graph.invoke()`, `Runner.run()`) is a model call: see :data:`_AGENT_RUNS`.
 _AGENT_DEFINITIONS = {
-    "kickoff": "CrewAI",
-    "compile": "LangGraph",
     "Crew": "CrewAI",
     "StateGraph": "LangGraph",
 }
+
+#: Calls that run an agent, and so call its model, for frameworks that wrap the
+#: provider call: a repository built on one can show zero provider calls while
+#: clearly running an agent (crewAI-examples: 17 tools, `model_calls: 0`; the Agents
+#: SDK's customer-service example: three agents, then "No model calls found").
+#: Path -> (provider, the name the file must import for the shape to mean this).
+_AGENT_RUNS = {
+    "Runner.run": ("openai-agents", "Runner"),
+    "Runner.run_sync": ("openai-agents", "Runner"),
+    "Runner.run_streamed": ("openai-agents", "Runner"),
+}
+#: Methods that run an agent object, whichever framework built it: `agent.run_sync()`
+#: (Pydantic AI), `team.run()` (AutoGen), `agent.invoke()` (LangGraph), `agent.chat()`
+#: (LlamaIndex). Counted only on a variable the agent pass found an agent in (see
+#: `_promote_agent_runs`), never on the method name alone.
+_AGENT_METHODS = {
+    "run", "run_sync", "run_stream", "run_async", "arun", "iter", "invoke", "ainvoke",
+    "stream", "astream", "kickoff", "kickoff_async", "chat", "achat", "query", "aquery",
+    "initiate_chat", "a_initiate_chat", "generate_reply", "a_generate_reply", "run_live",
+    "run_stream_events",
+}  # fmt: skip
+
+#: CrewAI's run methods, on a crew or a flow; counted in a file that imported crewai.
+_CREW_RUNS = ("kickoff", "kickoff_async", "kickoff_for_each", "kickoff_for_each_async")
+
+#: LangChain runnable methods. On their own they mean nothing (a prompt template and
+#: an output parser have them too); on a chat model or a compiled graph they are the
+#: model call.
+_RUNNABLE_METHODS = ("invoke", "ainvoke", "stream", "astream", "batch", "abatch")
+
+#: Calls whose result is a chat model: tools or a schema can only be bound to one, and
+#: these constructors build one.
+_CHAT_MODEL_CALLS = ("bind_tools", "with_structured_output", "init_chat_model")
+_CHAT_MODEL_CLASS = re.compile(
+    r"^(?:Azure)?Chat(?:OpenAI|Anthropic\w*|Google\w*|Vertex\w*|Bedrock\w*|Mistral\w*"
+    r"|Ollama|Groq|Fireworks|Together|Cohere|DeepSeek|XAI|Perplexity|LiteLLM\w*|HuggingFace"
+    r"|NVIDIA|Databricks|Watsonx|Cerebras|Ollama\w*)$"
+)
+#: Calls whose result runs as an agent graph, and the builders `.compile()` turns into one.
+_GRAPH_FACTORIES = ("create_react_agent", "create_agent")
+_GRAPH_BUILDERS = ("StateGraph", "MessageGraph", "create_supervisor", "create_swarm")
+
+
+def _chain(expr: ast.AST) -> list[ast.Call]:
+    """The calls along a receiver chain, outermost first: `a(x).b(y)` -> [b(y), a(x)]."""
+    out: list[ast.Call] = []
+    node = expr
+    while True:
+        if isinstance(node, ast.Await):
+            node = node.value
+        elif isinstance(node, ast.Call):
+            out.append(node)
+            node = node.func
+        elif isinstance(node, ast.Attribute):
+            node = node.value
+        else:
+            return out
+
+
+def _last(call: ast.Call) -> str:
+    """The name a call is made by: `a.b.c(...)` -> "c"."""
+    func = call.func
+    if isinstance(func, ast.Attribute):
+        return func.attr
+    if isinstance(func, ast.Name):
+        return func.id
+    return ""
+
 
 #: Executable-artefact shapes worth flagging even without a model call nearby: these
 #: are executable output an agent can act through, and a repo that builds SQL from an
@@ -292,6 +360,9 @@ class ScanReport:
     #: in a way the static read could not follow. Test, mock and fixture files are left
     #: out. Local only: like every tool name, never part of a submission.
     unassigned_tools: list[str] = field(default_factory=list)
+    #: Test, docs and benchmark files left out of the report (`scan(include_tests=...)`),
+    #: read for hard-coded secrets only. Counted so the output can say so.
+    excluded_files: int = 0
 
     @property
     def multi_agent(self) -> bool:
@@ -367,13 +438,15 @@ class ScanReport:
 
     @property
     def governable(self) -> list[Site]:
-        """`model_call` sites plus framework orchestration entrypoints.
+        """The call sites coverage is measured over: `model_call` sites only.
 
-        A pure `model_call` count is vacuous on a CrewAI/LangGraph repo that never
-        calls the provider SDK directly — this is what makes coverage mean something
-        on exactly the frameworks the report says it found.
+        A framework that wraps the provider call is covered by counting the call that
+        *runs* its agent (`Runner.run`, `crew.kickoff`, a compiled graph's `invoke`) as a
+        model call, not by counting its definitions: a `StateGraph(...)` calls nothing,
+        and adding the 2,031 in LangGraph's own repository to an 8-call denominator is
+        how "2039 of 8 model call sites are ungoverned" was printed.
         """
-        return self.model_calls + self.agent_definitions
+        return self.model_calls
 
     @property
     def ungoverned(self) -> list[Site]:
@@ -440,6 +513,7 @@ class ScanReport:
             "agents": [a.to_json() for a in self.agents],
             "agent_edges": [e.to_json() for e in self.agent_edges],
             "unassigned_tools": self.unassigned_tools,
+            "excluded_files": self.excluded_files,
         }
 
     def to_submission_payload(self, *, source: str, tool_names: bool = False) -> dict[str, Any]:
@@ -544,6 +618,19 @@ class ScanReport:
                 "Point the scan at a directory containing source in a supported language, "
                 "or govern the calls explicitly with the SDK."
             )
+        if not self.governable and self.agents:
+            # Not "no model calls found" under a list of agents: each agent calls a
+            # model, the scan just did not see where it is started.
+            return (
+                f"Found {len(self.agents)} agent(s) but no line that runs one or calls a "
+                "model directly — they are started from somewhere this scan does not read "
+                "(a server, a notebook, a deployment config such as langgraph.json). "
+                "Add `import agentfox; agentfox.auto()` where they start."
+                if suggest_auto
+                else f"Found {len(self.agents)} agent(s) but no line that runs one or calls "
+                "a model directly — they are started from somewhere this scan does not read "
+                "(a server, a notebook, a deployment config such as langgraph.json)."
+            )
         if not self.governable:
             if self.code_files_scanned is None:
                 # Not a filesystem walk (an OpenAPI spec scan), so there is no file
@@ -600,6 +687,13 @@ def _str_value(node: ast.AST | None) -> str | None:
     return None
 
 
+def _arg_names(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> list[str]:
+    """A function's argument names, `self` and `cls` left out."""
+    a = fn.args
+    names = [x.arg for x in (*a.posonlyargs, *a.args, *a.kwonlyargs)]
+    return [n for n in names if n not in ("self", "cls")]
+
+
 def _decorator_name(node: ast.AST) -> str:
     if isinstance(node, ast.Call):
         node = node.func
@@ -619,16 +713,105 @@ class _Visitor(ast.NodeVisitor):
         #: Names this file imports, and each function's docstring: read up front, for
         #: tools made by a call (`function_tool(fn)`) wherever the call sits.
         self._imported: set[str] = set()
+        #: Top-level packages this file imports from (`crewai`, `langgraph`).
+        self._packages: set[str] = set()
         self._docs: dict[str, str] = {}
+        #: What a name assigned in this file holds, when it is one of the runnables
+        #: that make `.invoke()` a model call: "chat_model", "graph", "builder", "crew".
+        #: Scope-blind on purpose: `model = ...bind_tools(...)` inside a function and
+        #: `await model.ainvoke(...)` beside it is the shape, and a name reused for
+        #: something else in the same file is rare enough not to design for.
+        self._holds: dict[str, str] = {}
+        #: Module-level functions, with their line and docstring, for tools an agent
+        #: is handed as plain functions (`TOOLS = [search]`).
+        self.functions: dict[str, tuple[int, str, list[str]]] = {}
+        #: `x.run(...)`-shaped calls: (receiver, method, line, label, receiver imported).
+        #: A model call when the agent pass finds an agent held in `x` (decided after
+        #: every file is read).
+        self.runs: list[tuple[str, str, int, str, bool]] = []
+        #: Each function's argument names, for a tool that takes a path (`classify_tool`).
+        self._args: dict[str, list[str]] = {}
 
     def visit_Module(self, node: ast.Module) -> None:
+        assigns: list[tuple[str, ast.AST]] = []
         for sub in ast.walk(node):
             if isinstance(sub, ast.Import | ast.ImportFrom):
                 for alias in sub.names:
                     self._imported.add(alias.asname or alias.name.split(".")[0])
+                modules = [a.name for a in sub.names] if isinstance(sub, ast.Import) else []
+                if isinstance(sub, ast.ImportFrom) and sub.module and not sub.level:
+                    modules.append(sub.module)
+                self._packages |= {m.split(".")[0] for m in modules}
             elif isinstance(sub, ast.FunctionDef | ast.AsyncFunctionDef):
                 self._docs.setdefault(sub.name, ast.get_docstring(sub) or "")
+                self._args.setdefault(sub.name, _arg_names(sub))
+            elif isinstance(sub, ast.Assign):
+                assigns += [(_attribute_path(t), sub.value) for t in sub.targets]
+            elif isinstance(sub, ast.AnnAssign | ast.NamedExpr) and sub.value is not None:
+                assigns.append((_attribute_path(sub.target), sub.value))
+        for stmt in node.body:
+            if isinstance(stmt, ast.FunctionDef | ast.AsyncFunctionDef):
+                self.functions.setdefault(
+                    stmt.name, (stmt.lineno, ast.get_docstring(stmt) or "", _arg_names(stmt))
+                )
+        # Twice, so `graph = builder.compile()` after `builder = StateGraph(...)` and an
+        # alias of an alias both resolve whatever order the assignments come in.
+        for _ in range(2):
+            for name, value in assigns:
+                held = self._holding(value)
+                if name and held:
+                    self._holds[name] = held
         self.generic_visit(node)
+
+    def _holding(self, expr: ast.AST) -> str | None:
+        """What an expression evaluates to, when it is a chat model, a runnable graph,
+        a graph builder or a crew; None for anything else."""
+        if isinstance(expr, ast.Await):
+            expr = expr.value
+        if isinstance(expr, ast.Name | ast.Attribute):
+            return self._holds.get(_attribute_path(expr))
+        calls = _chain(expr)
+        if not calls:
+            return None
+        names = [_last(c) for c in calls]
+        if any(n in _CHAT_MODEL_CALLS or _CHAT_MODEL_CLASS.match(n) for n in names):
+            return "chat_model"
+        if names[0] == "compile":
+            receiver = calls[0].func.value if isinstance(calls[0].func, ast.Attribute) else None
+            built = self._holding(receiver) if receiver is not None else None
+            if built == "builder" or any(n in _GRAPH_BUILDERS for n in names[1:]):
+                return "graph"
+            return None
+        if names[0] in _GRAPH_FACTORIES:
+            return "graph"
+        if names[0] in _GRAPH_BUILDERS:
+            return "builder"
+        if names[0] == "Crew" or names[0] == "crew":
+            return "crew"
+        return None
+
+    def _agent_run(self, node: ast.Call, path: str) -> tuple[str, str] | None:
+        """(provider, what) when this call runs an agent or a chat model."""
+        if path in _AGENT_RUNS:
+            provider, needs = _AGENT_RUNS[path]
+            if needs in self._imported:
+                return provider, "runs an agent"
+            return None
+        if not isinstance(node.func, ast.Attribute):
+            return None
+        method = node.func.attr
+        receiver = node.func.value
+        if method in _CREW_RUNS and (
+            "crewai" in self._packages or self._holding(receiver) == "crew"
+        ):
+            return "crewai", "runs a crew"
+        if method in _RUNNABLE_METHODS:
+            held = self._holding(receiver)
+            if held == "chat_model":
+                return "langchain", ""
+            if held == "graph":
+                return "langgraph", "runs the graph"
+        return None
 
     def visit_Import(self, node: ast.Import) -> None:
         for alias in node.names:
@@ -656,7 +839,33 @@ class _Visitor(ast.NodeVisitor):
         # `agentfox.auto()` anywhere in a file means its model calls are governed.
         if path.endswith("auto") and "agentfox" in path:
             self.governed = True
-        for suffix, provider in _MODEL_CALLS.items():
+        run = self._agent_run(node, path)
+        if run is not None:
+            provider, what = run
+            # The whole receiver chain, so `MyCrew().crew().kickoff` does not read as a
+            # bare `kickoff(...)`; its tail when it is long.
+            label = ast.unparse(node.func)
+            label = label if len(label) <= 60 else "…" + label[-59:]
+            self.sites.append(
+                Site(
+                    kind="model_call",
+                    file=self.path,
+                    line=node.lineno,
+                    detail=f"{label}(...)" + (f" — {what}" if what else ""),
+                    provider=provider,
+                    severity="high",
+                )
+            )
+        elif (
+            isinstance(node.func, ast.Attribute)
+            and node.func.attr in _AGENT_METHODS
+            and isinstance(node.func.value, ast.Name | ast.Attribute)
+        ):
+            receiver = _attribute_path(node.func.value)
+            self.runs.append(
+                (receiver, node.func.attr, node.lineno, path, receiver in self._imported)
+            )
+        for suffix, provider in () if run is not None else _MODEL_CALLS.items():
             if path.endswith(suffix):
                 # `invoke` and `completion` are common words; require a model-ish
                 # keyword before claiming a model call, or every .invoke() in a repo
@@ -697,7 +906,7 @@ class _Visitor(ast.NodeVisitor):
                             line=node.lineno,
                             detail=f"{path}(...)",
                             provider=fw.lower(),
-                            severity="high",
+                            severity="info",
                         ),
                         fw,
                     )
@@ -734,6 +943,7 @@ class _Visitor(ast.NodeVisitor):
                     description or ast.get_docstring(node) or "",
                     node.lineno,
                     f"@{name} {node.name}()",
+                    _arg_names(node),
                 )
                 break
 
@@ -756,6 +966,7 @@ class _Visitor(ast.NodeVisitor):
             description or self._docs.get(fn or "", ""),
             node.lineno,
             f"{_attribute_path(opts.func)}({fn or name})",
+            self._args.get(fn or ""),
         )
 
     def visit_Dict(self, node: ast.Dict) -> None:
@@ -799,7 +1010,9 @@ class _Visitor(ast.NodeVisitor):
             self._add_tool(name, description or "", node.lineno, f"{kind} {name}")
         self.generic_visit(node)
 
-    def _add_tool(self, name: str, description: str, line: int, how: str) -> None:
+    def _add_tool(
+        self, name: str, description: str, line: int, how: str, args: list[str] | None = None
+    ) -> None:
         # The same schema appears twice in one file often enough (a list built twice,
         # a retry path) that counting it twice would inflate the headline.
         if name in self._tool_names:
@@ -807,7 +1020,7 @@ class _Visitor(ast.NodeVisitor):
         self._tool_names.add(name)
         from agentfox.capabilities.discovery.exposure import FLAG_LABEL, classify_tool
 
-        caps = classify_tool(name, description)
+        caps = classify_tool(name, description, args or ())
         flags = caps.ordered()
         what = "; ".join(caps.phrases.get(f, FLAG_LABEL[f]) for f in flags)
         self.sites.append(
@@ -976,6 +1189,13 @@ _JS_TOOLS: tuple[tuple[re.Pattern[str], str, tuple[str, ...]], ...] = (
 )
 
 
+#: `import { Agent, run } from "@openai/agents"`, and the call it makes possible.
+_JS_RUN_IMPORT = re.compile(
+    r"""import\s*\{[^}]*(?<![\w$])run(?![\w$])[^}]*\}\s*from\s*["']@openai/agents["']"""
+)
+_JS_AGENT_RUN = re.compile(r"(?<![\w$.])run\s*\(\s*[\w$]")
+
+
 _JS_NAMED_TOOL = re.compile(r"""\b(\w+)["']?\s*[:=]\s*tool\s*\(\s*\{""")
 
 
@@ -1110,6 +1330,8 @@ def _scan_javascript(source: str, rel: str) -> tuple[list[Site], set[str]]:
 
     code_lines = _js_code_only(source)
     sites: list[Site] = []
+    # `run` only means the Agents SDK's runner when the file imported it by that name.
+    agents_run = bool(_JS_RUN_IMPORT.search(source))
     for line_no, line in enumerate(lines, start=1):
         if _JS_COMMENT_LINE.match(line):
             continue
@@ -1117,7 +1339,20 @@ def _scan_javascript(source: str, rel: str) -> tuple[list[Site], set[str]]:
         # One site per line, most specific pattern first, so `.chat.completions.create`
         # is not also counted by `.completions.create`. Matched against `code`, so a
         # call shown inside a string or a comment is not counted as one.
-        for pattern, provider, required in _JS_MODEL_CALLS:
+        runs = _JS_AGENT_RUN.search(code) if agents_run else None
+        if runs:
+            # The Agents SDK's `run(agent, input)`: runs the agent, so calls its model.
+            sites.append(
+                Site(
+                    kind="model_call",
+                    file=rel,
+                    line=line_no,
+                    detail=f"{runs.group(0).strip()} — runs an agent",
+                    provider="openai-agents",
+                    severity="high",
+                )
+            )
+        for pattern, provider, required in () if runs else _JS_MODEL_CALLS:
             match = pattern.search(code)
             if match and gated(required):
                 sites.append(
@@ -1141,7 +1376,7 @@ def _scan_javascript(source: str, rel: str) -> tuple[list[Site], set[str]]:
                         line=line_no,
                         detail=match.group(0).strip(),
                         provider=framework.lower(),
-                        severity="high",
+                        severity="info",
                     )
                 )
                 break
@@ -1181,7 +1416,16 @@ def _scan_javascript(source: str, rel: str) -> tuple[list[Site], set[str]]:
     return sites, frameworks
 
 
-def scan_file(path: Path, root: Path) -> tuple[list[Site], set[str], bool]:
+def scan_file(
+    path: Path,
+    root: Path,
+    *,
+    functions: dict[str, tuple[int, str, list[str]]] | None = None,
+    runs: list[tuple[str, str, int, str, bool]] | None = None,
+) -> tuple[list[Site], set[str], bool]:
+    """The sites in one file. ``functions``, when given, is filled with the file's
+    module-level functions (name -> line, docstring), for tools handed to an agent as
+    plain functions."""
     rel = str(path.relative_to(root))
     try:
         source = path.read_text(errors="ignore")
@@ -1205,6 +1449,10 @@ def scan_file(path: Path, root: Path) -> tuple[list[Site], set[str], bool]:
         sites.extend(site for site, fw in visitor._pending_agent_defs if fw in visitor.frameworks)
         frameworks |= visitor.frameworks
         governed = visitor.governed
+        if functions is not None:
+            functions.update(visitor.functions)
+        if runs is not None:
+            runs.extend(visitor.runs)
     elif path.suffix in JS_SUFFIXES:
         js_sites, js_frameworks = _scan_javascript(source, rel)
         sites.extend(js_sites)
@@ -1233,18 +1481,158 @@ def scan_file(path: Path, root: Path) -> tuple[list[Site], set[str], bool]:
                 )
             )
         if _HARDCODED_SECRET.search(line):
-            sites.append(
+            sites.append(_secret_site(rel, line_no))
+    return sites, frameworks, governed
+
+
+def _secret_site(rel: str, line_no: int) -> Site:
+    return Site(
+        kind="secret",
+        file=rel,
+        line=line_no,
+        # Never echo the match: a scan report that reprints the key it found is a
+        # second copy of the leak.
+        detail="hard-coded credential in source",
+        severity="critical",
+    )
+
+
+def _secrets_in(path: Path, rel: str) -> list[Site]:
+    """Only the hard-coded secrets in a file the scan otherwise leaves out."""
+    try:
+        source = path.read_text(errors="ignore")
+    except OSError:  # pragma: no cover - unreadable file
+        return []
+    return [
+        _secret_site(rel, n)
+        for n, line in enumerate(source.splitlines(), start=1)
+        if _HARDCODED_SECRET.search(line)
+    ]
+
+
+#: Directories of code that is about the product rather than part of it: docs and
+#: their build scripts, benchmarks, integration and end-to-end suites. Left out of a
+#: scan by default with tests, mocks and fixtures (:func:`is_test_path`).
+_NON_PRODUCT_DIRS = {
+    "docs",
+    "doc",
+    "documentation",
+    "bench",
+    "benchmark",
+    "benchmarks",
+    "integration_tests",
+    "integration-tests",
+    "e2e",
+}
+
+
+def is_excluded_path(rel: str) -> bool:
+    """True for a file a default scan does not report on: a test, mock or fixture, or
+    anything under a docs, benchmark or integration-test directory."""
+    parts = Path(rel).parts
+    return is_test_path(rel) or any(p.lower() in _NON_PRODUCT_DIRS for p in parts[:-1])
+
+
+def _add_agent_tools(
+    report: ScanReport, functions: dict[str, dict[str, tuple[int, str, list[str]]]]
+) -> None:
+    """A `tool` site for each tool an agent is handed that no decorator or constructor
+    declared: a plain function in a list (`TOOLS = [search]`, then `ToolNode(TOOLS)` and
+    `.bind_tools(TOOLS)`), which LangGraph and others accept as-is.
+
+    Without this the agent line read "ReAct Agent · 1 tool" and the line under it "can
+    reach: 0 tools", and `agentfox up` declared nothing for the agent to be granted. The
+    function is found where it is defined, nearest the agent first; a name no file
+    defines as a function gets no site, since the static read cannot say what it is.
+    """
+    from agentfox.capabilities.discovery.exposure import FLAG_LABEL, classify_tool
+
+    have = {(s.name, s.file) for s in report.tools}
+    named = {s.name for s in report.tools}
+    defined: dict[str, list[tuple[str, int, str, list[str]]]] = defaultdict(list)
+    for file, funcs in functions.items():
+        for name, (line, doc, args) in funcs.items():
+            defined[name].append((file, line, doc, args))
+    for agent in report.agents:
+        for name in agent.tools:
+            if name in named or name not in defined:
+                continue
+            here = Path(agent.file).parent
+            file, line, doc, args = max(
+                defined[name], key=lambda d: (d[0] == agent.file, _shared(Path(d[0]).parent, here))
+            )
+            if (name, file) in have:
+                continue
+            have.add((name, file))
+            details = {d["name"]: d for d in agent.tool_details}
+            doc = str(details.get(name, {}).get("description") or doc)
+            caps = classify_tool(name, doc, args)
+            flags = caps.ordered()
+            what = "; ".join(caps.phrases.get(f, FLAG_LABEL[f]) for f in flags)
+            report.sites.append(
                 Site(
-                    kind="secret",
-                    file=rel,
-                    line=line_no,
-                    # Never echo the match: a scan report that reprints the key it found
-                    # is a second copy of the leak.
-                    detail="hard-coded credential in source",
-                    severity="critical",
+                    kind="tool",
+                    file=file,
+                    line=line,
+                    detail=f"tool {name}() handed to {agent.name}" + (f" — {what}" if what else ""),
+                    severity="medium",
+                    name=name,
+                    capabilities=flags,
+                    caps=caps,
                 )
             )
-    return sites, frameworks, governed
+
+
+def _promote_agent_runs(
+    report: ScanReport, runs: dict[str, list[tuple[str, str, int, str, bool]]]
+) -> None:
+    """A model call for each `x.run(...)`-shaped call on a variable an agent is held in.
+
+    Framework-agnostic by construction: the agent pass already knows which variables
+    hold an agent (in any framework it reads), so `support_agent.run_sync(...)` and
+    `team.run(...)` count without a per-framework list of run methods. The variable is
+    matched in its own file first, then, when the file imported the name, against the
+    one agent anywhere held under it.
+    """
+    local: dict[tuple[str, str], AgentSpec] = {}
+    anywhere: dict[str, list[AgentSpec]] = defaultdict(list)
+    for agent in report.agents:
+        for name in {agent.var, agent.attr} - {None}:
+            local.setdefault((agent.file, str(name)), agent)
+            anywhere[str(name)].append(agent)
+    counted = {(s.file, s.line) for s in report.model_calls}
+    governed = set(report.governed_files)
+    for file, calls in runs.items():
+        for receiver, _method, line, label, imported in calls:
+            if (file, line) in counted:
+                continue
+            agent = local.get((file, receiver))
+            if agent is None and imported and len(anywhere.get(receiver, [])) == 1:
+                agent = anywhere[receiver][0]
+            if agent is None:
+                continue
+            counted.add((file, line))
+            report.sites.append(
+                Site(
+                    kind="model_call",
+                    file=file,
+                    line=line,
+                    detail=f"{label}(...) — runs {agent.name}",
+                    provider=re.sub(r"[^a-z0-9]+", "-", agent.framework.lower()).strip("-"),
+                    severity="info" if file in governed else "high",
+                    governed=file in governed,
+                )
+            )
+
+
+def _shared(a: Path, b: Path) -> int:
+    """How many leading path components two directories share."""
+    n = 0
+    for x, y in zip(a.parts, b.parts, strict=False):
+        if x != y:
+            break
+        n += 1
+    return n
 
 
 #: A code file this large is generated or minified (a bundle, a vendored build), not
@@ -1274,14 +1662,24 @@ def _git_files(root: Path) -> tuple[set[str], set[str]] | None:
 
 
 def scan(
-    root: str | Path = ".", *, include_config: bool = True, llm_apps: bool = False
+    root: str | Path = ".",
+    *,
+    include_config: bool = True,
+    llm_apps: bool = False,
+    include_tests: bool = False,
 ) -> ScanReport:
     """Walk a repository and report every surface worth governing.
 
     ``llm_apps``: with no agent structure found, report each package that calls a
     model as a low-confidence "LLM app" agent. `agentfox init` asks for it so it can
     say what it saw; discovery submissions do not, so a scan never proposes a draft
-    agent on model calls alone."""
+    agent on model calls alone.
+
+    ``include_tests``: also report the model calls, tools and agent definitions in
+    tests, docs and benchmarks (:func:`is_excluded_path`). Off by default: in a
+    framework's own repository they are most of the code (LangGraph's root read as
+    2,031 agent definitions and 76 tools, nearly all from tests), and none of it is
+    an agent anyone deploys. Hard-coded secrets are reported there either way."""
     root_path = Path(root).resolve()
     report = ScanReport(root=str(root_path))
     frameworks: set[str] = set()
@@ -1294,6 +1692,11 @@ def scan(
     git = _git_files(root_path)
     #: Files that may hold a hosted platform's agent definition (`discovery/platforms`).
     platform_files: list[Path] = []
+    #: file -> its module-level functions, for tools handed over as plain functions.
+    functions: dict[str, dict[str, tuple[int, str, list[str]]]] = defaultdict(dict)
+    #: file -> its `x.run(...)`-shaped calls, for `_promote_agent_runs`.
+    runs: dict[str, list[tuple[str, str, int, str, bool]]] = defaultdict(list)
+    agents.include_tests = include_tests
 
     for dirpath, dirnames, filenames in os.walk(root_path):
         rel_dir = os.path.relpath(dirpath, root_path)
@@ -1326,11 +1729,19 @@ def scan(
                 suffix = path.suffix.lower() or "(no extension)"
                 report.skipped_suffixes[suffix] = report.skipped_suffixes.get(suffix, 0) + 1
                 continue
+            rel = os.path.normpath(os.path.join(rel_dir, filename))
+            if not include_tests and is_excluded_path(rel):
+                # Read for secrets only: a key committed in a test is still committed.
+                report.excluded_files += 1
+                report.sites.extend(_secrets_in(path, rel))
+                continue
             report.files_scanned += 1
             if path.suffix in CODE_SUFFIXES:
                 report.code_files_scanned += 1
             try:
-                sites, found, governed = scan_file(path, root_path)
+                sites, found, governed = scan_file(
+                    path, root_path, functions=functions[rel], runs=runs[rel]
+                )
             except RuntimeError as exc:
                 report.errors.append(str(exc))
                 continue
@@ -1356,6 +1767,8 @@ def scan(
     report.agent_edges.extend(hosted_edges)
     if not report.agents and llm_apps:
         report.agents = _llm_apps(report)
+    _add_agent_tools(report, functions)
+    _promote_agent_runs(report, runs)
     given = {name for a in report.agents for name in a.tools}
     report.unassigned_tools = sorted(
         {
@@ -1514,11 +1927,19 @@ def _detect_trifectas(report: ScanReport) -> None:
 
     Grouping, and why:
 
-    * **Tools in code are grouped by directory.** A Python package or a JS app
-      directory is the closest static stand-in for "one agent": tools declared in
-      `tools.py` are handed to the model in `agent.py` next to it far more often
-      than across packages. A group whose tools all sit in one file is labelled with
-      that file; otherwise with the directory.
+    * **Tools an agent is handed are grouped by agent system.** One model reads
+      everything its tools return, and agents joined by a handoff, a delegation or a
+      crew share what they read; so each connected set of agents (the agent graph's
+      components) is one group, holding every tool any of them is handed. Two scripts
+      side by side in `examples/basic/`, each with its own agent, are two groups:
+      grouping by directory once joined one script's `fetch_random_image` with
+      another's `send_email` into an "agent" nobody wrote.
+    * **Tools no agent is known to hold are grouped by directory**, the closest static
+      stand-in for "one agent" when the agent pass found none: tools declared in
+      `tools.py` are handed to the model in `agent.py` next to it far more often than
+      across packages. A file that defines an agent of its own is a script, though,
+      and its leftover tools stay in a group of their own. A group whose tools all sit
+      in one file is labelled with that file; otherwise with the directory.
     * **MCP servers are grouped by the config file that declares them.** Every
       server in one `.mcp.json` is loaded into the same client session, so they
       share one model — that is exactly the condition the trifecta needs. They are
@@ -1527,40 +1948,124 @@ def _detect_trifectas(report: ScanReport) -> None:
     """
     from agentfox.capabilities.discovery.exposure import Member, containment_hint, trifecta_sentence
 
-    code_groups: dict[str, list[Site]] = {}
-    mcp_groups: dict[str, list[Site]] = {}
-    for site in report.sites:
-        if site.kind == "tool" and site.caps is not None and site.name:
-            code_groups.setdefault(str(Path(site.file).parent), []).append(site)
-        elif site.kind == "mcp_server" and site.caps is not None and site.name:
-            mcp_groups.setdefault(site.file, []).append(site)
+    tools = [s for s in report.tools if s.caps is not None and s.name]
+    by_name: dict[str, list[Site]] = defaultdict(list)
+    for site in tools:
+        by_name[site.name or ""].append(site)
+
+    # Each agent's own tool sites: the definition nearest the agent when two files
+    # define a tool by the same name.
+    held: dict[str, list[Site]] = {}
+    for agent in report.agents:
+        here = Path(agent.file).parent
+        mine: list[Site] = []
+        for name in agent.tools:
+            if by_name.get(name):
+                mine.append(
+                    max(
+                        by_name[name],
+                        key=lambda s: (s.file == agent.file, _shared(Path(s.file).parent, here)),
+                    )
+                )
+        held[agent.key] = mine
+    claimed = {id(s) for sites in held.values() for s in sites}
+
+    # Connected agent systems, by the edges between agents.
+    parent = {a.key: a.key for a in report.agents}
+
+    def find(key: str) -> str:
+        while parent[key] != key:
+            parent[key] = parent[parent[key]]
+            key = parent[key]
+        return key
+
+    for edge in report.agent_edges:
+        if edge.parent in parent and edge.child in parent:
+            parent[find(edge.parent)] = find(edge.child)
+    systems: dict[str, list[AgentSpec]] = defaultdict(list)
+    for agent in report.agents:
+        systems[find(agent.key)].append(agent)
+
+    #: (label, file, sites, agents, mcp)
+    groups: list[tuple[str, str, list[Site], list[AgentSpec], bool]] = []
+    for members in systems.values():
+        sites = list({id(s): s for a in members for s in held[a.key]}.values())
+        if not sites:
+            continue
+        lead = members[0]
+        names = ", ".join(a.name for a in members[:3]) + (", …" if len(members) > 3 else "")
+        if len(members) > 1:
+            label = f"{names} ({lead.file})"
+        elif lead.named:
+            label = f"{lead.name} ({lead.file})"
+        else:
+            label = lead.file  # an agent the code never named is its file
+        groups.append((label, lead.file, sites, members, False))
+
+    agent_files = {a.file for a in report.agents}
+    loose: dict[str, list[Site]] = defaultdict(list)
+    for site in tools:
+        if id(site) in claimed:
+            continue
+        key = site.file if site.file in agent_files else str(Path(site.file).parent)
+        loose[key].append(site)
+    for key, sites in sorted(loose.items()):
+        files = sorted({s.file for s in sites})
+        if len(files) == 1:
+            label = files[0]
+        else:
+            label = "./" if key == "." else f"{key}/"
+        groups.append((label, label, sites, [], False))
+
+    servers: dict[str, list[Site]] = defaultdict(list)
+    for site in report.mcp_servers:
+        if site.caps is not None and site.name:
+            servers[site.file].append(site)
+    for config, sites in sorted(servers.items()):
+        groups.append((config, config, sites, [], True))
 
     found: list[Site] = []
-    for groups, mcp in ((code_groups, False), (mcp_groups, True)):
-        for directory, sites in sorted(groups.items()):
-            files = sorted({s.file for s in sites})
-            if mcp or len(files) == 1:
-                label = files[0]
-            else:
-                label = "./" if directory == "." else f"{directory}/"
-            members = [Member(s.name or "?", s.caps, s.file, s.line) for s in sites]
-            unknown = [s.name or "?" for s in sites if not s.caps.known]
-            result = trifecta_sentence(label, members, unknown=unknown)
-            if result is None:
-                continue
-            sentence, evidence = result
-            first = min(sites, key=lambda s: (s.file, s.line))
-            found.append(
-                Site(
-                    kind="lethal_trifecta",
-                    file=label,
-                    line=first.line,
-                    detail=sentence,
-                    provider="mcp" if mcp else None,
-                    severity="critical",
-                    capabilities=["private_data", "untrusted_input", "exfiltration"],
-                    evidence={**evidence, "fix": containment_hint(evidence, mcp=mcp)},
-                )
+    for label, file, sites, agents, mcp in groups:
+        members = [Member(s.name or "?", s.caps, s.file, s.line) for s in sites]
+        unknown = [s.name or "?" for s in sites if not s.caps.known]
+        result = trifecta_sentence(label, members, unknown=unknown)
+        if result is None:
+            continue
+        sentence, evidence = result
+        first = min(sites, key=lambda s: (s.file, s.line))
+        found.append(
+            Site(
+                kind="lethal_trifecta",
+                file=file,
+                line=first.line,
+                detail=sentence,
+                provider="mcp" if mcp else None,
+                severity="critical",
+                capabilities=["private_data", "untrusted_input", "exfiltration"],
+                evidence={
+                    **evidence,
+                    "fix": containment_hint(
+                        evidence, mcp=mcp, agent=_agent_slug(report, agents, evidence)
+                    ),
+                },
             )
+        )
     # First in the list as well as first in severity: this is the finding.
     report.sites[:0] = found
+
+
+def _agent_slug(
+    report: ScanReport, agents: list[AgentSpec], evidence: dict[str, list[str]]
+) -> str | None:
+    """The slug `agentfox up` registers the agent holding a trifecta's way out under:
+    the repository's name for a repository with one agent, else the agent's own name.
+    None when the group is not an agent the scan found."""
+    if not agents:
+        return None
+    channel = (evidence.get("exfiltration") or [""])[0]
+    holder = next((a for a in agents if channel in a.tools), agents[0])
+    if len(report.agents) == 1:
+        name = Path(report.root).name
+    else:
+        name = holder.name
+    return re.sub(r"[^a-z0-9-]+", "-", name.strip().lower()).strip("-") or None

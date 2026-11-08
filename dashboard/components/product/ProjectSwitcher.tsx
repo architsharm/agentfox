@@ -6,7 +6,22 @@ import { useRouter } from "next/navigation";
 import { MAP_PROJECT_COOKIE, NEW_PROJECT, PROJECT_COOKIE_AGE, defaultProject } from "@/lib/product/project";
 
 /** A project: one repository `agentfox init` mapped, and how many agents are in it. */
-export type ProjectOption = { project: string; agents: number; slugs?: string[]; members?: { status?: string }[] };
+export type ProjectOption = {
+  project: string;
+  agents: number;
+  slugs?: string[];
+  members?: { status?: string }[];
+  /** The root agent's name, and the repositories the members were mapped from. */
+  name?: string;
+  repos?: string[];
+};
+
+/** What a person calls a project: its repository when it came from one, else the root
+ *  agent's name. `project` stays the key every route takes. */
+export function projectLabel(p: ProjectOption): string {
+  if (p.repos?.length === 1) return p.repos[0];
+  return p.name || p.project;
+}
 
 /**
  * The project at the top of the sidebar. The dashboard is always in exactly one:
@@ -83,7 +98,7 @@ export function ProjectSwitcher({ projects, current }: { projects: ProjectOption
       <button ref={btn} type="button" className="project-switch-btn" aria-haspopup="listbox" aria-expanded={open} onClick={toggle}>
         <span className="project-switch-name">
           <small>{adding ? "not connected yet" : here ? agents(here.agents) : "no project yet"}</small>
-          {adding ? "New project" : (here?.project ?? "Set up a project")}
+          {adding ? "New project" : here ? projectLabel(here) : "Set up a project"}
         </span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
           <path d="m7 9 5-5 5 5M7 15l5 5 5-5" />
@@ -107,7 +122,7 @@ export function ProjectSwitcher({ projects, current }: { projects: ProjectOption
                 className={p.project === here?.project ? "on" : undefined}
                 onClick={() => go(p.project)}
               >
-                <span className="project-switch-opt">{p.project}</span>
+                <span className="project-switch-opt">{projectLabel(p)}</span>
                 <small>{agents(p.agents)}</small>
               </button>
             ))}
@@ -118,13 +133,13 @@ export function ProjectSwitcher({ projects, current }: { projects: ProjectOption
           </button>
           {here && !confirming && (
             <button type="button" onClick={() => setConfirming(true)} className="project-switch-foot project-switch-danger">
-              Disconnect {here.project}…
+              Disconnect {projectLabel(here)}…
             </button>
           )}
           {here && confirming && (
-            <div className="project-switch-confirm" role="alertdialog" aria-label={`Disconnect ${here.project}`}>
+            <div className="project-switch-confirm" role="alertdialog" aria-label={`Disconnect ${projectLabel(here)}`}>
               <p>
-                <b>Disconnect {here.project}?</b> Its {agents(here.agents)} leave the dashboard and lose their guardrails and tool
+                <b>Disconnect {projectLabel(here)}?</b> Its {agents(here.agents)} leave the dashboard and lose their guardrails and tool
                 permissions. Past traffic and issues are kept. Run <code>agentfox init</code> again to bring it back as new.
               </p>
               {error && <p className="project-switch-error" role="alert">{error}</p>}

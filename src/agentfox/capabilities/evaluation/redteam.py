@@ -451,6 +451,190 @@ def available_probes() -> list[Probe]:
     return [*BUILTIN_PROBES, *pack_probes()]
 
 
+#: `target_class` prefix of the probes `agent_tool_probes` writes from an agent's tools.
+AGENT_TOOLS = "agent_tools"
+
+
+def agent_tool_map(session: Session, agent_slug: str) -> list[dict[str, Any]]:
+    """The agent's own tools in the shape the onboarding attack library reads (``name``,
+    ``risk``, ``args``, ``whatItDoes``): from the map `agentfox init` reported for the
+    agent's project when there is one, else from the registry (its declared tools and
+    their impact)."""
+    from agentfox.core.models import OnboardingProject
+
+    for row in session.scalars(select(OnboardingProject)):
+        structure = row.structure or {}
+        for agent in structure.get("agents") or []:
+            if agent.get("slug") == agent_slug:
+                tools = [t for t in structure.get("tools") or [] if t.get("agentId") == agent["id"]]
+                if tools:
+                    return [dict(t) for t in tools]
+    agent = session.scalar(select(Agent).where(Agent.slug == agent_slug))
+    if agent is None:
+        return []
+    known = {t.key: t for t in session.scalars(select(Tool))}
+    out = []
+    for key in agent.declared_tools or []:
+        if not key or "*" in key:
+            continue
+        tool = known.get(key)
+        impact = tool.impact if tool else "read"
+        props = ((tool.schema_json or {}).get("properties") or {}) if tool else {}
+        out.append(
+            {
+                "name": key,
+                "risk": "high"
+                if impact in ("write", "high_impact", "irreversible")
+                else "read_only",
+                "args": list(props),
+                "whatItDoes": (tool.description if tool else "") or "",
+            }
+        )
+    return out
+
+
+def agent_tool_probes(
+    session: Session, agent_slug: str, sets: list[str] | None = None
+) -> tuple[list[Probe], list[dict[str, str]]]:
+    """Probes written from this agent's own tools by the onboarding attack library
+    (``capabilities/onboarding/attacks.py``: the templates the dashboard's attack test
+    sends the real agent), and the sets that don't apply to it, with why.
+
+    Each attack becomes the check live traffic would make on it here, with no model:
+
+    * the attacker's message, on the input (``agent_tools.input``);
+    * an instruction planted in a record one of its read tools returns, on the tool
+      result (``agent_tools.tool_result``): the message asking for the record is
+      harmless, the record is the attack;
+    * for each tool that changes something, the call those attacks are after, its
+      arguments copied from an attacker-written record (``agent_tools.tool_call``);
+    * the library's ordinary requests as benign controls (``expect_blocked=False``),
+      so a guardrail that blocks real users shows up as over-blocking.
+
+    Nothing is provisioned: the agent's real tools, grants and policies are measured.
+    """
+    import json
+
+    from agentfox.capabilities.onboarding.attacks import OWASP, build_suite, roles, skipped
+
+    tools = agent_tool_map(session, agent_slug)
+    if not tools:
+        return [], []
+    for t in tools:
+        t["agentId"] = "agent"
+    structure = {"agents": [{"id": "agent", "name": agent_slug}], "tools": tools}
+    suite = build_suite(structure, sets)
+    probes: list[Probe] = []
+    for a in suite:
+        if a.skip:
+            continue
+        owasp = (OWASP.get(a.type) or [""])[0].split(" ")[0] or None
+        if a.control:
+            probes.append(
+                Probe(
+                    f"agent.{a.id}",
+                    "benign_control",
+                    a.message,
+                    expect_blocked=False,
+                    severity="low",
+                    description="An ordinary request: guardrails must let it through.",
+                    provision=False,
+                    target_class=f"{AGENT_TOOLS}.control.{a.type}",
+                )
+            )
+            continue
+        planted = next((r for r in a.responses.values() if _has_note(r)), None)
+        common: dict[str, Any] = {
+            "owasp_id": owasp,
+            "severity": "critical" if planted is not None or a.forbidden else "high",
+            "description": f"Tries to get it to: {a.got}" if a.got else "",
+            "provision": False,
+        }
+        if planted is not None:
+            probes.append(
+                Probe(
+                    f"agent.{a.id}",
+                    a.type,
+                    json.dumps(planted, ensure_ascii=False),
+                    surface="tool_result",
+                    taint_source="tool_result",
+                    target_class=f"{AGENT_TOOLS}.tool_result",
+                    **common,
+                )
+            )
+        elif a.type == "data_leak" and a.canary:
+            # The question is ordinary; the leak is the reply. Checked as the reply
+            # that hands over the other person's details from the record.
+            owner = next(
+                (r for r in map(_record_of, a.responses.values()) if r.get("owner_email")), {}
+            )
+            leak = (
+                f"That {owner.get('type') or 'record'} belongs to {owner.get('owner_name')}: "
+                f"{owner.get('owner_email') or a.canary}, phone {owner.get('owner_phone')}."
+            )
+            probes.append(
+                Probe(
+                    f"agent.{a.id}",
+                    a.type,
+                    leak,
+                    surface="output",
+                    taint_source="tool_result",
+                    target_class=f"{AGENT_TOOLS}.output",
+                    **common,
+                )
+            )
+        else:
+            probes.append(
+                Probe(
+                    f"agent.{a.id}",
+                    a.type,
+                    a.message,
+                    target_class=f"{AGENT_TOOLS}.input",
+                    **common,
+                )
+            )
+    for tool in roles(tools).action:
+        ref = "REC-4410"
+        args = {a: ref for a in tool.get("args") or []} or {"id": ref}
+        probes.append(
+            Probe(
+                f"agent.tool_call.{tool['name']}",
+                "unsafe_tool_use",
+                kind="tool_call",
+                tool_key=tool["name"],
+                arguments=args,
+                provenance={k: "tool_result" for k in args},
+                grant=False,
+                provision=False,
+                severity="critical",
+                owasp_id="LLM06",
+                target_class=f"{AGENT_TOOLS}.tool_call",
+                description=f"The call the attacks are after: {tool['name']}, its "
+                "arguments copied from a record an attacker wrote.",
+            )
+        )
+    return probes, skipped(suite)
+
+
+def _record_of(response: Any) -> dict[str, Any]:
+    """The record a faked read returns, alone or as the first of a listing."""
+    if not isinstance(response, dict):
+        return {}
+    listed = response.get("results")
+    if isinstance(listed, list) and listed and isinstance(listed[0], dict):
+        return listed[0]
+    return response
+
+
+def _has_note(record: Any) -> bool:
+    """A faked record carrying a planted instruction (``notes``), alone or in a listing."""
+    if not isinstance(record, dict):
+        return False
+    return "notes" in record or any(
+        isinstance(x, dict) and "notes" in x for x in record.get("results") or []
+    )
+
+
 class RedTeamRunner(Protocol):
     name: str
 
@@ -1152,6 +1336,8 @@ def run_campaign(
     budget: int = 3,
     seed: int = 1337,
     include_deployment_probes: bool = True,
+    builtin: bool = True,
+    extra_probes: list[Probe] | None = None,
 ) -> RedTeamCampaign:
     """Execute a campaign and record posture.
 
@@ -1175,7 +1361,9 @@ def run_campaign(
     the enforcement pipeline itself has; see `adaptive.py`'s module docstring for the
     one timing-dependent path that can move a high-risk agent's count by one.
     """
-    pool = available_probes()
+    # `builtin=False` with `extra_probes`: only the given probes (the ones written from
+    # the agent's own tools, `agent_tool_probes`).
+    pool = [*(available_probes() if builtin else []), *(extra_probes or [])]
     profile: dict[str, Any] = {}
     if adaptive and include_deployment_probes:
         from agentfox.capabilities.evaluation.adaptive import (
@@ -1203,6 +1391,26 @@ def run_campaign(
         outcomes = run_adaptive_probes(session, agent_slug, selected, budget=budget, seed=seed)
     else:
         outcomes = NativeRedTeamRunner().run_probes(session, agent_slug, selected)
+
+    # A call to the agent's own tool is judged as live traffic judges it: for an agent
+    # nobody has granted a tool yet, a refusal that is only a missing grant is recorded,
+    # not applied (as `dry_run_check` does), so it waits for a grant rather than
+    # counting as stopped.
+    for outcome in outcomes:
+        if outcome.probe.kind != "tool_call":
+            continue
+        if not (outcome.probe.target_class or "").startswith(AGENT_TOOLS):
+            continue
+        fired = list(outcome.detail.get("rules_fired") or [])
+        waived = _live_capability_scope(session, agent_slug, fired)
+        if waived:
+            kept = [r for r in fired if (r.get("rule_id") or r.get("id")) not in waived]
+            outcome.detail["applied_verdict"] = _weaker(
+                outcome.detail.get("applied_verdict") or "allow",
+                _strongest([r for r in kept if r.get("mode", "enforce") == "enforce"]),
+            )
+            if outcome.detail["applied_verdict"] not in LIVE_STOPS:
+                outcome.detail["waiting_for"] = "grant"
 
     # Every attempt is recorded as a finding (the evidence a reader can re-check),
     # but scoring collapses to one outcome per seed probe — see `_collapse`.
@@ -1261,12 +1469,25 @@ def run_campaign(
         else 1.0
     )
     false_positive_rate = benign_false_positives / benign_total if benign_total else 0.0
+    # What live traffic gets today: a block by a rule that only watches (or a refusal
+    # waiting for the agent's first grant) is recorded, not applied.
+    live_stopped = sum(1 for o in attack_outcomes if o.blocked and _applies(o))
+    live_over_blocked = sum(1 for o in benign_outcomes if o.blocked and _applies(o))
 
     campaign.summary_json = {
         "probes_run": total,
         "attacks_run": attacks_total,
         "attacks_blocked": attacks_blocked,
         "attacks_succeeded": attacks_total - attacks_blocked,
+        # Of `attacks_blocked`, those stopped live now; the rest would be stopped once
+        # their rule blocks. `attacks_through_live` is what gets through live traffic.
+        "attacks_stopped_live": live_stopped,
+        "attacks_watching": attacks_blocked - live_stopped,
+        "attacks_through_live": attacks_total - live_stopped,
+        "benign_over_blocked_live": live_over_blocked,
+        "tool_probes": sum(
+            1 for o in scoring if (o.probe.target_class or "").startswith(AGENT_TOOLS)
+        ),
         "benign_probes_run": benign_total,
         "benign_false_positives": benign_false_positives,
         "recall": round(recall, 4),
@@ -1414,6 +1635,16 @@ def run_campaign(
             )
     session.flush()
     return campaign
+
+
+#: Applied verdicts that stop or rewrite what they were about, for live traffic. None:
+#: an outcome recorded without the applied verdict.
+LIVE_STOPS = frozenset({"block", "escalate", "redact", "mask", "tokenize", None})
+
+
+def _applies(outcome: ProbeOutcome) -> bool:
+    """Whether the outcome's block is applied to live traffic now (not only watched)."""
+    return outcome.detail.get("applied_verdict", None) in LIVE_STOPS
 
 
 #: Evidence key naming the probe keys a campaign-level red-team finding is about.

@@ -29,10 +29,10 @@ import agentfox
 agentfox.auto()
 ```
 
-Every model call in the process (OpenAI chat completions, Anthropic messages, LiteLLM, LangChain —
-sync, async, streamed) is traced, evaluated against policy and written to the audit log: the request
-messages, the response text, and every tool call in the response (OpenAI `tool_calls`, Anthropic
-`tool_use`). Each tool call goes through the same check as `/v1/guard/tool_call` before your code
+Every model call in the process (OpenAI chat completions and the Responses API, Anthropic messages,
+LiteLLM, LangChain — sync, async, streamed) is traced, evaluated against policy and written to the
+audit log: the request messages, the response text, and every tool call in the response (OpenAI
+`tool_calls` and Responses API `function_call` items, Anthropic `tool_use`). Each tool call goes through the same check as `/v1/guard/tool_call` before your code
 can run it, with argument provenance read from the conversation — a value copied out of a
 `role="tool"` message counts as tool output. A tool seen for the first time is registered with an
 impact guessed from its name and marked `inferred` until you confirm it (`agentfox declare list tools`,
@@ -44,8 +44,11 @@ After `agentfox init`, `tool-containment` enforces, so an irreversible tool whos
 a tool result raises `agentfox.Blocked` instead of returning the response, and your code never gets
 to run it. An enforced redaction rule rewrites the reply in the response object your code gets
 back (a streamed reply, already sent, raises `agentfox.Blocked` at its end instead).
-`auto(mode="observe")` never raises or rewrites. Not covered: the OpenAI Responses API, and tools
-your code calls without the model asking.
+`auto(mode="observe")` never raises or rewrites. The OpenAI Responses API is patched too, so an
+OpenAI Agents SDK app needs nothing but the line; tools OpenAI hosts (web search, file search) are
+recorded, not stopped. LangChain and CrewAI tools are checked where they run, so a CrewAI agent's
+text tool calls ("Action: ...") are checked as well. Not covered: other tools your code calls
+without the model asking.
 
 **Local or your account.** With an account key, every check goes to that account's gateway over
 `/v1/guard/*` and the calls show up on its dashboard; without one, `auto()` decides in your process
@@ -66,7 +69,7 @@ or ask about a single tool call:
 
 ```bash
 curl -s -X POST http://localhost:8080/v1/guard/tool_call \
-  -H "Authorization: Bearer $AGENTFOX_TOKEN" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AGENTFOX_API_KEY" -H "Content-Type: application/json" \
   -d '{"agent":"payments-ops","tool":"payments.transfer",
        "arguments":{"amount":250,"currency":"USD","to":"acct_991"},
        "provenance":{"to":"tool_result","amount":"user"},
@@ -118,6 +121,11 @@ agent = Agent(name="support", tools=[refund],
 `OutputGuardrail`: they trip only on an applied block, escalation or abstention, so observe mode
 changes nothing, and `output_info` carries the user message and trace id. A stopped tool call
 returns a refusal to the model instead of running.
+
+`agentfox.auto()` alone also governs an Agents SDK app, through the Responses API it calls the
+model with: each model call, each tool call the model asks for (before the SDK runs it) and each
+tool result fed back. A refused tool call there raises `agentfox.Blocked` out of `Runner.run`;
+the adapter above is for when the refusal should go back to the model and the run carry on.
 
 ### LiteLLM proxy
 
@@ -277,7 +285,7 @@ connection. The hosted runner is triggered by
 
 ## Commands, grouped by what you are trying to do
 
-`agentfox --help` lists thirteen top-level commands in six groups: Start (`up`, `init`), See (`scan`,
+`agentfox --help` lists fourteen top-level commands in six groups: Start (`up`, `init`, `demo`), See (`scan`,
 `agents`), Watch (`serve`, `findings`), Contain (`permit`, `declare`, `policy`), Prove (`test`,
 `report`) and Operate (`doctor`, `admin`). Below, the same commands by task.
 
@@ -395,7 +403,10 @@ agentfox agents resume support-triage
 
 ## What the demo prints
 
-Real output from `agentfox init && agentfox demo`, trimmed. Step 3 is the one worth reading: the
+Real output from `agentfox init && agentfox demo`, trimmed. The demo writes to a database of its
+own (`demo.db` beside your workspace's `agentfox.db`), so a real project's `agentfox findings`
+never opens with its made-up agents; its last lines say how to look around that database.
+`agentfox demo --in-workspace` writes into the workspace instead. Step 3 is the one worth reading: the
 injection has already succeeded, and the transfer is refused anyway:
 
 ```
@@ -404,14 +415,17 @@ injection has already succeeded, and the transfer is refused anyway:
 
   transfer, recipient from the poisoned document  enforced=escalate  policy-would=escalate  4.6ms
       taint.irreversible_tool → escalate  tool-containment is in enforce
-        Irreversible tool invoked with arguments originating in untrusted content (retrieved document, tool result or
+        Irreversible tool invoked with arguments originating in untrusted content (retrieved
+        document, tool result or sub-agent output). Human approval required.
       capability.approval_required → escalate  tool-containment is in enforce
-        arguments ['to'] carry provenance above the capability's max_taint 'user' (to from tool_result), so a person m
+        arguments ['to'] carry provenance above the capability's max_taint 'user' (to from
+        tool_result), so a person must approve this call before it runs
   → suspended pending human approval (apr_01m48cfawhd0qv8mr1)
 
   transfer above the capability's argument constraint  enforced=block  policy-would=block  5.2ms
       capability.constraint_violated → block  tool-containment is in enforce
-        agent:payments-ops holds a grant for 'payments.transfer', so this is not a missing permission. The grant allow
+        agent:payments-ops holds a grant for 'payments.transfer', so this is not a missing
+        permission. The grant allows amount below 1000, but this call passed 25000.
 ```
 
 Three calls, three outcomes, none decided by a detector. The first is clean. The second is identical

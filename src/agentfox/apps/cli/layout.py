@@ -1,4 +1,4 @@
-"""The visible shape of the CLI: thirteen verbs in six panels.
+"""The visible shape of the CLI: fourteen verbs in six panels.
 
 The commands themselves live in their own modules (``commands/``, ``onboarding.py``,
 ``controls_cli.py`` …), each registered on the app under a working name. This module
@@ -38,11 +38,12 @@ START, SEE, WATCH, CONTAIN, PROVE, OPERATE = (
     "Operate",
 )
 
-# The visible top level, in the order `--help` lists it. Keep this at thirteen or
+# The visible top level, in the order `--help` lists it. Keep this at fourteen or
 # fewer: tests/apps/cli/test_cli_layout.py enforces the ceiling.
 VISIBLE: list[tuple[str, str]] = [
     ("up", START),
     ("init", START),
+    ("demo", START),
     ("scan", SEE),
     ("agents", SEE),
     ("serve", WATCH),
@@ -56,9 +57,18 @@ VISIBLE: list[tuple[str, str]] = [
     ("admin", OPERATE),
 ]
 
-# Top-level commands that still work but are not listed: `demo` gave its place in
-# Start to `up`, and the README and every blog post still say `agentfox demo`.
-HIDDEN_TOP_LEVEL: frozenset[str] = frozenset({"demo"})
+# Top-level commands that still work but are not listed. `demo` is listed again: the
+# README's "look around first" names it, and a command the README sends people to has
+# to be findable in `--help`.
+HIDDEN_TOP_LEVEL: frozenset[str] = frozenset()
+
+#: The root `--help` epilog: where the coding-agent hooks live. `hooks run` is a hidden
+#: protocol endpoint, and someone who finds it in `.claude/settings.json` looks here.
+ROOT_EPILOG = (
+    "Coding-agent hooks (Claude Code, Codex): `agentfox up --with coding-agents`, or "
+    "`agentfox admin hooks install | status | daemon`. Installed hooks call "
+    "`agentfox hooks run` by absolute path."
+)
 
 # Protocol endpoints written into users' configs, kept at their original paths
 # (hidden): `agentfox hooks run` in coding-agent hook configs, `agentfox mcp serve` in
@@ -345,7 +355,16 @@ def apply_layout(app: typer.Typer) -> None:
     if summary_info is not None:
         _alias(report_app, summary_info, "summary")
     _alias(report_app, find("compliance", "status"), "status")
-    _alias(report_app, find("evidence", "export"), "evidence")
+    evidence_info = find("evidence", "export")
+    if evidence_info is not None:
+        _alias(report_app, evidence_info, "evidence")
+    else:
+        # Without Enterprise, `report evidence` fell through to the default command and
+        # failed with "unexpected extra argument (evidence)". Say what it is instead.
+        report_app.command(
+            "evidence",
+            context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+        )(_evidence_unavailable)
     _alias(report_app, find("audit", "verify"), "verify")
     for name in ("risk", "obligations", "frameworks", "board", "review-packet"):
         _alias(report_app, find("compliance", name), name)
@@ -411,6 +430,19 @@ def apply_layout(app: typer.Typer) -> None:
     for group, endpoint_app in endpoints:
         app.add_typer(endpoint_app, name=group, hidden=True)
     app.info.cls = RootGroup
+    app.info.epilog = ROOT_EPILOG
+
+
+def _evidence_unavailable(ctx: typer.Context) -> None:
+    """Build a signed evidence package an auditor can verify (AgentFox Enterprise)."""
+    typer.echo(
+        "Evidence packages are part of AgentFox Enterprise, which is not installed here. "
+        "They come with AgentFox Cloud (`agentfox up --target cloud`) and the self-hosted "
+        "Enterprise stack.\nThe tamper-evident audit chain they carry is in the open core: "
+        "`agentfox report verify`.",
+        err=True,
+    )
+    raise typer.Exit(2)
 
 
 def _declared_list(tools_list: CommandInfo, sources_list: CommandInfo):

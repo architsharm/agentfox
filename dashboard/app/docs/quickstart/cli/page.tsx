@@ -37,8 +37,17 @@ agentfox scan`}</Code>
           <Code>{`agentfox up`}</Code>
           <p>
             Every question has a recommended answer; press Enter to take it. <code>up</code> registers
-            your agents under the names your code uses and adds <code>agentfox.auto()</code> to your
-            Python entry point. It starts in watch mode, so nothing is blocked yet.
+            your agents under the names your code uses and adds{" "}
+            <code>agentfox.auto(&quot;&lt;agent&gt;&quot;)</code> to the file that starts one: a script
+            in <code>pyproject.toml</code>, the graph <code>langgraph.json</code> loads, or the file
+            that runs it (<code>Runner.run</code>, <code>crew.kickoff()</code>,{" "}
+            <code>graph.invoke()</code>), under <code>src/</code> too. It starts in watch mode, so
+            nothing is blocked yet.
+          </p>
+          <p>
+            In a Python agent&apos;s repository it changes nothing else by default: no coding-agent
+            hooks, no GitHub workflow, no background processes. Add them with{" "}
+            <code>--with coding-agents</code>, <code>--with ci</code> or <code>--with view</code>.
           </p>
         </Step>
 
@@ -54,6 +63,15 @@ agentfox scan`}</Code>
           <p>
             Each row is something a person should look at. &quot;Would have been&quot; means a rule
             caught it and watch mode let it through.
+          </p>
+        </Step>
+
+        <Step title="Attack-test it">
+          <Code>{`agentfox test redteam <agent>`}</Code>
+          <p>
+            Runs the attack probes against the agent&apos;s configuration: prompt injection, data
+            exfiltration, destructive actions. <code>up</code> prints the command with your
+            agent&apos;s name filled in.
           </p>
         </Step>
       </Steps>

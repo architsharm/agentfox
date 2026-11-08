@@ -215,7 +215,9 @@ def test_init_loads_controls_and_policies_in_their_declared_modes(isolated_db, t
 def test_init_ends_by_telling_you_what_to_do_next(isolated_db, tmp_path):
     result = runner.invoke(app, ["init", "--path", str(tmp_path)])
     assert "agentfox scan" in flat(result.output)
-    assert "agentfox.auto()" in flat(result.output)
+    assert "agentfox.auto(" in flat(result.output)
+    # The README's "look around first" is `init && demo`: init has to say so.
+    assert "agentfox demo" in flat(result.output)
 
 
 def test_check_highlights_the_ungoverned_calls(isolated_db, project):

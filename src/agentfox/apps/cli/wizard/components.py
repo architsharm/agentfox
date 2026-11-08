@@ -19,6 +19,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import webbrowser
@@ -85,6 +86,8 @@ class Run:
     env: dict[str, str] = field(default_factory=dict)
     outcomes: list[Outcome] = field(default_factory=list)
     next_steps: list[tuple[str, str]] = field(default_factory=list)
+    #: After the first look: review, tighten. Listed below `next_steps`.
+    later_steps: list[tuple[str, str]] = field(default_factory=list)
     running: list[str] = field(default_factory=list)
     _edition: Edition | None = field(default=None, repr=False)
 
@@ -123,6 +126,9 @@ class Component:
     recommended: Callable[[Run], bool]
     apply: Callable[[Run], None]
     ask: Callable[[Run], None] | None = None
+    #: An AgentFox Enterprise feature: left out of the list where it is not available,
+    #: rather than shown greyed out, so a first run is not a list of upsells.
+    enterprise: bool = False
 
 
 def _never(_run: Run) -> str:
@@ -184,17 +190,37 @@ def _started_here(run: Run, name: str) -> bool:
 
 
 def _ensure_local_api(run: Run) -> bool:
-    """This project's local API is up: one `up` started, or a new one. Something else
-    answering on the port (a self-hosted stack, another project's `agentfox serve`)
-    is not claimed, because its database is not this one."""
+    """The local API is up on this machine's database: one `up` started for this
+    project, one any `agentfox serve` of this installation runs on the same database
+    (another project's `up`, say: every project shares ~/.agentfox), or a new one.
+    Something else answering on the port is not claimed, and is described as what it
+    is known to be, never guessed at."""
     if _api_up(run.target.api_url):
         if _started_here(run, "serve"):
             return True
+        from agentfox.apps.cli.commands.root import running_serve
+        from agentfox.core.config import get_settings
+
+        record = running_serve()
+        port = int(run.target.api_url.rsplit(":", 1)[-1].split("/")[0] or 0)
+        if record and int(record.get("port") or 0) == port:
+            if record.get("database") == get_settings().database_url:
+                run.say(
+                    f"[dim]reusing the API already running at {run.target.api_url} "
+                    f"(pid {record['pid']}) — same database[/]"
+                )
+                return True
+            run.say(
+                f"[yellow]{run.target.api_url} is an `agentfox serve` (pid {record['pid']}) "
+                f"on another database[/] ({record.get('database')}). Stop it, or run `up` "
+                "with the same AGENTFOX_DATABASE_URL."
+            )
+            return False
         run.say(
-            f"[yellow]{run.target.api_url} already answers, but not with an API `up` "
-            "started for this project[/] — another `agentfox serve` or a self-hosted stack, "
-            "with its own database. Stop it, or connect to it: `agentfox up --target "
-            "self-hosted`."
+            f"[yellow]something else answers at {run.target.api_url}[/] — not an "
+            "`agentfox serve` this installation started (a self-hosted stack, or another "
+            "program on the port). Stop it, or connect to it: "
+            "`agentfox up --target self-hosted`."
         )
         return False
     if not run.start:
@@ -264,6 +290,18 @@ def _coding_note(run: Run) -> str:
     )
 
 
+def _coding_recommended(run: Run) -> bool:
+    """Pre-ticked only where governing the coding agent is clearly the point: its hooks
+    are already installed, or the repository is set up for a coding agent (its config
+    or instructions file) and holds no agent of its own. A Python agent's repository
+    that happens to have a CLAUDE.md is about the Python agent; hooks, tool grants and
+    a background daemon for Claude Code there are opt-in (`--with coding-agents`)."""
+    harnesses = run.ctx.harnesses
+    if any(h.hooked for h in harnesses):
+        return True
+    return any(h.in_repo for h in harnesses) and not run.ctx.is_agent_project
+
+
 def _coding_ask(run: Run) -> None:
     harnesses = run.ctx.harnesses
     present = [h.name for h in harnesses if h.present] or [harnesses[0].name]
@@ -271,7 +309,7 @@ def _coding_ask(run: Run) -> None:
         picked = run.prompter.multiselect(
             "Which coding agents?",
             [Choice(h.name, h.display, "in use here" if h.present else "") for h in harnesses],
-            run.ctx.saved.get("harnesses", present),
+            run.ctx.saved.get("harnesses") or present,
         )
     else:
         picked = present
@@ -279,6 +317,10 @@ def _coding_ask(run: Run) -> None:
     servers = _coding_mcp_servers(run, picked)
     if servers:
         shown = ", ".join(servers[:5]) + ("…" if len(servers) > 5 else "")
+        # Asked only once the coding agent is in (pre-ticked because this repository is
+        # set up for one, or picked by the person), so yes is the answer that keeps the
+        # agent they chose to govern working. Nothing is granted on a run that did not
+        # choose coding agents.
         run.answers["coding-mcp"] = run.prompter.confirm(
             f"Let the coding agent use the MCP servers it loads ({shown})? Without a grant "
             "every MCP tool call is refused; with one, each call is still checked",
@@ -357,9 +399,15 @@ def _coding_apply(run: Run) -> None:
     if not run.answers.get("coding-agents"):
         return
     from agentfox.hooks import ping
+    from agentfox.hooks.client import remove_stale_socket
 
-    if ping():
+    running = ping()
+    if running:
         run.say("[dim]hook daemon already running[/]")
+    elif remove_stale_socket():
+        run.say("[dim]removed the socket a stopped hook daemon left behind[/]")
+    if running:
+        pass
     elif run.start and _spawn(run, "hooks-daemon", ["admin", "hooks", "daemon"]):
         # Said only once it answers: a hook that runs before then reports the call
         # unchecked, so "started" on a daemon still loading would be untrue.
@@ -401,19 +449,11 @@ def _python_unavailable(run: Run) -> str:
     return ""
 
 
-#: Frameworks whose model calls go through a client auto() patches (LangChain chat
-#: models, LiteLLM, OpenAI chat completions), so an app built on one is governed by it
-#: even though the scan counts no direct model call. The OpenAI Agents SDK and ADK
-#: are not here: they call APIs auto() does not patch.
-_AUTO_FRAMEWORKS = frozenset({"LangGraph", "LangChain", "CrewAI", "AutoGen"})
-
-
 def _python_agents(run: Run) -> list[str]:
-    return [
-        a.name
-        for a in run.ctx.report.agents
-        if a.file.endswith(".py") and a.framework in _AUTO_FRAMEWORKS
-    ]
+    """The agents the scan found in Python, whatever they are built on (LangGraph,
+    CrewAI, the OpenAI Agents SDK …): auto() is the one line for a Python process, so
+    each is a reason to offer it, even with no direct model call in the code."""
+    return [a.name for a in run.ctx.report.agents if a.file.endswith(".py")]
 
 
 def _python_recommended(run: Run) -> bool:
@@ -421,20 +461,24 @@ def _python_recommended(run: Run) -> bool:
 
 
 def _python_note(run: Run) -> str:
-    n = run.ctx.python_calls
-    if n:
-        return f"{plural(n, 'model call')} in Python"
     agents = _python_agents(run)
     if agents:
         return f"{plural(len(agents), 'agent')} in Python ({', '.join(agents[:3])})"
-    return "no Python model calls found"
+    n = run.ctx.python_calls
+    if n:
+        return f"{plural(n, 'model call')} in Python"
+    return "no Python agent or model call found"
 
 
 def _python_ask(run: Run) -> None:
     candidates = run.ctx.entry_points
     choices = [
-        Choice(str(p.relative_to(run.ctx.root)), str(p.relative_to(run.ctx.root)))
-        for p in candidates
+        Choice(
+            str(p.relative_to(run.ctx.root)),
+            str(p.relative_to(run.ctx.root)),
+            "starts your agent" if i == 0 else "",
+        )
+        for i, p in enumerate(candidates)
     ]
     choices.append(Choice("none", "Don't edit my code", "show the line to add instead"))
     default = run.ctx.saved.get("entry_point") or (choices[0].key if candidates else "none")
@@ -472,6 +516,24 @@ def _python_apply(run: Run) -> None:
         run.done("python-app", f'{choice} now calls [bold]agentfox.auto("{run.agent}")[/]')
     else:
         run.done("python-app", f"{choice} already calls agentfox.auto()")
+        named = _auto_names(path.read_text(errors="ignore"))
+        if run.agent not in named:
+            # Unnamed, auto() names the agent after the script that runs (`main`,
+            # `drive`), not the agent registered here, and its calls land elsewhere.
+            run.say(
+                f"[yellow]it does not name {run.agent}[/] — make it "
+                f'[cyan]agentfox.auto("{run.agent}")[/] so its calls land on the agent '
+                "registered here"
+            )
+    run.answers["python-file"] = choice
+
+
+_AUTO_CALL = re.compile(r"""agentfox\.auto\(\s*(?:agent\s*=\s*)?(?:["']([^"']+)["'])?""")
+
+
+def _auto_names(text: str) -> set[str]:
+    """The agent names the `agentfox.auto(...)` calls in ``text`` pass ("" for none)."""
+    return {m.group(1) or "" for m in _AUTO_CALL.finditer(text)}
 
 
 # ---------------------------------------------------------------------------
@@ -507,7 +569,7 @@ def _gateway_apply(run: Run) -> None:
     if run.target.remote:
         run.say(
             "[dim]use your AgentFox API key as the client's API key "
-            "(OPENAI_API_KEY / ANTHROPIC_API_KEY = $AGENTFOX_API_TOKEN); the gateway holds "
+            "(OPENAI_API_KEY / ANTHROPIC_API_KEY = $AGENTFOX_API_KEY); the gateway holds "
             "the provider key[/]"
         )
 
@@ -537,10 +599,13 @@ def _inferred(run: Run) -> dict[str, str]:
 
 def _tools_ask(run: Run) -> None:
     impacts = _inferred(run)
+    # No by default: one question per tool is the longest part of a first run, and an
+    # inferred impact is cautious (an unknown verb reads as irreversible) and listed
+    # for review by `agentfox declare list` and `agentfox doctor`.
     if run.interactive and run.prompter.confirm(
         f"Review the impact of each of the {len(impacts)} tools now? (otherwise they are "
         "marked inferred, for `agentfox doctor` to flag)",
-        default=len(impacts) <= 8,
+        default=False,
     ):
         choices = [Choice(i, i) for i in IMPACTS]
         for name in list(impacts):
@@ -579,7 +644,7 @@ def _tools_apply(run: Run) -> None:
         + granted
         + (f" — {len(risky)} irreversible/high-impact: {', '.join(risky[:5])}" if risky else ""),
     )
-    run.next_steps.append(
+    run.later_steps.append(
         ("agentfox declare list", "check each inferred impact; fix with `agentfox declare tool`")
     )
 
@@ -685,12 +750,28 @@ jobs:
 
 
 def _ci_unavailable(run: Run) -> str:
+    top = run.ctx.git_root
+    if top is not None and top != run.ctx.root.resolve():
+        # GitHub reads workflows from the repository's top-level .github/ only; one
+        # written into a subfolder is a file that never runs.
+        try:
+            where = str(run.ctx.root.resolve().relative_to(top)) + "/"
+        except ValueError:
+            where = "this folder"
+        return (
+            f"{where} is inside the repository at {top}, and GitHub only runs workflows "
+            f"from its top-level .github/ — run `agentfox up --with ci` there"
+        )
     if run.ctx.github_repo or (run.ctx.root / ".github").is_dir():
         return ""
     return "not a GitHub repository (no origin on github.com, no .github/)"
 
 
 def _ci_apply(run: Run) -> None:
+    reason = _ci_unavailable(run)
+    if reason:  # --with ci in a subfolder: say why, write nothing
+        run.skipped("ci", f"GitHub Action not written: {reason}")
+        return
     path = run.ctx.root / WORKFLOW_PATH
     if path.exists():
         run.done("ci", f"{WORKFLOW_PATH} already exists, left alone")
@@ -781,13 +862,27 @@ def _compliance_apply(run: Run) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _view_note(run: Run) -> str:
+#: Said wherever a local install would otherwise be pointed at a dashboard it lacks.
+NO_LOCAL_DASHBOARD = (
+    "a pip install has no web dashboard: the local API serves JSON and its docs. For the "
+    "dashboard, sign in to AgentFox Cloud (`agentfox up --target cloud`) or self-host it "
+    "(`agentfox up --target self-hosted`)"
+)
+
+
+def _view_label_note(run: Run) -> str:
     if run.target.dashboard_url:
         return run.target.dashboard_url
     return (
-        f"local API and its docs at {run.target.api_url}/docs; "
-        "the web dashboard comes with self-hosted or Cloud"
+        f"starts the API in the background: JSON at {run.target.api_url}/api, docs at "
+        "/docs. No web dashboard on this machine; that is Cloud or self-hosted"
     )
+
+
+def _view_recommended(run: Run) -> bool:
+    # Locally there is no dashboard to open, and the API is one more background
+    # process; `agentfox findings` reads the same database without it.
+    return bool(run.target.dashboard_url) or run.target.remote
 
 
 def _view_apply(run: Run) -> None:
@@ -805,12 +900,16 @@ def _view_apply(run: Run) -> None:
             run.skipped("view", f"local API not started ({reason})")
             return
         url = f"{run.target.api_url}/docs"
-        run.done("view", f"API running at {run.target.api_url} — browse it at {url}")
-        run.next_steps.append(("agentfox findings", "what it found, worst first, in the terminal"))
+        run.done("view", f"API running at {run.target.api_url} — JSON, with its docs at {url}")
+        run.say(f"[dim]{NO_LOCAL_DASHBOARD}[/]")
     else:
         url = f"{url}/app"
         run.done("view", f"dashboard: {url}")
-    if run.interactive and run.prompter.confirm("Open it in your browser now?", default=True):
+    if (
+        run.interactive
+        and run.target.dashboard_url
+        and run.prompter.confirm("Open it in your browser now?", default=True)
+    ):
         webbrowser.open(url)
 
 
@@ -946,7 +1045,7 @@ CATALOGUE: tuple[Component, ...] = (
         "Coding agents — Claude Code / Codex hooks",
         _coding_note,
         _never,
-        lambda r: any(h.present for h in r.ctx.harnesses),
+        _coding_recommended,
         _coding_apply,
         _coding_ask,
     ),
@@ -995,7 +1094,7 @@ CATALOGUE: tuple[Component, ...] = (
     ),
     Component(
         "scan-report",
-        "This scan in the dashboard — draft agents and proposed policies",
+        "Record this scan — draft agents and proposed policies to review",
         _scan_note,
         _never,
         lambda r: True,
@@ -1006,7 +1105,7 @@ CATALOGUE: tuple[Component, ...] = (
         "Every pull request — the AgentFox GitHub Action",
         lambda r: "fails a PR that adds a lethal trifecta or a poisoned skill",
         _ci_unavailable,
-        lambda r: bool(r.ctx.github_repo),
+        lambda r: False,
         _ci_apply,
     ),
     Component(
@@ -1014,16 +1113,19 @@ CATALOGUE: tuple[Component, ...] = (
         "Keep watching — re-check this repo on every push",
         lambda r: r.ctx.github_repo or "",
         _monitor_unavailable,
-        lambda r: True,
+        # Opt-in: a first run sets up the agent, not a governance programme.
+        lambda r: False,
         _monitor_apply,
+        enterprise=True,
     ),
     Component(
         "compliance",
         "Compliance and evidence — EU AI Act, ISO 42001, SOC 2, NIST",
         lambda r: "posture, risk register, signed evidence packages",
         lambda r: _enterprise_reason(r, "compliance"),
-        lambda r: True,
+        lambda r: False,
         _compliance_apply,
+        enterprise=True,
     ),
     Component(
         "ai-client",
@@ -1035,10 +1137,10 @@ CATALOGUE: tuple[Component, ...] = (
     ),
     Component(
         "view",
-        "Open the dashboard",
-        _view_note,
+        "Open the dashboard, or start the local API",
+        _view_label_note,
         _never,
-        lambda r: True,
+        _view_recommended,
         _view_apply,
     ),
 )
@@ -1075,7 +1177,7 @@ def apply_mode(run: Run) -> None:
     for item in refused:
         run.failed("mode", item)
     if want == "observe":
-        run.next_steps.append(
+        run.later_steps.append(
             (
                 "agentfox policy enforce tool-containment",
                 "when the decisions look right: start blocking",

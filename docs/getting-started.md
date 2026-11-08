@@ -44,9 +44,18 @@ agentfox findings    # what it saw, and what it would have stopped
 ```
 
 `up` registers your agents under the names the code gives them (the names `scan` printed),
-declares the tools it found, and adds `agentfox.auto()` to Python apps, LangGraph, LangChain,
-CrewAI and AutoGen included. Every question has a recommended answer: `agentfox up --yes` takes
-them all, `agentfox up --dry-run` changes nothing. It starts in watch mode.
+declares the tools it found, and adds `agentfox.auto("<agent>")` to the file that starts one, for
+Python apps on LangGraph, LangChain, CrewAI, AutoGen and the OpenAI Agents SDK included: a script
+in `pyproject.toml`, the graph `langgraph.json` loads, or the file that runs the agent, under
+`src/` too. Every question has a recommended answer: `agentfox up --yes` takes them all,
+`agentfox up --dry-run` changes nothing. It starts in watch mode, and ends with what to run next:
+your app, `agentfox findings`, then `agentfox test redteam <agent>` to attack-test it.
+
+In a Python agent's repository `up` changes nothing else by default. Coding-agent hooks (with the
+MCP grants and the background hook daemon they need), the GitHub workflow and the local API are
+each one flag away: `--with coding-agents`, `--with ci`, `--with view`. In a repository set up for
+a coding agent with no agent of its own, the hooks are the default. The workflow is only ever
+written at the repository root, where GitHub reads it.
 
 ## One key everywhere
 
@@ -217,13 +226,19 @@ of where their code talks to a model.
 ## Step 4. Watch the whole thing work (5 minutes)
 
 ```bash
-agentfox demo
+agentfox demo --in-workspace
 ```
 
 Thirteen steps in about five seconds, against a seeded environment of three agents. The step to
 read closely is step 3, where the injection has already succeeded and the transfer is refused
 anyway. The product tour walks through the output:
 [what the demo prints](product-tour.md#what-the-demo-prints).
+
+Bare `agentfox demo` writes to a database of its own (`demo.db`, beside your workspace's
+`agentfox.db`), so a real project's `agentfox findings` never opens with the demo's made-up agents;
+its last lines say how to look around that database. This guide keeps using the demo's agents in
+the steps below, so it asks for `--in-workspace`, which writes them into your workspace database
+instead. Do that in a workspace you are only trying things in.
 
 The demo promotes the baseline policy to enforce at step 8 and restores it to observe when it
 finishes, so it leaves the database in the state it found it.

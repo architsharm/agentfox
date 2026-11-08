@@ -265,6 +265,16 @@ def _basic(session: Session, project: str) -> tuple[bool, bool]:
     )
 
 
+def _previous(phase_runs: list[OnboardingRun], seen: Any) -> dict[str, Any] | None:
+    """The latest finished run before ``phase_runs[-1]``, when that one is still going."""
+    if not phase_runs or phase_runs[-1].status not in runs.ACTIVE:
+        return None
+    if runs.stale_reason(phase_runs[-1], utcnow()):
+        return None  # shown as failed already: nothing is running
+    finished = [r for r in phase_runs[:-1] if r.status in runs.TERMINAL]
+    return _show(finished[-1], runner_seen=seen) if finished else None
+
+
 @router.get("/projects/{project}/tests")
 def project_tests(
     project: str, session: Session = Depends(db), user: User = Depends(current_user)
@@ -285,6 +295,10 @@ def project_tests(
         "project": project,
         "first": _show(before[-1], runner_seen=seen) if before else None,
         "withBasic": _show(after[-1], runner_seen=seen) if after else None,
+        # While a test runs again, the last one that finished, so its numbers stay on
+        # screen until the new ones are in.
+        "firstPrevious": _previous(before, seen),
+        "withBasicPrevious": _previous(after, seen),
         "basicOn": basic_on,
         "basicEnforcing": basic_enforcing,
         # This project when its own `agentfox init` has connected; else the project

@@ -20,6 +20,157 @@ the file it came from.
 ### Changed
 - The sign-in page is shorter: one line of explanation, one button per provider, the
   token sign-in folded away, and the terms and playground in a footer line.
+- **`agentfox up` adds `agentfox.auto()` where your agent starts, and only that.** It
+  finds the file that starts the agent under `src/` and in packages, from
+  `[project.scripts]` (and Poetry's), the graphs `langgraph.json` loads, a `__main__`
+  guard, or a line that runs an agent (`Runner.run`, `crew.kickoff()`,
+  `graph.invoke()` …), and adds the line there by default, for any Python agent the
+  scan finds (the OpenAI Agents SDK included). The name in the call is the agent the
+  entry point starts, the same one `up` registers; an existing unnamed `auto()` is
+  flagged.
+- **`up`'s defaults match the project.** In a Python agent's repository it no longer
+  writes Claude Code / Codex hooks, grants the coding agent its MCP servers' tools,
+  starts the hook daemon and the local API, or writes a GitHub workflow: those are
+  `--with coding-agents`, `--with view` and `--with ci`. They stay the default in a
+  repository set up for a coding agent with no agent of its own. The workflow is never
+  written below the repository root, where GitHub would not run it. Enterprise items
+  are left off the first run's list and named once at the end. No name question when
+  the code names the agent, no per-tool impact review unless asked for.
+- **`up` ends with what to do next:** run your app, `agentfox findings`, then
+  `agentfox test redteam <agent>`; reviewing impacts and enforcing come after.
+- **Hooks call `agentfox` by absolute path**, so a virtualenv install works from the
+  coding agent's environment. A hook installed under the bare name is recognised and
+  not added twice.
+- **`agentfox demo` runs in a database of its own** (`demo.db` beside your
+  workspace's), so a real project's `agentfox findings` and `agentfox declare list`
+  never show the demo's agents. It ends by saying how to look around that database;
+  `--in-workspace` keeps the old behaviour. Reason lines are wrapped, not cut mid-word,
+  and the closing lines name only commands this installation has.
+- **`AGENTFOX_URL` and `AGENTFOX_API_KEY` everywhere.** `agentfox up`, `scan --submit`,
+  the SDK and the LiteLLM guardrail read the names `auto()` and the README use; the
+  older `AGENTFOX_API_URL` / `AGENTFOX_API_TOKEN` are still accepted. `up` writes the
+  new names.
+- `agentfox demo` is listed in `--help` (Start), and `--help` says where the
+  coding-agent hooks live.
+- `scripts/quickscan.sh` installs the published release from PyPI; `--main` installs
+  the current git main.
+- An in-process app (`auto()`, the SDK) says a detector cannot run (the classifier
+  without `agentfox[classifiers]`) once per installation, not on every run;
+  `agentfox doctor` keeps listing it. The gateway and hook daemon still say it on every
+  start.
+
+### Fixed
+- `agentfox report evidence` without AgentFox Enterprise says what it is instead of
+  "unexpected extra argument (evidence)".
+- `agentfox doctor` printed `pip install 'agentfox'` for `agentfox[classifiers]`: Rich
+  read the extra as markup.
+- A second project's `up` called the API on :8080 "another serve with its own
+  database" when it was the same installation's on the same database; it is reused
+  now, and anything else on the port is described as what it is. `agentfox serve`
+  says it serves JSON and where the web dashboard is (Cloud or self-hosted).
+- A hook daemon killed with SIGTERM or SIGHUP removes its socket; a socket left by one
+  killed harder is detected and removed by `agentfox up` and `agentfox admin hooks status`.
+- `agentfox init`'s closing steps mention `agentfox demo` and `agentfox up`.
+- **`agentfox scan` counts model calls, not agent definitions.** `StateGraph(...)`,
+  `builder.compile()`, `Crew(...)` and any `re.compile` in a file importing LangGraph
+  were counted as ungoverned model calls (LangGraph's own repository read "2039 of 8
+  model call sites are ungoverned"). Definitions are now inventory only, and what runs
+  an agent counts as its model call: `Runner.run` / `run_sync` / `run_streamed`, a
+  crew's `kickoff`, `invoke` / `stream` on a compiled graph, a chat model reached
+  through `.bind_tools()` / `.with_structured_output()` / a chat-model constructor, a
+  run method on any variable holding an agent the scan found, and the Agents SDK's
+  `run(agent, ...)` in TypeScript. With agents but no such call, the scan says where to
+  look instead of "No model calls found".
+- **Tools handed over as plain functions are tools.** `TOOLS = [search]` passed to
+  `ToolNode` / `.bind_tools()` now shows under "can reach" and is declared by
+  `agentfox up`, so "1 tool" on the agent line and the reach count agree. A tool that
+  opens whatever path the model gives it (`file_path`, `path`, ...) reads private data.
+- **Agents without a model run the framework default.** An Agents SDK or CrewAI agent
+  that sets no model shows "default model" in the scan and "OpenAI Agents SDK default"
+  on the onboarding map, instead of "unknown model"; `AgentSpec.to_json()` gains
+  `default_model`. A model chosen at run time stays unknown, and nothing is declared.
+- **Trifectas are per agent system, and the fix names the agent.** Tools of separate
+  scripts in one directory are no longer joined into one agent; agents that hand off
+  to each other still share one finding. `permit grant` now names the agent's slug.
+  Wording: "user data", "contact info", "can read secrets".
+- **Tests, docs and benchmarks are left out of a scan by default** (read for secrets
+  only); `agentfox scan --include-tests` reports them. A repository of many examples
+  lists its agents by directory.
+- **`agentfox scan machine` false positives.** Skill docs no longer produce critical
+  `shell.destructive` for `rm -f ../out.docx` (a named relative file), for regexes or
+  prose between two code blocks (a closing fence used to open a new block), or
+  `skill_poisoning` for a skill that quotes "ignore previous instructions" to tell the
+  model to refuse it.
+- **The attack test no longer shows a pass it isn't.** On the map's panel, a test where
+  nothing ran (the agent couldn't be imported) says "Not run" with the reason and the
+  fix, instead of a green "0/26". Errored and not-run attacks are counted on each row,
+  a number is green only when everything in it ran and nothing got through, and the
+  ordinary requests the guardrails must let through are reported ("9 of 11 normal
+  requests answered, 2 blocked"). A failed "after" run keeps its partial numbers, a
+  re-run keeps the last finished numbers on screen until it is done
+  (`firstPrevious` / `withBasicPrevious` on `/api/onboarding/projects/{p}/tests`),
+  raw provider errors become sentences (`errorSummary`, `runner.explain_not_run`),
+  watching basic guardrails say "would stop N once blocking", and the panel no longer
+  polls a project that can't run. Testing → Attack tests counts blocks by watching
+  rules as getting through live traffic and shows "—", not a green 0, when no attack ran.
+- **`agentfox test redteam` attacks the agent through its own tools.** Probes are
+  written from the agent's declared tools by the attack library the dashboard's
+  attack test uses (the message, an instruction planted in a record it reads, the
+  reply that leaks someone's details, the call to its own action tool, and ordinary
+  requests as controls); the generic probes run with `--builtin` or when no tools are
+  known. The report separates blocked from "would block (watching)", summarises per
+  attack set, and ends with a one-line verdict ("N of M attacks get through today;
+  K once the watching rules block. X of Y normal requests answered").
+- **Agents SDK agents get the run context their code expects in the attack test.** An
+  agent built as `Agent[SomeContext]` (or whose tools and hand-off callbacks are
+  annotated `RunContextWrapper[SomeContext]`) is now run with a fresh default
+  `SomeContext()` per attack, as the app passes one to `Runner.run`. Before, its
+  callbacks failed on `context.context.<field>` and those attacks were reported as the
+  agent's errors (11 of 60 on OpenAI's customer-service example; now none). A context
+  that can't be built with no arguments is said as such: the attacks that fail on it
+  are "not run: needs a run context AgentFox couldn't build (<Type>)", not errors.
+- The OpenAI Agents SDK's own trace export is switched off while attack tests run,
+  so `[non-fatal] Tracing client error 400` lines no longer leak into `agentfox init`'s
+  progress output.
+- **`agentfox.auto()` governs the OpenAI Responses API, so an OpenAI Agents SDK app is
+  checked with the one line alone.** Found by a new-user walkthrough: the Agents SDK's
+  customer_service example with `auto()` added recorded 0 traces and 0 decisions,
+  because the SDK calls `client.responses.create`, which was not patched.
+  `Responses.create` and `.parse` are patched, sync and async, which covers
+  `responses.stream()`, `stream=True` and the `with_streaming_response` /
+  `with_raw_response` paths (a raw response is checked when it is parsed). The request's
+  `instructions` and `input` are the pre-flight messages; a `function_call_output` item is
+  a tool result (`tool_result` taint, checked on the tool-result surface); the `message`
+  items' text is the output, and an applied redaction is written back into it; each
+  `function_call` item (and a shell, computer or patch action the app executes) is a tool
+  call decided before the response is handed back. Tools OpenAI hosts (web search, file
+  search, code interpreter, hosted MCP) are recorded as tool spans, not authorised: they
+  ran before the response arrived. A request continuing a conversation held by OpenAI
+  (`previous_response_id`, `conversation`) records its provenance for earlier turns as
+  unknown. The banner no longer says the Responses API is not governed.
+- **CrewAI tool calls are checked.** A CrewAI agent writes its tool calls as text
+  ("Action: ... / Action Input: ..."), so no model-level patch saw one, and the tool's
+  result came back to the model marked `user` taint. `auto()` now patches CrewAI's tool
+  entry points where they run (`CrewStructuredTool.invoke` / `ainvoke` for a text call,
+  `BaseTool.run` / `arun` and `Tool.run` / `arun` for a native one), as it patches
+  LangChain's: each call goes through the tool-call check, a refusal is handed to the
+  agent as the tool's result (`tool_refusals="raise"` raises instead), and the result is
+  checked as `tool_result` before the agent reads it. Native tool calls in a CrewAI
+  agent's model replies are left to that check, so each call is decided once.
+- **Hand-offs are recorded as hand-offs, not as tools without a grant.** An Agents SDK
+  hand-off (`transfer_to_<agent>`) is a function call, so it was decided as a tool: on
+  a first run of the customer_service example it read as "tried to
+  transfer_to_seat_booking_agent without permission", and once the agent held any
+  grant it was refused. Hand-offs are now known from the SDK's own `Handoff` objects
+  (and its default hand-off description), LangGraph's handoff tools
+  (`metadata["__handoff_destination"]`) and CrewAI's delegation tools, and are
+  recorded as a `subagent` span and a `delegates_to` lineage edge with no tool
+  decision, grant or containment finding.
+- **Tools checked where they run (LangChain, CrewAI) get argument provenance.** Their
+  results are kept per conversation (bounded), so an argument copied out of an earlier
+  tool's result is `tool_result` taint and the containment and composition rules apply;
+  a model request that quotes a result inside another message (CrewAI's "Observation:")
+  has that message marked `tool_result`.
 
 ## [0.5.0] - 2026-11-07
 
