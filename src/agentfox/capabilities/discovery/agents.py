@@ -154,6 +154,12 @@ class AgentSpec:
     #: ``os.getenv`` default, a chat-model object's ``model=``), or None when the code
     #: does not say it in a way that can be read without running it. Never guessed.
     model: str | None = None
+    #: True when the constructor gives no model at all and the framework then picks
+    #: its own (an Agents SDK `Agent` without `model=`, a CrewAI `Agent` without
+    #: `llm=`). Different from :attr:`model` being None because the code chose one in
+    #: a way a static read cannot follow (`model=build_model(settings)`): there the
+    #: model is unknown; here it is the framework's default, whichever that is.
+    default_model: bool = False
     #: Where a local runner finds the live object: the importable module, the name in
     #: it, and how to use that name — ``object`` (the agent itself), ``factory`` (call
     #: it to get the agent) or ``function`` (it runs a function-calling loop).
@@ -176,6 +182,10 @@ class AgentSpec:
     #: model. ``evidence`` is the rule that matched.
     confidence: str = "high"
     evidence: str = ""
+    #: The variable the code holds the agent in, wherever it is assigned (a function's
+    #: local included): how the repo scan recognises `agent.run_sync(...)` as running
+    #: it. Local only, never serialised.
+    var: str | None = field(default=None, repr=False, compare=False)
 
     @property
     def top_dir(self) -> str:
@@ -192,6 +202,7 @@ class AgentSpec:
             "line": self.line,
             "tools": self.tools,
             "model": self.model,
+            "default_model": self.default_model,
             "ref": (
                 {"module": self.module, "attr": self.attr, "kind": self.attr_kind}
                 if self.module and self.attr
@@ -252,6 +263,8 @@ class _Raw:
     #: may be a module constant elsewhere (resolved by the repository-wide lookup).
     model: str | None = None
     model_var: str | None = None
+    #: See AgentSpec.default_model.
+    default_model: bool = False
     #: The module-level name a runner reaches this agent by, and how (see AgentSpec).
     attr: str | None = None
     attr_kind: str | None = None
@@ -387,6 +400,10 @@ _MODEL_KW = {
     "known_agent": ("model", "llm", "model_client", "chat_client", "service", "chat_generator"),
     "known_team": ("model", "llm"),
 }
+#: Roles whose framework runs a default model when the constructor names none: the
+#: Agents SDK (`OPENAI_DEFAULT_MODEL`, else its built-in default) and CrewAI
+#: (`OPENAI_MODEL_NAME`, else its built-in default).
+_DEFAULT_MODEL_ROLES = {"openai_agent", "crew_agent"}
 #: Where each framework takes the agent's instructions (its system prompt).
 _INSTRUCTION_KW = (
     "instructions",
@@ -672,6 +689,9 @@ _HINT = re.compile(
     r"|\b(?:streamText|generateText)\s*\("
     # `MODEL = os.getenv(...)` in a config module an agent file imports its model from.
     r"|(?m:^[A-Z0-9_]*MODEL[A-Z0-9_]*\s*(?::[^=\n]*)?=)"
+    # `TOOLS = [search]` in a module of plain functions that imports no framework: the
+    # list a graph's `ToolNode(TOOLS)` and `.bind_tools(TOOLS)` name.
+    r"|(?m:^[A-Z0-9_]*TOOLS?[A-Z0-9_]*\s*(?::[^=\n]*)?=)"
 )
 
 #: Functions that make a tool out of a function: `function_tool(fn)`, `tool(fn)`,
@@ -1196,6 +1216,13 @@ class _Extractor:
             if role == "voice_pipeline":
                 model_node = self._pipeline_model()
             raw.model, raw.model_var = self.model_of(model_node)
+            # No model keyword, no positional model, no `**kwargs` that could carry one:
+            # the framework's own default runs it.
+            raw.default_model = (
+                model_node is None
+                and role in _DEFAULT_MODEL_ROLES
+                and not any(kw.arg is None for kw in node.keywords)
+            )
             if cls is None and id(node) in self.module_calls:
                 raw.attr, raw.attr_kind = var, "object"
             elif id(node) in self.factory_calls:
@@ -2650,6 +2677,7 @@ class _Linker:
             raw = self.raws[i]
             module = self.file_of[i].module if i in self.file_of else None
             tools = self._tools_of(i)
+            model = self._model_of(i)
             specs.append(
                 AgentSpec(
                     key=keys[i],
@@ -2659,7 +2687,8 @@ class _Linker:
                     file=raw.file,
                     line=raw.line,
                     tools=tools,
-                    model=self._model_of(i),
+                    model=model,
+                    default_model=model is None and raw.default_model,
                     module=module if raw.attr else None,
                     attr=raw.attr if module else None,
                     attr_kind=raw.attr_kind if module and raw.attr else None,
@@ -2668,6 +2697,7 @@ class _Linker:
                     instructions=raw.instructions,
                     confidence=raw.confidence,
                     evidence=raw.evidence,
+                    var=raw.var,
                 )
             )
         seen: set[tuple[int, int]] = set()

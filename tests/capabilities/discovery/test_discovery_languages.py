@@ -193,9 +193,9 @@ def test_a_langgraph_agent_definition_is_found(repo):
 
     assert len(report.agent_definitions) == 1
     assert report.frameworks == ["LangGraph"]
-    # A graph is governable even with no direct provider call in the file — the same
-    # reason `_AGENT_DEFINITIONS` exists for CrewAI and LangGraph in Python.
-    assert report.ungoverned
+    # A definition calls nothing, so it is inventory, not a model call site: counting
+    # definitions into coverage printed "2039 of 8 model call sites" on LangGraph.
+    assert report.ungoverned == [] and report.model_calls == []
 
 
 def test_typescript_frameworks_are_named_even_when_no_call_is_found(repo):

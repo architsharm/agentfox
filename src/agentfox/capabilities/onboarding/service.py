@@ -676,7 +676,13 @@ def register_structure(
         tools = [t for t in structure.get("tools", []) if t.get("agentId") == agent["id"]]
         tool_names = [t["name"] for t in tools]
         models = [
-            m for m in (agent.get("models") or [agent.get("model")]) if m and m != "unknown model"
+            m
+            for m in (agent.get("models") or [agent.get("model")])
+            if m
+            and m != "unknown model"
+            # "OpenAI Agents SDK default" names no model id to declare; a model typed
+            # over it in the review step does.
+            and m != f"{agent.get('framework')} default"
         ]
         placed = place(agent["name"])
         if placed is None:

@@ -65,6 +65,38 @@ the file it came from.
 - A hook daemon killed with SIGTERM or SIGHUP removes its socket; a socket left by one
   killed harder is detected and removed by `agentfox up` and `agentfox admin hooks status`.
 - `agentfox init`'s closing steps mention `agentfox demo` and `agentfox up`.
+### Fixed
+
+- **`agentfox scan` counts model calls, not agent definitions.** `StateGraph(...)`,
+  `builder.compile()`, `Crew(...)` and any `re.compile` in a file importing LangGraph
+  were counted as ungoverned model calls (LangGraph's own repository read "2039 of 8
+  model call sites are ungoverned"). Definitions are now inventory only, and what runs
+  an agent counts as its model call: `Runner.run` / `run_sync` / `run_streamed`, a
+  crew's `kickoff`, `invoke` / `stream` on a compiled graph, a chat model reached
+  through `.bind_tools()` / `.with_structured_output()` / a chat-model constructor, a
+  run method on any variable holding an agent the scan found, and the Agents SDK's
+  `run(agent, ...)` in TypeScript. With agents but no such call, the scan says where to
+  look instead of "No model calls found".
+- **Tools handed over as plain functions are tools.** `TOOLS = [search]` passed to
+  `ToolNode` / `.bind_tools()` now shows under "can reach" and is declared by
+  `agentfox up`, so "1 tool" on the agent line and the reach count agree. A tool that
+  opens whatever path the model gives it (`file_path`, `path`, ...) reads private data.
+- **Agents without a model run the framework default.** An Agents SDK or CrewAI agent
+  that sets no model shows "default model" in the scan and "OpenAI Agents SDK default"
+  on the onboarding map, instead of "unknown model"; `AgentSpec.to_json()` gains
+  `default_model`. A model chosen at run time stays unknown, and nothing is declared.
+- **Trifectas are per agent system, and the fix names the agent.** Tools of separate
+  scripts in one directory are no longer joined into one agent; agents that hand off
+  to each other still share one finding. `permit grant` now names the agent's slug.
+  Wording: "user data", "contact info", "can read secrets".
+- **Tests, docs and benchmarks are left out of a scan by default** (read for secrets
+  only); `agentfox scan --include-tests` reports them. A repository of many examples
+  lists its agents by directory.
+- **`agentfox scan machine` false positives.** Skill docs no longer produce critical
+  `shell.destructive` for `rm -f ../out.docx` (a named relative file), for regexes or
+  prose between two code blocks (a closing fence used to open a new block), or
+  `skill_poisoning` for a skill that quotes "ignore previous instructions" to tell the
+  model to refuse it.
 
 ## [0.5.0] - 2026-11-07
 

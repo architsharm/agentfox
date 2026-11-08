@@ -338,6 +338,13 @@ def check(
         "contents) to a running control plane for a fuller dashboard report. "
         "Optional — omit both flags to be asked interactively.",
     ),
+    include_tests: bool = typer.Option(
+        False,
+        "--include-tests",
+        help="Also report what tests, docs and benchmarks define. Left out by default: "
+        "they build stand-in agents and tools nobody deploys (secrets are reported "
+        "everywhere either way).",
+    ),
 ) -> None:
     """Scan a repository and highlight everything worth governing.
 
@@ -351,7 +358,7 @@ def check(
     from agentfox.apps.cli.submit import maybe_submit_report
     from agentfox.capabilities.discovery.repo import scan
 
-    report = scan(path)
+    report = scan(path, include_tests=include_tests)
     if as_json:
         console.print_json(json.dumps(report.to_json(), default=str))
         if submit:
@@ -363,6 +370,11 @@ def check(
     # stop after reading it.
     print_trifectas(console, report)
     console.print(f"[bold]Scanned[/] {report.files_scanned} files in [dim]{report.root}[/]")
+    if report.excluded_files:
+        console.print(
+            f"  [dim]left out {plural(report.excluded_files, 'test, docs or benchmark file')}"
+            " (read for secrets only); --include-tests reports them[/]"
+        )
     if report.frameworks:
         console.print(f"  [dim]built on:[/] {', '.join(report.frameworks)}")
     # The agents by name, one line each, single-agent repos included: "we found your
@@ -372,25 +384,45 @@ def check(
 
     if report.agents:
         console.print(f"\n  [bold]Found {plural(len(report.agents), 'agent')}[/]")
-        for spec in report.agents[:8]:
-            detail = " · ".join(
-                part
-                for part in (
-                    spec.framework,
-                    spec.model,
-                    plural(len(spec.tools), "tool") if spec.tools else "",
+        groups = _agent_groups(report.agents)
+        if len(report.agents) > 8 and len(groups) > 3:
+            # A repository of many examples: one line per directory reads; the first
+            # eight agents of the first example do not.
+            for directory, specs in groups[:12]:
+                tools = len({t for a in specs for t in a.tools})
+                console.print(
+                    f"    [bold]{escape(directory)}/[/]  {plural(len(specs), 'agent')}"
+                    + (f" · {plural(tools, 'tool')}" if tools else "")
+                    + f"  [dim]{escape(', '.join(a.name for a in specs[:3]))}"
+                    + (", …" if len(specs) > 3 else "")
+                    + "[/]"
                 )
-                if part
-            )
-            console.print(
-                f"    [bold]{escape(spec.name)}[/]  {escape(detail)}  "
-                f"[dim]{escape(spec.file)}:{spec.line}[/]"
-            )
-        if len(report.agents) > 8:
-            more = len(report.agents) - 8
-            console.print(f"    [dim]... and {more} more; `--json` lists them all[/]")
-        for line in report.agent_summary()[1:]:
-            console.print(f"    [dim]{escape(line)}[/]")
+            if len(groups) > 12:
+                console.print(
+                    f"    [dim]... and {len(groups) - 12} more directories; "
+                    "`--json` lists every agent[/]"
+                )
+        else:
+            for spec in report.agents[:8]:
+                model = spec.model or ("default model" if spec.default_model else "")
+                detail = " · ".join(
+                    part
+                    for part in (
+                        spec.framework,
+                        model,
+                        plural(len(spec.tools), "tool") if spec.tools else "",
+                    )
+                    if part
+                )
+                console.print(
+                    f"    [bold]{escape(spec.name)}[/]  {escape(detail)}  "
+                    f"[dim]{escape(spec.file)}:{spec.line}[/]"
+                )
+            if len(report.agents) > 8:
+                more = len(report.agents) - 8
+                console.print(f"    [dim]... and {more} more; `--json` lists them all[/]")
+            for line in report.agent_summary()[1:]:
+                console.print(f"    [dim]{escape(line)}[/]")
 
     calls = len(report.model_calls)
     ungoverned = len(report.ungoverned)
@@ -483,6 +515,16 @@ def check(
 
     if fail_on_ungoverned and report.ungoverned:
         raise typer.Exit(1)
+
+
+def _agent_groups(agents: list[Any]) -> list[tuple[str, list[Any]]]:
+    """Agents by the directory that holds them, two levels deep (`examples/basic`), in
+    the order the scan found them."""
+    groups: dict[str, list[Any]] = {}
+    for spec in agents:
+        parts = Path(spec.file).parts[:-1]
+        groups.setdefault("/".join(parts[:2]) or ".", []).append(spec)
+    return list(groups.items())
 
 
 def _next_action(report: Any) -> str:
