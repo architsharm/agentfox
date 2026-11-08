@@ -11,6 +11,56 @@ the file it came from.
 
 ## [Unreleased]
 
+### Added
+- **Cmd-K searches agents, tools, rules and open issues**, not only page names, from one
+  `/api/search` index built from list endpoints the app already calls.
+- `AGENTFOX_TRUSTED_PROXY_HOPS`: the per-visitor limits on public routes (playground,
+  waitlist, showcase) read the visitor's address from `X-Forwarded-For` behind that many
+  trusted proxies. Defaults to 1 on Vercel, whose edge overwrites the header, and 0
+  elsewhere.
+- `GET /api/playground/world`: the playground's agents and prompts without a sandbox.
+
+### Changed
+- **The playground's "Watching" really watches.** The switch moves every content check in
+  the sandbox (the baseline, each sandbox agent's own layer, custom words and topics);
+  only the baseline used to flip, so an injection was blocked while "Watching". Watching,
+  it shows "would block" and the agent's reply; blocking, it is stopped. Limits on what an
+  agent may do apply in both.
+- Playground sandboxes are made on the first action, not on page load; the creation limit
+  is 30 an hour per visitor (was 8 per proxy address, which on Vercel meant everyone). Over
+  it, the answer says when to try again (`Retry-After`, `retry_after_seconds`) and the page
+  shows a notice instead of a "Start a new one" button that could not work.
+- Playground "why" is one sentence; regulation citations sit behind a disclosure. The
+  poisoned-document suggestion stays after the first message. On phones the agent picker
+  is one scrolling row and the chat follows it.
+- **Attack-test panel:** a headline total ("22 → 9 attacks got through · 12 of 12 normal
+  requests still answered"), a legend that says fewer is better, "N not run: why" under its
+  set, progress shown as progress on every run, and a note naming any set that got worse
+  (results of a live model vary between runs). The action is "Turn on basic guardrails and
+  test again", after a line saying the first run was watching only.
+- One count for the suite: the run carries `controlsTotal`, and the card and `agentfox
+  init` both say "117 attacks + 12 normal requests" (the CLI said 129 "attacks and checks").
+- **Testing → Attack tests:** "Attacks" counts attacks only (it counted the normal
+  requests too), so stopped + got through adds up; "Score" (recall, counting watching
+  catches as stopped) is now "Stopped live"; normal requests answered get their own column.
+- **Threat coverage** counts an attack caught only by a watching rule as got through, the
+  Testing page's definition, and no longer counts normal requests as attempts.
+- **Reports:** the "Projects" tile counted agents and is now "Agents"; High-risk agents
+  uses the same counts as Agents by risk; "Requests stopped" is "Requests held or blocked"
+  and says it is traffic. The Frameworks headline is the workspace's own figure, not an
+  average of framework rows, and Compliance uses the same definition (working of every
+  control that applies) instead of "of measured".
+- `/live` says how long ago the last run was and shows a "Behind schedule" notice past two
+  hours; it says "on an hourly schedule" rather than promising "every hour".
+- The CI tab never prints a loopback gateway address in a snippet meant for a CI runner; it
+  uses `$AGENTFOX_URL` and says so.
+
+### Fixed
+- `.github/workflows/monitors.yml`, which drives the hosted job runner and so `/live`, ran
+  as a green no-op since it was added: the cron secret was set and the URL was not. It now
+  falls back to a repository variable and, upstream, the hosted gateway, and fails when
+  half-configured.
+
 ## [0.5.1] - 2026-11-08
 
 The first-run release. A new user's own agent now gets the "wow": `agentfox up` adds
