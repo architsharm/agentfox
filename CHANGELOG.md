@@ -97,6 +97,39 @@ the file it came from.
   prose between two code blocks (a closing fence used to open a new block), or
   `skill_poisoning` for a skill that quotes "ignore previous instructions" to tell the
   model to refuse it.
+### Fixed
+
+- **The attack test no longer shows a pass it isn't.** On the map's panel, a test where
+  nothing ran (the agent couldn't be imported) says "Not run" with the reason and the
+  fix, instead of a green "0/26". Errored and not-run attacks are counted on each row,
+  a number is green only when everything in it ran and nothing got through, and the
+  ordinary requests the guardrails must let through are reported ("9 of 11 normal
+  requests answered, 2 blocked"). A failed "after" run keeps its partial numbers, a
+  re-run keeps the last finished numbers on screen until it is done
+  (`firstPrevious` / `withBasicPrevious` on `/api/onboarding/projects/{p}/tests`),
+  raw provider errors become sentences (`errorSummary`, `runner.explain_not_run`),
+  watching basic guardrails say "would stop N once blocking", and the panel no longer
+  polls a project that can't run. Testing → Attack tests counts blocks by watching
+  rules as getting through live traffic and shows "—", not a green 0, when no attack ran.
+- **`agentfox test redteam` attacks the agent through its own tools.** Probes are
+  written from the agent's declared tools by the attack library the dashboard's
+  attack test uses (the message, an instruction planted in a record it reads, the
+  reply that leaks someone's details, the call to its own action tool, and ordinary
+  requests as controls); the generic probes run with `--builtin` or when no tools are
+  known. The report separates blocked from "would block (watching)", summarises per
+  attack set, and ends with a one-line verdict ("N of M attacks get through today;
+  K once the watching rules block. X of Y normal requests answered").
+- **Agents SDK agents get the run context their code expects in the attack test.** An
+  agent built as `Agent[SomeContext]` (or whose tools and hand-off callbacks are
+  annotated `RunContextWrapper[SomeContext]`) is now run with a fresh default
+  `SomeContext()` per attack, as the app passes one to `Runner.run`. Before, its
+  callbacks failed on `context.context.<field>` and those attacks were reported as the
+  agent's errors (11 of 60 on OpenAI's customer-service example; now none). A context
+  that can't be built with no arguments is said as such: the attacks that fail on it
+  are "not run: needs a run context AgentFox couldn't build (<Type>)", not errors.
+- The OpenAI Agents SDK's own trace export is switched off while attack tests run,
+  so `[non-fatal] Tracing client error 400` lines no longer leak into `agentfox init`'s
+  progress output.
 
 ## [0.5.0] - 2026-11-07
 

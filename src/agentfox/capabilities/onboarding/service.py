@@ -224,10 +224,8 @@ def add_results(
         if run["results"] and not ran:
             # Nothing ran at all (the agent couldn't be loaded or driven): that is not
             # a pass, and must never read as "0 got through".
-            first = run["results"][0]
-            why = first.get("reason") or first.get("sentence") or "the agent couldn't be run"
             run["status"] = "failed"
-            run["error"] = f"No attack could be run: {why}"[:500]
+            run["error"] = nothing_ran(run["results"])[:500]
         # Most attacks never reached the model: the run says nothing about the agent.
         elif ran and len(errors) > len(ran) / 2:
             run["status"] = "failed"
@@ -238,6 +236,37 @@ def add_results(
             run["status"] = "done"
         run["finishedAt"] = now.isoformat()
     return run
+
+
+def nothing_ran(results: list[dict[str, Any]]) -> str:
+    """Why no attack ran, in a plain sentence with the fix: the reason most attacks
+    give, preferring an agent that couldn't be run over a set that doesn't apply."""
+    from agentfox.capabilities.onboarding.runner import explain_not_run
+
+    reasons = [str(r.get("reason") or r.get("sentence") or "") for r in results]
+    reasons = [r for r in reasons if r] or ["the agent couldn't be run"]
+    agent = [r for r in reasons if "it needs a tool" not in r] or reasons
+    why = max(set(agent), key=agent.count)
+    lead = "No attack could be run, so this test says nothing about your agent yet."
+    return f"{lead} {explain_not_run(why)}"
+
+
+def errored_summary(results: list[dict[str, Any]]) -> str | None:
+    """The most common error among attacks that errored, as a plain sentence."""
+    from agentfox.capabilities.onboarding.runner import GUARD_ERROR_PREFIX, explain_model_error
+
+    errors = [str(r["error"]) for r in results if r.get("error") and outcome_of(r) == "errored"]
+    if not errors:
+        return None
+    common = max(set(errors), key=errors.count)
+    if common.startswith(GUARD_ERROR_PREFIX):
+        # Some attacks only: the test went on, so it didn't "stop".
+        why = common[len(GUARD_ERROR_PREFIX) :].strip(" ()")
+        return (
+            f"AgentFox couldn't check them against your guardrails ({why}). Your agent and "
+            "its model are fine: check that the AgentFox server is reachable, then try again."
+        )
+    return explain_model_error(common)
 
 
 #: What a result may carry beyond its first fields: its precise ``outcome``, the
@@ -390,6 +419,10 @@ def to_test_run(run: dict[str, Any], *, runner_connected: bool, now: dt.datetime
         "waitingForRunner": run["status"] == "queued" and not runner_connected,
         "errors": sum(1 for r in attacks if r.get("error")),
         "error": run.get("error"),
+        # The attacks that ran to a verdict (not errored, not run), and why the ones that
+        # errored did, in a sentence: a raw provider error is never shown.
+        "ran": counted["gotThrough"] + counted["stopped"] + counted["resisted"],
+        "errorSummary": errored_summary(attacks),
     }
 
 

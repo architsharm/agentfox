@@ -9,6 +9,7 @@ import { TryIt } from "@/components/product/test/TryIt";
 import { AddPathToTests } from "@/components/product/test/AddPathToTests";
 import { publicApiBase } from "@/lib/env";
 import { NoticeToast } from "@/components/product/NoticeToast";
+import { campaignNumbers } from "@/lib/product/attackTest";
 
 export const metadata: Metadata = appPageMetadata("Test", "Check rules and agents before they meet real traffic.");
 export const dynamic = "force-dynamic";
@@ -189,8 +190,17 @@ async function Attacks({ agents }: { agents: any[] }) {
       {last && (
         <Grid cols={3}>
           <Kpi label="Attacks tried (last run)" value={num(last.summary?.probes_run || 0)} />
-          <Kpi label="Stopped" value={num(last.summary?.attacks_blocked || 0)} />
-          <Kpi label="Got through" value={num(last.summary?.attacks_succeeded || 0)} tone={last.summary?.attacks_succeeded ? "bad" : "ok"} />
+          <Kpi
+            label="Stopped"
+            value={num(campaignNumbers(last.summary).stopped)}
+            hint={campaignNumbers(last.summary).watching ? `${campaignNumbers(last.summary).watching} more would be stopped once watching rules block` : undefined}
+          />
+          <Kpi
+            label="Got through"
+            value={campaignNumbers(last.summary).ran ? num(campaignNumbers(last.summary).through) : "—"}
+            tone={campaignNumbers(last.summary).tone}
+            hint={campaignNumbers(last.summary).ran ? undefined : "No attack ran"}
+          />
         </Grid>
       )}
       <Card title="Past runs" flush>
@@ -211,10 +221,18 @@ async function Attacks({ agents }: { agents: any[] }) {
                 <tr key={c.id}>
                   <td>{c.name}</td>
                   <td className="num">{num(c.summary?.probes_run || 0)}</td>
-                  <td className="num">{num(c.summary?.attacks_blocked || 0)}</td>
-                  <td className="num">{c.summary?.attacks_succeeded ? <Pill tone="bad">{c.summary.attacks_succeeded}</Pill> : "0"}</td>
+                  <td className="num">{num(campaignNumbers(c.summary).stopped)}</td>
+                  <td className="num">
+                    {campaignNumbers(c.summary).through ? <Pill tone="bad">{campaignNumbers(c.summary).through}</Pill> : campaignNumbers(c.summary).ran ? "0" : "—"}
+                  </td>
                   <td className="tight">
-                    <Pill tone={(c.summary?.posture_score ?? 0) >= 0.9 ? "ok" : "warn"}>{Math.round((c.summary?.posture_score ?? 0) * 100)}%</Pill>
+                    {campaignNumbers(c.summary).ran ? (
+                      <Pill tone={(c.summary?.posture_score ?? 0) >= 0.9 && !campaignNumbers(c.summary).through ? "ok" : "warn"}>
+                        {Math.round((c.summary?.posture_score ?? 0) * 100)}%
+                      </Pill>
+                    ) : (
+                      <span className="muted">—</span>
+                    )}
                   </td>
                   <td className="tight muted">{ago(c.created_at)}</td>
                 </tr>
