@@ -10,6 +10,7 @@ import { days } from "@/ee/compliance";
 import { EnterpriseOnly } from "@/components/product/EnterpriseOnly";
 import { hasFeature } from "@/lib/product/edition";
 import { NoticeToast } from "@/components/product/NoticeToast";
+import { controlShare } from "@/lib/product/posture";
 
 /**
  * Behind the sign-in wall: `noindex`, plus a tab title that is not the fourth
@@ -89,6 +90,7 @@ export default async function Compliance({
   const counts = controls.posture.counts || {};
   const catalogLoaded = controls.controls.length > 0;
   const assessed = (counts.effective || 0) + (counts.degraded || 0) + (counts.failing || 0);
+  const share = controlShare(controls.posture);
 
   return (
     <>
@@ -123,8 +125,8 @@ export default async function Compliance({
           { n: counts.not_implemented || 0, label: "not implemented", tone: "idle" },
           { n: counts.not_computed || 0, label: "not computed", tone: "idle" },
         ]}
-        total={pct(controls.posture.effectiveness)}
-        unit={`of ${assessed} measured controls are working${counts.not_implemented ? `. ${counts.not_implemented} not set up yet, not counted.` : ""}`}
+        total={share.share == null ? "—" : `${Math.round(share.share * 100)}%`}
+        unit={`working: ${share.working} of the ${share.applies} controls that apply (${assessed} measured${share.notSetUp ? `, ${share.notSetUp} not set up yet` : ""}). The same figure as Reports → Summary.`}
       />
 
       {/* Sections of Compliance, under the Reports tab bar — chips rather than a
