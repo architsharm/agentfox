@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checksLabel, doesLabel, libraryPath, libraryState, simulationSummary, whereOn } from "./libraries";
+import { checksLabel, doesLabel, groupApplied, libraryPath, libraryState, simulationSummary, whereOn, wouldDoLabel } from "./libraries";
 
 describe("checksLabel", () => {
   it("names each surface once, in people's words", () => {
@@ -52,5 +52,36 @@ describe("whereOn / libraryPath", () => {
     expect(whereOn(2, 2)).toBe("all 2 agents");
     expect(libraryPath("payments/refunds")).toBe("payments/refunds");
     expect(libraryPath("a b")).toBe("a%20b");
+  });
+});
+
+describe("a watching library's rules", () => {
+  it("say what they would do", () => {
+    expect(wouldDoLabel("block")).toBe("Would block");
+    expect(wouldDoLabel("escalate")).toBe("Would ask a person");
+    expect(wouldDoLabel("tokenize")).toBe("Would hide");
+    expect(wouldDoLabel("allow")).toBe("Allow");
+  });
+});
+
+describe("applied rules by library", () => {
+  const row = (id: string, lib: string, mode = "enforce", effect = "block") => ({ id, effect, mode, libraries: [lib] });
+
+  it("groups by library, acting groups and rules first", () => {
+    const groups = groupApplied([
+      row("a", "EU AI Act", "observe"),
+      row("b", "Tool containment", "observe", "escalate"),
+      row("c", "Tool containment"),
+      row("d", "EU AI Act", "observe"),
+      row("e", "Baseline", "observe"),
+    ]);
+    expect(groups.map((g) => g.library)).toEqual(["Tool containment", "EU AI Act", "Baseline"]);
+    expect(groups[0].rules.map((r) => r.id)).toEqual(["c", "b"]);
+    expect(groups.map((g) => g.blocking)).toEqual([1, 0, 0]);
+  });
+
+  it("puts a rule with no library under Other rules, and an allow rule never counts as acting", () => {
+    const [g] = groupApplied([{ id: "x", effect: "allow", mode: "enforce", libraries: [] }]);
+    expect(g).toEqual({ library: "Other rules", rules: [{ id: "x", effect: "allow", mode: "enforce", libraries: [] }], blocking: 0 });
   });
 });

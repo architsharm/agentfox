@@ -92,7 +92,7 @@ export default async function Policies({ searchParams }: { searchParams: Promise
       />
       <Tabs items={TABS.map((t) => ({ ...t, href: href("/app/policies", { tab: t.key === "applied" ? undefined : t.key }) }))} active={tab} />
       <NoticeToast notice={sp.review_notice} error={sp.review_error} />
-      {tab === "applied" && <AppliedRules scope={sp.scope} agent={sp.agent} project={project} projectAgents={projectAgents} />}
+      {tab === "applied" && <AppliedRules scope={sp.scope} agent={sp.agent} mode={sp.mode} project={project} projectAgents={projectAgents} />}
       {tab === "libraries" && <Libraries project={project} agents={projectAgents} />}
       {tab === "rules" && <RulesTab sp={sp} />}
       {tab === "checks" && <Checks />}

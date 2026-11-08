@@ -15,6 +15,7 @@ export function PackMode({
   body,
   version,
   wouldStop,
+  secondary = false,
 }: {
   packKey: string;
   mode: string | null;
@@ -22,6 +23,8 @@ export function PackMode({
   version: number | null;
   /** Requests the pack's watching rules flagged in the window. */
   wouldStop?: number;
+  /** Not the card's main action: a plain button (Libraries keeps one primary per card). */
+  secondary?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -65,7 +68,7 @@ export function PackMode({
     <span className="k-act" style={{ flexWrap: "wrap" }}>
       {!sim ? (
         <button
-          className="k-btn-primary"
+          className={secondary ? "k-btn" : "k-btn-primary"}
           disabled={busy}
           onClick={() =>
             run(async () => {

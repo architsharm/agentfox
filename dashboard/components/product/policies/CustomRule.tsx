@@ -9,6 +9,8 @@ import type { Condition, ConditionSpec } from "@/components/product/policies/Con
 import { ValidatorFields, paramsFor, rawFrom, useValidators, validatorReady } from "@/components/product/policies/ValidatorFields";
 import type { ValidatorValue } from "@/components/product/policies/ValidatorFields";
 import { keptRuleFields, keptWithin } from "@/lib/product/resave";
+import { AgentScope, type ScopeAgent } from "@/components/product/policies/AgentScope";
+import { defaultRuleScope } from "@/lib/product/policyWords";
 
 type Kind = "terms" | "patterns" | "topic" | "allow" | "sequence" | "condition" | "validator";
 
@@ -82,8 +84,11 @@ export function CustomRule({
   startKind,
   startOperator,
   startSurfaces,
+  agents = [],
 }: {
   agent?: string;
+  /** The agents a new rule can be limited to (the project's); "Every agent" is always offered. */
+  agents?: ScopeAgent[];
   initial?: CustomRuleSpec;
   startKind?: Kind;
   /** For a value check: the comparison to start from, e.g. "not_in" for "only allow these values". */
@@ -94,6 +99,13 @@ export function CustomRule({
   const router = useRouter();
   // Editing an existing rule: same form, prefilled; its key, and so its id, stay put.
   const editing = Boolean(initial);
+  // Who it applies to: one agent (the current one by default) or every agent. A rule
+  // already on several agents keeps that list; this form changes one or all.
+  const several = (initial?.agents?.length || 0) > 1;
+  const choices = agent && !agents.some((a) => a.slug === agent) ? [{ slug: agent, name: agent }, ...agents] : agents;
+  const firstScope = initial ? initial.agents?.[0] || "" : defaultRuleScope(agent, choices);
+  const scopeChoices = firstScope && !choices.some((a) => a.slug === firstScope) ? [{ slug: firstScope, name: firstScope }, ...choices] : choices;
+  const [scope, setScope] = useState(firstScope);
   const [kind, setKind] = useState<Kind>(initial ? kindOf(initial) : KINDS.some((k) => k.key === startKind) ? startKind! : "terms");
   const [name, setName] = useState(initial?.name || "");
   const [entries, setEntries] = useState(
@@ -131,7 +143,7 @@ export function CustomRule({
     const base = {
       key: initial?.key || slug(name),
       name: name.trim() || "Untitled rule",
-      agents: initial ? initial.agents || [] : agent ? [agent] : [],
+      agents: several ? initial!.agents || [] : scope ? [scope] : [],
       // Not on the form; a save replaces the rule, so an edit carries them over.
       ...keptRuleFields(initial),
     };
@@ -262,6 +274,12 @@ export function CustomRule({
         ))}
       </div>
 
+      {!editing && (
+        <p className="k-help">
+          A saved rule starts by watching: it records what it would do and stops nothing until you start blocking with Your rules.
+        </p>
+      )}
+
       <div className="k-field">
         <label htmlFor="cr-name">Name</label>
         <input id="cr-name" className="k-input" maxLength={200} value={name} onChange={(e) => setName(e.target.value)} placeholder="Competitor mentions" />
@@ -367,6 +385,8 @@ export function CustomRule({
         </>
       )}
 
+      {!several && scopeChoices.length > 0 && <AgentScope agents={scopeChoices} value={scope} onChange={setScope} disabled={busy} id="cr-scope" />}
+
       {/* What it does and what the user is told live on the Tune tab once a rule exists. */}
       {!editing && (
         <>
@@ -427,7 +447,7 @@ export function CustomRule({
       <div>
         <div className="k-pills" style={{ gap: 8 }}>
           <button className="k-btn-primary" disabled={busy || !ready} onClick={save}>
-            {busy ? "Saving…" : editing ? "Save changes" : "Add rule"}
+            {busy ? "Saving…" : editing ? "Save changes" : "Save rule"}
           </button>
           {editing && (
             <button className="k-btn-danger" disabled={busy} onClick={remove}>

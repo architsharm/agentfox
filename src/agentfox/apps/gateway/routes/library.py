@@ -24,7 +24,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from agentfox.apps.gateway.deps import current_user, db, require
 from agentfox.capabilities.business import Ladder
@@ -252,7 +252,11 @@ def _policy_rule(doc: PolicyDocument, rule: Any) -> dict[str, Any]:
 
 def _rule_json(rule: BusinessRule) -> dict[str, Any]:
     definition = dict(rule.definition_json or {})
+    # The one agent it is scoped to, by slug; None: every agent.
+    session = object_session(rule)
+    agent = session.get(Agent, rule.agent_id) if session is not None and rule.agent_id else None
     return {
+        "agent": agent.slug if agent else None,
         "key": rule.key,
         "kind": rule.kind,
         "name": definition.get("name") or rule.key,

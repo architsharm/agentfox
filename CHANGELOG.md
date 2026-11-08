@@ -11,6 +11,31 @@ the file it came from.
 
 ## [Unreleased]
 
+### Changed
+- **Policy screens say things in words and finish what they start.** On an agent's map,
+  a rule change that would loosen a rule its library closes now explains why and offers
+  "Allow agents to loosen it, then apply"; clicking a rule on a rail opens its settings
+  in place (block/ask/watch/off for this agent, and its threshold, "Block if prompt
+  injection ≥ 0.7"); tool limits read "amount under $1,000 · currency USD only", not
+  JSON; node names wrap instead of cutting off, at a readable size.
+- A Block or Ask chosen in a library that only watches reads "Block · watching" and is
+  dimmed, on the map and in Tune; a watching rule's header says "Would block". Blocking
+  is red, holding amber; the Blocking mode pill is no longer green.
+- Tune: "Apply this change to" starts at the rule's current scope; "Checked by" marks
+  checks that are off, have no model downloaded or have no judge on.
+- A rule's History reads "Sensitivity changed from Medium to High"; a saved one-rule
+  change now notes the value before it (`(was {...})`).
+- Library drawers show rule titles, render the description's markdown behind
+  "Details", and move control IDs to a details row. The Checks tab names every check
+  (no `custom.validators`, no `JEV`, one "Prompt injection (judge)").
+- Approval limits and words rules: help text, "Preview" and "Save rule", a readable
+  name instead of the slug, no false "Not used" for the sentence that became the allow
+  band, and an "Applies to" picker (this agent by default, or every agent). Business
+  rules now return the agent they are scoped to (`agent`).
+- Libraries: one primary action per card, a "Recommended" tag on Basic guardrails, and
+  "Apply to the rest of <project>". Applied rules are grouped by library, with
+  Blocking / Watching filters.
+
 ## [0.5.1] - 2026-11-08
 
 The first-run release. A new user's own agent now gets the "wow": `agentfox up` adds

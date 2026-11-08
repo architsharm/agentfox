@@ -206,3 +206,14 @@ export function unusedSentences(ignored: string[], rules: { definition?: { bands
     return !(says && amounts.some((a) => allowUpTo.has(a)));
   });
 }
+
+// --- scope of a new rule ------------------------------------------------------------------
+
+/**
+ * The agent a new rule starts scoped to: the one the page was opened for, else the
+ * project's only agent, else "" (every agent).
+ */
+export function defaultRuleScope(agent: string | undefined, agents: { slug: string }[]): string {
+  if (agent) return agent;
+  return agents.length === 1 ? agents[0].slug : "";
+}

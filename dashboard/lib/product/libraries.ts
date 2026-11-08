@@ -71,6 +71,22 @@ export function doesLabel(effect: string): string {
   return DOES[effect] || effect;
 }
 
+const WOULD_DO: Record<string, string> = {
+  block: "Would block",
+  escalate: "Would ask a person",
+  verify: "Would run a check",
+  redact: "Would hide",
+  mask: "Would hide",
+  tokenize: "Would hide",
+  abstain: "Would refuse",
+  allow: "Allow",
+};
+
+/** What a rule would do while its library only watches: "Would block". */
+export function wouldDoLabel(effect: string): string {
+  return WOULD_DO[effect] || `Would ${doesLabel(effect).toLowerCase()}`;
+}
+
 /** "Would have blocked 3, asked a person about 1 and hidden data in 2 of 140 checks". */
 export function simulationSummary(r: SimulationResult): string {
   if (!r.replayed) return `No traffic in the last ${r.since_days} days to replay. Blocking is allowed now; nothing tells you yet what it will stop.`;
@@ -92,6 +108,32 @@ export function libraryState(st: LibraryStatus, total: number): { text: string; 
   if (st.agents.length) return { text: `On ${whereOn(st.agents.length, total)} · ${mode}${st.outdated ? " · update available" : ""}`, tone };
   if (st.workspace) return { text: `On every agent (workspace) · ${mode}`, tone };
   return { text: "Not applied", tone: "" };
+}
+
+/** Applied rules shown: all, only the ones that act now, or only the ones watching. */
+export type AppliedMode = "" | "enforce" | "observe";
+
+type AppliedRow = { id: string; effect: string; mode: string; libraries: string[] };
+
+/**
+ * Applied rules by the library they come from, so a page of fifty reads as a few
+ * sets: the groups that act first, then by size; inside one, acting rules first.
+ * A rule in several libraries is listed under the first.
+ */
+export function groupApplied<T extends AppliedRow>(rows: T[]): { library: string; rules: T[]; blocking: number }[] {
+  const acts = (r: AppliedRow) => r.mode !== "observe" && r.effect !== "allow";
+  const by = new Map<string, T[]>();
+  for (const r of rows) {
+    const lib = r.libraries[0] || "Other rules";
+    by.set(lib, [...(by.get(lib) || []), r]);
+  }
+  return Array.from(by.entries())
+    .map(([library, rules]) => ({
+      library,
+      rules: [...rules].sort((a, b) => Number(acts(b)) - Number(acts(a))),
+      blocking: rules.filter(acts).length,
+    }))
+    .sort((a, b) => Number(b.blocking > 0) - Number(a.blocking > 0) || b.rules.length - a.rules.length || a.library.localeCompare(b.library));
 }
 
 /** A library id as a URL path: `payments/refunds` keeps its slash. */
