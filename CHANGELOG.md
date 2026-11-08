@@ -11,7 +11,15 @@ the file it came from.
 
 ## [Unreleased]
 
+### Added
+- Sign in with Google or Microsoft, beside GitHub. Each new identity opens its own
+  workspace, keyed on the provider's subject (never the email), through the new
+  `POST /api/auth/oauth/provision`. A button shows only when the deployment sets that
+  provider's `*_CLIENT_ID` and `*_CLIENT_SECRET`.
+
 ### Changed
+- The sign-in page is shorter: one line of explanation, one button per provider, the
+  token sign-in folded away, and the terms and playground in a footer line.
 - **`agentfox up` adds `agentfox.auto()` where your agent starts, and only that.** It
   finds the file that starts the agent under `src/` and in packages, from
   `[project.scripts]` (and Poetry's), the graphs `langgraph.json` loads, a `__main__`

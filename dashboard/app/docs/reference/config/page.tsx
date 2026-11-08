@@ -998,6 +998,8 @@ const DASHBOARD: { name: string; def: string; what: string }[] = [
   { name: "AGENTFOX_SITE_URL", def: "the public site", what: "Canonical URL used in page metadata." },
   { name: "AGENTFOX_SELF_HOSTED", def: "unset", what: "Marks a self-hosted dashboard in the interface." },
   { name: "GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET", def: "unset", what: "The GitHub OAuth app for sign-in. Unset: sign-in is unavailable. A GitHub sign-in token lasts 365 days; signing out revokes it at the gateway." },
+  { name: "GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET", def: "unset", what: "A Google OAuth client for \"Continue with Google\". Callback: /api/auth/google/callback. The button shows only when both are set." },
+  { name: "MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET", def: "unset", what: "A Microsoft Entra app registration (any account type) for \"Continue with Microsoft\". Callback: /api/auth/microsoft/callback. The button shows only when both are set." },
 ];
 
 export default function Page() {

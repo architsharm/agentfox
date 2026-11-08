@@ -131,6 +131,8 @@ class ProvisionIn(BaseModel):
 #: retires. Past the cap the oldest are revoked: a browser that has not signed in for
 #: a while is signed out, and the set of live login tokens stays small and known.
 MAX_LOGIN_SESSIONS = 5
+#: Every sign-in provider's session tokens carry this name (it predates the others),
+#: so the cap counts a person's sessions across providers.
 LOGIN_TOKEN_NAME = "github-login"
 
 
@@ -146,7 +148,7 @@ def _require_service_secret(
         # an owner token with a value printed in the source.
         raise HTTPException(
             503,
-            "GitHub sign-in is disabled: AGENTFOX_SERVICE_AUTH_SECRET is still a "
+            "Sign-in is disabled: AGENTFOX_SERVICE_AUTH_SECRET is still a "
             "published value on a non-development deployment.",
         )
     if not x_agentfox_service_secret or not secrets.compare_digest(
@@ -190,16 +192,68 @@ def provision(payload: ProvisionIn, session: Session = Depends(db)) -> dict[str,
     it cannot be reused) and retires all but the newest ``MAX_LOGIN_SESSIONS`` login
     tokens; signing out revokes the session's own token (``POST /api/auth/logout``).
     """
+    return _provision_identity(
+        session,
+        external_id=payload.github_user_id,
+        email=payload.email or f"{payload.github_login}@users.noreply.github.com",
+        name=payload.name or payload.github_login,
+        provider="GitHub",
+    )
+
+
+#: Sign-in providers besides GitHub. Their identities are stored namespaced
+#: (``google:<sub>``), so a provider's subject can never collide with a GitHub
+#: numeric id or with another provider's subject.
+OAUTH_PROVIDERS = {"google": "Google", "microsoft": "Microsoft"}
+
+
+class OAuthProvisionIn(BaseModel):
+    provider: str
+    #: The provider's stable subject (``sub`` from its OpenID userinfo).
+    subject: str
+    email: str = ""
+    name: str = ""
+
+
+@router.post("/api/auth/oauth/provision", dependencies=[Depends(_require_service_secret)])
+def provision_oauth(payload: OAuthProvisionIn, session: Session = Depends(db)) -> dict[str, Any]:
+    """Find-or-create the user behind a Google or Microsoft sign-in, and mint a token.
+
+    The same trust model as :func:`provision`: the dashboard's callback completed the
+    provider's OAuth exchange and read the subject from the provider's own userinfo
+    endpoint with the token it was issued. The account is keyed on the provider's
+    subject, never the email, for the reason given there. One person who signs in
+    with GitHub and later with Google gets two workspaces: there is no account
+    linking yet, and linking on a matching email would be the takeover that rule
+    exists to prevent.
+    """
+    if payload.provider not in OAUTH_PROVIDERS:
+        raise HTTPException(400, f"unknown sign-in provider {payload.provider!r}")
+    if not payload.subject.strip() or len(payload.subject) > 180:
+        raise HTTPException(400, "the sign-in provider returned no usable subject")
+    return _provision_identity(
+        session,
+        external_id=f"{payload.provider}:{payload.subject}",
+        email=payload.email or f"{payload.provider}-{payload.subject}@users.noreply.agentfox",
+        name=payload.name or payload.email or OAUTH_PROVIDERS[payload.provider] + " user",
+        provider=OAUTH_PROVIDERS[payload.provider],
+    )
+
+
+def _provision_identity(
+    session: Session, *, external_id: str, email: str, name: str, provider: str
+) -> dict[str, Any]:
+    """Find-or-create the user with this external identity, then mint a login token."""
     is_new_org = False
-    with system_scope("resolving a GitHub identity for provisioning", routine=True):
-        user = session.scalar(select(User).where(User.external_id == payload.github_user_id))
+    with system_scope(f"resolving a {provider} identity for provisioning", routine=True):
+        user = session.scalar(select(User).where(User.external_id == external_id))
         if user is not None and not user.active:
             raise HTTPException(403, "this account has been deactivated")
         if user is None:
             user = User(
-                email=payload.email or f"{payload.github_login}@users.noreply.github.com",
-                name=payload.name or payload.github_login,
-                external_id=payload.github_user_id,
+                email=email,
+                name=name,
+                external_id=external_id,
                 org_id=ids.new_id("org"),
                 # First (and, absent an invite flow, only) member of a brand-new org —
                 # "developer" (the model default) can't issue credentials, bind policy
@@ -225,7 +279,7 @@ def provision(payload: ProvisionIn, session: Session = Depends(db)) -> dict[str,
         user,
         name=LOGIN_TOKEN_NAME,
         actor=user.email or user.id,
-        reason="GitHub OAuth sign-in",
+        reason=f"{provider} OAuth sign-in",
     )
     _retire_old_login_tokens(session, user, keep=token.id)
     session.commit()
