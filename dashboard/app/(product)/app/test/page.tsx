@@ -7,7 +7,7 @@ import { Card, Empty, Grid, Header, Kpi, Pill, Tabs, ago, href, num } from "@/co
 import { CodeSnippet } from "@/components/product/start/CodeSnippet";
 import { TryIt } from "@/components/product/test/TryIt";
 import { AddPathToTests } from "@/components/product/test/AddPathToTests";
-import { publicApiBase } from "@/lib/env";
+import { remoteApiBase } from "@/lib/env";
 import { NoticeToast } from "@/components/product/NoticeToast";
 import { campaignNumbers } from "@/lib/product/attackTest";
 
@@ -385,14 +385,21 @@ async function Reliability({ agents }: { agents: any[] }) {
 }
 
 function Ci() {
-  const gateway = publicApiBase();
+  // A CI runner cannot reach a gateway on this machine's loopback address.
+  const { url: gateway, isLoopback } = remoteApiBase();
   return (
     <>
       <Card title="Block a release when quality drops">
         <div className="k-form">
           <CodeSnippet label="Save the current run as the baseline" code="agentfox test baseline RUN_ID --label main" />
           <CodeSnippet label="In CI: fail on regression" code="agentfox test gate SUITE --baseline RUN_ID" />
-          <CodeSnippet label="Or over HTTP" code={`curl -s -X POST ${gateway}/api/eval/gate \\\n  -H "Authorization: Bearer $AGENTFOX_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"suite": "SUITE", "min_pass_rate": 0.9}'`} />
+          <CodeSnippet
+            label={
+              isLoopback
+                ? "Or over HTTP (set AGENTFOX_URL in CI to an address of your gateway the runner can reach)"
+                : "Or over HTTP"
+            }
+            code={`curl -s -X POST "${gateway}/api/eval/gate" \\\n  -H "Authorization: Bearer $AGENTFOX_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"suite": "SUITE", "min_pass_rate": 0.9}'`} />
         </div>
       </Card>
       <Card title="Attack test in CI">

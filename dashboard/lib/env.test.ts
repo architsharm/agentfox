@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { apiBase, env } from "./env";
+import { apiBase, env, remoteApiBase } from "./env";
 
-const NAMES = ["AGENTFOX_API_URL", "AGENTFOX_USER"];
+const NAMES = ["AGENTFOX_API_URL", "AGENTFOX_PUBLIC_API_URL", "AGENTFOX_USER"];
 
 describe("env", () => {
   const saved: Record<string, string | undefined> = {};
@@ -28,6 +28,15 @@ describe("env", () => {
 
   it("is undefined when unset", () => {
     expect(env("USER")).toBeUndefined();
+  });
+
+  it("never hands a CI snippet a loopback address", () => {
+    process.env.AGENTFOX_API_URL = "http://127.0.0.1:8102";
+    expect(remoteApiBase()).toEqual({ url: "$AGENTFOX_URL", isLoopback: true });
+    process.env.AGENTFOX_API_URL = "http://localhost:8080/";
+    expect(remoteApiBase().isLoopback).toBe(true);
+    process.env.AGENTFOX_API_URL = "https://guardrails-api.vercel.app/";
+    expect(remoteApiBase()).toEqual({ url: "https://guardrails-api.vercel.app", isLoopback: false });
   });
 
   it("treats an empty value as unset", () => {
