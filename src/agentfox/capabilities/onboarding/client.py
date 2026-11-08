@@ -60,7 +60,11 @@ class _Api:
         )
 
     def post(self, path: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
-        res = self.http.post(f"/api/onboarding{path}", json=body or {})
+        from agentfox.core.jsonable import jsonable
+
+        # A check carries what the agent handed its tool: a LangGraph tool's arguments
+        # hold the graph's messages (`HumanMessage`), which `json` refuses.
+        res = self.http.post(f"/api/onboarding{path}", json=jsonable(body or {}))
         if res.status_code >= 400:
             try:
                 detail = res.json().get("detail")

@@ -43,6 +43,7 @@ from sqlalchemy.orm import Session
 from agentfox.capabilities.detection import TaintTracker
 from agentfox.core.config import api_key_from_env
 from agentfox.core.db import session_scope
+from agentfox.core.jsonable import jsonable
 
 # One class each, shared with the LangGraph integration and under `AgentFoxError`:
 # see `agentfox.errors`.
@@ -575,7 +576,9 @@ class AgentFox:
 
         response = httpx.post(
             f"{self.base_url}/v1/chat/completions",
-            json={"model": kwargs.get("model", "default"), "messages": kwargs.get("messages", [])},
+            json=jsonable(
+                {"model": kwargs.get("model", "default"), "messages": kwargs.get("messages", [])}
+            ),
             headers=headers,
             timeout=self.timeout,
         )
@@ -671,7 +674,7 @@ class AgentFox:
     def _post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         response = httpx.post(
             f"{self.base_url}{path}",
-            json=payload,
+            json=jsonable(payload),
             headers=self._headers(),
             timeout=self.timeout,
         )
