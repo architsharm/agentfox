@@ -1,5 +1,7 @@
 # Jev against the detectors we actually ship
 
+*Part of the judgment-tier study: how the numbers were measured. How the tiers work, and what each may decide, is in [judgment-tiers.md](../../architecture/judgment-tiers.md).*
+
 Every earlier comparison was Jev against another model or against a trivial
 baseline. This one is against agentfox's own code, on **11,462 rows the repo had
 already sourced and labelled**, with the shipping detector's verdict recomputed

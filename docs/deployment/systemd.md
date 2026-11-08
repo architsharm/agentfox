@@ -70,7 +70,7 @@ ExecStart=%h/.local/opt/agentfox/venv/bin/agentfox admin db upgrade
 UMask=0077
 ```
 
-Create `~/.config/systemd/user/agentfox-jobs.service` and `~/.config/systemd/user/agentfox-jobs.timer` for scheduled work. Source monitors, drift, compliance and canary jobs only run when something runs the job runner, and each pass is safe to repeat:
+Create `~/.config/systemd/user/agentfox-jobs.service` and `~/.config/systemd/user/agentfox-jobs.timer` for scheduled work. Drift, canary, live-probe and retention jobs (and, with Enterprise, source monitors and compliance) only run when something runs the job runner, and each pass is safe to repeat:
 
 ```ini
 [Unit]
@@ -131,8 +131,8 @@ Add any of these to the environment file and restart the service:
 | --- | --- |
 | `AGENTFOX_ALLOW_EGRESS=true` | Lets findings leave the machine. The webhook and Slack settings below send nothing without it. |
 | `AGENTFOX_WEBHOOK_URL`, `AGENTFOX_WEBHOOK_SECRET` | POSTs each new finding at or above `AGENTFOX_WEBHOOK_MIN_SEVERITY` (default `high`) to your endpoint, signed with the secret. |
-| `AGENTFOX_SLACK_WEBHOOK_URL` | Posts monitor findings at or above `AGENTFOX_SLACK_MIN_SEVERITY` (default `medium`) to a Slack incoming webhook. |
-| `AGENTFOX_GITHUB_WEBHOOK_SECRET` | Verifies GitHub push deliveries, so a connected repository is re-scanned on push as well as on schedule. |
+| `AGENTFOX_SLACK_WEBHOOK_URL` | Posts monitor findings at or above `AGENTFOX_SLACK_MIN_SEVERITY` (default `medium`) to a Slack incoming webhook. Needs AgentFox Enterprise (`ee/`), which runs monitors and alerts. |
+| `AGENTFOX_GITHUB_WEBHOOK_SECRET` | Verifies GitHub push deliveries, so a monitored repository is re-scanned on push as well as on schedule (Enterprise monitoring). |
 | `AGENTFOX_LIVE_PROBES_ENABLED=false` | Stops scheduled probing of every opted-in deployed agent at once. |
 | `AGENTFOX_SHOWCASE_ENABLED` | Leave unset. It runs the public showcase behind the hosted `/live` page and is off by default. |
 

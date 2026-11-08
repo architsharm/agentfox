@@ -1,6 +1,6 @@
 # Appendix B — Control Catalog & Framework Mapping
 
-Companion to [PRD §13](PRD.md#13-compliance-framework-coverage) and requirement **P6-2**. This is the "map once, satisfy many" content set: 43 platform controls with 317 mappings across seven frameworks.
+Companion to the [PRD](PRD.md) (Pillar 6) and requirement **P6-2**. This is the "map once, satisfy many" content set: 44 platform controls with 324 mappings across seven frameworks. Computing control status, reviews and evidence packages are part of the Enterprise edition (`ee/`); the catalog itself ships in the open core.
 
 The machine-readable form is `src/agentfox/packs/compliance/catalog/controls/controls.yaml` (controls, framework list and mappings) plus `src/agentfox/packs/compliance/catalog/controls/obligations.yaml` (the dated obligation calendar), loaded by the compliance engine. **This document is the human-readable source of truth; the YAML carries the same content and must stay in sync.** `agentfox admin catalog validate` checks the YAML's internal consistency: unique keys, known frameworks and status rules, and that the obligation calendar parses.
 
@@ -30,11 +30,11 @@ The machine-readable form is `src/agentfox/packs/compliance/catalog/controls/con
 |---|---|---|---|
 | `NOM-DSC` | Discovery & Inventory | 1 | 5 |
 | `NOM-IAM` | Identity & Access | 2 | 8 |
-| `NOM-RTG` | Runtime Guardrails | 3 | 13 |
+| `NOM-RTG` | Runtime Guardrails | 3 | 14 |
 | `NOM-EVL` | Evaluation & Reliability | 4 | 6 |
 | `NOM-AUD` | Audit & Traceability | 5 | 5 |
 | `NOM-GOV` | Governance & Compliance | 6 | 6 |
-| | | | **43** |
+| | | | **44** |
 
 Each control declares: `id`, `title`, `objective`, `pillar`, `implemented_by` (the FR that delivers it), `evidence_sources` (what telemetry proves it operating — this is what makes **P6-4 continuous monitoring** possible rather than attestation-based), `status_rule` (how `effective`/`degraded`/`failing` is computed), and `mappings`.
 
@@ -82,6 +82,7 @@ Each control declares: `id`, `title`, `objective`, `pillar`, `implemented_by` (t
 | **NOM-RTG-11** | Each agent declares the systems of record it reaches, the time range they cover, the entity scopes in play and the question types it can answer. Questions outside that boundary are answered from a template without reaching the model, answers are verified against the boundary after generation, and refusals of answerable questions are detected as a counter-metric. | P7-1, P7-2, P7-3, P7-4, P7-6, P7-7 | `knowledge_boundaries`, `decisions` | Art. 13 — transparency, Art. 15 | MEASURE 2.3, MANAGE 4.1 | A.6 | CC7.2 | LLM09 Misinformation | — | — |
 | **NOM-RTG-12** | Retrieved sources carry a tier, an owner, a freshness SLA and a domain; answers are checked for fabricated citations, silent source conflicts and uncited material claims; and numeric, temporal and entity integrity is verified deterministically against the evidence actually retrieved. | P8-1, P8-2, P8-3, P8-4, P8-5 | `source_records`, `findings` | Art. 13 — transparency, Art. 15 | MEASURE 2.5, MEASURE 2.9 | A.6, A.7 | PI1.1, CC7.2 | LLM09 Misinformation, LLM08 Vector and Embedding Weaknesses | — | — |
 | **NOM-RTG-13** | Writes into an agent's long-term memory are validated by the detector pipeline before they commit and carry provenance/taint; unverified entries expire rather than persisting indefinitely. | P14-7 | `MemoryEntry`, `Decision[surface=memory_write]` | Art. 15 | MEASURE 2.7, MANAGE 2.2 | A.6, A.9 | CC6.6, CC6.7 | LLM04 Data and Model Poisoning | **T1 Memory Poisoning** | AML.T0020 Poison Training Data |
+| **NOM-RTG-14** | Any agent can be stopped at once, and the stop holds: a stopped agent is refused on every governed surface before any other check runs, the stop and the resume are on the audit chain, and no call is allowed after the stop. | PL-3 | `AgentControl`, `Decision`, `AuditEntry` (status rule `kill_switch`) | Art. 14 — human oversight | MANAGE 2.4, MANAGE 4.1 | A.9 | CC7.4 (incident response) | LLM06 Excessive Agency | T13 Rogue Agents | — |
 
 ### NOM-EVL — Evaluation & Reliability (Pillar 4)
 
@@ -102,7 +103,7 @@ Each control declares: `id`, `title`, `objective`, `pillar`, `implemented_by` (t
 | **NOM-AUD-02** | Governance-relevant events are recorded in an append-only, tamper-evident log whose integrity is independently verifiable. | P5-2 | `AuditEntry` chain + `AuditCheckpoint` | **Art. 12**, Art. 19 (log retention) | GOVERN 1.2, MEASURE 1.1 | A.6 | **CC7.2, CC7.3** | — | **T8 Repudiation & Untraceability** | — |
 | **NOM-AUD-03** | Evidence for a stated scope and period can be exported in a complete, verifiable package with chain-of-custody. | P5-3, P5-7 | `EvidencePackage` + manifest | **Art. 12, Art. 18 (documentation keeping)**, Art. 26 | GOVERN 1.2 | A.8 (information for interested parties) | CC7.3 | — | — | — |
 | **NOM-AUD-04** | Governance events are exported to the organisation's existing security monitoring without requiring adoption of a new system of record. | P5-4 | SIEM export receipts | Art. 26, **Art. 73 (serious incident reporting)** | MANAGE 4.1 | A.6 | **CC7.4 (incident response)** | — | — | — |
-| **NOM-AUD-05** | Recorded content is minimised and redacted at capture; retention is bounded per data class; legal hold suspends deletion. | P5-5 | `RetentionPolicy`, `LegalHold` | **Art. 10**, Art. 19; GDPR Art. 5(1)(c),(e) | MANAGE 2.2 | **A.7** | CC6.7, **C1.1 (confidentiality)** | LLM02 | — | — |
+| **NOM-AUD-05** | Recorded content is minimised and redacted at capture; retention is bounded per data class and enforced by deletion; legal hold suspends deletion. | P5-5 | `RetentionPolicy`, `RetentionRun` (the daily `retention.purge` job), `LegalHold` | **Art. 10**, Art. 19; GDPR Art. 5(1)(c),(e) | MANAGE 2.2 | **A.7** | CC6.7, **C1.1 (confidentiality)** | LLM02 | — | — |
 
 ### NOM-GOV — Governance & Compliance (Pillar 6)
 
@@ -121,10 +122,10 @@ Each control declares: `id`, `title`, `objective`, `pillar`, `implemented_by` (t
 
 | Framework | Controls touching it | Notable gaps we do **not** claim to cover |
 |---|---|---|
-| EU AI Act | 43 / 43 | Conformity assessment procedure (Art. 43), CE marking, notified-body interaction, registration in the EU database (Art. 49), FRIA *content* (Art. 27) — we provide inputs, not the filing. |
-| NIST AI RMF | 43 / 43 | Organisational culture/workforce items under GOVERN 3–4 that are not technical. |
-| ISO/IEC 42001 | 43 / 43 | Clauses 4–10 management-system requirements (context, leadership, competence, internal audit, management review) — an AIMS programme, not a platform. |
-| SOC 2 | 43 / 43 | The customer's own entity-level controls; our platform supports their evidence, it is not their SOC 2. |
+| EU AI Act | 44 / 44 | Conformity assessment procedure (Art. 43), CE marking, notified-body interaction, registration in the EU database (Art. 49), FRIA *content* (Art. 27) — we provide inputs, not the filing. |
+| NIST AI RMF | 44 / 44 | Organisational culture/workforce items under GOVERN 3–4 that are not technical. |
+| ISO/IEC 42001 | 44 / 44 | Clauses 4–10 management-system requirements (context, leadership, competence, internal audit, management review) — an AIMS programme, not a platform. |
+| SOC 2 | 44 / 44 | The customer's own entity-level controls; our platform supports their evidence, it is not their SOC 2. |
 | OWASP LLM Top 10 | 9 / 10 mapped, 2 of them partially | **LLM04** Data and Model Poisoning and **LLM08** Vector and Embedding Weaknesses are partially addressed (we detect downstream symptoms, we do not secure the training or embedding pipeline). **LLM07** System Prompt Leakage is not mapped to any control (see [compliance-crosswalk-review.md](compliance-crosswalk-review.md)). |
 | OWASP Agentic T1–T15 | 12 / 15 covered | T11 Unexpected RCE (sandbox concern — §2.3 non-goal), T14 Human Attacks on Multi-Agent, T15 Human Manipulation are out of scope. |
 | MITRE ATLAS | 8 techniques mapped | Training-time and model-supply-chain techniques are out of scope. |
@@ -157,15 +158,16 @@ Before any mapping in this appendix is presented to a customer's auditor:
 
 1. **Engineering** confirms the `implemented_by` FR actually ships and the `evidence_sources` actually populate.
 2. **Compliance counsel / qualified assessor** reviews the framework citation for accuracy and scope.
-3. The mapping is marked reviewed on its `framework_mappings` row (`review_status`, `reviewed_by`, `reviewed_at`; `capabilities/compliance/catalog.py:review_mapping`).
+3. The reviewer records an attestation of the control against the framework: an outcome (meets, partially, does not meet, not applicable), a note for anything short of meets, the computed evidence frozen on the row, a 90-day expiry, and a `compliance.control_reviewed` audit entry (`agentfox_ee/compliance/reviews.py`, Enterprise). The mapping row keeps `review_status`, `reviewed_by` and `reviewed_at`.
 4. Unreviewed mappings render in the UI with a `DRAFT — not reviewed` badge and ship inside evidence packages with a `DRAFT — UNVERIFIED / NOT LEGAL ADVICE` chip on each row, instead of being excluded, so reviewers can see exactly what is still outstanding.
 
-**As of 2026-10-06: all mappings are still `DRAFT`.** None have completed step 2.
+**As of 2026-11-07: all mappings are still `DRAFT`.** None have completed step 2. Open mapping work from the October cross-check is in [compliance-crosswalk-review.md](compliance-crosswalk-review.md).
 
 ### Changelog
 
 | Date | Version | Change |
 |---|---|---|
+| 2026-10-09 | 0.1.0-draft | Added NOM-RTG-14 (kill switch and quarantine, PL-3) with a `kill_switch` status rule. NOM-AUD-05 now needs a recorded retention run as well as a policy, since the `retention.purge` job deletes by `retain_days`. A review became an attestation with an outcome and an expiry. 44 controls, 324 mappings. |
 | 2026-10-06 | 0.1.0-draft | No new controls. Evidence sources updated where the mechanism changed: approvals redeemed once and refused while an agent is stopped (NOM-IAM-03), token revocation and the startup secret check (NOM-IAM-04), simulation required to promote to enforce (NOM-IAM-06), injection detection on tool arguments and live probes (NOM-RTG-01, NOM-EVL-04), unloadable policy versions under the fail mode (NOM-RTG-06), errored eval cases fail the gate (NOM-EVL-01), scheduled monitors of connected sources (NOM-DSC-05). Family and coverage counts corrected to 43 controls. |
 | 2026-08-29 | 0.1.0-draft | Evidence packages now include draft mappings (chip-labeled `DRAFT — UNVERIFIED / NOT LEGAL ADVICE`) instead of excluding them, so reviewers can see exactly what is outstanding. |
 | 2026-08-17 | 0.1.0-draft | Initial catalog — 36 controls, 7 frameworks. All mappings DRAFT. |

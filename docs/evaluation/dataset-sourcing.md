@@ -2,6 +2,8 @@
 
 **Internal planning document, not a benchmark report.** This is the research that precedes actually building `benchmarks/`-style harnesses for the capabilities beyond prompt-injection detection. It follows the same discipline as [`benchmarks/generalization/data/README.md`](../../benchmarks/generalization/data/README.md): every dataset is named, its license verified directly (not inferred from a badge — several candidates below looked clean until the actual `LICENSE` file was fetched), and rejected candidates are recorded with reasons so they aren't re-litigated next time this list is revisited. Discipline: **MIT / Apache-2.0 / CC-BY-permissive only.** CC-BY-NC, CC-BY-SA, ODC-BY, no-license, and "MIT plus a restrictive field-of-use clause" are all treated as unusable, consistent with the exclusions already documented for the injection-detection generalization set (TensorTrust, BIPIA, wildjailbreak, BeaverTails).
 
+**Status (2026-11-07):** the harnesses this research led to are built; their results are indexed in [`benchmarks/README.md`](../../benchmarks/README.md). The candidate lists below are the research record as written.
+
 Five capability areas researched in parallel, each required to surface at least three independently-sourced candidates. All five came back with real, usable options — and, just as valuable, real gaps: several failure modes have **no** public dataset that matches AgentFox's specific mechanics, and would need a synthetic layer built on top of a real corpus rather than a drop-in benchmark. That's recorded per section below, not glossed over.
 
 ---
@@ -102,7 +104,7 @@ Detection: `src/agentfox/capabilities/grounding/provenance.py` — source tierin
 
 ## Suggested build order
 
-Matches the commercial-priority reasoning already in `docs/design/gap-analysis.md` (destructive actions and entitlement matter more in an enterprise deployment than injection detection alone), adjusted for what's actually ready to build against:
+Matches the commercial-priority reasoning in the August 2026 gap analysis (now in git history; the current register is `docs/design/gap-analysis.md`) (destructive actions and entitlement matter more in an enterprise deployment than injection detection alone), adjusted for what's actually ready to build against:
 
 1. **F3.8 via InjecAgent** — closes the one confirmed gap in the taxonomy, dataset is ready now.
 2. **F3 broadly via `gretelai/synthetic_text_to_sql` + AgentDojo** — highest commercial priority, datasets ready now, mirrors the existing SQL-parsing test discipline.

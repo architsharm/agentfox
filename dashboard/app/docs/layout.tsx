@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { DocsKicker, DocsPager } from "@/components/docs/pager";
 import { DocsSidebar } from "@/components/docs/sidebar";
 import { MarketingNav } from "@/components/marketing/nav";
 import { Footer } from "@/components/marketing/sections";
@@ -10,7 +11,11 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
       <MarketingNav />
       <div className="docs-shell">
         <DocsSidebar />
-        <div className="docs-main">{children}</div>
+        <div className="docs-main">
+          <DocsKicker />
+          {children}
+          <DocsPager />
+        </div>
       </div>
       <Footer />
     </div>

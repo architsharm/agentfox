@@ -115,7 +115,7 @@ export const BLOG_POSTS: BlogPost[] = [
     },
     pillars: [
       { href: "/docs/quickstart", label: "Quickstart", why: "From pip install to a governed agent." },
-      { href: "/docs/guides/scan-a-repo", label: "Scan a repo", why: "See every agent, tool and MCP server your code defines." },
+      { href: "/docs/discover", label: "Scan a repo", why: "See every agent, tool and MCP server your code defines." },
       { href: "/pricing", label: "Editions", why: "What is open core and what is Enterprise." },
     ],
   },
@@ -169,8 +169,7 @@ export const BLOG_POSTS: BlogPost[] = [
       height: 900,
     },
     pillars: [
-      { href: "/docs/guides/mcp", label: "MCP guide", why: "Put AgentFox in front of an MCP server." },
-      { href: "/docs/guides/mcp", label: "MCP servers guide", why: "Scan configs, pin tools, govern calls." },
+      { href: "/docs/connect/mcp", label: "MCP servers guide", why: "Scan configs, pin tools, govern calls." },
       { href: "/live", label: "Live", why: "Our own agent, attacked hourly, results unedited." },
       { href: "/docs/limits", label: "Limits", why: "What AgentFox does not catch yet." },
     ],
@@ -199,8 +198,7 @@ export const BLOG_POSTS: BlogPost[] = [
     },
     pillars: [
       { href: "/benchmark", label: "Benchmarks", why: "The containment and AgentDojo results, losses included." },
-      { href: "/docs/guides/contain-tool-calls", label: "Contain tool calls", why: "Write down what each agent may do." },
-      { href: "/docs/guides/contain-tool-calls", label: "Contain tool calls", why: "Declarations, grants and provenance, with code." },
+      { href: "/docs/govern", label: "Contain tool calls", why: "Declarations, grants and provenance, with code." },
     ],
   },
   {
@@ -226,8 +224,7 @@ export const BLOG_POSTS: BlogPost[] = [
       height: 900,
     },
     pillars: [
-      { href: "/docs/guides/coding-agents", label: "Coding agents guide", why: "Set up the hooks for Claude Code." },
-      { href: "/docs/guides/coding-agents", label: "Coding agents guide", why: "Install the hooks and the coding-agent pack." },
+      { href: "/docs/connect/coding-agents", label: "Coding agents guide", why: "Install the hooks and the coding-agent pack." },
       { href: "/docs/concepts", label: "Concepts", why: "The same policy at the hook, gateway and SDK." },
     ],
   },
@@ -254,8 +251,9 @@ export const BLOG_POSTS: BlogPost[] = [
       height: 900,
     },
     pillars: [
+      { href: "/live", label: "Live", why: "Our own agent, attacked hourly, results unedited." },
       { href: "/docs/limits", label: "Limits", why: "What AgentFox does not catch yet." },
-      { href: "/docs/guides/live-probes", label: "Probe deployed agents", why: "Scheduled, opt-in attacks on your own agent." },
+      { href: "/docs/test/ci", label: "Probe deployed agents", why: "Scheduled, opt-in attacks on your own agent." },
     ],
   },
   {
@@ -309,8 +307,7 @@ export const BLOG_POSTS: BlogPost[] = [
       height: 900,
     },
     pillars: [
-      { href: "/docs/guides/audit-evidence", label: "Audit evidence", why: "Export an audit trail you can check without our code." },
-      { href: "/docs/guides/audit-evidence", label: "Prove it to an auditor", why: "The report, evidence packages, the verifier." },
+      { href: "/docs/prove/audit", label: "Prove it to an auditor", why: "The report, evidence packages, the verifier." },
     ],
   },
 ];

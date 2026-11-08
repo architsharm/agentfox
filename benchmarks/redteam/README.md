@@ -156,7 +156,7 @@ uv run python -m benchmarks.redteam.run_adaptive_redteam_benchmark
 
 ## Why the claim changed, not just the code
 
-`docs/design/gap-analysis.md` item 3.2 already admitted the gap in plain terms: "adaptive /
+An earlier edition of `docs/design/gap-analysis.md` already admitted the gap in plain terms: "adaptive /
 generative red teaming (ours is static probes)". The standing critique of automated
 red-teaming products is sharper and lands on the 22-probe suite above exactly as
 written: **a fixed list of prompts only ever proves things about that fixed list**, and

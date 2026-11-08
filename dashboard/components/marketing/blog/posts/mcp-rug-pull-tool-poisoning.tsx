@@ -153,7 +153,7 @@ critical issue(s) found — exit 1`}</Output>
       <p>
         Exit code 1 on anything critical is what makes this usable in CI. A bad file or an
         unknown server exits 2, and a clean scan exits 0. The full flag list is in the{" "}
-        <Link href="/docs/guides/mcp">MCP servers guide</Link>.
+        <Link href="/docs/connect/mcp">MCP servers guide</Link>.
       </p>
 
       <h2 id="why-review-once-fails">Why a one-time review fails</h2>
@@ -223,7 +223,7 @@ critical issue(s) found — exit 1`}</Output>
 
       <p>
         The client does not matter: the official SDK, a hand-rolled client, or the{" "}
-        <Link href="/docs/guides/gateway">HTTP gateway</Link> all go through the same check.
+        <Link href="/docs/connect/http">HTTP gateway</Link> all go through the same check.
         A tool added later to a server you granted with a wildcard such as{" "}
         <code>mcp:github/*</code> raises its own finding, because a wildcard written before a
         tool existed should not quietly cover it.
@@ -232,9 +232,9 @@ critical issue(s) found — exit 1`}</Output>
       <InlineCTA
         title="See the six MCP risks side by side"
         body="Rug pulls, poisoning, poisoned results, undeclared tools, over-scoped servers and credential sprawl. Two of the six are marked as gaps."
-        href="/docs/guides/mcp"
+        href="/docs/connect/mcp"
         label="MCP security overview"
-        secondary={{ href: "/docs/guides/mcp", label: "Read the guide" }}
+        secondary={{ href: "/docs/connect/mcp", label: "Read the guide" }}
       />
 
       <h2 id="accepting-a-change">Accepting a change without opening a hole</h2>
@@ -290,7 +290,7 @@ agentfox policy proposals approve <id> --actor bob   --note "reviewed the diff"`
       <ol>
         <li>
           Inventory every server in every client config, including laptops, with{" "}
-          <code>agentfox scan mcp</code>. See <Link href="/docs/guides/scan-a-repo">scanning a repository</Link>.
+          <code>agentfox scan mcp</code>. See <Link href="/docs/discover">scanning a repository</Link>.
         </li>
         <li>Pin package versions. An unpinned <code>npx</code> server can change on any launch.</li>
         <li>

@@ -1,99 +1,114 @@
 /**
- * The docs sidebar, and the one list of docs pages. Marketing pages describe the
- * product; this is where it is explained, command by command. A page and the menu
- * cannot drift because there is only this list.
+ * The docs sidebar, and the one list of docs pages. A page and the menu cannot drift
+ * because there is only this list. The order is the order a reader walks: start, connect
+ * an agent, then the five jobs (discover, govern, protect, test, prove), then deploy.
+ * Every page gets a previous/next link from its place here (components/docs/pager.tsx).
  *
- * The order follows the path a team walks: see what you have, watch it run, contain
- * what it can do, prove it. Guides are scenarios with working code; Reference is
- * generated from the code where it can be (scripts/gen/docs_reference.py).
+ * Task pages stay short: a few steps, a screenshot per step, one short command at most.
+ * Flags, full YAML and every route live in Reference, which is generated from the code
+ * where it can be (scripts/gen/docs_reference.py).
  */
-
 export type DocLink = { href: string; label: string; description?: string };
-
 export type DocSection = { heading: string; items: DocLink[] };
 
 export const DOC_NAV: DocSection[] = [
   {
-    heading: "Start",
+    heading: "Get started",
     items: [
-      { href: "/docs", label: "Overview", description: "What AgentFox does, and the path through it." },
-      { href: "/docs/quickstart", label: "Quickstart", description: "Connect your repository: one key, agentfox init, your agents tested and visible." },
-      { href: "/docs/concepts", label: "Concepts", description: "Agents, tools, grants, provenance, policies and findings." },
-      { href: "/docs/install", label: "Install and configure", description: "Extras, where state lives, agentfox.toml." },
+      { href: "/docs", label: "What is AgentFox", description: "What it does, in one screen." },
+      { href: "/docs/quickstart", label: "Quickstart", description: "Connect a repository, test its agents, add guardrails." },
+      { href: "/docs/quickstart/cli", label: "Quickstart without an account", description: "The same, on your machine only." },
+      { href: "/docs/concepts", label: "Core concepts", description: "Agents, tools, access, guardrails, issues." },
     ],
   },
   {
-    heading: "Guides",
+    heading: "Connect your agent",
     items: [
-      { href: "/docs/guides/walkthrough", label: "Offline walkthrough", description: "A sample agent from ungoverned to contained, step by step, no account." },
-      { href: "/docs/guides/scan-a-repo", label: "Audit a repository", description: "Inventory, the lethal trifecta, and a CI gate." },
-      { href: "/docs/guides/monitoring", label: "Monitor connected sources", description: "Rescan repos, APIs and MCP servers on a schedule and on push." },
-      { href: "/docs/guides/python-auto", label: "One line in Python", description: "agentfox.auto(): observe, then enforce." },
-      { href: "/docs/guides/contain-tool-calls", label: "Contain tool calls", description: "Declarations, grants, provenance, learned permissions." },
-      { href: "/docs/guides/langgraph", label: "LangGraph", description: "Guard the retrieval, model and tool nodes." },
-      { href: "/docs/guides/litellm", label: "LiteLLM proxy", description: "One config block; every agent behind the proxy is checked." },
-      { href: "/docs/guides/mcp", label: "MCP servers", description: "Scan configs, pin tools, govern calls." },
-      { href: "/docs/guides/coding-agents", label: "Coding agents", description: "Claude Code hooks and the coding-agent pack." },
-      { href: "/docs/guides/codex", label: "Codex CLI", description: "Codex hooks: what is governed and what is not." },
-      { href: "/docs/guides/gateway", label: "Any language: the gateway", description: "The proxy and the guard API over HTTP." },
-      { href: "/docs/guides/rag", label: "Retrieval and answers", description: "Who may see what, and when to say I don't know." },
-      { href: "/docs/guides/approvals", label: "Approvals and the kill switch", description: "Escalations, hand-offs, quarantine." },
-      { href: "/docs/guides/business-rules", label: "Business rules", description: "Threshold ladders, and policy compiled from prose." },
-      { href: "/docs/guides/import-policies", label: "Import existing policies", description: "Agent-governance rule YAML and policy manifests, translated." },
-      { href: "/docs/guides/red-team-and-evals", label: "Red team and evals in CI", description: "Probe the deployment; fail the build on regression." },
-      { href: "/docs/guides/live-probes", label: "Probe deployed agents", description: "Scheduled, opt-in attacks on a running agent." },
-      { href: "/docs/guides/tuning", label: "Tune detectors", description: "Feedback, suppressions, simulate, canary." },
-      { href: "/docs/guides/migrate-from-llm-guard", label: "Migrate from LLM Guard", description: "Every LLM Guard scanner mapped to its AgentFox equivalent, or none." },
-      { href: "/docs/guides/owasp-agentic-top-10", label: "OWASP Agentic Top 10", description: "ASI01–ASI10: what is enforced, partial or not covered." },
-      { href: "/docs/guides/audit-evidence", label: "Prove it to an auditor", description: "The report, evidence packages, compliance." },
-      { href: "/docs/guides/observability", label: "Traces and integrations", description: "OpenTelemetry, Langfuse, LangSmith, SIEM, webhooks." },
+      { href: "/docs/connect", label: "Pick your stack", description: "Which page to follow for your framework." },
+      { href: "/docs/connect/python", label: "Python apps", description: "One line: agentfox.auto()." },
+      { href: "/docs/connect/langgraph", label: "LangGraph", description: "Guard each node of a graph." },
+      { href: "/docs/connect/litellm", label: "LiteLLM proxy", description: "Every agent behind the proxy, checked." },
+      { href: "/docs/connect/mcp", label: "MCP servers", description: "Scan, pin and govern MCP tools." },
+      { href: "/docs/connect/coding-agents", label: "Claude Code and Codex", description: "Hooks for coding agents." },
+      { href: "/docs/connect/platforms", label: "Voice and hosted platforms", description: "Vapi, Retell, Copilot Studio, AgentCore." },
+      { href: "/docs/connect/http", label: "Any language (HTTP)", description: "The proxy and the guard API." },
     ],
   },
   {
-    heading: "Web app",
+    heading: "Discover",
     items: [
-      { href: "/docs/app", label: "Tour of the web app", description: "Sign in, workspaces, and where everything is." },
-      { href: "/docs/app/start", label: "Start here and connect", description: "The checklist, GitHub repos, API tokens." },
-      { href: "/docs/app/projects", label: "Projects", description: "Canvas, features per project, setup banner, kill switch." },
-      { href: "/docs/app/findings", label: "Findings", description: "What needs a person, and why." },
-      { href: "/docs/app/traces", label: "Traces", description: "One request, every check, and why it was blocked." },
-      { href: "/docs/app/policies", label: "Policies and tuning", description: "Rules, modes, simulation, canary, detector tuning." },
-      { href: "/docs/app/approvals", label: "Approvals and escalation", description: "The queue a person works from." },
-      { href: "/docs/app/access-and-sources", label: "Access control and sources", description: "End-user entitlement and verified sources." },
-      { href: "/docs/app/evals", label: "Evaluation", description: "Suites, runs, SLOs and red-team campaigns." },
-      { href: "/docs/app/compliance", label: "Compliance", description: "Controls, frameworks, evidence, board snapshot." },
-      { href: "/docs/app/playground", label: "Playground", description: "Attack a live agent with no account." },
+      { href: "/docs/discover", label: "Map your agents", description: "Agents, tools and risky paths, found in your code." },
+    ],
+  },
+  {
+    heading: "Govern",
+    items: [
+      { href: "/docs/govern", label: "Tool access", description: "Which tools each agent may call, and with what." },
+      { href: "/docs/govern/approvals", label: "Approvals and the kill switch", description: "Hold a call for a person; stop an agent." },
+      { href: "/docs/govern/data-access", label: "Who may see what", description: "Per-user access to retrieved data." },
+    ],
+  },
+  {
+    heading: "Protect",
+    items: [
+      { href: "/docs/protect", label: "Guardrails", description: "Turn on checks; watch first, then block." },
+      { href: "/docs/protect/custom-rules", label: "Custom rules", description: "Your own rules, business limits, imported policies." },
+      { href: "/docs/protect/tuning", label: "Fix false positives", description: "When a guardrail blocks a real user." },
+    ],
+  },
+  {
+    heading: "Test",
+    items: [
+      { href: "/docs/test", label: "Attack tests", description: "Attack your agent before someone else does." },
+      { href: "/docs/test/ci", label: "In CI and in production", description: "Fail the build on a regression; probe live agents." },
+    ],
+  },
+  {
+    heading: "Prove",
+    items: [
+      { href: "/docs/prove", label: "Traces and issues", description: "Every call, every check, and what needs a person." },
+      { href: "/docs/prove/audit", label: "Audit evidence", description: "Reports and compliance mappings." },
+      { href: "/docs/prove/integrations", label: "Send traces elsewhere", description: "OpenTelemetry, Langfuse, SIEM, webhooks." },
+    ],
+  },
+  {
+    heading: "Deploy",
+    items: [
+      { href: "/docs/self-host", label: "Self-host", description: "Docker Compose, Render, or a Python app." },
+      { href: "/docs/production", label: "Production checklist", description: "Settings to check before real traffic." },
     ],
   },
   {
     heading: "Reference",
     items: [
-      { href: "/docs/reference/cli", label: "CLI", description: "Every command and option, generated from the CLI." },
-      { href: "/docs/reference/api", label: "HTTP API", description: "Every route, generated from the gateway." },
-      { href: "/docs/reference/python", label: "Python SDK", description: "auto(), AgentFox, sessions, integrations." },
-      { href: "/docs/reference/policies", label: "Policy language", description: "Rule schema, packs, modes, hierarchy." },
-      { href: "/docs/reference/detectors", label: "Detectors and findings", description: "Surfaces, detectors, finding types." },
+      { href: "/docs/reference/cli", label: "CLI", description: "Every command and option." },
+      { href: "/docs/reference/api", label: "HTTP API", description: "Every route." },
+      { href: "/docs/reference/python", label: "Python SDK", description: "auto(), sessions, integrations." },
+      { href: "/docs/reference/policies", label: "Policy language", description: "Rule schema, packs, modes." },
+      { href: "/docs/reference/detectors", label: "Detectors and findings", description: "What each check looks for." },
       { href: "/docs/reference/config", label: "Configuration", description: "Environment variables and agentfox.toml." },
+      { href: "/docs/reference/install", label: "Install options", description: "Extras, models, where state lives." },
+      { href: "/docs/reference/owasp", label: "OWASP Agentic Top 10", description: "What is covered, partly covered, or not." },
+      { href: "/docs/reference/migrate-from-llm-guard", label: "Coming from LLM Guard", description: "Each scanner and its equivalent." },
+      { href: "/docs/benchmarks", label: "Benchmarks", description: "What was measured, and where it stops." },
+      { href: "/docs/limits", label: "Limits", description: "What AgentFox does not do." },
     ],
   },
   {
-    heading: "Operate",
+    heading: "Help",
     items: [
-      { href: "/docs/self-host", label: "Self-hosting", description: "Docker Compose, Render, or a Python app." },
-      { href: "/docs/plugin", label: "Claude Code plugin", description: "Skills, slash commands and a read-only MCP server." },
-      { href: "/docs/benchmarks", label: "Benchmarks", description: "What was measured, and where each result stops." },
-      { href: "/docs/limits", label: "Limits", description: "What is only as good as your declarations." },
-      { href: "/docs/support", label: "Support", description: "What to run before you file an issue." },
+      { href: "/docs/support", label: "Troubleshooting", description: "Common problems, and how to get help." },
     ],
   },
 ];
 
-/** Every docs page, flat: for the overview's index and anything that lists pages. */
-export const DOC_PAGES: { href: string; title: string; description: string }[] = DOC_NAV.flatMap(
-  (section) =>
+/** Every docs page, flat, in reading order: the sitemap, the pager, the overview. */
+export const DOC_PAGES: { href: string; title: string; description: string; section: string }[] =
+  DOC_NAV.flatMap((section) =>
     section.items.map((item) => ({
       href: item.href,
       title: item.label,
       description: item.description ?? "",
+      section: section.heading,
     })),
-);
+  );

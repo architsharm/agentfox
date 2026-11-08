@@ -3736,7 +3736,9 @@
 .docs-shot { margin: 18px 0 0; }
 .docs-shot img {
   display: block;
-  width: 100%;
+  width: auto;
+  max-width: 100%;
+  max-height: 560px;
   height: auto;
   border: 1px solid var(--mk-border);
   border-radius: 10px;
@@ -4014,7 +4016,7 @@
 .dg text.dg-t-good { fill: var(--mk-good); }
 .dg text.dg-t-hold { fill: var(--mk-hold); }
 
-/* ========================================================================
+/* =================================================================
    The home page's look, on every page that still uses this stylesheet.
    ========================================================================
    The home page (app/lp.css) is built on the product's own tokens
@@ -4105,3 +4107,24 @@
   --bg: var(--af-bg);
 }
 .mk .bm-index a { color: var(--af-fg); }
+=======
+/* Docs: section kicker above the title, previous/next pager, tabs, cards. */
+.docs-main > .docs-kicker { max-width: 720px; margin-bottom: -6px; }
+.docs-pager { max-width: 720px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--mk-border); }
+.docs-pager a { display: block; padding: 12px 14px; border: 1px solid var(--mk-border); border-radius: 10px; color: var(--mk-text); text-decoration: none; font-weight: 600; }
+.docs-pager a:hover { border-color: var(--mk-accent); }
+.docs-pager span { display: block; font-size: 12px; font-weight: 500; color: var(--mk-muted); margin-bottom: 2px; }
+.docs-pager-next { text-align: right; grid-column: 2; }
+.docs-tabs { margin-top: 14px; border: 1px solid var(--mk-border); border-radius: 10px; }
+.docs-tabs-list { display: flex; gap: 4px; padding: 6px 6px 0; border-bottom: 1px solid var(--mk-border); }
+.docs-tabs-list button { font: inherit; font-size: 14px; padding: 6px 12px; border: 0; background: none; color: var(--mk-muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.docs-tabs-list button[aria-selected="true"] { color: var(--mk-text); border-bottom-color: var(--mk-accent); font-weight: 600; }
+.docs-tabs-panel { padding: 2px 14px 14px; }
+.docs-tabs-panel > :first-child { margin-top: 12px; }
+.docs-doc .docs-cards { list-style: none; padding: 0; margin: 18px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.docs-cards li { margin: 0; }
+.docs-cards a { display: block; height: 100%; padding: 14px; border: 1px solid var(--mk-border); border-radius: 10px; text-decoration: none; }
+.docs-cards a:hover { border-color: var(--mk-accent); }
+.docs-cards strong { display: block; color: var(--mk-text); }
+.docs-cards span { display: block; margin-top: 4px; font-size: 14px; color: var(--mk-muted); }
+@media (max-width: 640px) { .docs-pager { grid-template-columns: 1fr; } .docs-pager-next { grid-column: 1; text-align: left; } }

@@ -39,7 +39,7 @@ verified_against: branch claude/improvement-loop-phase0, 2026-09-20
 | `F<fam>.<mode>` | Failure modes F1.1–F9.5 (F1 answerability … F8 context integrity) | `docs/design/failure-modes.md` |
 | `NOM-<FAM>-NN` | Controls: DSC, IAM, RTG, EVL, AUD, GOV | `src/agentfox/packs/compliance/catalog/controls/controls.yaml`, Appendix B |
 | `R<n>` | PRD risks | `docs/design/PRD.md` §10 |
-| Tier 0–3, Tranche 0–4 | Gap-analysis severity tiers, roadmap tranches | `docs/design/gap-analysis.md`, `docs/design/PRD.md` §9 |
+| Tier 0–3, Tranche 0–4 | The PRD's gap-register severity tiers and roadmap tranches | `docs/design/PRD.md` §8.2 and §9 |
 
 ## Commit conventions (contributors)
 

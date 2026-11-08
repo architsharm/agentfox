@@ -1,5 +1,7 @@
 # The approach on a corpus we did not write
 
+*Part of the judgment-tier study: how the numbers were measured. How the tiers work, and what each may decide, is in [judgment-tiers.md](../../architecture/judgment-tiers.md).*
+
 600 stratified SafePyramid cases — 20 per domain per level — giving **15,576
 rule-level judgments** at 24.0% positive. Jev was asked one Noul per rule,
 batched per case; the LLM judge was asked for the violated rule set in one call

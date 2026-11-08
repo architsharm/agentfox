@@ -107,7 +107,7 @@ agentfox up`}</Code>
       <InlineCTA
         title="Scan your own repository"
         body="See which agents, tools and MCP servers your code defines, and what each one could do, before anything runs."
-        href="/docs/guides/scan-a-repo"
+        href="/docs/discover"
         label="Scan a repo"
         secondary={{ href: "/docs/quickstart", label: "Quickstart" }}
       />

@@ -1,20 +1,26 @@
 # Product tour
 
-Everything the top-level README used to carry beyond the pitch: each place the policy
-binds, the commands grouped by what you are trying to do, what the demo prints, how to
-self-host, and what is wrapped open source versus built here. The website docs
-([useagentfox.com/docs](https://useagentfox.com/docs)) cover the same ground as guides and
-reference; this page is the one-file version for reading in the repository. For how the
-code is put together, read [ARCHITECTURE.md](../ARCHITECTURE.md).
+The reference view of the product on one page: each place the policy binds and what it
+governs there, the commands grouped by task, what the demo prints, and how to self-host. The
+website docs ([useagentfox.com/docs](https://useagentfox.com/docs)) split the same material into
+separate guides. To learn the product step by step, with what each step proves, read
+[Getting started](getting-started.md) instead; this page does not repeat its explanations. For
+how the code is put together, read [ARCHITECTURE.md](../ARCHITECTURE.md).
 
 ## Use it with your agent
 
-**One policy set, six places it binds.** No single gateway sees every agent, and routing all of your
-traffic through one is a migration rather than a control. So the policy is written once and bound
-wherever your agents already run — a coding agent's hooks, an HTTP gateway, the Python SDK, the MCP
-call path, a LangGraph node, the CLI. Same `Enforcer`, same packs, same decision record; what changes
-is which surface it sees. Each block below says what that one actually governs, because they differ
-and a claim that flattened them would be the overclaim this project exists to avoid.
+**One policy set, bound where your agents already run.** No single gateway sees every agent, and
+routing all of your traffic through one is a migration rather than a control. So the policy is
+written once and bound in several places: the Python SDK, an HTTP gateway, LangGraph, the OpenAI
+Agents SDK, a LiteLLM proxy, the tool webhooks of hosted voice and agent platforms, the MCP call path
+and a coding agent's hooks. Same `Enforcer`, same packs, same decision record; what changes is which
+surface it sees. Each block below says what that one actually governs, because they differ and a
+claim that flattened them would be the overclaim this project exists to avoid.
+
+The quickest start is the dashboard's **Connect your first agent** card and `agentfox init --key`,
+which maps your repository, adds the agents it found and runs the attack test before and after the
+basic guardrails. [Getting started](getting-started.md) walks through it; `agentfox up` is the same
+setup from the command line alone.
 
 ### Python — one line
 
@@ -40,6 +46,13 @@ to run it. An enforced redaction rule rewrites the reply in the response object 
 back (a streamed reply, already sent, raises `agentfox.Blocked` at its end instead).
 `auto(mode="observe")` never raises or rewrites. Not covered: the OpenAI Responses API, and tools
 your code calls without the model asking.
+
+**Local or your account.** With an account key, every check goes to that account's gateway over
+`/v1/guard/*` and the calls show up on its dashboard; without one, `auto()` decides in your process
+against a local database. The key is found in this order: `auto(server=..., key=...)`,
+`AGENTFOX_URL` and `AGENTFOX_API_KEY` in the environment, then the `.agentfox/agentfox.env` that
+`agentfox init` writes. Decisions are the same either way, except that a remote check does no
+budget charging and no conversation-window check.
 
 ### Any language — over HTTP
 
@@ -106,6 +119,51 @@ agent = Agent(name="support", tools=[refund],
 changes nothing, and `output_info` carries the user message and trace id. A stopped tool call
 returns a refusal to the model instead of running.
 
+### LiteLLM proxy
+
+One block in the proxy's `config.yaml` checks every agent behind it, with no change to the agents:
+
+```yaml
+guardrails:
+  - guardrail_name: agentfox
+    litellm_params:
+      guardrail: agentfox.frameworks.litellm_guardrail.AgentFoxGuardrail
+      mode: [pre_call, post_call]
+      default_on: true
+      api_base: os.environ/AGENTFOX_URL
+      api_key: os.environ/AGENTFOX_API_KEY
+```
+
+Before the model: the newest user message and any tool results, as inputs. After it: each tool call
+the model asks for, against the agent's grants and with the request's messages (so an argument
+copied out of a tool result is tainted), then the reply. Streamed tool calls are held until checked.
+A stopped call is an HTTP 400 with the rule's message. If the gateway cannot be reached the call is
+refused, unless `fail_open: true`.
+
+### Voice and hosted agent platforms
+
+Vapi, Retell, Copilot Studio and Amazon Bedrock AgentCore Gateway each call a URL before a tool runs.
+Pointed at AgentFox, that call gets the `/v1/guard/tool_call` decision, answered in the platform's
+own format:
+
+| Platform | URL | What happens |
+| --- | --- | --- |
+| Vapi | `/v1/hooks/vapi/{id}` (the tool's server URL) | A refusal comes back as an error the assistant speaks; an allowed call is forwarded to your tool server. The end-of-call report is recorded as a run. |
+| Retell | `/v1/hooks/retell/{id}`, plus `/webhook` for call events | Decided after `X-Retell-Signature` verifies; an allowed call is forwarded with Retell's own body and signature. Ended calls are recorded. |
+| Copilot Studio | `/v1/hooks/copilot-studio/{id}/analyze-tool-execution` and `/validate` | Answers `blockAction`, after the Entra app token is verified. |
+| AgentCore Gateway | a REQUEST interceptor Lambda, [`deploy/aws-agentcore-interceptor/`](../deploy/aws-agentcore-interceptor/) | A blocked call never reaches the target. Fails closed by default. |
+
+An operator registers each connection with `POST /api/agents/{slug}/platform-connections`. The tool
+server allowed calls go to is registered there, never taken from the request; it must be `https` on
+a public host and is checked again before each forward. A retry of a call a person approved goes
+through once, because these platforms never send the approval id back. Recorded call transcripts
+have personal data and secrets masked before they are stored; spoken numbers are not masked yet.
+
+`agentfox scan` also reads the files these platforms export (Vapi, Retell, ElevenLabs, Bland, n8n,
+Dify, Flowise, Langflow, Voiceflow, Dialogflow, Copilot Studio, Agentforce, Bedrock Agents,
+AgentCore, Lex, Genesys) and voice agents written in code (LiveKit, Pipecat, OpenAI `RealtimeAgent`),
+so those agents are listed with their tools before any traffic.
+
 ### TypeScript
 
 `sdk/typescript/` is `@agentfox/sdk`, a dependency-free client for `/v1/guard/input`, `/output`
@@ -132,14 +190,15 @@ tool becomes a discovery finding rather than an invisible call, and results are 
 `tool_result` surface with the taint propagated, so an argument later derived from an MCP result
 cannot exceed the ceiling for tool-sourced data.
 
-### Claude Code — three hook points
+### Coding agents: Claude Code and Codex hooks
 
 ```bash
 agentfox admin hooks daemon                             # the warm process, once
 agentfox admin hooks install --agent my-agent --write   # writes .claude/settings.json
+agentfox admin hooks install --harness codex --agent my-agent --write   # Codex CLI
 ```
 
-Four events, because one event is one surface:
+For Claude Code, four events, because one event is one surface:
 
 | Event | What it sees | What a refusal does |
 | --- | --- | --- |
@@ -155,9 +214,11 @@ sends the agent back once with one specific instruction; `AGENTFOX_DELIVERY=off`
 That third row is the one worth reading twice. By the time `PostToolUse` fires the side effect has
 happened, and we say so rather than reporting the event as a gate — `agentfox admin hooks status` prints
 the same line, per event, with how it was established and against which version. The claims come from
-[`hooks/capability.py`](../src/agentfox/hooks/capability.py): `PreToolUse` and `PostToolUse` were probed
-against a live session, `UserPromptSubmit` was read in the shipped bundle, and an event nobody has
-checked has no row at all.
+each adapter, read across the registry by [`harnesses/capability.py`](../src/agentfox/harnesses/capability.py):
+for Claude Code, `PreToolUse`, `PostToolUse` and `Stop` were probed against a live session and
+`UserPromptSubmit` was read in the shipped bundle; every Codex row was read in Codex's source and
+none has been probed live yet. An event nobody has checked has no row at all. Codex has no "ask", so
+a call that needs a person is refused there with the reason.
 
 A hook runs in a process the harness creates and destroys per call, so it talks to a warm daemon over
 a private Unix socket: 3.9s cold, about 6ms warm. `hooks install --write` also sets up a working
@@ -191,7 +252,7 @@ before it is safe to run, and `agentfox policy observe baseline` puts it back.
 
 ## Tracking without anyone running a command
 
-A scan is a snapshot. Connect a GitHub repository, a hosted API's OpenAPI document or an MCP server
+Monitoring is part of AgentFox Enterprise (`ee/`, source-available). A scan is a snapshot. Connect a GitHub repository, a hosted API's OpenAPI document or an MCP server
 once and AgentFox keeps re-checking it: every few hours, and on every push once the GitHub webhook
 is registered. Each run is diffed against the one before, and what changed becomes a finding — a
 new lethal trifecta, a model call that lost its governance, a new tool or MCP server, a new
@@ -221,14 +282,15 @@ connection. The hosted runner is triggered by
 `report`) and Operate (`doctor`, `admin`). Below, the same commands by task.
 
 Every decision lands in a tamper-evident audit chain and maps to the controls you answer to.
-Evidence packages ship with a stdlib-only `verify_chain.py`, so an auditor re-derives the hash chain
-without trusting us or calling our API.
+Evidence packages (Enterprise) ship with a stdlib-only `verify_chain.py`, so an auditor re-derives
+the hash chain without trusting us or calling our API.
 
 **Find out what you already have**
 
 ```bash
+agentfox scan machine                  # the MCP servers and skills your AI tools load on this machine
 agentfox scan --sessions               # zero-config first look, nothing leaves this machine
-agentfox scan                          # scan a repo: tools, MCP servers, the lethal trifecta, ungoverned calls
+agentfox scan                          # scan a repo: agents, tools, MCP servers, the lethal trifecta, ungoverned calls
 agentfox agents list                   # every agent, registered or shadow, and who owns it
 agentfox scan runtime                  # sweep for shadow agents, drift and identity posture
 agentfox agents lineage payments-ops   # what one agent reaches: its blast radius
@@ -250,11 +312,11 @@ agentfox policy proposals approve <id> --actor you@example.com --note "matches i
 agentfox policy proposals apply <id> --actor you@example.com    # rollback <id> undoes it
 ```
 
-Each proposal reads like "Let support-triage call tickets.close with priority one of low, normal
-(seen 14 times)". Limits and the provenance ceiling come only from clean calls: ones nothing flagged and
-that carried no untrusted content, or that a person approved in the approval queue. An injected
-call is held like any untrusted one, so an attacker's amount or recipient never becomes a limit. Nothing is applied without a person, and tool
-declarations, which are org-wide, need two. Or write them by hand:
+Limits and the provenance ceiling are learned only from clean calls, so an attacker's amount or
+recipient never becomes a limit. Nothing is applied without a person, and tool declarations, which
+are org-wide, need two. What is learned from and what is held:
+[Getting started, step 5b](getting-started.md#5b-let-it-propose-the-grants-learned-permissions). Or
+write them by hand:
 
 ```bash
 agentfox declare tool billing.export --impact write    # read | write | high_impact | irreversible
@@ -268,13 +330,11 @@ agentfox permit revoke <capability-id>
 `--max-taint` is the worst provenance an argument may carry and still go through without an
 approval: `none`, `user`, `retrieved`, `tool_result`, `subagent`, `memory`. Within it, the taint
 rules defer to the grant; `composition.escalation` (one tool's output fed into a higher-impact tool)
-does not, unless the producing tool's output is declared trusted. `permit grant` is the only
-command that widens least privilege, so it confirms before it writes and records the result in the
-audit chain. `--yes` skips the prompt in CI. `agentfox agents register <slug> --owner you@example.com` turns a
+does not, unless the producing tool's output is declared trusted. `permit grant` confirms before it
+writes; `--yes` skips the prompt in CI. `agentfox agents register <slug> --owner you@example.com` turns a
 shadow agent into an owned one, and `agentfox agents budget` sets the caps `budget.exceeded` blocks on.
-Whether provenance is read per run or per argument is
-one setting, `taint_scope` (`session`, the default and what every number here was measured under,
-or `argument`); see [Getting started](getting-started.md#5b-let-it-propose-the-grants-learned-permissions).
+Whether provenance is read per run or per argument is one setting, `taint_scope` (`session`, the
+default, or `argument`); see [Getting started, step 5b](getting-started.md#5b-let-it-propose-the-grants-learned-permissions).
 
 **Decide what is held for a person**
 
@@ -297,14 +357,12 @@ agentfox report                        # one page for whoever signs off: what ra
 agentfox findings                      # what the platform found; --severity high to narrow
 agentfox doctor                        # is the runtime configured the way you think it is?
 agentfox report verify                 # re-derive the chain; exits 1 if broken
-agentfox report evidence --agent support-triage --from 2026-08-01 --to 2026-09-30
+agentfox report evidence --agent support-triage --from 2026-08-01 --to 2026-09-30   # Enterprise
 ```
 
-A refused tool call is a finding in its own right, titled by what refused it — `support-bot tried
-to send_email with data that came from a web page (contained)` — and one a rule in observe mode
-only recorded reads `would have been contained`. The evidence zip opens on the same one-page
-`SUMMARY.md` (and `.html`) that `agentfox report` prints; its framework-coverage section is a
-draft mapping and says so in its heading.
+A refused tool call that a rule in observe mode only recorded is titled `would have been
+contained`. The evidence zip opens on the same one-page `SUMMARY.md` (and `.html`) that
+`agentfox report` prints; its framework-coverage section is a draft mapping and says so.
 
 **Test before you trust**
 
@@ -317,14 +375,8 @@ agentfox policy validate candidate.yaml          # parse, lint and compile witho
 agentfox policy simulate --file candidate.yaml   # replay recorded traffic; non-zero if it newly blocks
 ```
 
-Red-team probes are a dry run: their tool calls are evaluated without writing decisions, so they
-never show up in findings or in what `policy simulate` replays. `--allow-escapes` reports without
-failing.
-
-Saving a policy and putting it in force are separate. A version saved in the dashboard's editor or
-with `POST /api/policies` sits next to the live one and changes nothing until it is promoted;
-promoting it to enforce over HTTP needs a recorded simulation of that exact version (409 otherwise).
-`agentfox policy enforce <key>` and `observe <key>` change the live version's mode from the CLI.
+What each of these proves, and why saving a policy and putting it in force are separate steps:
+[Getting started, steps 7 and 8](getting-started.md#step-7-test-before-you-trust-10-minutes).
 
 **Run it**
 
@@ -335,7 +387,7 @@ agentfox admin auth issue you@example.com  # mint an API token
 agentfox admin db upgrade              # apply migrations
 agentfox admin jobs run-due            # one pass of scheduled work (monitors, drift, compliance); put it on cron
 agentfox policy effective --agent support-triage  # what is in force, and where each rule came from
-agentfox report status --framework eu-ai-act
+agentfox report status --framework eu-ai-act   # Enterprise: computed control status
 agentfox agents quarantine support-triage --reason "investigating"   # kill switch, reversible
 agentfox agents kill support-triage    # stop it now
 agentfox agents resume support-triage
@@ -401,21 +453,20 @@ unavailable rather than reaching the network mid-decision, and `agentfox doctor`
 that is missing. Fetch them deliberately:
 
 ```bash
-python -m spacy download en_core_web_lg   # pii.presidio — ~400MB
+agentfox admin detectors list                # which detectors can run here, and what each needs
+agentfox admin detectors pull <detector-key>  # fetch the weights that detector loads
+python -m spacy download en_core_web_lg       # pii.presidio, about 400MB
 ```
 
-Granite Guardian, the injection classifier and the embedding detector pull their weights from
-Hugging Face the same way; `agentfox doctor` lists which are present. The running container never
-does this itself.
+The running container never does this itself. A gateway that should not hold weights at all
+(serverless, no GPU) can send model-backed detection to a model server, `agentfox serve models`,
+with `AGENTFOX_MODEL_SERVER_URL` ([`deploy/model-server/`](../deploy/model-server/)).
 
-## Architecture, and what is ours
+## Validators
 
-Six pillars: discovery and registry; identity, access and authorisation; runtime guardrails;
-evaluation and reliability; audit and traceability; policy and compliance.
-
-Roughly 20% of the engineering integrates OSS primitives — OPA/Rego, Presidio, Granite Guardian,
-NeMo/Guardrails AI, promptfoo, Garak, PyRIT, OpenTelemetry — and 80% is the logic above them. Every
-wrapped project sits behind a swappable adapter. The [high-level design](architecture/high-level-design.md) has the full design.
+What is wrapped open source and what is built here is in the
+[high-level design](architecture/high-level-design.md#9-whats-proprietary-vs-wrapped-oss) and the
+[OSS register](design/oss-register.md).
 
 About seventy [Guardrails AI](https://github.com/guardrails-ai) validators are ported in as native
 code (`detection/validators/`, Apache-2.0, credited in `THIRD_PARTY_NOTICES.md`), so none needs a
@@ -429,8 +480,10 @@ through the `agentfox.validators` entry point, so a package of your own sits bes
 
 ## Self-hosting
 
-Everything runs on your own infrastructure. There is no licence check, no phone-home, and no
-default egress: a fresh install ships with `AGENTFOX_ALLOW_EGRESS=false` and the `echo` provider,
+Everything runs on your own infrastructure. The open core is Apache-2.0; the Enterprise package in
+`ee/` (compliance status and sign-off, evidence packages, monitoring, access checks) is
+source-available under the Business Source License, free in production for one workspace with up to
+four agents. There is no licence check, no phone-home, and no default egress: a fresh install ships with `AGENTFOX_ALLOW_EGRESS=false` and the `echo` provider,
 so it runs end to end with no model and no API key. Point it at a model when you want one.
 
 Settings are `AGENTFOX_*` environment variables. The full list is

@@ -14,7 +14,6 @@ export const metadata: Metadata = publicPageMetadata({
 export default function Page() {
   return (
     <article className="docs-doc">
-      <p className="docs-kicker">Reference</p>
       <h1>Python SDK</h1>
       <p className="docs-lede">
         Every public symbol in the <code>agentfox</code> package: what it does, its real
@@ -77,7 +76,7 @@ export default function Page() {
       </table>
       <p>
         For a stack that is not Python, the same checks run over HTTP: see{" "}
-        <Link href="/docs/guides/gateway">the gateway guide</Link> and the{" "}
+        <Link href="/docs/connect/http">the gateway guide</Link> and the{" "}
         <Link href="/docs/reference/api">HTTP API</Link>.
       </p>
 
@@ -162,7 +161,8 @@ agentfox: governed 2 model call(s). Run \`agentfox findings\` to see what it fou
       <h2 id="auto">agentfox.auto()</h2>
       <Code lang="python">{`auto(agent: str | None = None, *, mode: str = "policy", environment: str | None = None,
      session_id: str | None = None, intent: str | None = None, register: bool = True,
-     quiet: bool = False) -> AutoState`}</Code>
+     quiet: bool = False, tool_refusals: str = "message", server: str | None = None,
+     key: str | None = None) -> AutoState`}</Code>
       <p>
         Patches the chat entry points of every supported client library that is
         installed, sync and async, streamed and buffered. From then on each call is
@@ -175,13 +175,44 @@ agentfox: governed 2 model call(s). Run \`agentfox findings\` to see what it fou
           <tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr>
         </thead>
         <tbody>
-          <tr><td><code>agent</code></td><td>derived from the entry script</td><td>The agent slug every call is recorded under. Set it; the derived name is rarely the one you want in the registry.</td></tr>
+          <tr><td><code>agent</code></td><td>derived (below)</td><td>The agent slug every call is recorded under: grants, findings, the registry. Set it in anything you grant permissions to.</td></tr>
           <tr><td><code>mode</code></td><td><code>&quot;policy&quot;</code></td><td>Who decides whether a call is refused in-process. See the table below. Anything else raises <code>ValueError</code>.</td></tr>
           <tr><td><code>environment</code></td><td>the configured <code>environment</code></td><td>Matched by policy <code>scope.environments</code> and by <code>when.environment</code>.</td></tr>
           <tr><td><code>session_id</code></td><td>none</td><td>Groups calls into one conversation. Without it, multi-turn checks (payload split across turns, gradual escalation) never run.</td></tr>
           <tr><td><code>intent</code></td><td>none</td><td>The agent&apos;s task in a sentence. Without it, the <code>intent.undeclared_irreversible</code> rule escalates every irreversible tool call.</td></tr>
           <tr><td><code>register</code></td><td><code>True</code></td><td>Register the agent in the registry if it is not there yet.</td></tr>
           <tr><td><code>quiet</code></td><td><code>False</code></td><td>Suppress the banner on stderr.</td></tr>
+          <tr><td><code>tool_refusals</code></td><td><code>&quot;message&quot;</code></td><td>LangChain tools are also governed where they run (<code>BaseTool.invoke</code>). <code>&quot;message&quot;</code> hands the agent the refusal as the tool&apos;s result and the run carries on; <code>&quot;raise&quot;</code> raises <code>Blocked</code>. Anything else raises <code>ValueError</code>.</td></tr>
+          <tr><td><code>server</code>, <code>key</code></td><td>none</td><td>Send every check to your AgentFox account&apos;s gateway instead of the local database (below).</td></tr>
+        </tbody>
+      </table>
+      <p>
+        <strong>Agent name</strong> when <code>agent</code> is not passed: the first that is set
+        of <code>AGENTFOX_AGENT</code>, <code>OTEL_SERVICE_NAME</code>,{" "}
+        <code>SERVICE_NAME</code>, <code>APP_NAME</code>, <code>K_SERVICE</code>, then the entry
+        script&apos;s file name, then <code>default-agent</code>.
+      </p>
+      <p id="account">
+        <strong>Account.</strong> <code>auto()</code> takes the first of: <code>server=</code>{" "}
+        and <code>key=</code>; <code>AGENTFOX_URL</code> and <code>AGENTFOX_API_KEY</code>{" "}
+        (<code>AGENTFOX_API_URL</code> and <code>AGENTFOX_API_TOKEN</code> also work);{" "}
+        <code>.agentfox/agentfox.env</code> in the working directory, written by{" "}
+        <code>agentfox init --key</code>. The key is a workspace key (<code>nom_api_…</code>) or
+        an agent key (<code>nom_agt_…</code>). With none, checks run in process against the
+        local database. With one, the account registers the agent on its first call; a remote
+        check makes the same decisions, except budget charging and the check across the
+        conversation window.
+      </p>
+
+      <table>
+        <thead>
+          <tr><th>Library</th><th>Entry points patched</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>openai</code></td><td><code>chat.completions.create</code>, sync and async</td></tr>
+          <tr><td><code>anthropic</code></td><td><code>messages.create</code>, sync and async</td></tr>
+          <tr><td><code>litellm</code></td><td><code>litellm.completion</code>, <code>litellm.acompletion</code></td></tr>
+          <tr><td>LangChain (<code>langchain-core</code>)</td><td><code>BaseChatModel.invoke</code>, <code>ainvoke</code>; tools at <code>BaseTool.invoke</code></td></tr>
         </tbody>
       </table>
 
@@ -279,7 +310,7 @@ verdict: block | rules: ['capability.denied']`}</Output>
         should rest on) and <code>agentfox_purpose</code>. Chunks alone run the source
         checks; a principal that is not registered is evaluated as that subject with no
         groups. They feed the access and answerability checks described in{" "}
-        <Link href="/docs/guides/rag">Retrieval and answers</Link>.
+        <Link href="/docs/govern/data-access">Retrieval and answers</Link>.
       </p>
 
       <h3 id="autostate">AutoState, state() and off()</h3>
@@ -358,6 +389,13 @@ None`}</Output>
           <code>Blocked</code>, except in observe mode.
         </li>
       </ul>
+      <p id="banner">
+        <strong>Banner.</strong> At startup <code>auto()</code> prints one paragraph to stderr:
+        what it patched, what it skipped, what the mode means, and, with an account key, where
+        the checks go. Without <code>agentfox init</code> (and no account) it says no policy is
+        bound and the shipped baseline applies as a fallback, in observe. At exit it prints how
+        many model calls it governed. <code>quiet=True</code> suppresses both.
+      </p>
 
       <h2 id="sdk">The AgentFox SDK</h2>
       <Code lang="python">{`AgentFox(agent: str, *, base_url: str | None = None, api_key: str | None = None,
@@ -458,7 +496,7 @@ ApprovalRequired: apr_01m469f0qrp7pvr67x | ['taint.irreversible_tool', 'capabili
 PolicyViolation: capability.denied | trace trc_01m469f0qxk7gq4k4k`}</Output>
       <p>
         The approval is waiting in the queue; see{" "}
-        <Link href="/docs/guides/approvals">Approvals and the kill switch</Link>. Once a
+        <Link href="/docs/govern/approvals">Approvals and the kill switch</Link>. Once a
         person approves it, the same call with <code>approval_id=exc.approval_id</code>{" "}
         runs, once:
       </p>
@@ -717,7 +755,7 @@ model -> Refunds are accepted within 30 days. | governance: ['last_verdict', 'tr
 tool -> True {'ticket_id': 'T-1042'}
 PolicyViolation: capability.denied`}</Output>
       <p>
-        The full walkthrough is in the <Link href="/docs/guides/langgraph">LangGraph guide</Link>.
+        The full walkthrough is in the <Link href="/docs/connect/langgraph">LangGraph guide</Link>.
       </p>
 
       <h3 id="mcp">MCP: McpGovernor</h3>
@@ -806,7 +844,7 @@ McpCallBlocked: the tool's description, schema or impact annotations changed sin
           takes two different people: <code>register_tools(tools, accept_changes=True, actor=...)</code>{" "}
           is one named person&apos;s approval (without <code>actor</code> it raises), and
           calls resume only once a second person approves. Tools registered for the first time are recorded as listed. See the{" "}
-          <Link href="/docs/guides/mcp">MCP guide</Link>.
+          <Link href="/docs/connect/mcp">MCP guide</Link>.
         </p>
       </Callout>
 
@@ -861,6 +899,49 @@ print(r.status_code, r.json(), {k: v for k, v in r.headers.items() if k.startswi
         allowed: <code>baseline</code> owns that rule and observes.
       </p>
 
+      <h3 id="openai-agents">OpenAI Agents SDK: govern()</h3>
+      <Code lang="python">{`from agentfox.frameworks.sdk import AgentFox
+from agentfox.frameworks.openai_agents import govern
+
+fox = AgentFox("support-bot", base_url="https://…", api_key="nom_api_…")
+govern(fox, triage_agent, tool_prefix="support")`}</Code>
+      <p>
+        <code>govern(client, *agents, tool_prefix=None)</code> adds an input and output
+        guardrail to each agent, everything it hands off to, and an input and output guardrail
+        to each function tool. Tools are reported as <code>&lt;tool_prefix&gt;.&lt;name&gt;</code>{" "}
+        when a prefix is given. Safe to call twice. The tripwire follows the applied verdict, so
+        observe mode lets the run through. Needs <code>agentfox[openai-agents]</code>.{" "}
+        <code>AgentFox(...)</code> does not read <code>AGENTFOX_URL</code>: pass{" "}
+        <code>base_url</code> to use a gateway (then <code>api_key</code> falls back to{" "}
+        <code>AGENTFOX_API_TOKEN</code>), or omit it to check in process.{" "}
+        <code>guarded_function_tool(fox, tool=...)</code> wraps a single tool for SDK versions
+        without tool guardrails.
+      </p>
+
+      <h3 id="litellm">LiteLLM proxy: AgentFoxGuardrail</h3>
+      <Code lang="yaml" title="config.yaml">{`guardrails:
+  - guardrail_name: agentfox
+    litellm_params:
+      guardrail: agentfox.frameworks.litellm_guardrail.AgentFoxGuardrail
+      mode: [pre_call, post_call]
+      default_on: true
+      api_base: os.environ/AGENTFOX_URL
+      api_key: os.environ/AGENTFOX_API_KEY`}</Code>
+      <table>
+        <thead>
+          <tr><th>Item</th><th>Behaviour</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>pre_call</code></td><td>The newest user message and every tool result, as inputs. A redaction rewrites the message.</td></tr>
+          <tr><td><code>post_call</code></td><td>Each tool call against the agent&apos;s grants, with the request&apos;s messages as provenance; then the reply text.</td></tr>
+          <tr><td>Streaming</td><td>Text streams through; once a tool call starts the rest is held and checked at the end.</td></tr>
+          <tr><td>Agent</td><td><code>agent</code> in <code>litellm_params</code>, else <code>metadata.agentfox_agent</code>, else the LiteLLM key&apos;s alias, else <code>litellm</code>.</td></tr>
+          <tr><td>Conversation</td><td><code>metadata.session_id</code>, else <code>litellm_session_id</code>, groups calls into one run.</td></tr>
+          <tr><td>Refusal</td><td>HTTP 400 with the rule&apos;s message; an escalation carries <code>approval_id</code>, and the same call sent after approval runs once.</td></tr>
+          <tr><td>Gateway down</td><td>Refused with 503; <code>fail_open: true</code> lets calls through with a warning.</td></tr>
+        </tbody>
+      </table>
+
       <h3 id="prometheus">Prometheus</h3>
       <Code lang="python">{`from agentfox.exporters import render_metrics
 render_metrics(session, *, window_hours: int = 24) -> str`}</Code>
@@ -888,7 +969,7 @@ agentfox_detector_duration_ms_max{detector="injection.heuristic"} 0.208791
         <code>agentfox_traces_total</code>, <code>agentfox_knowledge_boundaries</code>.
         Linking traces to LangSmith or Langfuse (<code>link_trace</code>,{" "}
         <code>links_for</code>, <code>resolve_external</code>) is covered in{" "}
-        <Link href="/docs/guides/observability">Traces and integrations</Link>.
+        <Link href="/docs/prove/integrations">Traces and integrations</Link>.
       </p>
 
       <h2 id="testing">Testing</h2>
@@ -929,7 +1010,7 @@ def test_ordinary_question_goes_through(governed):
 2 passed in 1.67s`}</Output>
       <p>
         To test a red-team suite or an eval against a running deployment instead, see{" "}
-        <Link href="/docs/guides/red-team-and-evals">Red team and evals in CI</Link>.
+        <Link href="/docs/test/ci">Red team and evals in CI</Link>.
       </p>
 
       <h2 id="troubleshooting">Troubleshooting</h2>
@@ -988,8 +1069,8 @@ def test_ordinary_question_goes_through(governed):
 
       <NextSteps
         items={[
-          { href: "/docs/guides/python-auto", label: "One line in Python", why: "the guided path from observe to enforce" },
-          { href: "/docs/guides/contain-tool-calls", label: "Contain tool calls", why: "grants, declarations and provenance in practice" },
+          { href: "/docs/connect/python", label: "One line in Python", why: "the guided path from observe to enforce" },
+          { href: "/docs/govern", label: "Contain tool calls", why: "grants, declarations and provenance in practice" },
           { href: "/docs/reference/policies", label: "Policy language", why: "the rules these exceptions come from" },
           { href: "/docs/reference/detectors", label: "Detectors and findings", why: "what the entities and findings mean" },
         ]}

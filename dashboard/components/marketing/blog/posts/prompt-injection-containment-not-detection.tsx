@@ -136,7 +136,7 @@ export function Body() {
 
       <h3>1. Capability grants: default deny</h3>
       <p>
-        Each agent holds explicit <Link href="/docs/guides/contain-tool-calls">capability grants</Link>: which tools it
+        Each agent holds explicit <Link href="/docs/govern">capability grants</Link>: which tools it
         may call, with limits on the arguments (<code>amount</code> below 1000,{" "}
         <code>to</code> matching your own domain), how tainted the inputs may be, whether a
         person must approve, and when the grant expires. Anything not granted is refused. That
@@ -175,7 +175,7 @@ export function Body() {
         as <code>composition.escalation</code>. This is the check that handles the{" "}
         <strong>lethal trifecta</strong>, Simon Willison&apos;s name for an agent that has
         private data, reads untrusted content and can send data out. Our{" "}
-        <Link href="/docs/guides/scan-a-repo">repository scan</Link> flags any agent that holds
+        <Link href="/docs/discover">repository scan</Link> flags any agent that holds
         all three.
       </p>
 
@@ -188,7 +188,7 @@ agentfox permit grant support-triage email.send --limit 'to:matches=@example\\.c
       <p>
         Then guard the calls in a session, telling it what the agent read along the way. This
         is adapted from the{" "}
-        <Link href="/docs/guides/contain-tool-calls">contain tool calls guide</Link>:
+        <Link href="/docs/govern">contain tool calls guide</Link>:
       </p>
       <Code lang="python" title="triage.py">{`from agentfox import AgentFox, PolicyViolation
 
@@ -208,7 +208,7 @@ with fox.session(intent="Triage a support ticket and reply to the customer.") as
       <p>
         Three independent reasons stop the call, and none of them needed to recognise the
         instruction in the page. If you would rather not touch call sites,{" "}
-        <Link href="/docs/guides/python-auto">
+        <Link href="/docs/connect/python">
           <code>agentfox.auto()</code>
         </Link>{" "}
         patches the supported model SDKs and infers provenance by matching values. One
@@ -275,7 +275,7 @@ with fox.session(intent="Triage a support ticket and reply to the customer.") as
         <li>
           <strong>An escalation is not a block.</strong> The replay counts escalation as
           containment. A person who approves the escalated call lets the attack through, which
-          is why <Link href="/docs/guides/approvals">approvals</Link> show the provenance.
+          is why <Link href="/docs/govern/approvals">approvals</Link> show the provenance.
         </li>
         <li>
           <strong>A shell is one tool.</strong> For a coding agent, <code>ls</code> and{" "}

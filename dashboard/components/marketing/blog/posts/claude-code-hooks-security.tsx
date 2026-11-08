@@ -167,16 +167,16 @@ export function Body() {
         That is still useful. <code>PostToolUse</code> is where an injection arriving inside a
         fetched page or a file&apos;s contents is caught, before the model acts on it. It is the
         right hook for detection. It is the wrong hook for anything you need to prevent, which
-        is exactly the distinction our <Link href="/docs/guides/coding-agents">coding agents guide</Link> is built
+        is exactly the distinction our <Link href="/docs/connect/coding-agents">coding agents guide</Link> is built
         around.
       </p>
 
       <InlineCTA
         title="Which hook does what, in one page"
         body="The evidence behind each row, the Claude Code version it was checked on, and what each hook can and cannot do."
-        href="/docs/guides/coding-agents"
+        href="/docs/connect/coding-agents"
         label="Coding agent guardrails"
-        secondary={{ href: "/docs/guides/coding-agents", label: "Setup guide" }}
+        secondary={{ href: "/docs/connect/coding-agents", label: "Setup guide" }}
       />
 
       <h2 id="install">Install a working baseline</h2>
@@ -295,7 +295,7 @@ agentfox admin hooks daemon                               # a warm process the h
       <InlineCTA
         title="Put guardrails on your coding agent in five minutes"
         body="Install, write the hooks, start the daemon, and run in observe mode for a day before you enforce."
-        href="/docs/guides/coding-agents"
+        href="/docs/connect/coding-agents"
         label="Follow the guide"
         secondary={{ href: "/playground", label: "Try the playground" }}
       />

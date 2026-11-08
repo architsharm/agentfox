@@ -114,7 +114,7 @@ is checked before your code can run it; a refused one raises `agentfox.Blocked`.
 - **Behind a LiteLLM proxy:** one block in the proxy's `config.yaml` checks every agent
   behind it ([guide](https://useagentfox.com/docs/guides/litellm)).
 - **Look around first:** `agentfox init && agentfox demo`. `init` creates a SQLite database
-  and loads 43 controls and the policy packs in about a second; `demo` runs a thirteen-step
+  and loads 44 controls and the policy packs in about a second; `demo` runs a thirteen-step
   walkthrough in about five. Both are offline: no API key, no downloaded weights, no network
   egress.
 - **Scan this directory without installing:**
@@ -223,7 +223,7 @@ Treat every detection number as a speed bump that raises attacker cost, never as
   as `read`. `agentfox doctor` grades this; `agentfox scan` finds undeclared tools.
 - **You declare the estate yourself.** No Okta, no DataHub; principals and grants live in AgentFox.
 - **Compliance mappings are DRAFT**, not reviewed by counsel, and labelled so in every export.
-- **Version 0.3.** No live IdP or SSO, single-org multi-tenancy enforced at the session, text only.
+- **No live IdP or SSO.** Multi-tenancy is enforced at the session within one deployment, and only text is inspected.
 
 Live per-capability status, computed by probe: [docs/status.md](docs/status.md).
 
@@ -232,8 +232,8 @@ Live per-capability status, computed by probe: [docs/status.md](docs/status.md).
 | | |
 |---|---|
 | [Website docs](https://useagentfox.com/docs) | Install, guides for every integration, and the CLI, API and config reference |
-| [Getting started](docs/getting-started.md) | A linear first hour, ending with your own agent governed |
-| [Product tour](docs/product-tour.md) | Every integration surface, commands by task, the demo output, self-hosting |
+| [Getting started](docs/getting-started.md) | The short path, then a linear first hour ending with your own agent governed |
+| [Product tour](docs/product-tour.md) | The reference view: every integration surface, commands by task, the demo output, self-hosting |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | The domain model, a tool call traced through the code, and the code map |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Setup in three commands, `just ci`, and the conventions |
 | [docs/](docs/README.md) | Design, threat model, requirements and how the numbers were measured |
