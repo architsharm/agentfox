@@ -3,6 +3,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Play, Plus, Search, X } from "lucide-react";
+import {
+  cell,
+  controlsLine,
+  liveRun,
+  plainError,
+  pollDelay,
+  runNote,
+  runState,
+  shown as shownRuns,
+  wouldStopNote,
+  type ByType,
+  type Run,
+  type Tests as BaseTests,
+} from "@/lib/product/attackTest";
 
 /**
  * The project's attack test, in the map's panel when nothing is selected: one row per
@@ -14,27 +28,11 @@ import { Play, Plus, Search, X } from "lucide-react";
  * before → after. Everything else is set up from the map.
  */
 
-type ByType = { type: string; label: string; total: number; done: number; gotThrough: number };
-type Run = {
-  id: string;
-  status: "running" | "done" | "failed";
-  phase: "before" | "after";
-  total: number;
-  byType: ByType[];
-  waitingForRunner: boolean;
-  error: string | null;
-};
 type LibrarySet = { key: string; name: string; description: string; attacks: number };
-type Tests = {
-  first: Run | null;
-  withBasic: Run | null;
-  basicOn: boolean;
-  connectedProject: string | null;
+type Tests = BaseTests & {
   sets: string[];
   library: LibrarySet[];
 };
-
-const POLL_MS = 1500;
 
 async function send(url: string, method = "GET", body?: unknown): Promise<any> {
   const res = await fetch(url, {
@@ -44,32 +42,61 @@ async function send(url: string, method = "GET", body?: unknown): Promise<any> {
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data?.detail || data?.error || `Something went wrong (${res.status}).`);
+  if (!res.ok) {
+    const detail = typeof data?.detail === "string" ? data.detail : typeof data?.error === "string" ? data.error : null;
+    throw new Error(plainError(detail) || `Something went wrong (${res.status}).`);
+  }
   return data;
 }
 
 const of = (run: Run | null | undefined, type: string) => run?.byType.find((t) => t.type === type);
 
-/** The right-hand side of a row: how many got through, before → with basic guardrails. */
-function Result({ before, after, live }: { before?: ByType; after?: ByType; live?: ByType }) {
-  if (live && live.done < live.total) {
+/**
+ * The right-hand side of a row: how many got through, before → with basic guardrails.
+ * "Not run" and "Errored" are neutral, never a green 0; errored and not-run attacks are
+ * counted under the number. While a test runs again, the last numbers stay (dimmed)
+ * beside its progress.
+ */
+function Result({
+  before,
+  after,
+  live,
+  basicEnforcing,
+}: {
+  before: { row?: ByType; run: Run | null };
+  after: { row?: ByType; run: Run | null };
+  live?: ByType;
+  basicEnforcing?: boolean;
+}) {
+  const running = live && live.done < live.total;
+  const has = (side: { row?: ByType; run: Run | null }) => Boolean(side.row && side.run);
+  if (running && !has(before) && !has(after)) {
     return (
       <span className="at-r at-r-live">
         {live.done}/{live.total}
       </span>
     );
   }
-  const n = (t: ByType) => (
-    <b className={t.gotThrough ? "at-bad" : "at-good"} title={`${t.gotThrough} of ${t.total} got through`}>
-      {t.gotThrough}/{t.total}
-    </b>
-  );
-  if (!before && !after) return <span className="at-r at-r-none">—</span>;
+  if (!has(before) && !has(after)) return <span className="at-r at-r-none">—</span>;
+  const n = (side: { row?: ByType; run: Run | null }) => {
+    const c = cell(side.row, side.run);
+    const tone = c.tone === "bad" ? "at-bad" : c.tone === "good" ? "at-good" : "at-neutral";
+    return (
+      <span className="at-n">
+        <b className={tone} title={c.title}>
+          {c.text}
+        </b>
+        {c.note ? <small className="at-sub">{c.note}</small> : null}
+      </span>
+    );
+  };
+  const would = wouldStopNote(after.row, basicEnforcing);
   return (
-    <span className="at-r">
-      {before ? n(before) : null}
-      {before && after ? <span className="at-arrow">→</span> : null}
-      {after ? n(after) : null}
+    <span className={running ? "at-r at-stale" : "at-r"} title={running ? `Running again: ${live.done}/${live.total}` : undefined}>
+      {has(before) ? n(before) : null}
+      {has(before) && has(after) ? <span className="at-arrow">→</span> : null}
+      {has(after) ? n(after) : null}
+      {would ? <small className="at-sub at-would">{would}</small> : null}
     </span>
   );
 }
@@ -128,20 +155,37 @@ export function AttackTests({ project, paused }: { project: string; paused?: str
     }
   }, [base]);
 
-  const live = tests?.first?.status === "running" ? tests.first : tests?.withBasic?.status === "running" ? tests.withBasic : null;
+  const live = liveRun(tests);
   useEffect(() => {
     load();
   }, [load]);
-  // Watch while a test runs, and while the first one is still to start.
+  // Watch while a test runs, and while the first one is still to start; never a
+  // project that can't run here, and not for ever (`pollDelay`). Asked again when the
+  // window comes back into focus.
+  const idle = useRef(0);
   useEffect(() => {
-    if (!live && tests?.first) return;
-    const t = setInterval(load, POLL_MS);
-    return () => clearInterval(t);
-  }, [live, tests?.first, load]);
+    if (live) idle.current = 0;
+    const delay = pollDelay(tests, project, idle.current);
+    if (delay === null) return;
+    const t = setTimeout(() => {
+      if (!live) idle.current += 1;
+      load();
+    }, delay);
+    return () => clearTimeout(t);
+  }, [tests, live, project, load]);
+  useEffect(() => {
+    const again = () => {
+      idle.current = 0;
+      load();
+    };
+    window.addEventListener("focus", again);
+    return () => window.removeEventListener("focus", again);
+  }, [load]);
 
   const act = async (fn: () => Promise<unknown>, refresh = false) => {
     setBusy(true);
     setError(null);
+    idle.current = 0;
     try {
       await fn();
       await load();
@@ -169,12 +213,27 @@ export function AttackTests({ project, paused }: { project: string; paused?: str
       </section>
     );
   }
-  const { first, withBasic, basicOn, sets } = tests;
+  const { first, basicOn, sets } = tests;
   const here = tests.connectedProject === project;
-  const done = withBasic?.status === "done" ? withBasic : null;
+  // The last finished numbers of each phase (kept while one runs again). A failed or
+  // errored "after" run keeps what it got through before it stopped.
+  const { before, after } = shownRuns(tests);
   const rows = sets.map((key) => library.find((x) => x.key === key)).filter((x): x is LibrarySet => Boolean(x));
   const rest = library.filter((x) => !sets.includes(x.key));
-  const failed = live ? null : [withBasic, first].find((r) => r?.status === "failed") ?? null;
+  const beforeRan = before ? runState(before) !== "not_run" : false;
+  const afterRan = after ? runState(after) !== "not_run" : false;
+  // What to say about each run that didn't simply finish clean (the latest first).
+  const notes = live
+    ? []
+    : [after && { run: after, label: before ? "With basic guardrails: " : "" }, before && { run: before, label: after ? "No guardrails: " : "" }]
+        .filter((x): x is { run: Run; label: string } => Boolean(x))
+        .map(({ run: r, label }) => ({ note: runNote(r), label, nothing: runState(r) === "not_run" }))
+        .filter((x) => x.note);
+  const normal = [
+    before && beforeRan ? { line: controlsLine(before), label: after && afterRan ? "no guardrails" : "" } : null,
+    after && afterRan ? { line: controlsLine(after), label: before && beforeRan ? "basic guardrails" : "" } : null,
+  ].filter((x): x is { line: string; label: string } => Boolean(x?.line));
+  const watching = Boolean(after && afterRan && basicOn && tests.basicEnforcing === false && (after.wouldStop ?? 0) > 0);
 
   return (
     <section className="at" aria-label="Attack test">
@@ -214,6 +273,8 @@ export function AttackTests({ project, paused }: { project: string; paused?: str
       ) : null}
       {live?.waitingForRunner && live.byType.every((t) => t.done === 0) ? (
         <p className="gm-sub">Waiting for agentfox init on your machine…</p>
+      ) : live && (before || after) ? (
+        <p className="gm-sub">Testing again; the last results stay until the new ones are in.</p>
       ) : null}
 
       <ul className="at-rows">
@@ -223,7 +284,12 @@ export function AttackTests({ project, paused }: { project: string; paused?: str
               <strong>{x.name}</strong>
               <span>{x.description}</span>
             </div>
-            <Result before={of(first, x.key)} after={of(done, x.key)} live={of(live, x.key)} />
+            <Result
+              before={{ row: of(before, x.key), run: before }}
+              after={{ row: of(after, x.key), run: after }}
+              live={of(live, x.key)}
+              basicEnforcing={tests.basicEnforcing}
+            />
             {sets.length > 1 ? (
               <button type="button" className="at-remove" onClick={() => setSets(sets.filter((k) => k !== x.key))} aria-label={`Remove ${x.name}`} title="Remove">
                 <X size={12} aria-hidden />
@@ -232,16 +298,39 @@ export function AttackTests({ project, paused }: { project: string; paused?: str
           </li>
         ))}
       </ul>
-      {first && done ? <p className="at-legend">got through: no guardrails → basic guardrails</p> : null}
+      {before && after ? <p className="at-legend">got through: no guardrails → basic guardrails</p> : null}
+      {normal.length ? (
+        <p className="at-legend">
+          {normal.map((n, i) => (
+            <span key={i}>
+              {i ? " · " : ""}
+              {n.line}
+              {n.label ? ` (${n.label})` : ""}
+            </span>
+          ))}
+        </p>
+      ) : null}
+      {watching ? (
+        <p className="at-note">
+          The basic guardrails are watching, not blocking yet: they would stop {after?.wouldStop} more once they block. Simulate and
+          promote them on the Policies page.
+        </p>
+      ) : null}
 
       {!first && !here ? (
         <p className="gm-sub">
           Run <code>agentfox init</code> in this project&apos;s repository; the test starts by itself.
         </p>
       ) : null}
-      {failed ? <p className="at-error">{failed.error || "The test couldn't reach your agent."}</p> : null}
+      {notes.map(({ note, label, nothing }, i) => (
+        <p key={i} className={note!.tone === "warn" ? "at-note at-warn" : "at-note"}>
+          {nothing ? <strong>Not run. </strong> : null}
+          {label}
+          {note!.text}
+        </p>
+      ))}
 
-      {first?.status === "done" && !basicOn ? (
+      {first?.status === "done" && beforeRan && !basicOn ? (
         <div className="at-next">
           <div>
             <strong>Add basic guardrails</strong>
