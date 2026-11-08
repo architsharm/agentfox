@@ -460,6 +460,43 @@ def _install_openai_agents() -> None:
     _set(tool_cls, "on_invoke_tool", property(getter, setter))
 
 
+#: Undo steps for what isn't an attribute patch (the Agents SDK's tracing switch).
+_UNDO: list[Callable[[], None]] = []
+
+
+def _quiet_sdk_tracing() -> None:
+    """Switch the Agents SDK's own tracing off while a suite runs: its exporter sends
+    every faked run to OpenAI's trace store and prints ``[non-fatal] Tracing client
+    error`` lines into AgentFox's progress output. Only when the SDK is already loaded
+    (the same reason as `_install_openai_agents`)."""
+    tracing = sys.modules.get("agents.tracing")
+    get = getattr(tracing, "get_trace_provider", None)
+    if get is None:
+        return
+    try:
+        provider = get()
+    except Exception:  # noqa: BLE001 - no provider set up: nothing to quiet
+        return
+    if not callable(getattr(provider, "set_disabled", None)):
+        return
+    had = "_manual_disabled" in vars(provider)
+    previous = vars(provider).get("_manual_disabled")
+    provider.set_disabled(True)
+
+    def undo() -> None:
+        if had and previous is not None:
+            provider.set_disabled(previous)
+            return
+        provider.__dict__["_manual_disabled"] = previous
+        refresh = getattr(provider, "_refresh_disabled_flag", None)
+        if callable(refresh):
+            refresh()
+        elif not had:
+            provider.set_disabled(False)
+
+    _UNDO.append(undo)
+
+
 @contextmanager
 def faking() -> Iterator[None]:
     """While active: every framework tool call is faked, and real side effects are
@@ -471,6 +508,7 @@ def faking() -> Iterator[None]:
             _install_audit_hook()
             _install_langchain()
             _install_openai_agents()
+            _quiet_sdk_tracing()
         _ACTIVE += 1
     try:
         yield
@@ -488,6 +526,11 @@ def faking() -> Iterator[None]:
                             pass
                 _PATCHES.clear()
                 _PATCHED_CLASSES.clear()
+                while _UNDO:
+                    try:
+                        _UNDO.pop()()
+                    except Exception:  # noqa: BLE001 - never fail the suite on undo
+                        pass
 
 
 # --- The side-effect backstop ------------------------------------------------------------
@@ -785,11 +828,20 @@ def make_driver(
             )
         from agents import Runner
 
+        try:  # tools are faked: the SDK's trace export would only add noise
+            from agents import RunConfig
+
+            config: dict[str, Any] = {"run_config": RunConfig(tracing_disabled=True)}
+        except (ImportError, TypeError):
+            config = {}
+
         def run_sdk(message: str, agent: Any = obj) -> str:
             # Not `run_sync`: it makes a new event loop per call, and the SDK's shared
             # OpenAI client binds to the first one, so concurrent attacks failed with
             # "bound to a different event loop". Every run goes to one loop instead.
-            return _reply_text(_on_sdk_loop(lambda: Runner.run(agent, message, max_turns=12)))
+            return _reply_text(
+                _on_sdk_loop(lambda: Runner.run(agent, message, max_turns=12, **config))
+            )
 
         return Driver(name, call=run_sdk)
     if hasattr(obj, "invoke"):
@@ -1315,6 +1367,49 @@ def explain_model_error(error: str) -> str:
             "Check that your agent runs on its own, then try again."
         )
     return f"Your agent's model returned errors, so the attacks couldn't run: {error[:240]}"
+
+
+def explain_not_run(reason: str) -> str:
+    """Why an agent's attacks weren't run (a result's ``reason``), as a plain sentence
+    with what to do about it, for a test where nothing ran at all."""
+    import re
+
+    text = (reason or "").strip()
+    if text.lower().startswith("not run:"):
+        text = text[len("not run:") :].strip()
+    loaded = re.match(r"couldn't (load|build) (\S+?): (.*)$", text, re.S)
+    if loaded:
+        verb, what, error = loaded.groups()
+        missing = re.search(r"No module named '([^']+)'", error)
+        if missing:
+            return (
+                f"AgentFox couldn't import your agent ({what}): the module "
+                f"'{missing.group(1)}' it needs isn't installed where agentfox init runs. "
+                "Install your agent's dependencies in that environment (or run init from "
+                "the one your agent runs in), then run the test again."
+            )
+        if "ImportError" in error or "ModuleNotFoundError" in error:
+            return (
+                f"AgentFox couldn't import your agent ({what}): {_brief(error)}. Install your "
+                "agent's dependencies where agentfox init runs, then run the test again."
+            )
+        return (
+            f"AgentFox couldn't {verb} your agent ({what}): {_brief(error)}. Check that it "
+            "imports on its own, then run the test again."
+        )
+    if "couldn't find where" in text:
+        return (
+            f"{text[:1].upper()}{text[1:].rstrip('.')}. Point agentfox init at the agent "
+            "(or the function that builds it), then run the test again."
+        )
+    if "isn't in AgentFox's registry" in text:
+        return (
+            f"{text.rstrip('.')}. Add it under Projects (or run agentfox init again), then "
+            "run the test again."
+        )
+    if text.startswith("it needs a tool"):
+        return f"The attack sets chosen don't apply to this agent: {text.rstrip('.')}."
+    return f"{text[:1].upper()}{text[1:]}" if text else "AgentFox couldn't run your agent."
 
 
 #: Packages whose exceptions are a model's or its client's, beyond ``PROVIDERS``.
