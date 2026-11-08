@@ -11,6 +11,14 @@ the file it came from.
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-08
+
+The first-run release. A new user's own agent now gets the "wow": `agentfox up` adds
+the one line to the right file under the right name, `agentfox.auto()` governs the OpenAI
+Agents SDK, LangGraph, CrewAI, AutoGen and pydantic-ai without false alarms on an agent's
+own sub-agents and hand-offs, and the attack test's numbers are true. Sign-in adds Google
+and Microsoft.
+
 ### Added
 - Sign in with Google or Microsoft, beside GitHub. Each new identity opens its own
   workspace, keyed on the provider's subject (never the email), through the new
