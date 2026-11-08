@@ -541,6 +541,19 @@
         "multiple": false,
         "default": null,
         "help": "Send a redacted summary (counts and structure only, never file contents) to a running control plane for a fuller dashboard report. Optional — omit both flags to be asked interactively."
+       },
+       {
+        "kind": "option",
+        "name": "include_tests",
+        "opts": [
+         "--include-tests"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Also report what tests, docs and benchmarks define. Left out by default: they build stand-in agents and tools nobody deploys (secrets are reported everywhere either way)."
        }
       ],
       "default_subcommand": null,
@@ -4273,8 +4286,8 @@
      {
       "path": "test redteam",
       "name": "redteam",
-      "summary": "Run adversarial probes against the deployed configuration.",
-      "help": "Run adversarial probes against the deployed configuration.\n\nThis measures whether *this configuration* got weaker, against known attack classes.\nIt is not a robustness certificate, and `--adaptive` does not make it one: every\npublished result says an attacker who adapts eventually gets through.\n\nExits 1 when any attack got through (unless --allow-escapes). Probes are simulated:\ntheir tool calls are evaluated without writing decisions, so they never show up\nin findings or in what `policy simulate` replays. The campaign itself, and a\nfinding naming the attacks that got through, are recorded.",
+      "summary": "Run adversarial probes, written from the agent's own tools, against the deployed configuration.",
+      "help": "Run adversarial probes, written from the agent's own tools, against the deployed\nconfiguration.\n\nThis measures whether *this configuration* got weaker, against known attack classes.\nIt is not a robustness certificate, and `--adaptive` does not make it one: every\npublished result says an attacker who adapts eventually gets through.\n\nExits 1 when any attack got through (unless --allow-escapes). Probes are simulated:\ntheir tool calls are evaluated without writing decisions, so they never show up\nin findings or in what `policy simulate` replays. The campaign itself, and a\nfinding naming the attacks that got through, are recorded.",
       "panel": null,
       "params": [
        {
@@ -4355,6 +4368,45 @@
         "multiple": false,
         "default": null,
         "help": "Adaptive mode only: also generate probes from this deployment's own grants, impacts and bound policies (on by default with --adaptive). The static suite always runs the built-in probes alone."
+       },
+       {
+        "kind": "option",
+        "name": "sets",
+        "opts": [
+         "--sets"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Attack sets to write from the agent's tools, comma-separated (default: the attack test's defaults). See `agentfox test probes`."
+       },
+       {
+        "kind": "option",
+        "name": "builtin",
+        "opts": [
+         "--builtin"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Also run the built-in generic probes (they run alone when AgentFox knows none of the agent's tools)."
+       },
+       {
+        "kind": "option",
+        "name": "show_all",
+        "opts": [
+         "--all"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "List every probe, not only the ones that weren't blocked."
        },
        {
         "kind": "option",
