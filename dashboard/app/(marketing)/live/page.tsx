@@ -6,6 +6,7 @@ import { MarketingNav } from "@/components/marketing/nav";
 import { Footer } from "@/components/marketing/sections";
 import {
   DIRECTION_LABEL,
+  freshness,
   fetchShowcase,
   ofTotal,
   REVALIDATE_SECONDS,
@@ -15,7 +16,7 @@ import {
 import { publicPageMetadata } from "@/lib/site";
 
 /**
- * /live — AgentFox probing its own demo agent, every hour, in public.
+ * /live — AgentFox probing its own demo agent, on an hourly schedule, in public.
  *
  * The numbers come from the gateway's unauthenticated `GET /api/public/showcase`
  * (agentfox/apps/showcase.py), which reads only the showcase tenant. Nothing on
@@ -32,7 +33,7 @@ export const revalidate = 300;
 export const metadata: Metadata = publicPageMetadata({
   title: "Live: AgentFox probing its own agent",
   description:
-    "Every hour AgentFox attacks its own demo support agent through the real enforcement path. The results, unedited, including what got through.",
+    "On an hourly schedule AgentFox attacks its own demo support agent through the real enforcement path. The results, unedited, including what got through.",
   path: "/live",
 });
 
@@ -118,6 +119,7 @@ function Live({ data }: { data: Showcase }) {
   const attacks = latest.results.filter((r) => r.expect_blocked);
   const controls = latest.results.filter((r) => !r.expect_blocked);
   const lastRun = latest.run;
+  const fresh = freshness(data.last_updated);
   return (
     <>
       <section className="mk-section mk-band mk-reveal">
@@ -129,8 +131,18 @@ function Live({ data }: { data: Showcase }) {
                 ? "Every attack sent was contained"
                 : `${totals.escaped} attack${totals.escaped === 1 ? "" : "s"} got through`
             }
-            lede={`Last run ${when(data.last_updated)}. ${totals.runs} run${totals.runs === 1 ? "" : "s"}, the same ${attacks.length || data.target.probes.length} attacks each time.`}
+            lede={`Last run ${fresh.ago} (${when(data.last_updated)}). ${totals.runs} run${totals.runs === 1 ? "" : "s"}, the same ${attacks.length || data.target.probes.length} attacks each time.`}
           />
+          {fresh.stale && (
+            <div className="mk-narrow mk-card" role="status" style={{ marginTop: 22 }}>
+              <span className="mk-label">Behind schedule</span>
+              <p className="mk-body" style={{ margin: "8px 0 0", fontSize: "var(--t-small)" }}>
+                The probes are scheduled to run every hour, and the last one finished {fresh.ago}.
+                The numbers below are from that run and the ones before it; nothing has been
+                filled in since.
+              </p>
+            </div>
+          )}
           <div className="mk-grid mk-grid-5" style={{ marginTop: 36 }}>
             <div className="mk-card mk-stat">
               <b>{totals.attacks_attempted}</b>
@@ -326,7 +338,7 @@ export default async function LivePage() {
             <span className="mk-eyebrow mk-up">Live</span>
             <h1 className="mk-h1 mk-up mk-d1">AgentFox, attacking its own agent</h1>
             <p className="mk-lede mk-up mk-d2" style={{ marginTop: 20 }}>
-              Every hour the same set of attacks goes to our demo support agent, through the
+              On an hourly schedule the same set of attacks goes to our demo support agent, through the
               enforcement path you would run. These are the results as recorded, including the
               ones that got through.
             </p>
