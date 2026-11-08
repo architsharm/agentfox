@@ -3388,16 +3388,6 @@
 .mk .bm-doc > :is(p, h2, h3, h4, ul, ol, blockquote, .callout, .lede) {
   max-width: none;
 }
-/* The benchmark hero is dark, and these cards were drawn for a light page.
-   Pin them so the figures stay dark on white instead of inheriting the
-   hero's light text. */
-.mk-page-hero .bm-claim,
-.mk-page-hero .bm-index a { background: #fff; color: #1d1d1f; }
-.mk-page-hero .bm-claim h2,
-.mk-page-hero .bm-claim-limit { color: #6e6e73; }
-.mk-page-hero .bm-claim-figure { color: #1d1d1f; }
-.mk-page-hero .bm-claim-detail { color: #424245; }
-.mk-page-hero .bm-index a:hover { background: #f5f5f7; color: #1d1d1f; }
 /* The long-form pages open with the same hero as everything else, then a
    document whose first heading already carries 64px of margin. Without this
    the seam under the hero is that margin plus two section pads. */
@@ -4101,3 +4091,17 @@
 .mk .lp-x a { color: inherit; text-decoration: none; }
 .mk .lp-x .lp-btn-primary { color: var(--af-on-brand); }
 .mk .lp-x .lp-btn-ghost { color: #eceef2; }
+
+/* The app's own token names, which a few shared blocks (the benchmark's claim
+   grid) read. Pointed at the same product tokens, in both themes. */
+.mk,
+:root .mk .mk-ink-act,
+:root[data-theme] .mk .mk-ink-act {
+  --border: var(--af-line);
+  --panel: var(--af-surface);
+  --surface: var(--af-surface);
+  --text: var(--af-fg);
+  --muted: var(--af-muted);
+  --bg: var(--af-bg);
+}
+.mk .bm-index a { color: var(--af-fg); }

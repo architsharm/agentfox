@@ -90,8 +90,8 @@ export const HOME: NavItem = {
   sitemap: { changeFrequency: "weekly", priority: 1 },
 };
 
-/** Header links. Docs is the header's button rather than a link. */
-export const HEADER: NavItem[] = [PLAYGROUND, LIVE, BENCHMARK, PRICING, BLOG];
+/** Header links, kept to one. Everything else is linked from the pages and the footer. */
+export const HEADER: NavItem[] = [BENCHMARK];
 export const HEADER_CTA: NavItem = DOCS;
 
 export const FOOTER: FooterColumn[] = [

@@ -11,7 +11,7 @@ import { FOOTER, HEADER, HEADER_CTA } from "@/lib/marketing/nav";
 import { SESSION_COOKIE } from "@/lib/product/api";
 
 import { Logo } from "@/components/product/Logo";
-import { CopyChip } from "./client";
+import { CopyChip, ThemeButton } from "./client";
 import { REPO_URL, SUPPORT_EMAIL } from "@/lib/site";
 
 
@@ -55,6 +55,7 @@ export async function LpNav() {
           <a href={REPO_URL} target="_blank" rel="noreferrer" aria-label="Source on GitHub" className="lp-iconbtn">
             <GitHubIcon />
           </a>
+          <ThemeButton />
           <Link href={signedIn ? "/app" : "/login"} className="lp-nav-text">
             {signedIn ? "Dashboard" : "Sign in"}
           </Link>

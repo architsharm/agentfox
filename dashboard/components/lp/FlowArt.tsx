@@ -100,6 +100,9 @@ export function FlowArt({ mode }: { mode: ArtMode }) {
     const rgba = (c: RGB, a: number) => `rgba(${c[0]},${c[1]},${c[2]},${Math.max(0, a).toFixed(3)})`;
     const mq = matchMedia("(prefers-color-scheme: dark)");
     mq.addEventListener("change", refresh);
+    // The theme button sets data-theme on <html> without a media change.
+    const themeWatch = new MutationObserver(refresh);
+    themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
     let W = 0;
     let H = 0;
@@ -375,6 +378,7 @@ export function FlowArt({ mode }: { mode: ArtMode }) {
       ro.disconnect();
       io.disconnect();
       mq.removeEventListener("change", refresh);
+      themeWatch.disconnect();
       chipsEl.replaceChildren();
       probe.remove();
     };

@@ -74,6 +74,14 @@
 a:hover > .lp-arrow { transform: translate(2px, -2px); }
 .lp-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 32px; }
 .lp-iconbtn { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 8px; color: var(--af-fg-2); }
+.lp-theme { border: 0; background: transparent; cursor: pointer; }
+.lp-theme-sun { display: none; }
+:root[data-theme="dark"] .lp-theme-sun { display: block; }
+:root[data-theme="dark"] .lp-theme-moon { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .lp-theme-sun { display: block; }
+  :root:not([data-theme]) .lp-theme-moon { display: none; }
+}
 .lp-iconbtn:hover { background: var(--af-subtle); color: var(--lp-ink); }
 
 /* Copy chip (rerun commands). */
