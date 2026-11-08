@@ -221,9 +221,30 @@ class AgentEdge:
     parent: str
     child: str
     relation: str
+    #: For ``as_tool``: the name of the tool the parent's model calls to run the child
+    #: (``tool_name=``, else the framework's default from the child's name), or None
+    #: when the code does not say it in a way that can be read without running it.
+    tool: str | None = None
 
     def to_json(self) -> dict[str, str]:
-        return {"parent": self.parent, "child": self.child, "relation": self.relation}
+        out = {"parent": self.parent, "child": self.child, "relation": self.relation}
+        if self.tool:
+            out["tool"] = self.tool
+        return out
+
+
+def _as_tool_name(child: _Raw) -> str | None:
+    """The tool name a framework gives an agent used as a tool when the code gives
+    none: the Agents SDK's ``as_tool()`` snake-cases the agent's name
+    (``transform_string_function_style``); AutoGen's and Google ADK's ``AgentTool``
+    use it as is. Python only: elsewhere the call that names it is not read."""
+    if not child.name or not child.file.endswith(".py"):
+        return None
+    if child.framework == "OpenAI Agents SDK":
+        return re.sub(r"[^a-zA-Z0-9_]", "_", child.name.replace(" ", "_")).lower()
+    if child.framework in ("AutoGen", "Google ADK"):
+        return child.name
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -282,6 +303,8 @@ class _Raw:
     #: See AgentSpec.confidence / evidence.
     confidence: str = "high"
     evidence: str = ""
+    #: An ``as_tool`` child -> the tool name the code gives it (``tool_name=``).
+    child_tools: dict[Ref, str] = field(default_factory=dict)
 
 
 class _Deferred(ast.expr):
@@ -343,6 +366,9 @@ class _FileResult:
     tool_lists: dict[str, list[tuple[str, str]]] = field(default_factory=dict)
     #: ``to_x = create_handoff_tool(agent_name="x")`` -> "x": a hand-off, not a tool
     handoff_vars: dict[str, str] = field(default_factory=dict)
+    #: ``x_tool = AgentTool(x)`` / ``x_tool = x.as_tool(...)`` -> that call: an agent
+    #: used as a tool, passed to ``tools=[...]`` by name
+    agent_tool_vars: dict[str, ast.Call] = field(default_factory=dict)
     #: module-level function -> the tool references in the list it returns
     tool_helpers: dict[str, list[tuple[str, str]]] = field(default_factory=dict)
     #: module-level string constant -> its value (``MODEL = "gpt-4o"``)
@@ -886,6 +912,9 @@ class _Extractor:
         self.imported: set[str] = set()
         #: variable -> dict literal it was assigned (a tool schema named once, listed later)
         self.dicts: dict[str, ast.AST] = {}
+        #: variable -> the `AgentTool(agent)` / `agent.as_tool(...)` call it holds, so
+        #: `tools=[math_tool]` after `math_tool = AgentTool(math_agent)` is a child.
+        self.agent_tools: dict[str, ast.Call] = {}
         #: every function by name, for the description and arguments of a tool it becomes
         self.defs: dict[str, ast.FunctionDef | ast.AsyncFunctionDef] = {}
         #: variable -> the model id of the chat-model object it holds
@@ -1091,12 +1120,19 @@ class _Extractor:
             if isinstance(value.func, ast.Name):
                 self.out.aliases.setdefault(var, value.func.id)
             path = _path(value.func)
+            if path.rsplit(".", 1)[-1] in ("AgentTool", "as_tool", "asTool"):
+                self.agent_tools[var] = value
             if path.rsplit(".", 1)[-1] == "create_handoff_tool":
                 target = _str(_kw(value, "agent_name")) or (
                     _str(value.args[0]) if value.args else None
                 )
                 if target:
                     self.out.handoff_vars[var] = target
+            elif path.rsplit(".", 1)[-1] in ("AgentTool", "TeamTool") or (
+                path.rsplit(".", 1)[-1] in ("as_tool", "asTool")
+                and isinstance(value.func, ast.Attribute)
+            ):
+                self.out.agent_tool_vars[var] = value
                 return
             made = wrapped_tool(value, self.imported)
             if made is not None:
@@ -1771,13 +1807,17 @@ class _Extractor:
                 else:
                     self.out.attr_modules[expr.attr] = base
 
-    def _child(self, raw: _Raw, expr: ast.AST | None, relation: str) -> None:
+    def _child(
+        self, raw: _Raw, expr: ast.AST | None, relation: str, tool: str | None = None
+    ) -> None:
         ref = self._ref(expr)
         if ref is None:
             return
         if ref[0] == "class":
             ref = ("class", raw.cls)
         raw.children.append((ref, relation))
+        if tool:
+            raw.child_tools[ref] = tool
 
     def _tools(self, raw: _Raw, expr: ast.AST | None) -> None:
         if isinstance(expr, ast.Name | ast.Attribute) and self._sequence(expr, 0) is None:
@@ -1805,6 +1845,9 @@ class _Extractor:
             if isinstance(elt, ast.Name) and elt.id in self.dicts:
                 self._tool_elements(raw, [self.dicts[elt.id]])
                 continue
+            if isinstance(elt, ast.Name) and elt.id in self.agent_tools:
+                self._tool_elements(raw, [self.agent_tools[elt.id]])
+                continue
             if isinstance(elt, ast.Call):
                 made = wrapped_tool(elt, self.imported)
                 if made is not None:
@@ -1822,7 +1865,8 @@ class _Extractor:
                     raw.tools.append(("call", last))
                     continue
                 if last in ("as_tool", "asTool") and isinstance(elt.func, ast.Attribute):
-                    self._child(raw, elt.func.value, "as_tool")
+                    named = _str(_kw(elt, "tool_name")) or _str(_kw(elt, "toolName"))
+                    self._child(raw, elt.func.value, "as_tool", named)
                     continue
                 if last == "AgentTool":
                     self._child(
@@ -1850,6 +1894,9 @@ class _Extractor:
                 elif last:
                     # `SerperDevTool()` — a library tool, named by its class.
                     raw.tools.append(("name", last))
+            elif isinstance(elt, ast.Name) and elt.id in self.out.agent_tool_vars:
+                # `math_tool = AgentTool(math_agent)`, passed by name.
+                self._tool_elements(raw, [self.out.agent_tool_vars[elt.id]])
             elif isinstance(elt, ast.Name) and elt.id in self.out.handoff_vars:
                 # `transfer_to_x = create_handoff_tool(agent_name="x")`, passed by name.
                 raw.children.append((("label", self.out.handoff_vars[elt.id]), "handoff"))
@@ -2653,6 +2700,8 @@ class _Linker:
                 self.labels[_slug(raw.name)].add(raw.idx)
         self._merge_executors()
         edges: list[tuple[int, int, str]] = []
+        #: (parent, child) of an ``as_tool`` edge -> the tool name the parent calls.
+        edge_tools: dict[tuple[int, int], str] = {}
         for raw in list(self.raws.values()):
             owners = [raw.idx]
             if raw.extends is not None:
@@ -2666,11 +2715,19 @@ class _Linker:
             for ref, relation in raw.children:
                 for child in self.resolve(ref, raw):
                     edges.extend((owner, child, relation) for owner in owners)
+                    if relation == "as_tool":
+                        tool = raw.child_tools.get(ref) or _as_tool_name(self.raws[child])
+                        for owner in owners:
+                            if tool:
+                                edge_tools[(owner, child)] = tool
         edges.extend(self._graphs())
         edges.extend(self._crew_managers())
         edges = self._fold_groupchats(edges)
         edges.extend(self._crew_delegation(edges))
         edges = [(self.merged.get(p, p), self.merged.get(c, c), r) for p, c, r in edges]
+        edge_tools = {
+            (self.merged.get(p, p), self.merged.get(c, c)): t for (p, c), t in edge_tools.items()
+        }
 
         # Orchestrators (crews, teams, graphs) are reported only when they run agents.
         parents = {p for p, _, _ in edges}
@@ -2721,7 +2778,14 @@ class _Linker:
             if (parent, child) in seen:
                 continue
             seen.add((parent, child))
-            out_edges.append(AgentEdge(keys[parent], keys[child], relation))
+            out_edges.append(
+                AgentEdge(
+                    keys[parent],
+                    keys[child],
+                    relation,
+                    tool=edge_tools.get((parent, child)) if relation == "as_tool" else None,
+                )
+            )
         out_edges.sort(key=lambda e: (e.parent, e.child))
         return specs, out_edges
 
@@ -2926,10 +2990,16 @@ class _Linker:
 
 
 _SLUG = re.compile(r"[^a-z0-9-]+")
+#: Word boundaries inside a CamelCase name: `GameBuilderCrew`, `LLMAgent`.
+_CAMEL = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 
 
 def _slug(value: str) -> str:
-    return _SLUG.sub("-", (value or "").strip().lower()).strip("-") or "agent"
+    """The key form of a name the code gives: lower case, words joined by hyphens,
+    whether the code wrote them `snake_case`, `CamelCase` or as a sentence, so
+    `GameBuilderCrew`, `game_builder_crew` and "Game builder crew" are one key."""
+    words = _CAMEL.sub("-", (value or "").strip())
+    return _SLUG.sub("-", words.lower()).strip("-") or "agent"
 
 
 def agent_key(name: str, file: str, taken: set[str]) -> str:

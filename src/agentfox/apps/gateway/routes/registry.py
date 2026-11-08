@@ -57,6 +57,7 @@ from agentfox.platform.registry.service import (
     attest_registry,
     derive_lineage,
     detect_shadow_agents,
+    fold_duplicate_drafts,
     impact_source_of,
     inventory,
     lineage,
@@ -265,6 +266,8 @@ class AgentIn(BaseModel):
     declared_tools: list[str] = Field(default_factory=list)
     data_classes: list[str] = Field(default_factory=list)
     framework: str | None = None
+    #: The repository `agentfox init` maps the agent from (`agentfox up` sends it).
+    project: str | None = None
 
 
 def _agent_json(agent: Agent, session: Session | None = None) -> dict[str, Any]:
@@ -343,6 +346,8 @@ def create_agent(
     user: User = Depends(require("registry")),
 ) -> dict[str, Any]:
     agent = register_agent(session, **payload.model_dump())
+    # A draft a scan proposed for the same code (same name) is this agent: folded in.
+    fold_duplicate_drafts(session, agent, actor=user.email or user.id)
     chain.append(
         session,
         "agent.registered",

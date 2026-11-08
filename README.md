@@ -80,11 +80,27 @@ agentfox test redteam <agent>    # attack-test it
 `up` uses the names the code gives your agents, the same names `scan` printed, and adds
 `agentfox.auto("<agent>")` to the file that starts one (a `pyproject.toml` script, the graph
 `langgraph.json` loads, or the file that runs it, `src/` included), for Python apps on
-LangGraph, LangChain, CrewAI, AutoGen and the OpenAI Agents SDK. It starts in watch mode and
+LangGraph, LangChain, CrewAI, AutoGen, pydantic-ai and the OpenAI Agents SDK. The name is the
+agent that file runs (a crew or swarm takes its project's name), shown before anything changes
+so you can edit it. In a folder of separate examples it sets up one, with only that agent's
+tools, and says how to pick another (`agentfox up --agent <name>`). It starts in watch mode and
 changes nothing else by default: coding-agent hooks, the GitHub workflow and the local API are
 `--with coding-agents`, `--with ci` and `--with view`. Everything stays on your machine; a pip
 install has no web dashboard (`agentfox findings` is the terminal view), which comes with
 AgentFox Cloud or the self-hosted stack.
+
+The prompt-injection classifier (PIGuard) is an extra, not part of `pip install agentfox`:
+
+```bash
+pip install 'agentfox[classifiers]'
+agentfox admin detectors pull injection.classifier   # downloads the model weights once
+```
+
+Without it, injection checks use the pattern-based detector only, alongside the PII, secrets
+and hidden-Unicode checks and tool containment, all of which work on a plain install.
+`agentfox doctor` says which detectors run on your machine, and `auto()` says once that the
+classifier is skipped rather than on every run. The Docker image ships the extra and the
+weights.
 
 ### One key everywhere
 

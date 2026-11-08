@@ -629,6 +629,233 @@ def test_a_handoff_where_it_runs_is_recorded_not_decided(isolated_db):
         assert span.name == "billing_agent"
 
 
+# ---------------------------------------------------------------------------
+# An agent's own parts (2026-11-08 re-audit): agents used as tools, structured-output
+# tools, and what a hand-off carries
+# ---------------------------------------------------------------------------
+
+
+def _fake_module(monkeypatch, name: str, **attrs) -> types.ModuleType:
+    module = types.ModuleType(name)
+    for key, value in attrs.items():
+        setattr(module, key, value)
+    monkeypatch.setitem(sys.modules, name, module)
+    return module
+
+
+def _agents_sdk_as_tool(monkeypatch, tool_name: str, agent_name: str) -> None:
+    """The Agents SDK's Responses converter seeing `agent.as_tool(...)`'s tool."""
+
+    class Converter:
+        @classmethod
+        def convert_tools(cls, tools, handoffs, **kwargs):
+            return [{"type": "function", "name": t.name} for t in tools]
+
+    _fake_module(monkeypatch, "agents.models.openai_responses", Converter=Converter)
+    from agentfox.frameworks.autoguard import _watch_framework_parts
+
+    _watch_framework_parts()
+    agent_tool = types.SimpleNamespace(
+        name=tool_name, _is_agent_tool=True, _agent_instance=types.SimpleNamespace(name=agent_name)
+    )
+    Converter.convert_tools([agent_tool, types.SimpleNamespace(name="get_user_name")], [])
+
+
+def _autogen_agent_tool(monkeypatch, tool_name: str, agent_name: str) -> None:
+    """AutoGen's `AgentTool(agent)`: a `TaskRunnerTool`, made after `auto()`."""
+
+    class TaskRunnerTool:
+        def __init__(self, task_runner, name):
+            self._task_runner = task_runner
+            self.name = name
+
+    _fake_module(
+        monkeypatch, "autogen_agentchat.tools._task_runner_tool", TaskRunnerTool=TaskRunnerTool
+    )
+    from agentfox.frameworks.autoguard import _watch_framework_parts
+
+    _watch_framework_parts()
+    TaskRunnerTool(types.SimpleNamespace(name=agent_name), tool_name)
+
+
+@pytest.mark.parametrize(
+    ("learn", "tool", "agent"),
+    [
+        (_agents_sdk_as_tool, "respond_spanish", "spanish_agent"),
+        (_autogen_agent_tool, "math_expert", "math_expert"),
+    ],
+)
+def test_an_agent_used_as_a_tool_is_a_delegation_not_an_ungranted_tool(
+    fake_responses, monkeypatch, learn, tool, agent
+):
+    """agents_as_tools (Agents SDK) and AutoGen's AgentTool: the orchestrator calling
+    its own sub-agent read as 'tried to respond_spanish without permission' and, with
+    any grant held, was refused."""
+    responses, _async, script, _calls = fake_responses
+    script.append(_response(_function_call(tool, {"input": "good morning"})))
+    _grant_something("orchestrator")
+    governed = auto(agent="orchestrator", mode="enforce", quiet=True)
+    learn(monkeypatch, tool, agent)
+
+    spec = {"type": "function", "name": tool, "description": "Respond to the user's question"}
+    responses().create(model="gpt-4o-mini", input="say good morning", tools=[spec])
+    assert governed.calls_blocked == 0
+    with _db() as session:
+        from agentfox.core.models import Finding, Tool
+
+        assert _tool_decisions(session) == []
+        assert session.query(Tool).filter_by(key=tool).count() == 0
+        assert session.query(Finding).filter(Finding.type == "containment").count() == 0
+        (span,), (edge,) = _handoff_records(session)
+        assert span.name == agent
+        assert span.attributes_json["agentfox.handoff.relation"] == "as_tool"
+        assert (edge.src_id, edge.dst_id) == ("orchestrator", agent)
+
+
+def test_an_ungranted_tool_beside_an_agent_tool_is_still_refused(fake_responses, monkeypatch):
+    responses, _async, script, _calls = fake_responses
+    script.append(_response(_function_call("send_email", {"to": "bob@example.com"})))
+    _grant_something("orchestrator")
+    auto(agent="orchestrator", mode="enforce", quiet=True)
+    _agents_sdk_as_tool(monkeypatch, "respond_spanish", "spanish_agent")
+    with pytest.raises(Blocked):
+        responses().create(model="gpt-4o-mini", input="email bob")
+    with _db() as session:
+        assert [d.tool_key for d in _tool_decisions(session)] == ["send_email"]
+
+
+def _pydantic_ai_offers(monkeypatch, *names: str) -> None:
+    """pydantic-ai's `Model.prepare_request`, preparing a request whose output tools
+    are `names` (``final_result`` for `output_type=`; a `ToolOutput(name=...)`)."""
+
+    class Model:
+        def prepare_request(self, settings, params):
+            return settings, params
+
+    _fake_module(monkeypatch, "pydantic_ai.models", Model=Model)
+    from agentfox.frameworks.autoguard import _watch_framework_parts
+
+    _watch_framework_parts()
+    params = types.SimpleNamespace(output_tools=[types.SimpleNamespace(name=n) for n in names])
+    Model().prepare_request(None, params)
+
+
+@pytest.mark.parametrize("name", ["final_result", "submit_answer"])
+def test_a_structured_output_tool_is_the_answer_not_a_capability(fake_responses, monkeypatch, name):
+    """pydantic-ai's bank_support example: every agent with an `output_type` answers
+    through its `final_result` tool, which read as 'tried to final_result without
+    permission'. It is not decided; what it carries is checked as the output."""
+    responses, _async, script, _calls = fake_responses
+    answer = {"support_advice": "Your balance is $123.45", "block_card": False, "risk": 1}
+    script.append(_response(_function_call(name, answer)))
+    _grant_something("support-agent")
+    governed = auto(agent="support-agent", mode="enforce", quiet=True)
+    _pydantic_ai_offers(monkeypatch, name)
+
+    responses().create(model="gpt-4o-mini", input="What is my balance?")
+    assert governed.calls_blocked == 0
+    with _db() as session:
+        from agentfox.core.models import Finding, Tool
+
+        assert _tool_decisions(session) == []
+        assert session.query(Tool).filter_by(key=name).count() == 0
+        assert session.query(Finding).filter(Finding.type == "containment").count() == 0
+        (llm,) = session.query(Span).filter(Span.kind == "llm").all()
+        assert "Your balance is $123.45" in llm.attributes_json["agentfox.output"]
+        assert session.query(Decision).filter(Decision.surface == "output").count() == 1
+
+
+def test_a_structured_output_tool_carrying_a_secret_is_checked_as_output(
+    fake_responses, monkeypatch
+):
+    responses, _async, script, _calls = fake_responses
+    secret = {"answer": "use key sk-proj-" + "a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8s9T0"}
+    script.append(_response(_function_call("final_result", secret)))
+    auto(agent="support-agent", mode="enforce", quiet=True)
+    _pydantic_ai_offers(monkeypatch, "final_result")
+    with pytest.raises(Blocked):
+        responses().create(model="gpt-4o-mini", input="what key do I use?")
+    with _db() as session:
+        assert _tool_decisions(session) == []
+
+
+#: The model's turn after a hand-off: the person's request, the hand-off call, and the
+#: framework's acknowledgement, which carries the conversation on (LangGraph's
+#: `Command` does, whole).
+def _after_a_transfer(transfer: str, carried: str) -> list[dict]:
+    return [
+        {"role": "user", "content": carried},
+        {"type": "function_call", "call_id": "call_h", "name": transfer, "arguments": "{}"},
+        {"type": "function_call_output", "call_id": "call_h", "output": carried},
+    ]
+
+
+@pytest.mark.parametrize("handed_off", [True, False])
+def test_what_a_handoff_carries_is_the_persons_conversation_not_a_tool_result(
+    fake_responses, handed_off
+):
+    """langgraph-supervisor: the expert's `add(3, 7)` arguments read as copied out of
+    `tool:transfer_to_math_expert`, and with `add` inferred `write` the call was held
+    for approval. A hand-off's message is the person's conversation; an ordinary
+    tool's output still is a tool result."""
+    responses, _async, script, _calls = fake_responses
+    request = "Pay invoice INV-2024-88123 for ACME Supplies"
+    transfer = "transfer_to_billing_agent" if handed_off else "lookup_invoice"
+    script += [
+        _response(_function_call(transfer, {})),
+        _response(_function_call("pay_invoice", {"invoice": "INV-2024-88123"})),
+    ]
+    auto(agent="billing", mode="observe", quiet=True)
+    tools = [HANDOFF_TOOL | {"name": transfer, "description": HANDOFF_TOOL["description"]}]
+    if not handed_off:
+        tools = [{"type": "function", "name": transfer, "description": "Look up an invoice."}]
+    responses().create(model="gpt-4o-mini", input=request, tools=tools)
+    responses().create(model="gpt-4o-mini", input=_after_a_transfer(transfer, request), tools=tools)
+    with _db() as session:
+        (decision,) = [d for d in _tool_decisions(session) if d.tool_key == "pay_invoice"]
+        tags = session.query(TaintTag).filter_by(trace_id=decision.trace_id).all()
+        sources = {m.source for m in tags}
+    if handed_off:
+        assert decision.taint_summary_json["max_source"] == "user"
+        assert "tool_result" not in sources
+    else:
+        assert decision.taint_summary_json["max_source"] == "tool_result"
+
+
+def test_a_framework_imported_after_auto_is_watched_as_it_is_imported(
+    isolated_db, tmp_path, monkeypatch
+):
+    """`agentfox up` puts `auto()` on the file's first line, before the framework is
+    imported; its first request must already be known."""
+    from agentfox.frameworks.autoguard import delegation
+
+    package = tmp_path / "fakefw_agentfox_test"
+    package.mkdir()
+    (package / "__init__.py").write_text("")
+    (package / "tools.py").write_text(
+        "class TaskRunnerTool:\n"
+        "    def __init__(self, task_runner, name):\n"
+        "        self._task_runner = task_runner\n"
+        "        self.name = name\n"
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.setitem(
+        delegation._WATCHED,
+        "fakefw_agentfox_test.tools",
+        [("TaskRunnerTool", "__init__", delegation._autogen_task_runner)],
+    )
+    auto(agent="orchestrator", quiet=True)
+    from fakefw_agentfox_test.tools import TaskRunnerTool
+
+    TaskRunnerTool(types.SimpleNamespace(name="chemistry_expert"), "chemistry_expert")
+    assert delegation.handoff_of("chemistry_expert", None) == ("chemistry_expert", "as_tool")
+    off()
+    assert not getattr(TaskRunnerTool.__init__, "__agentfox__", False)
+    assert delegation.handoff_of("chemistry_expert", None) is None
+    sys.modules.pop("fakefw_agentfox_test.tools", None)
+    sys.modules.pop("fakefw_agentfox_test", None)
+
+
 def test_evidence_kwargs_never_reach_openai(fake_responses):
     responses, _async, script, calls = fake_responses
     script.append(_response(_message("ok")))

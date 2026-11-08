@@ -323,7 +323,7 @@ def test_an_agent_without_a_model_runs_the_framework_default(tmp_path):
     assert mapped["Runtime"]["model"] == "unknown model"
 
     out = flat(runner.invoke(app, ["scan", str(tmp_path), "--no-submit"]).output)
-    assert "Plain OpenAI Agents SDK · default model" in out
+    assert "plain OpenAI Agents SDK · default model" in out  # listed by key
 
 
 # ---------------------------------------------------------------------------

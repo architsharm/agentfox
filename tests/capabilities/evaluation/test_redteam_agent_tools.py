@@ -120,7 +120,7 @@ def test_the_cli_attacks_through_its_tools_and_ends_with_a_verdict(seeded):
     assert out.exit_code == 0, out.output
     text = " ".join(out.output.split())
     assert "probes written from its 2 tools (attacks aim at update_seat)" in text
-    assert "would block (watching)" in text  # the per-set column is always there
+    assert "watched" in text and "got through" in text  # the per-set columns
     assert "normal requests" in text
     assert "Verdict:" in text and "attacks get through today" in text
     # The generic library only on request.
@@ -134,4 +134,4 @@ def test_an_agent_with_no_known_tools_falls_back_to_the_generic_probes(seeded):
     seeded.commit()
     out = CliRunner().invoke(app, ["test", "redteam", "bare-agent", "--allow-escapes"])
     assert out.exit_code == 0, out.output
-    assert "knows none of this agent's tools" in " ".join(out.output.split())
+    assert "it declares no tools and holds no tool grants" in " ".join(out.output.split())

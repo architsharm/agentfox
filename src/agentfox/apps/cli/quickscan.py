@@ -180,7 +180,7 @@ def quickscan(
         )
         if machine.configs:
             clients = sorted({c["client"] for c in machine.configs})
-            issues = sum(len(e["issues"]) for e in machine.servers)
+            issues = sum(1 for e in machine.servers for i in e["issues"] if i["severity"] != "info")
             console.print(
                 f"  {len(machine.servers)} MCP server(s) across {', '.join(clients)}"
                 + (f" · [yellow]{issues} config issue(s)[/]" if issues else "")

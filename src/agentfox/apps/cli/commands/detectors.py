@@ -5,7 +5,7 @@ from __future__ import annotations
 import typer
 from rich.table import Table
 
-from agentfox.apps.cli.commands._shared import console
+from agentfox.apps.cli.commands._shared import console, dashboard_url
 
 detectors_app = typer.Typer(
     help="See which detectors can run here, and download the models some of them need.",
@@ -68,4 +68,12 @@ def detectors_pull(key: str) -> None:
         console.print(f"[red]{exc}[/]")
         raise typer.Exit(1) from exc
     console.print(f"[green]downloaded[/] {', '.join(ids)}")
-    console.print("Restart the gateway, then switch it on in Policies → Checks.")
+    console.print(
+        "Restart the gateway (or your app, for agentfox.auto()): an enabled detector "
+        "runs from then on. `agentfox admin detectors list` shows which run here."
+        + (
+            " To switch one on or off: Policies → Checks in the dashboard."
+            if dashboard_url()
+            else ""
+        )
+    )

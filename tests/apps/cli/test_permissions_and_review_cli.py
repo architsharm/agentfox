@@ -54,7 +54,7 @@ def test_doctor_reports_containment_readiness_not_just_detectors(isolated_db):
     checks = {row["check"]: row for row in payload}
     assert "containment" in checks, checks.keys()
     # Nothing declared yet, and no traffic: a starting state, not a misconfiguration.
-    assert checks["containment"]["state"] == "warn"
+    assert checks["containment"]["state"] == "info"
     assert "data scope" in checks
 
     runner.invoke(app, ["declare", "tool", "payments.wire", "--impact", "irreversible"])

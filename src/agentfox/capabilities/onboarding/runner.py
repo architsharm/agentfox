@@ -63,6 +63,7 @@ from pathlib import Path
 from typing import Any
 
 from agentfox.capabilities.onboarding.attacks import OWASP, Attack, fake_record, roles
+from agentfox.core.jsonable import jsonable
 
 _CTX: contextvars.ContextVar[_Run | None] = contextvars.ContextVar(
     "agentfox_onboarding_run", default=None
@@ -226,7 +227,9 @@ def _record(tool: str, args: dict[str, Any]) -> Any:
         raise ToolRefused(
             f"AgentFox's attack test refused to run {tool}: it was called outside a test."
         )
-    args = {str(k): v for k, v in (args or {}).items()}
+    # As JSON: the call is checked and reported over the wire, and a LangGraph tool's
+    # arguments carry the graph's own objects (its state's `HumanMessage`s).
+    args = {str(k): jsonable(v) for k, v in (args or {}).items()}
     call: dict[str, Any] = {"tool": tool, "args": args, "executed": True, "held": None}
     if run.guard is not None:
         try:

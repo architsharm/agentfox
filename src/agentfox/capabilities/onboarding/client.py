@@ -60,7 +60,11 @@ class _Api:
         )
 
     def post(self, path: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
-        res = self.http.post(f"/api/onboarding{path}", json=body or {})
+        from agentfox.core.jsonable import jsonable
+
+        # A check carries what the agent handed its tool: a LangGraph tool's arguments
+        # hold the graph's messages (`HumanMessage`), which `json` refuses.
+        res = self.http.post(f"/api/onboarding{path}", json=jsonable(body or {}))
         if res.status_code >= 400:
             try:
                 detail = res.json().get("detail")
@@ -416,7 +420,16 @@ def _print_map(console: Console, structure: dict[str, Any]) -> None:
             "low": "  [yellow]possible agent[/yellow]",
         }
         note = sure.get(agent.get("confidence", "high"), "")
-        console.print(f"[bold]{agent['name']}[/bold]  [dim]{agent['model']}[/dim]{note}")
+        if agent.get("system"):
+            # A crew, team or swarm runs its members; it has no model of its own.
+            names = {a["id"]: a["name"] for a in structure["agents"]}
+            members = ", ".join(names.get(i, i) for i in agent.get("handsOffTo") or [])
+            console.print(f"[bold]{agent['name']}[/bold]  [dim]system: runs {members}[/dim]")
+            if not any(t["agentId"] == agent["id"] for t in structure["tools"]):
+                console.print()
+                continue
+        else:
+            console.print(f"[bold]{agent['name']}[/bold]  [dim]{agent['model']}[/dim]{note}")
         if note and agent.get("evidence"):
             console.print(f"  [dim]found by: {agent['evidence']}[/dim]")
         table = Table(show_header=True, header_style="dim", box=None, padding=(0, 2))

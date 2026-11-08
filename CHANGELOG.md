@@ -18,6 +18,51 @@ the file it came from.
   provider's `*_CLIENT_ID` and `*_CLIENT_SECRET`.
 
 ### Changed
+- **`agentfox up` sets up the agent the entry file runs, and only its system.** The name
+  is the agent a run site in that file starts (`agent.run_stream(...)` in AutoGen,
+  `agent.run_sync(...)` in pydantic-ai, `Runner.run(...)`, `crew.kickoff()`,
+  `graph.invoke()`, on the variable the code holds it in), not the first agent defined
+  or one from another file. In a folder of independent examples it sets up one system,
+  grants it only its own and its sub-agents' tools, and says how to pick another
+  (`agentfox up --agent <name>`, which also moves `auto()` to that agent's file, with the
+  best few named). When nothing (a declared script, langgraph.json, a single runnable
+  file) singles one out, it starts with the system that has tools of its own and a run
+  site, then the most agents and tools, never a tool-less agent beside one with tools.
+  The count of separate systems is the number of independent systems, the same on every
+  run. Choosing another file at the question re-derives the agent and its tools, a saved
+  name included; with `--agent`, `up` says when that file does not run it. A swarm,
+  crew or graph the code names only by its variable (`builder = create_swarm(...)`)
+  runs under its project's name (`pyproject.toml`, else the folder); its members keep
+  theirs. The name is shown before anything changes, and asked in a terminal so it can
+  be edited; the plan lists it.
+- **One naming scheme.** Agent keys are the code's name as lower-case words joined by
+  hyphens, CamelCase included (`GameBuilderCrew` is `game-builder-crew`, no longer
+  `gamebuildercrew`), with the file's name added only when two agents share one. `scan`
+  lists agents by that key, the one its hand-off lines, `up` and `auto()` use.
+- **Findings that were not findings.** An agent run site (`Runner.run(...) — runs an
+  agent`) is information, not severity high; it still counts as an ungoverned model
+  call. A constant query with placeholders (`execute("... WHERE id = ?", params)`) is no
+  longer "SQL built from a string"; f-strings, `%`, `.format()` and `+` still are. A
+  remote MCP server over HTTPS with no auth header, or with an OAuth login in its config,
+  is information (remote servers sign in with OAuth), not medium; plain http stays.
+- **Skills inside virtualenvs and installed packages are not the project's.** `up`,
+  `scan` and `scan skills` skip what the repository scan skips (`.venv`, `site-packages`,
+  `node_modules` …) and any virtualenv under another name (`pyvenv.cfg`).
+- **First-run copy.** A scan after `up` says the next step (run the app, `agentfox
+  findings`, `agentfox test redteam <agent>`) instead of "Start watching this agent:
+  agentfox up". `up`'s scan lists only the coding agents this project is set up for
+  (others are named as "on this machine"). `agentfox doctor` shows the normal defaults of
+  a local first run (no traffic yet, development auth, nothing declared, fail-open, an
+  optional detector not installed) as information (`i`), not warnings; in staging or
+  production they are warnings again. Text that pointed at dashboard pages ("Policies →
+  Libraries") on an install without one names the CLI command instead. `init --key`
+  shows a crew or swarm as the system that runs its members, not as an agent with an
+  unknown model.
+- **`auto()`'s start-up banner is three lines**: the agent and mode, what is patched and
+  anything that is not governed, and what is blocked. `AGENTFOX_VERBOSE=1` prints the
+  full account (`agentfox.state().summary()` returns it). The README's quickstart says
+  the prompt-injection classifier is the `agentfox[classifiers]` extra and what runs
+  without it.
 - The sign-in page is shorter: one line of explanation, one button per provider, the
   token sign-in folded away, and the terms and playground in a footer line.
 - **`agentfox up` adds `agentfox.auto()` where your agent starts, and only that.** It
@@ -60,6 +105,34 @@ the file it came from.
   start.
 
 ### Fixed
+- **LangGraph agents can be checked against an account.** The attack test's checks
+  (`init --key`), `agentfox.auto()` in account mode and the SDK's remote client posted
+  a tool's arguments as they were; a LangGraph hand-off tool's state holds
+  `HumanMessage`s, so checks failed with "Object of type HumanMessage is not JSON
+  serializable" and `auto()` crashed the app. LangChain/LangGraph messages are now sent
+  as `{role, content, tool_calls, tool_call_id}`, and pydantic models, dataclasses,
+  dates and anything else as plain JSON (`core/jsonable.py`).
+- **`agentfox up` registers each agent once.** It registers its agent under the name
+  the scan gives the same code (`<repo>/<agent>`), with its framework, the tools it is
+  handed and the repository `init` maps it from, so the recorded scan lands on it
+  instead of proposing a second, production "SHADOW" copy (`lg-supervisor-supervisor`
+  beside `supervisor`). A single-agent repository is proposed as its agent, not as its
+  directory (`pai-bank`). Drafts an earlier run left beside the agent are folded in and
+  dismissed (`agent.draft.merged`). A local `up`'s drafts are proposed for
+  development. `agentfox agents list` labels drafts `draft`, not `SHADOW`, and hides
+  dismissed or disconnected agents unless `--all`.
+- **`agentfox test redteam` attacks the agent `up` set up through its own tools.** `up`
+  now declares the tools it grants, and the agent's tool grants are read when it
+  declares none. When no own-tool attack can be written, it says why (no tools and no
+  grants, only wildcard grants, or no set applies) instead of "Run agentfox init".
+- **`agentfox test redteam` has one meaning of "got through".** An attack live traffic
+  doesn't stop today, including one only a watching (observe-mode) rule catches, counts
+  as got through in the recall line, the per-set table, the verdict and the exit code
+  (1, unless `--allow-escapes`). It said "recall 100% … 0 got through", then "11 of 18
+  attacks get through today", and exited 0.
+- **`agentfox init` keeps the modes your policies are in.** Run after `up` (which puts
+  every pack in observe), it put `tool-containment` back to enforce. A pack's declared
+  mode is now only its first (`save_policy(keep_mode=True)`); the seed does the same.
 - `agentfox report evidence` without AgentFox Enterprise says what it is instead of
   "unexpected extra argument (evidence)".
 - `agentfox doctor` printed `pip install 'agentfox'` for `agentfox[classifiers]`: Rich
@@ -166,6 +239,27 @@ the file it came from.
   (`metadata["__handoff_destination"]`) and CrewAI's delegation tools, and are
   recorded as a `subagent` span and a `delegates_to` lineage edge with no tool
   decision, grant or containment finding.
+- **An agent's own parts are no longer "tried X without permission".** Found by the
+  2026-11-08 re-audit, where the first findings on three examples were false alarms:
+  - Agents used as tools (the Agents SDK's `agent.as_tool(...)`, AutoGen's
+    `AgentTool` / `TeamTool`) are recorded as a delegation to the sub-agent (relation
+    `as_tool`), like a hand-off, instead of decided as an ungranted tool. The names are
+    learned from the frameworks' own objects, including a framework imported after
+    `auto()` (it is watched as it is imported, so the first request is known).
+  - A structured-output tool (pydantic-ai's `final_result` for any `output_type=`, or
+    a `ToolOutput(name=...)`) is not a capability: it is not decided, and what it
+    carries is checked as the model's output.
+  - `agentfox scan` reads the tool name each `as_tool` edge is called by (`tool_name=`,
+    else the framework default; AutoGen's `x_tool = AgentTool(x)` passed by name now
+    maps too), and `agentfox up` declares those tools and grants them to the agent, so
+    default-deny never refuses an orchestrator its own sub-agents.
+- **Ordinary delegation is no longer held for approval** (langgraph-supervisor's
+  quickstart: "(3x7)+5" had `add` held). A hand-off's own message is the person's
+  conversation carried to the next agent, not a tool result, so the expert's
+  arguments no longer read as copied from `tool:transfer_to_math_expert`. And impact
+  inference no longer reads a computation as a write: `add`, `add_numbers`,
+  `merge_lists`, `replace_text` are `read`; `add_user`, `apply_discount`,
+  `merge_pull_request` still `write`.
 - **Tools checked where they run (LangChain, CrewAI) get argument provenance.** Their
   results are kept per conversation (bounded), so an argument copied out of an earlier
   tool's result is `tool_result` taint and the containment and composition rules apply;

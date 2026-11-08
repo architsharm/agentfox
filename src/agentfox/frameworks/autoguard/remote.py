@@ -33,6 +33,7 @@ from typing import Any
 
 import httpx
 
+from agentfox.core.jsonable import jsonable
 from agentfox.runtime.enforcement import EnforcementResult
 
 log = logging.getLogger(__name__)
@@ -51,8 +52,12 @@ class Remote:
         self._client = httpx.Client(timeout=self.timeout)
 
     def post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
+        # Tool arguments and the conversation carry the framework's own objects (a
+        # LangGraph tool's state holds `HumanMessage`s): sent as the JSON they mean.
         response = self._client.post(
-            f"{self.url}{path}", json=body, headers={"Authorization": f"Bearer {self.key}"}
+            f"{self.url}{path}",
+            json=jsonable(body),
+            headers={"Authorization": f"Bearer {self.key}"},
         )
         response.raise_for_status()
         return response.json()

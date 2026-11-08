@@ -173,6 +173,47 @@ def _project_name(root: Path) -> str:
     return root.resolve().name
 
 
+#: Agents that contain others (a crew, a team, a swarm, a graph): what runs is the
+#: system, and its members are the agents.
+CONTAINER_KINDS = ("team", "crew", "graph", "swarm")
+
+
+def unnamed_container(spec: AgentSpec) -> bool:
+    """A container the code names only by the variable that holds it (`builder =
+    create_swarm(...)`, `workflow = StateGraph(...)`): "builder" is no name for a
+    system, its project's is."""
+    return spec.kind in CONTAINER_KINDS and (not spec.name or spec.name in {spec.var, spec.attr})
+
+
+def project_name_for(root: Path, file: str) -> str:
+    """The project a file belongs to: the nearest `pyproject.toml` (`[project]` or
+    Poetry's name) or `package.json` name between the file and ``root``, else
+    ``root``'s own (see :func:`_project_name`). A folder of examples, each with its
+    own pyproject, names each example."""
+    import json
+
+    root = root.resolve()
+    here = (root / file).parent.resolve()
+    while here == root or root in here.parents:
+        name: Any = ""
+        try:
+            if (here / "pyproject.toml").is_file():
+                data = tomllib.loads((here / "pyproject.toml").read_text(errors="ignore"))
+                name = (data.get("project") or {}).get("name") or (
+                    (data.get("tool") or {}).get("poetry") or {}
+                ).get("name")
+            elif (here / "package.json").is_file():
+                name = json.loads((here / "package.json").read_text(errors="ignore")).get("name")
+        except (OSError, ValueError):
+            name = ""
+        if name and isinstance(name, str):
+            return name.split("/")[-1]
+        if here == root:
+            break
+        here = here.parent
+    return _project_name(root)
+
+
 def _who_talks(root: Path, prompts: str) -> tuple[str, str]:
     text = prompts.lower()
     label = (
@@ -241,8 +282,11 @@ def structure_from_scan(report: ScanReport, root: Path) -> dict[str, Any]:
     systems: dict[str, dict[str, str]] = {}
     for spec in specs:
         agent_id = ids[spec.key]
-        # One agent the code never named takes the project's name.
+        # One agent the code never named takes the project's name, and so does a
+        # container named only by its variable (`builder = create_swarm(...)`).
         name = project if len(specs) == 1 and not spec.named else spec.name
+        if unnamed_container(spec):
+            name = project_name_for(root, spec.file)
         kids = [(ids[c], r) for c, r in children.get(spec.key, []) if c in ids]
         structure["agents"].append(
             {
@@ -256,6 +300,9 @@ def structure_from_scan(report: ScanReport, root: Path) -> dict[str, Any]:
                 "models": [spec.model] if spec.model else [],
                 "framework": spec.framework,
                 "kind": spec.kind,
+                # A container of other agents: the system, shown as that, not as an
+                # agent with an unknown model.
+                "system": spec.kind in CONTAINER_KINDS and bool(kids),
                 # How sure the scan is (high | medium | low) and the rule that matched.
                 "confidence": spec.confidence,
                 "evidence": spec.evidence,

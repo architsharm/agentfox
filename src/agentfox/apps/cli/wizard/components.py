@@ -89,6 +89,10 @@ class Run:
     #: After the first look: review, tighten. Listed below `next_steps`.
     later_steps: list[tuple[str, str]] = field(default_factory=list)
     running: list[str] = field(default_factory=list)
+    #: The tools of the agent being set up and the agents it hands work to, as the
+    #: scan found them; None when the scan found no agent to scope them to (then every
+    #: tool in the repository is the agent's).
+    system_tools: list[str] | None = None
     _edition: Edition | None = field(default=None, repr=False)
 
     @property
@@ -246,12 +250,41 @@ def _scan_note(run: Run) -> str:
     return "counts and top-level folders only — never code, paths or line numbers"
 
 
+def _scan_label(run: Run) -> str:
+    """The repository's name in a recorded scan: its proposals are ``<label>/<agent>``."""
+    return run.ctx.github_repo or run.ctx.project
+
+
+def _register(run: Run) -> None:
+    """Register the agent `up` runs under as the agent the scan finds in the same code:
+    the name the scan gives it (``<repo>/<agent>``, so the scan's proposal lands on this
+    agent instead of beside it, see ``registry.service.propose_from_scan``), its
+    framework, the tools it is handed (what `agentfox test redteam` attacks through),
+    and the repository `agentfox init` maps it from. Development: it runs here."""
+    from agentfox.capabilities.onboarding.mapper import _project_name
+    from agentfox.platform.registry.service import slugify
+
+    spec = next((a for a in run.ctx.report.agents if slugify(a.name or a.key) == run.agent), None)
+    tools = list(spec.tools) if spec is not None else []
+    if "tools" in run.picked:
+        # `_tools_apply` grants each found tool to this agent: declared alike.
+        tools += list(run.answers.get("tools") or _inferred(run))
+    run.target.backend.register_agent(
+        run.agent,
+        environment="development",
+        framework=spec.framework if spec is not None else None,
+        name=(f"{_scan_label(run)}/{spec.name or slugify(spec.key)}" if spec is not None else None),
+        declared_tools=list(dict.fromkeys(tools)) or None,
+        project=_project_name(run.ctx.root),
+    )
+
+
 def _apply_scan(run: Run) -> None:
     # A local database is this machine: each agent's tool names may go there, so its
     # project shows its tools before any traffic. Never to a server or Cloud.
     local = isinstance(run.target.backend, Local)
     payload = run.ctx.report.to_submission_payload(source="check", tool_names=local)
-    payload["label"] = run.ctx.github_repo or run.ctx.project
+    payload["label"] = _scan_label(run)
     # Each recorded scan proposes its own draft agents and policies, so the same scan
     # sent again would pile up duplicates for someone to review. Per destination: a
     # scan recorded locally has not reached a team server or Cloud.
@@ -265,7 +298,10 @@ def _apply_scan(run: Run) -> None:
         run.done("scan-report", "scan unchanged since it was last recorded here; not sent again")
         return
     try:
-        result = run.target.backend.submit_scan(payload)
+        # Its drafts run where `up` set things up: development, unless saved otherwise.
+        result = run.target.backend.submit_scan(
+            payload, environment=run.ctx.saved.get("environment", "development")
+        )
     except BackendError as exc:
         run.failed("scan-report", str(exc))
         return
@@ -471,17 +507,16 @@ def _python_note(run: Run) -> str:
 
 
 def _python_ask(run: Run) -> None:
-    candidates = run.ctx.entry_points
-    choices = [
-        Choice(
-            str(p.relative_to(run.ctx.root)),
-            str(p.relative_to(run.ctx.root)),
-            "starts your agent" if i == 0 else "",
-        )
-        for i, p in enumerate(candidates)
-    ]
+    files = [str(p.relative_to(run.ctx.root)) for p in run.ctx.entry_points]
+    # The file that starts the agent being set up (`--agent`, a saved answer or the
+    # scan's pick) is the default, and on the list even when it ranks below the top 5.
+    preferred = run.answers.pop("entry-default", None)
+    if preferred and preferred not in files and (run.ctx.root / preferred).is_file():
+        files.insert(0, preferred)
+    first = preferred if preferred in files else (files[0] if files else None)
+    choices = [Choice(f, f, "starts your agent" if f == first else "") for f in files]
     choices.append(Choice("none", "Don't edit my code", "show the line to add instead"))
-    default = run.ctx.saved.get("entry_point") or (choices[0].key if candidates else "none")
+    default = run.ctx.saved.get("entry_point") or first or "none"
     if default not in {c.key for c in choices}:
         default = choices[0].key
     run.answers["python-app"] = run.prompter.select(
@@ -495,7 +530,7 @@ def _auto_lines(run: Run) -> str:
 
 
 def _python_apply(run: Run) -> None:
-    run.target.backend.register_agent(run.agent, environment="development", framework=None)
+    _register(run)
     choice = run.answers.get("python-app", "none")
     block = _auto_lines(run)
     if choice == "none":
@@ -559,7 +594,7 @@ def _gateway_apply(run: Run) -> None:
             "AGENTFOX_AGENT": run.agent,
         }
     )
-    run.target.backend.register_agent(run.agent, environment="development", framework=None)
+    _register(run)
     if not run.target.remote and not _ensure_local_api(run):
         run.say("[yellow]the local gateway is not running yet[/]")
     elif not run.target.remote:
@@ -580,11 +615,29 @@ def _gateway_apply(run: Run) -> None:
 
 
 def _tools_unavailable(run: Run) -> str:
-    return "" if run.ctx.tool_names else "no tool definitions found in this repository"
+    if run.ctx.tool_names or run.ctx.agent_tools:
+        return ""
+    return "no tool definitions found in this repository"
 
 
 def _tools_note(run: Run) -> str:
-    return f"{plural(len(run.ctx.tool_names), 'tool')} found; impact inferred from the name"
+    own, every = len(_own_tools(run)), len(run.ctx.tool_names)
+    if own < every:
+        note = f"{plural(own, 'tool')} of {run.agent}'s ({every} in all); impact inferred"
+    else:
+        note = f"{plural(every, 'tool')} found; impact inferred from the name"
+    if run.ctx.agent_tools:
+        note += f"; {plural(len(run.ctx.agent_tools), 'agent')} used as a tool"
+    return note
+
+
+def _own_tools(run: Run) -> list[str]:
+    """The tools to declare and grant: the agent's own and its sub-agents' when the
+    scan tied tools to agents, every tool found otherwise. A folder of separate
+    examples does not hand one agent the tools of seventeen others."""
+    if run.system_tools is None:
+        return run.ctx.tool_names
+    return [n for n in run.ctx.tool_names if n in set(run.system_tools)]
 
 
 def _inferred(run: Run) -> dict[str, str]:
@@ -593,7 +646,7 @@ def _inferred(run: Run) -> dict[str, str]:
     details = {s.name: s.detail for s in run.ctx.report.tools if s.name}
     return {
         name: infer_impact(name, {"description": details.get(name, "")}, cautious=True)
-        for name in run.ctx.tool_names
+        for name in _own_tools(run)
     }
 
 
@@ -615,10 +668,34 @@ def _tools_ask(run: Run) -> None:
 
 def _tools_apply(run: Run) -> None:
     impacts = run.answers.get("tools") or _inferred(run)
+    if not impacts and not run.ctx.agent_tools:
+        run.skipped(
+            "tools",
+            f"{run.agent} has no tools of its own; the "
+            f"{plural(len(run.ctx.tool_names), 'tool')} found belong to other agents here",
+        )
+        return
     added = kept = 0
     for name, impact in impacts.items():
         try:
             if run.target.backend.declare_tool(name, impact=impact, description=""):
+                added += 1
+            else:
+                kept += 1
+        except BackendError as exc:
+            run.failed("tools", str(exc))
+            return
+    # An agent another uses as a tool (`agent.as_tool(...)`, AutoGen's `AgentTool`) is
+    # one of the system's own parts: `auto()` records a call to it as a delegation,
+    # and declared and granted here it is never "tried without permission" on a route
+    # that cannot tell (the gateway). It reaches nothing itself; the sub-agent's own
+    # tools are declared above and decided on their own.
+    subagents = {n: c for n, c in run.ctx.agent_tools.items() if n not in impacts}
+    for name, child in subagents.items():
+        try:
+            if run.target.backend.declare_tool(
+                name, impact="read", description=f"runs the {child} agent (an agent used as a tool)"
+            ):
                 added += 1
             else:
                 kept += 1
@@ -631,7 +708,7 @@ def _tools_apply(run: Run) -> None:
         # call is containment (a tainted argument to an irreversible tool), not a
         # missing grant on day one.
         try:
-            for name in impacts:
+            for name in [*impacts, *subagents]:
                 run.target.backend.grant(run.agent, name)
             granted = f", granted to {run.agent}"
         except BackendError as exc:
@@ -1071,7 +1148,7 @@ CATALOGUE: tuple[Component, ...] = (
         "Tool containment — declare the tools found",
         _tools_note,
         _tools_unavailable,
-        lambda r: bool(r.ctx.tool_names),
+        lambda r: bool(_own_tools(r) or r.ctx.agent_tools),
         _tools_apply,
         _tools_ask,
     ),
