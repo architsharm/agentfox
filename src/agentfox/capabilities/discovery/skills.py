@@ -167,7 +167,9 @@ def _paragraph(text: str, start: int, end: int, reach: int = 300) -> str:
     """The paragraph holding ``text[start:end]``, at most ``reach`` characters each side."""
     left = text.rfind("\n\n", max(0, start - reach), start)
     right = text.find("\n\n", end, end + reach)
-    return text[left + 2 if left != -1 else max(0, start - reach) : right if right != -1 else end + reach]
+    first = left + 2 if left != -1 else max(0, start - reach)
+    last = right if right != -1 else end + reach
+    return text[first:last]
 
 
 def _cited_not_said(text: str, patterns: list[str]) -> bool:

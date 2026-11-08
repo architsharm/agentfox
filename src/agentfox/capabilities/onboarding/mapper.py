@@ -249,7 +249,10 @@ def structure_from_scan(report: ScanReport, root: Path) -> dict[str, Any]:
                 "id": agent_id,
                 "key": spec.key,
                 "name": name,
-                "model": spec.model or "unknown model",
+                # A model the code never sets is the framework's default, not unknown;
+                # `models` stays empty either way, since no model id is known to declare.
+                "model": spec.model
+                or (f"{spec.framework} default" if spec.default_model else "unknown model"),
                 "models": [spec.model] if spec.model else [],
                 "framework": spec.framework,
                 "kind": spec.kind,
@@ -270,7 +273,7 @@ def structure_from_scan(report: ScanReport, root: Path) -> dict[str, Any]:
         for tname in spec.tools:
             d = details.get(tname, {})
             doc = str(d.get("description") or "")
-            caps = classify_tool(tname, doc)
+            caps = classify_tool(tname, doc, d.get("args") or ())
             impact = infer_impact(tname, {"description": doc}, cautious=True)
             risk, why = _risk(tname, caps, impact)
             sys_name, kind = system_for(tname, doc, risk, caps)
