@@ -14,7 +14,7 @@ import typer
 from rich.markup import escape
 from rich.table import Table
 
-from agentfox.apps.cli.commands._shared import _session, console
+from agentfox.apps.cli.commands._shared import _session, console, dashboard_url
 
 redteam_app = typer.Typer(
     help="Attack your own configuration and score what got through.",
@@ -196,7 +196,11 @@ def redteam_run(
         console.print(
             f"  [yellow]{len(watching)} caught only by rules that watch:[/] live traffic is "
             "not stopped yet. They stop it once their policy blocks "
-            "(Policies → Libraries, or `agentfox policy enforce <policy>`)"
+            + (
+                "(Policies → Libraries in the dashboard, or `agentfox policy enforce <policy>`)"
+                if dashboard_url()
+                else "(`agentfox policy enforce <policy>`; `agentfox policy list` names them)"
+            )
             + (
                 " or, for a tool call, once the agent is granted its first tool."
                 if any(r["waiting_for"] == "grant" for r in watching)

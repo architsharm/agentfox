@@ -604,9 +604,36 @@ def test_doctor_still_volunteers_its_own_failure_modes():
     the rewording above is allowed to soften it."""
     result = runner.invoke(app, ["doctor", "--json"])
     checks = {c["check"]: c for c in _json(result.output)}
-    assert checks["authentication"]["state"] in ("warn", "bad")
+    # Locally the development defaults are said as information, never as "ok", and
+    # the consequence is still spelled out.
+    assert checks["authentication"]["state"] in ("info", "warn", "bad")
     assert "anyone who can reach this port" in checks["authentication"]["detail"]
-    assert checks["containment"]["state"] in ("warn", "bad")
+    assert checks["containment"]["state"] in ("info", "warn", "bad")
+    assert "no tools declared" in checks["containment"]["detail"]
+
+
+def test_doctor_says_a_local_first_run_as_information_not_warnings(monkeypatch):
+    """A fresh local install is a starting state: the checks that are normal for it
+    (no traffic yet, development auth, nothing declared, the classifier extra not
+    installed, fail-open, no boundaries) are info, so `doctor` does not open on a
+    column of warnings. Outside development the same states are warnings again."""
+    from agentfox.core.config import reset_settings_cache
+
+    first_run = ("traffic", "authentication", "containment", "data scope", "answerability")
+    checks = {c["check"]: c for c in _json(runner.invoke(app, ["doctor", "--json"]).output)}
+    for name in first_run + ("detector failure",):
+        assert checks[name]["state"] in ("info", "ok"), (name, checks[name])
+    assert not [c for c in checks.values() if c["state"] == "warn"], checks
+
+    monkeypatch.setenv("AGENTFOX_ENVIRONMENT", "staging")
+    reset_settings_cache()
+    try:
+        staged = {c["check"]: c for c in _json(runner.invoke(app, ["doctor", "--json"]).output)}
+    finally:
+        monkeypatch.delenv("AGENTFOX_ENVIRONMENT")
+        reset_settings_cache()
+    assert staged["data scope"]["state"] == "warn"
+    assert staged["answerability"]["state"] == "warn"
 
 
 def test_scan_names_each_agent_it_found_even_when_there_is_one(tmp_path):

@@ -377,9 +377,10 @@ def check(
         )
     if report.frameworks:
         console.print(f"  [dim]built on:[/] {', '.join(report.frameworks)}")
-    # The agents by name, one line each, single-agent repos included: "we found your
-    # agent" is the first thing a newcomer wants confirmed. A multi-agent system is
-    # proposed as one agent per agent, so who hands work to whom follows.
+    # The agents one line each, single-agent repos included: "we found your agent" is
+    # the first thing a newcomer wants confirmed. By key, the one name the edges below,
+    # `up` and auto() use. A multi-agent system is proposed as one agent per agent, so
+    # who hands work to whom follows.
     from rich.markup import escape
 
     if report.agents:
@@ -393,7 +394,7 @@ def check(
                 console.print(
                     f"    [bold]{escape(directory)}/[/]  {plural(len(specs), 'agent')}"
                     + (f" · {plural(tools, 'tool')}" if tools else "")
-                    + f"  [dim]{escape(', '.join(a.name for a in specs[:3]))}"
+                    + f"  [dim]{escape(', '.join(a.key for a in specs[:3]))}"
                     + (", …" if len(specs) > 3 else "")
                     + "[/]"
                 )
@@ -415,7 +416,7 @@ def check(
                     if part
                 )
                 console.print(
-                    f"    [bold]{escape(spec.name)}[/]  {escape(detail)}  "
+                    f"    [bold]{escape(spec.key)}[/]  {escape(detail)}  "
                     f"[dim]{escape(spec.file)}:{spec.line}[/]"
                 )
             if len(report.agents) > 8:
@@ -508,7 +509,12 @@ def check(
 
     console.print()
     console.print(
-        Panel(_next_action(report), border_style="cyan", title="[bold]Next[/]", title_align="left")
+        Panel(
+            _next_action(report, path),
+            border_style="cyan",
+            title="[bold]Next[/]",
+            title_align="left",
+        )
     )
 
     maybe_submit_report(report, source="check", explicit=submit, console=console)
@@ -527,14 +533,40 @@ def _agent_groups(agents: list[Any]) -> list[tuple[str, list[Any]]]:
     return list(groups.items())
 
 
-def _next_action(report: Any) -> str:
+def _next_action(report: Any, root: Path | None = None) -> str:
     """The scan's Next panel: one command that acts on what was found, then the why.
 
     A scan that ends in advice ("add auto() to your entry point") leaves the reader
-    to work out the steps; `agentfox up` already does them, in watch mode.
+    to work out the steps; `agentfox up` already does them, in watch mode. Once `up`
+    has run here (its answers are in `.agentfox/up.json`), offering it again would
+    be the wrong step: the next one is running the app and reading what it recorded.
     """
     if report.inconclusive or not (report.agents or report.tools or report.governable):
         return report.next_step()
+    from agentfox.apps.cli.wizard.detect import load_answers
+
+    saved = load_answers(root) if root is not None else {}
+    if saved.get("agent"):
+        agent = saved["agent"]
+        entry = saved.get("entry_point")
+        run = (
+            f"run your app ({entry} calls agentfox.auto)"
+            if entry and entry != "none"
+            else "run your app"
+        )
+        lines = [
+            f"Set up with `agentfox up` as [bold]{agent}[/] ({saved.get('mode', 'observe')}).",
+            f"Next: {run}, then [bold cyan]agentfox findings[/] for what it recorded and "
+            f"[bold cyan]agentfox test redteam {agent}[/] to attack-test it.",
+        ]
+        others = {s.file for s in report.ungoverned if s.file.endswith(".py")} - {entry}
+        if others:
+            lines.append(
+                f"[dim]{plural(len(others), 'other file')} with ungoverned calls "
+                "(other agents, or code auto() in your entry point does not load). "
+                "`agentfox up` again to change what is set up.[/]"
+            )
+        return "\n".join(lines)
     why = report.next_step(suggest_auto=False)
     count = len(report.agents)
     what = "this agent" if count == 1 else f"these {count} agents" if count else "this repository"
@@ -565,7 +597,7 @@ def doctor(
     means nothing to someone who has not read the PRD.
     """
     from agentfox.capabilities.detection import available_detectors
-    from agentfox.core.config import get_settings
+    from agentfox.core.config import get_settings, is_development
     from agentfox.core.db import session_scope
     from agentfox.core.models import (
         AccessScopeRule,
@@ -581,6 +613,11 @@ def doctor(
 
     settings = get_settings()
     checks: list[tuple[str, str, str]] = []
+    # What a fresh local install looks like is said as information, not as a warning:
+    # a first run that opens on seven yellow marks reads as broken. The same states in
+    # staging or production stay warnings, since there they are decisions not taken.
+    dev = is_development(settings)
+    default_state = "info" if dev else "warn"
 
     def add(state: str, what: str, detail: str) -> None:
         checks.append((state, what, detail))
@@ -614,7 +651,7 @@ def doctor(
 
     if decisions == 0:
         add(
-            "warn",
+            "info",
             "traffic",
             "no decisions recorded — nothing has been governed yet. "
             "Add `agentfox.auto()` to your entry point.",
@@ -635,7 +672,7 @@ def doctor(
 
     if header_identity_allowed():
         add(
-            "warn"
+            "info"
             if settings.environment.lower() in ("development", "dev", "test", "local")
             else "bad",
             "authentication",
@@ -648,7 +685,7 @@ def doctor(
     else:
         add("ok", "authentication", "API tokens required; the identity header is refused")
 
-    from agentfox.core.config import insecure_production_secrets, is_development
+    from agentfox.core.config import insecure_production_secrets
 
     secret_problems = insecure_production_secrets(settings)
     if secret_problems:
@@ -711,7 +748,7 @@ def doctor(
         # misconfiguration. A deployment with live traffic and no declarations is the
         # real failure, and it gets the hard verdict.
         add(
-            "bad" if decisions else "warn",
+            "bad" if decisions else "info",
             "containment",
             "no tools declared — nothing constrains what an agent may do when a detector "
             "misses. Declare them with `agentfox declare tool <key> --impact ...`."
@@ -742,7 +779,7 @@ def doctor(
         )
 
     add(
-        "ok" if scoped_tables else "warn",
+        "ok" if scoped_tables else default_state,
         "data scope",
         f"{scoped_tables} table(s) declared row-scoped"
         if scoped_tables
@@ -775,7 +812,15 @@ def doctor(
         detail += "; enabled but unavailable: " + ", ".join(
             f"{key} ({_why(key)})" for key in missing
         )
-    add("bad" if not running else "warn" if missing else "ok", "detectors", detail)
+    # An enabled detector that needs an optional extra or a model download is the
+    # default install, not a fault: said as information locally, with the fix.
+    # A name that is no detector at all is a mistake in the config, and stays a warning.
+    unknown = [k for k in missing if k not in known]
+    add(
+        "bad" if not running else "warn" if unknown else default_state if missing else "ok",
+        "detectors",
+        detail,
+    )
 
     providers = available_providers()
     # available_providers() returns a dict; comparing it to a set was always False,
@@ -792,7 +837,7 @@ def doctor(
         add("ok", "providers", f"{', '.join(sorted(providers))}")
 
     add(
-        "warn" if settings.fail_mode == "open" else "ok",
+        default_state if settings.fail_mode == "open" else "ok",
         "detector failure",
         "fail-open: a detector that times out lets the request through and records the gap"
         if settings.fail_mode == "open"
@@ -801,7 +846,7 @@ def doctor(
 
     if boundaries == 0:
         add(
-            "warn",
+            default_state,
             "answerability",
             "no knowledge boundary declared — nothing stops an agent answering a "
             "question it has no data for.",
@@ -825,7 +870,7 @@ def doctor(
         raise typer.Exit(1 if failed else 0)
 
     console.print("[bold]Runtime check[/]")
-    marks = {"ok": "[green]✓[/]", "warn": "[yellow]![/]", "bad": "[red]✗[/]"}
+    marks = {"ok": "[green]✓[/]", "info": "[cyan]i[/]", "warn": "[yellow]![/]", "bad": "[red]✗[/]"}
     table = Table(box=None, padding=(0, 2), show_header=False)
     for state, what, detail in checks:
         # Escaped: details quote install hints such as `agentfox[classifiers]`, which Rich
