@@ -458,8 +458,8 @@ AGENT_TOOLS = "agent_tools"
 def agent_tool_map(session: Session, agent_slug: str) -> list[dict[str, Any]]:
     """The agent's own tools in the shape the onboarding attack library reads (``name``,
     ``risk``, ``args``, ``whatItDoes``): from the map `agentfox init` reported for the
-    agent's project when there is one, else from the registry (its declared tools and
-    their impact)."""
+    agent's project when there is one, else from the registry: its declared tools, or
+    when it declares none the tools it is granted, and their impact."""
     from agentfox.core.models import OnboardingProject
 
     for row in session.scalars(select(OnboardingProject)):
@@ -474,9 +474,7 @@ def agent_tool_map(session: Session, agent_slug: str) -> list[dict[str, Any]]:
         return []
     known = {t.key: t for t in session.scalars(select(Tool))}
     out = []
-    for key in agent.declared_tools or []:
-        if not key or "*" in key:
-            continue
+    for key in _named(agent.declared_tools) or _named(_granted(session, agent)):
         tool = known.get(key)
         impact = tool.impact if tool else "read"
         props = ((tool.schema_json or {}).get("properties") or {}) if tool else {}
@@ -491,6 +489,45 @@ def agent_tool_map(session: Session, agent_slug: str) -> list[dict[str, Any]]:
             }
         )
     return out
+
+
+def _named(keys: list[str] | None) -> list[str]:
+    """Tool keys that name one tool: a wildcard grant (``mcp__github__*``) names none."""
+    return list(dict.fromkeys(k for k in keys or [] if k and "*" not in k))
+
+
+def _granted(session: Session, agent: Agent) -> list[str]:
+    """The tools the agent's identities hold a live (unexpired) grant for."""
+    from agentfox.core.models import Capability, Identity, as_aware, utcnow
+
+    now = utcnow()
+    rows = session.scalars(select(Capability).join(Identity).where(Identity.agent_id == agent.id))
+    return [c.tool_key for c in rows if c.expires_at is None or as_aware(c.expires_at) > now]
+
+
+def no_tool_probes_reason(session: Session, agent_slug: str) -> str:
+    """Why `agent_tool_probes` wrote nothing for this agent, as a plain clause: what
+    AgentFox knows about its tools, and so what would let it attack through them."""
+    agent = session.scalar(select(Agent).where(Agent.slug == agent_slug))
+    if agent is None:
+        return "it isn't in the registry"
+    declared, granted = agent.declared_tools or [], _granted(session, agent)
+    named = _named(declared) or _named(granted)
+    if named:
+        return (
+            f"none of the chosen attack sets applies to its tools ({', '.join(named[:4])}). "
+            "`agentfox test probes` lists the sets"
+        )
+    if declared or granted:
+        wild = sorted({k for k in [*declared, *granted] if "*" in k})
+        return (
+            f"its tools are known only as wildcards ({', '.join(wild[:3])}), which name no "
+            "tool to attack through"
+        )
+    return (
+        "it declares no tools and holds no tool grants. Grant it the tools it calls "
+        f"(`agentfox capability grant {agent_slug} <tool>`) and run this again"
+    )
 
 
 def agent_tool_probes(

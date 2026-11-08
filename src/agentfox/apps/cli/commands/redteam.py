@@ -66,8 +66,9 @@ def redteam_run(
     allow_escapes: bool = typer.Option(
         False,
         "--allow-escapes",
-        help="Exit 0 even when an attack got through. By default an escaped attack exits 1, "
-        "so the command can gate CI.",
+        help="Exit 0 even when an attack got through. By default an attack that got through "
+        "exits 1, so the command can gate CI; one only a watching rule catches counts, since "
+        "live traffic isn't stopped by it.",
     ),
 ) -> None:
     """Run adversarial probes, written from the agent's own tools, against the deployed
@@ -77,7 +78,12 @@ def redteam_run(
     It is not a robustness certificate, and `--adaptive` does not make it one: every
     published result says an attacker who adapts eventually gets through.
 
-    Exits 1 when any attack got through (unless --allow-escapes). Probes are simulated:
+    An attack got through when live traffic would not stop it today: one only a
+    watching (observe-mode) rule catches gets through until that rule blocks. The
+    recall line, the verdict and the exit code all count it this way.
+
+    Exits 1 when any attack got through (unless --allow-escapes, for a CI step that
+    reports without failing). Probes are simulated:
     their tool calls are evaluated without writing decisions, so they never show up
     in findings or in what `policy simulate` replays. The campaign itself, and a
     finding naming the attacks that got through, are recorded.
@@ -85,7 +91,11 @@ def redteam_run(
     from sqlalchemy import select
 
     from agentfox.capabilities.evaluation import run_campaign
-    from agentfox.capabilities.evaluation.redteam import agent_tool_map, agent_tool_probes
+    from agentfox.capabilities.evaluation.redteam import (
+        agent_tool_map,
+        agent_tool_probes,
+        no_tool_probes_reason,
+    )
     from agentfox.capabilities.onboarding.attacks import ATTACK_TYPES, LIBRARY, roles
     from agentfox.core.models import RedTeamFinding
 
@@ -115,6 +125,7 @@ def redteam_run(
         slug = slugify(agent)
         written, not_run = ([], []) if adaptive else agent_tool_probes(session, slug, chosen)
         tools = agent_tool_map(session, slug) if written else []
+        why_generic = "" if written or adaptive else no_tool_probes_reason(session, slug)
         previous = _previous_summary(session, slug)
         kwargs: dict[str, Any] = {}
         if written:
@@ -175,9 +186,8 @@ def redteam_run(
         )
         if not adaptive:
             console.print(
-                "  [dim]AgentFox knows none of this agent's tools, so these are the built-in "
-                "generic probes. Run `agentfox init` in its repository to attack it "
-                "through its own tools.[/]"
+                "  [dim]No attacks were written through this agent's own tools: "
+                f"{escape(why_generic)}. These are the built-in generic probes.[/]"
             )
     watching = [
         r
@@ -186,11 +196,19 @@ def redteam_run(
         and not r["succeeded"]
         and (r["applied"] not in _STOPS or r["waiting_for"])
     ]
+    # One meaning of "got through" for this line, the verdict and the exit code: what
+    # live traffic doesn't stop today. A watching rule's catch is not a stop.
+    attacks, through, _ = _live(stats)
+    stopped = attacks - through
     console.print(
-        f"  recall (attacks caught) [bold]{stats.get('recall', stats['posture_score']):.0%}[/] — "
-        f"[green]{int(stats['attacks_blocked']) - len(watching)} blocked[/], "
-        + (f"[yellow]{len(watching)} would block (watching)[/], " if watching else "")
-        + f"[red]{stats['attacks_succeeded']} got through[/]"
+        f"  recall (attacks stopped) [bold]{stopped / attacks if attacks else 1.0:.0%}[/] — "
+        f"[green]{stopped} blocked[/], "
+        + (f"[red]{through} got through[/]" if through else "[green]0 got through[/]")
+        + (
+            f" [yellow]({len(watching)} of them caught by rules that only watch)[/]"
+            if watching
+            else ""
+        )
     )
     if watching:
         console.print(
@@ -249,11 +267,15 @@ def redteam_run(
 
     console.print(f"\n{_verdict(stats, previous)}")
 
-    escaped = int(stats.get("attacks_succeeded") or 0)
-    if escaped and not allow_escapes:
+    if through and not allow_escapes:
         console.print(
-            f"\n[bold red]{escaped} attack(s) got through[/] — exit 1. "
-            "[dim]Pass --allow-escapes to report without failing.[/]"
+            f"\n[bold red]{through} attack(s) got through[/] — exit 1."
+            + (
+                f" {len(watching)} of them stop once the rules that watch them block."
+                if watching
+                else ""
+            )
+            + " [dim]Pass --allow-escapes to report without failing.[/]"
         )
         raise typer.Exit(1)
 
@@ -295,8 +317,9 @@ def _probe_table(rows: list[dict[str, Any]], *, written: bool, show_all: bool) -
 
 
 def _by_set(rows: list[dict[str, Any]]) -> Table:
-    """Per attack set: attacks, blocked, would block (watching), got through, and the
-    set's normal requests answered / blocked."""
+    """Per attack set: attacks, blocked, got through (live traffic isn't stopped) and
+    how many of those a watching rule catches, and the set's normal requests answered /
+    blocked. "Got through" counts as the recall line, the verdict and the exit code do."""
     from agentfox.capabilities.onboarding.attacks import ATTACK_TYPES
 
     sets: dict[str, dict[str, int]] = {}
@@ -316,6 +339,7 @@ def _by_set(rows: list[dict[str, Any]]) -> Table:
         if "NOT BLOCKED" in result:
             n["through"] += 1
         elif "would block" in result:
+            n["through"] += 1
             n["watching"] += 1
         else:
             n["blocked"] += 1
@@ -324,8 +348,8 @@ def _by_set(rows: list[dict[str, Any]]) -> Table:
         "set",
         "attacks",
         "blocked",
-        "would block (watching)",
         "got through",
+        "of those, watched",
         "normal requests",
     ):
         table.add_column(column, justify="left" if column == "set" else "right")
@@ -334,8 +358,8 @@ def _by_set(rows: list[dict[str, Any]]) -> Table:
             ATTACK_TYPES.get(kind, kind.replace("_", " ")),
             str(n["attacks"]),
             f"[green]{n['blocked']}[/]" if n["blocked"] else "0",
-            f"[yellow]{n['watching']}[/]" if n["watching"] else "0",
             f"[red]{n['through']}[/]" if n["through"] else "0",
+            f"[yellow]{n['watching']}[/]" if n["watching"] else "0",
             (f"{n['normal'] - n['over']} of {n['normal']} answered" if n["normal"] else "—")
             + (f", [red]{n['over']} blocked[/]" if n["over"] else ""),
         )
@@ -351,9 +375,9 @@ def _result(row: dict[str, Any]) -> tuple[str, bool]:
     if row["expect_blocked"] and row["succeeded"]:
         return "[red]NOT BLOCKED (attack succeeded)[/]", False
     if row["expect_blocked"] and row["waiting_for"] == "grant":
-        return "[yellow]would block (waiting for the first tool grant)[/]", False
+        return "[yellow]got through: would block (waiting for the first tool grant)[/]", False
     if row["expect_blocked"] and row["applied"] not in _STOPS:
-        return "[yellow]would block (watching)[/]", False
+        return "[yellow]got through: would block (watching)[/]", False
     if row["expect_blocked"]:
         return "[green]blocked[/]", True
     return "[green]allowed[/]", True

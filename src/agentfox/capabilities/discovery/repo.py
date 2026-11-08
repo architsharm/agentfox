@@ -530,9 +530,11 @@ class ScanReport:
         No file path deeper than its first component, no line numbers, no detail
         text, no error messages.
 
-        For a multi-agent system it also carries each agent's name, framework, kind and
-        top-level directory, and which agent hands work to which: the structure a
-        reviewer needs to approve the system as the separate agents it is. An agent's
+        It also carries each agent the code defines, by name, framework, kind and
+        top-level directory, and for a multi-agent system which agent hands work to
+        which: the structure a reviewer needs to approve the system as the separate
+        agents it is. A single agent is sent too, so its proposal carries the name
+        `agentfox up` and `agentfox init` register it under, not the directory's. An agent's
         name is the one it gives itself in code (``Agent(name="Billing")``), the same
         kind of identifier as a directory name. Its tools' names are not sent, for the
         same reason a ``tool`` site's are not: they stay on this machine, and only the
@@ -575,9 +577,7 @@ class ScanReport:
                     **({"tools": list(a.tools)} if tool_names else {}),
                 }
                 for a in self.agents
-            ]
-            if self.multi_agent
-            else [],
+            ],
             "agent_edges": [e.to_json() for e in self.agent_edges] if self.multi_agent else [],
         }
 

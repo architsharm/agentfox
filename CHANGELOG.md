@@ -52,6 +52,34 @@ the file it came from.
   start.
 
 ### Fixed
+- **LangGraph agents can be checked against an account.** The attack test's checks
+  (`init --key`), `agentfox.auto()` in account mode and the SDK's remote client posted
+  a tool's arguments as they were; a LangGraph hand-off tool's state holds
+  `HumanMessage`s, so checks failed with "Object of type HumanMessage is not JSON
+  serializable" and `auto()` crashed the app. LangChain/LangGraph messages are now sent
+  as `{role, content, tool_calls, tool_call_id}`, and pydantic models, dataclasses,
+  dates and anything else as plain JSON (`core/jsonable.py`).
+- **`agentfox up` registers each agent once.** It registers its agent under the name
+  the scan gives the same code (`<repo>/<agent>`), with its framework, the tools it is
+  handed and the repository `init` maps it from, so the recorded scan lands on it
+  instead of proposing a second, production "SHADOW" copy (`lg-supervisor-supervisor`
+  beside `supervisor`). A single-agent repository is proposed as its agent, not as its
+  directory (`pai-bank`). Drafts an earlier run left beside the agent are folded in and
+  dismissed (`agent.draft.merged`). A local `up`'s drafts are proposed for
+  development. `agentfox agents list` labels drafts `draft`, not `SHADOW`, and hides
+  dismissed or disconnected agents unless `--all`.
+- **`agentfox test redteam` attacks the agent `up` set up through its own tools.** `up`
+  now declares the tools it grants, and the agent's tool grants are read when it
+  declares none. When no own-tool attack can be written, it says why (no tools and no
+  grants, only wildcard grants, or no set applies) instead of "Run agentfox init".
+- **`agentfox test redteam` has one meaning of "got through".** An attack live traffic
+  doesn't stop today, including one only a watching (observe-mode) rule catches, counts
+  as got through in the recall line, the per-set table, the verdict and the exit code
+  (1, unless `--allow-escapes`). It said "recall 100% … 0 got through", then "11 of 18
+  attacks get through today", and exited 0.
+- **`agentfox init` keeps the modes your policies are in.** Run after `up` (which puts
+  every pack in observe), it put `tool-containment` back to enforce. A pack's declared
+  mode is now only its first (`save_policy(keep_mode=True)`); the seed does the same.
 - `agentfox report evidence` without AgentFox Enterprise says what it is instead of
   "unexpected extra argument (evidence)".
 - `agentfox doctor` printed `pip install 'agentfox'` for `agentfox[classifiers]`: Rich

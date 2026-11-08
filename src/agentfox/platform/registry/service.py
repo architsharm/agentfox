@@ -220,14 +220,140 @@ def approve_drafts(session: Session, agents: list[Agent], *, actor: str) -> list
 
 
 def _spec_slug(session: Session, key: str, repo_short: str, name: str) -> str:
-    """One agent's slug: its own name, unless that belongs to another repository."""
+    """One agent's slug: its own name, unless that belongs to another repository.
+
+    The agent of that name for the same code (same repository, same definition: the
+    same ``name``) wins over everything, live or not, so a scan lands on the agent
+    `agentfox up` registered for it instead of proposing it a second time."""
     prefixed = repo_short if key == repo_short else slugify(f"{repo_short}-{key}")
+    existing = session.scalar(select(Agent).where(Agent.slug == key))
+    if existing is not None and existing.name == name:
+        return key
     if session.scalar(select(Agent.id).where(Agent.slug == prefixed)) is not None:
         return prefixed  # scanned before: keep landing on the same row
-    existing = session.scalar(select(Agent).where(Agent.slug == key))
-    if existing is None or existing.name == name:
+    if existing is None:
         return key
     return prefixed
+
+
+def adopt_proposal(
+    session: Session,
+    agent: Agent,
+    *,
+    framework: str | None = None,
+    tools: list[str] | None = None,
+    run_id: str | None = None,
+) -> Agent:
+    """What a scan read from the code, added to the live agent it proposed again (one
+    `agentfox up` registered, or a person approved): the framework when it has none,
+    the newly found tools added to its declaration, the scan it came from. Nothing a
+    person sets (status, environment, risk tier, owner, purpose) changes."""
+    agent.framework = agent.framework or framework
+    if tools:
+        agent.declared_tools = list(dict.fromkeys([*(agent.declared_tools or []), *tools]))
+    agent.source_scan_run_id = agent.source_scan_run_id or run_id
+    session.flush()
+    return agent
+
+
+def fold_duplicate_drafts(session: Session, agent: Agent, *, actor: str) -> list[str]:
+    """Fold into ``agent`` the drafts a scan proposed for the same code under another
+    slug (same ``name``: same repository, same definition), and return their slugs.
+
+    Before `agentfox up` registered its agent under the name the scan gives it, the
+    scan proposed it again beside it (``lg-supervisor-supervisor`` next to
+    ``supervisor``). Only drafts: an agent a person added is never folded.
+    """
+    if not agent.name:
+        return []
+    drafts = list(
+        session.scalars(
+            select(Agent).where(
+                Agent.name == agent.name, Agent.slug != agent.slug, Agent.status == "draft"
+            )
+        )
+    )
+    for draft in drafts:
+        fold_draft(session, draft, agent, actor=actor)
+    return [d.slug for d in drafts]
+
+
+def fold_draft(session: Session, draft: Agent, into: Agent, *, actor: str) -> None:
+    """Fold a scan's draft into the agent it turned out to be: its framework, tools and
+    declared edges move to ``into``, and the draft is dismissed (``rejected``) with a
+    ledger entry saying where it went."""
+    from agentfox.platform.ledger import chain
+
+    adopt_proposal(
+        session,
+        into,
+        framework=draft.framework,
+        tools=draft.declared_tools,
+        run_id=draft.source_scan_run_id,
+    )
+    for edge in list(
+        session.scalars(
+            select(LineageEdge).where(
+                (LineageEdge.src_id == draft.slug) | (LineageEdge.dst_id == draft.slug)
+            )
+        )
+    ):
+        src = into.slug if edge.src_id == draft.slug else edge.src_id
+        dst = into.slug if edge.dst_id == draft.slug else edge.dst_id
+        taken = session.scalar(
+            select(LineageEdge.id).where(
+                LineageEdge.src_id == src,
+                LineageEdge.dst_id == dst,
+                LineageEdge.relation == edge.relation,
+                LineageEdge.id != edge.id,
+            )
+        )
+        if taken is not None or src == dst:
+            session.delete(edge)
+        else:
+            edge.src_id, edge.dst_id = src, dst
+    draft.status = "rejected"
+    session.flush()
+    chain.append(
+        session,
+        "agent.draft.merged",
+        actor_type="user",
+        actor_id=actor,
+        subject_type="agent",
+        subject_id=draft.id,
+        payload={"slug": draft.slug, "into": into.slug},
+    )
+
+
+def _fold_directory_draft(
+    session: Session,
+    repo_display_name: str,
+    top: str,
+    specs: list[dict[str, Any]],
+    *,
+    actor: str,
+) -> None:
+    """A directory holding exactly one agent was proposed, by an earlier scan, as the
+    directory (``pai-bank``, named ``<repo>/root``): that draft is the agent now
+    proposed under its own name, and is folded into it."""
+    from agentfox.platform.registry.projects import GONE
+
+    in_dir = [s for s in specs if (s.get("top_dir") or "root") == top]
+    if len(in_dir) != 1:
+        return
+    spec = in_dir[0]
+    key = slugify(str(spec.get("name") or spec.get("key") or ""))
+    into = session.scalar(
+        select(Agent).where(
+            Agent.name == f"{repo_display_name}/{spec.get('name') or key}",
+            Agent.status.notin_(GONE),
+        )
+    )
+    old = session.scalar(
+        select(Agent).where(Agent.name == f"{repo_display_name}/{top}", Agent.status == "draft")
+    )
+    if into is not None and old is not None and old.id != into.id:
+        fold_draft(session, old, into, actor=actor)
 
 
 def _propose_agent_specs(
@@ -239,6 +365,8 @@ def _propose_agent_specs(
     specs: list[dict[str, Any]],
     edges: list[dict[str, Any]],
     trifecta_dirs: set[str],
+    author: str = "scan",
+    environment: str = "production",
 ) -> list[str]:
     """One draft per agent a multi-agent scan found, and its declared delegations.
 
@@ -259,18 +387,29 @@ def _propose_agent_specs(
         )
         slug_of[str(spec.get("key"))] = slugify(slug)
         tools = [str(t) for t in spec.get("tools") or [] if t]
+        name = f"{repo_display_name}/{spec.get('name') or key}"
         agent = _propose_draft(
             session,
             slug=slug,
-            name=f"{repo_display_name}/{spec.get('name') or key}",
+            name=name,
             purpose="",
             framework=spec.get("framework"),
             risk_tier="high" if (spec.get("top_dir") or "root") in trifecta_dirs else "limited",
             declared_tools=tools or None,
             source_scan_run_id=run_id,
+            environment=environment,
         )
         if agent is not None:
             created.append(agent.slug)
+            continue
+        live = session.scalar(select(Agent).where(Agent.slug == slugify(slug)))
+        if live is not None and live.name == name:
+            # The agent `agentfox up` registered for this same code: it takes what the
+            # scan read rather than a second, draft copy of itself.
+            adopt_proposal(
+                session, live, framework=spec.get("framework"), tools=tools, run_id=run_id
+            )
+            fold_duplicate_drafts(session, live, actor=author)
 
     wanted: set[tuple[str, str]] = set()
     for edge in edges:
@@ -314,6 +453,7 @@ def propose_from_scan(
     author: str,
     agents: list[dict[str, Any]] | None = None,
     agent_edges: list[dict[str, Any]] | None = None,
+    environment: str = "production",
 ) -> tuple[list[str], list[str]]:
     """Propose one draft agent per top-level directory and one observe-mode policy
     per detected framework, from a discovery scan's governable sites.
@@ -335,6 +475,12 @@ def propose_from_scan(
     must never be given, a file's full path, line number or literal source text. A
     ``tool`` site may carry its function's ``name`` (the connected-repo scan sends it);
     those become the agent's declared tools.
+
+    An agent the code defines that is already live under the name the scan gives it
+    (`agentfox up` registers its agent so) is not proposed again: it takes what the
+    scan read (``adopt_proposal``), and a draft an earlier scan left beside it is folded
+    in (``fold_duplicate_drafts``). ``environment`` is where the drafts would run:
+    production, unless a local `agentfox up` records the scan (development).
     """
     repo_short = slugify(repo_slug_base)
     groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -363,9 +509,13 @@ def propose_from_scan(
             specs=specs,
             edges=agent_edges or [],
             trifecta_dirs=trifecta_dirs,
+            author=author,
+            environment=environment,
         )
         covered = {spec.get("top_dir") or "root" for spec in specs}
         groups = {k: v for k, v in groups.items() if k not in covered}
+        for top in covered:
+            _fold_directory_draft(session, repo_display_name, top, specs, actor=author)
 
     for group_key, group_sites in groups.items():
         providers = [s["provider"] for s in group_sites if s.get("provider")]
@@ -396,6 +546,7 @@ def propose_from_scan(
             risk_tier="high" if group_key in trifecta_dirs else "limited",
             declared_tools=tools or None,
             source_scan_run_id=run_id,
+            environment=environment,
         )
         if agent is not None:
             created_agents.append(agent.slug)

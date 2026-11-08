@@ -562,6 +562,7 @@ def save_policy(
     scope_id: str = "*",
     compose: str = "extend",
     rebind: bool = True,
+    keep_mode: bool = False,
 ) -> tuple[Policy, PolicyVersion]:
     """Upsert a policy and append an immutable version.
 
@@ -570,12 +571,27 @@ def save_policy(
     mode), and the new version waits for an explicit promotion
     (:func:`set_mode` with ``version``). A policy with no live binding is bound,
     in ``bind_mode``. The editor saves this way.
+
+    ``keep_mode=True`` puts the new version in force but keeps the live binding's
+    mode and placement: the mode a pack declares (``bind_mode``, else ``doc.mode``)
+    is only its first one. Re-installing the shipped packs (`agentfox init`, the
+    seed) does this, so a pack someone moved to observe (`agentfox up`, `agentfox
+    policy observe`) doesn't silently start blocking again.
     """
     policy = session.scalar(select(Policy).where(Policy.key == doc.key))
     if policy is None:
         policy = Policy(key=doc.key, name=doc.name or doc.key, description=doc.description)
         session.add(policy)
         session.flush()
+    elif keep_mode:
+        live, _ = current_binding(session, policy.id)
+        if live is not None:
+            bind_mode, level, scope_id, compose = (
+                live.mode,
+                live.level,
+                live.scope_id,
+                live.compose,
+            )
 
     body = doc.to_yaml()
     latest = session.scalars(

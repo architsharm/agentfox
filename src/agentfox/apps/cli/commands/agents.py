@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import typer
 from rich.table import Table
 
@@ -20,18 +22,25 @@ def agents_list(
     stopped: bool = typer.Option(
         False, "--stopped", help="Only agents that are quarantined or killed, and why."
     ),
+    show_all: bool = typer.Option(
+        False, "--all", help="Also list dismissed drafts and disconnected agents."
+    ),
 ) -> None:
-    """List every agent, registered or shadow."""
+    """List every agent: registered, proposed by a scan (draft), or shadow (seen in
+    traffic, never registered)."""
     if stopped:
         agents_controls()
         return
     from sqlalchemy import select
 
     from agentfox.core.models import Agent
+    from agentfox.platform.registry.projects import GONE
     from agentfox.platform.registry.service import inventory
 
     with _session() as session:
-        agents = list(session.scalars(select(Agent).order_by(Agent.slug)))
+        every = list(session.scalars(select(Agent).order_by(Agent.slug)))
+        agents = [a for a in every if show_all or a.status not in GONE]
+        hidden = len(every) - len(agents)
         summary = inventory(session)
         rows = [
             {
@@ -39,6 +48,7 @@ def agents_list(
                 "environment": a.environment,
                 "risk_tier": a.risk_tier,
                 "registered": a.registered,
+                "status": a.status,
                 "owner": a.owner_email,
                 "framework": a.framework,
             }
@@ -55,15 +65,32 @@ def agents_list(
             row["slug"],
             row["environment"],
             row["risk_tier"],
-            "[green]yes[/]" if row["registered"] else "[red]SHADOW[/]",
+            _registered_cell(row),
             row["owner"] or "[red]unowned[/]",
             row["framework"] or "—",
         )
     console.print(table)
     console.print(
         f"  [dim]{summary['agents']} agents · {summary['shadow']} shadow · "
-        f"{summary['unowned']} unowned · {summary['lineage_edges']} lineage edges[/]"
+        f"{summary['unowned']} unowned · {summary['lineage_edges']} lineage edges"
+        + (f" · {hidden} dismissed or disconnected, not listed (--all)" if hidden else "")
+        + "[/]"
     )
+
+
+def _registered_cell(row: dict[str, Any]) -> str:
+    """Registered, or why not: a scan's proposal waiting for review is a draft, not a
+    shadow agent (traffic nobody registered), as the footer counts them."""
+    if row["registered"]:
+        return "[green]yes[/]"
+    status = row.get("status")
+    if status == "draft":
+        return "[yellow]draft[/]"
+    if status == "rejected":
+        return "[dim]dismissed[/]"
+    if status == "removed":
+        return "[dim]disconnected[/]"
+    return "[red]SHADOW[/]"
 
 
 @agents_app.command("register")
