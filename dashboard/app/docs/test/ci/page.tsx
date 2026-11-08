@@ -115,7 +115,7 @@ agentfox report drift support-triage --scorer groundedness`}</Code>
       </Callout>
 
       <h2>If something goes wrong</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>You see</th>
@@ -147,7 +147,7 @@ agentfox report drift support-triage --scorer groundedness`}</Code>
             <td>Press <strong>Score real traffic</strong> for that agent first.</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <NextSteps
         items={[

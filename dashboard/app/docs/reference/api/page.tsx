@@ -65,7 +65,7 @@ export default function Page() {
       </p>
 
       <h3 id="guard-tool-call">/v1/guard/tool_call</h3>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Field</th><th>What it does</th></tr>
         </thead>
@@ -80,7 +80,7 @@ export default function Page() {
           <tr><td><code>waive_ungranted</code></td><td>While the agent holds no grant at all, a missing grant is recorded, not applied; listed in <code>waived_rules</code>.</td></tr>
           <tr><td><code>declare</code></td><td>The tool&apos;s declaration as the model saw it; a new tool is registered with an inferred impact.</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         Every decision is a 200 with a <code>verdict</code>. An <code>escalate</code> carries{" "}
         <code>approval_id</code> and a <code>reason</code>: do not run the tool yet.

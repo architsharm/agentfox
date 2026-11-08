@@ -45,7 +45,7 @@ export default function Page() {
         AgentFox needs Python 3.11 or newer. The core install has no model weights and nothing
         that downloads them.
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>How</th>
@@ -70,10 +70,16 @@ export default function Page() {
             <td><code>pip install &quot;git+https://github.com/architsharm/agentfox.git&quot;</code></td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         The package installs one command, <code>agentfox</code>. <code>agentfox --version</code>{" "}
         prints the version.
+      </p>
+      <p>
+        Then, with an account, run the command from the dashboard&apos;s card:{" "}
+        <code>pip install -U agentfox</code> and <code>agentfox init --key … --server …</code> (
+        <Link href="/docs/quickstart">Quickstart</Link>). Without one, run <code>agentfox scan</code> and{" "}
+        <code>agentfox up</code> (<Link href="/docs/quickstart/cli">Quickstart without an account</Link>).
       </p>
 
       <h2 id="extras">Extras</h2>
@@ -82,7 +88,7 @@ export default function Page() {
         makes a detector <em>available</em>; it runs only once it is also listed in{" "}
         <code>enabled_detectors</code> (<Link href="/docs/reference/config#detectors">Configuration</Link>).
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>Extra</th>
@@ -101,7 +107,7 @@ export default function Page() {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
       <p>
         Enabled by default: <code>injection.heuristic</code>, <code>injection.classifier</code>,{" "}
         <code>pii.native</code>, <code>secrets.native</code>, <code>safety.lexicon</code>,{" "}
@@ -135,7 +141,7 @@ python -m spacy download en_core_web_lg   # for pii.presidio, about 400MB`}</Cod
       </Callout>
 
       <h2 id="state">Where state lives</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>Situation</th>
@@ -163,7 +169,7 @@ python -m spacy download en_core_web_lg   # for pii.presidio, about 400MB`}</Cod
             <td><code>var/evidence</code> at the repository root</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         State is per installation, not per directory: <code>agentfox findings</code> shows the
         same findings from anywhere. Give each project its own <code>AGENTFOX_STATE_DIR</code>{" "}
@@ -256,7 +262,7 @@ taint_scope = "session"`}</Code>
       </p>
 
       <h2 id="upgrade">Upgrade</h2>
-      <Code>{`pip install --upgrade agentfox
+      <Code>{`pip install -U agentfox
 agentfox admin db upgrade
 agentfox admin db current`}</Code>
       <p>
@@ -280,7 +286,7 @@ rm agentfox.toml          # in each project where you ran agentfox init`}</Code>
       </p>
 
       <h2 id="troubleshooting">Troubleshooting</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>You see</th>
@@ -308,7 +314,7 @@ rm agentfox.toml          # in each project where you ran agentfox init`}</Code>
             <td>The database uses <code>SQL_ASCII</code>. Create it with UTF-8 encoding.</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
     </article>
   );
 }

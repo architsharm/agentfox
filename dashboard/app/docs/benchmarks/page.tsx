@@ -29,7 +29,7 @@ export default function Page() {
       </Callout>
 
       <h2>Containment, with every detector off</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>Benchmark</th>
@@ -52,7 +52,7 @@ export default function Page() {
             </td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h2 id="utility">What containment costs: AgentDojo utility</h2>
       <p>
@@ -61,7 +61,7 @@ export default function Page() {
         exactly like an attack, and it is escalated to a person. The whole trade, from{" "}
         <code>benchmarks/agentdojo/README.md</code>:
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>Provenance</th>
@@ -102,7 +102,7 @@ export default function Page() {
             <td>61/702</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
       <ul>
         <li>
           <b>Session-level taint is complete and expensive.</b> Once the agent reads any tool
@@ -137,7 +137,7 @@ export default function Page() {
       </p>
 
       <h2>Detection, the layer we trust least</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>Benchmark</th>
@@ -181,7 +181,7 @@ export default function Page() {
             <td>Benign non-English text is still flagged more often.</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h2>Judgment tiers, opt-in</h2>
       <p>

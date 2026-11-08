@@ -106,7 +106,7 @@ agentfox serve --host 0.0.0.0 --port 8080`}</Code>
       </p>
 
       <h2>If something goes wrong</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>You see</th>
@@ -138,7 +138,7 @@ agentfox serve --host 0.0.0.0 --port 8080`}</Code>
             <td>The Postgres database is <code>SQL_ASCII</code>. Create it as UTF-8.</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <NextSteps
         items={[

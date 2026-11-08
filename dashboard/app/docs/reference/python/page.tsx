@@ -32,7 +32,7 @@ export default function Page() {
       </p>
 
       <h2 id="which">Which surface to use</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>Surface</th>
@@ -73,7 +73,7 @@ export default function Page() {
             <td>The agent is served behind FastAPI</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         For a stack that is not Python, the same checks run over HTTP: see{" "}
         <Link href="/docs/connect/http">the gateway guide</Link> and the{" "}
@@ -173,7 +173,7 @@ agentfox: governed 2 model call(s). Run \`agentfox findings\` to see what it fou
         text), and each tool call the response asks for is authorised before your code
         sees the response. Every decision is written to the audit log.
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr>
         </thead>
@@ -188,7 +188,7 @@ agentfox: governed 2 model call(s). Run \`agentfox findings\` to see what it fou
           <tr><td><code>tool_refusals</code></td><td><code>&quot;message&quot;</code></td><td>LangChain tools are also governed where they run (<code>BaseTool.invoke</code>). <code>&quot;message&quot;</code> hands the agent the refusal as the tool&apos;s result and the run carries on; <code>&quot;raise&quot;</code> raises <code>Blocked</code>. Anything else raises <code>ValueError</code>.</td></tr>
           <tr><td><code>server</code>, <code>key</code></td><td>none</td><td>Send every check to your AgentFox account&apos;s gateway instead of the local database (below).</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         <strong>Agent name</strong> when <code>agent</code> is not passed: the first that is set
         of <code>AGENTFOX_AGENT</code>, <code>OTEL_SERVICE_NAME</code>,{" "}
@@ -207,7 +207,7 @@ agentfox: governed 2 model call(s). Run \`agentfox findings\` to see what it fou
         conversation window.
       </p>
 
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Library</th><th>Entry points patched</th></tr>
         </thead>
@@ -217,10 +217,10 @@ agentfox: governed 2 model call(s). Run \`agentfox findings\` to see what it fou
           <tr><td><code>litellm</code></td><td><code>litellm.completion</code>, <code>litellm.acompletion</code></td></tr>
           <tr><td>LangChain (<code>langchain-core</code>)</td><td><code>BaseChatModel.invoke</code>, <code>ainvoke</code>; tools at <code>BaseTool.invoke</code></td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h3 id="modes">Modes</h3>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th><code>mode</code></th><th>Raises <code>agentfox.Blocked</code> when</th><th>Use it for</th></tr>
         </thead>
@@ -241,7 +241,7 @@ agentfox: governed 2 model call(s). Run \`agentfox findings\` to see what it fou
             <td>Tests and CI.</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         The same injection prompt under each mode, first with the shipped{" "}
         <code>baseline</code> pack in observe, then after{" "}
@@ -420,7 +420,7 @@ None`}</Output>
         database; otherwise the SDK opens and commits its own per call, which deadlocks
         against an open SQLite write transaction.
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Method</th><th>Signature</th><th>Returns / raises</th></tr>
         </thead>
@@ -433,7 +433,7 @@ None`}</Output>
           <tr><td><code>approval</code></td><td><code>(approval_id) -&gt; dict</code></td><td>The approval now: <code>status</code>, <code>reason</code>, <code>tool</code>, <code>arguments</code>, <code>rationale</code>.</td></tr>
           <tr><td><code>remote</code></td><td>property</td><td><code>True</code> when <code>base_url</code> was given</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         <code>impact</code> is one of <code>read</code>, <code>write</code>,{" "}
         <code>high_impact</code>, <code>irreversible</code>. It is a declaration the
@@ -442,7 +442,7 @@ None`}</Output>
       </p>
 
       <h3 id="session">AgentSession</h3>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Method</th><th>Signature</th><th>What it does</th></tr>
         </thead>
@@ -454,7 +454,7 @@ None`}</Output>
           <tr><td><code>complete</code></td><td><code>(messages, *, model=&quot;default&quot;, provider=None, schema=None, raise_on_block=True, approval_id=None, **kwargs)</code></td><td>Sends a chat completion through the enforcer (input and output checked). Returns the provider&apos;s response, or <code>None</code> when blocked with <code>raise_on_block=False</code>.</td></tr>
           <tr><td><code>wait_for_approval</code></td><td><code>(approval_id, timeout=1800.0, *, interval=2.0) -&gt; str</code></td><td>The client&apos;s <code>wait_for_approval</code>.</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         <code>TaggedContent</code> has <code>text</code>, <code>source</code> and{" "}
         <code>path</code>, and <code>str()</code> of it is the text, so it drops into
@@ -623,7 +623,7 @@ PolicyViolation: capability.denied`}</Output>
       </p>
 
       <h2 id="exceptions">Exceptions and the decision object</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Exception</th><th>Raised by</th><th>Attributes</th></tr>
         </thead>
@@ -654,7 +654,7 @@ PolicyViolation: capability.denied`}</Output>
             <td><code>detail</code> with <code>type</code>, <code>message</code>, <code>trace_id</code>, <code>decision_id</code>, <code>explanation</code></td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         <code>Blocked</code>, <code>PolicyViolation</code>, <code>ApprovalRequired</code> and{" "}
         <code>McpCallBlocked</code> all derive from <code>agentfox.AgentFoxError</code> (defined
@@ -939,7 +939,7 @@ govern(fox, triage_agent, tool_prefix="support")`}</Code>
       default_on: true
       api_base: os.environ/AGENTFOX_URL
       api_key: os.environ/AGENTFOX_API_KEY`}</Code>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Item</th><th>Behaviour</th></tr>
         </thead>
@@ -952,7 +952,7 @@ govern(fox, triage_agent, tool_prefix="support")`}</Code>
           <tr><td>Refusal</td><td>HTTP 400 with the rule&apos;s message; an escalation carries <code>approval_id</code>, and the same call sent after approval runs once.</td></tr>
           <tr><td>Gateway down</td><td>Refused with 503; <code>fail_open: true</code> lets calls through with a warning.</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h3 id="prometheus">Prometheus</h3>
       <Code lang="python">{`from agentfox.exporters import render_metrics

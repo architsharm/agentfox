@@ -113,7 +113,7 @@ export default function Page() {
       </p>
 
       <h2>If something goes wrong</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>You see</th>
@@ -138,7 +138,7 @@ export default function Page() {
             <td>Run the agent once so it registers, then grant.</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <NextSteps
         items={[

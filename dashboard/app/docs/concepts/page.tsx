@@ -39,7 +39,7 @@ export default function Page() {
         Anything an agent can call that is not the model: a function, an API, an MCP server, a shell.
         Each tool has an impact, which says how much harm a wrong call can do:
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>Impact</th>
@@ -52,7 +52,7 @@ export default function Page() {
           <tr><td><code>high_impact</code></td><td>Can be undone, but costly if wrong.</td></tr>
           <tr><td><code>irreversible</code></td><td>Cannot be taken back: sending, paying, deleting.</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         A new tool gets an impact guessed from its name and description, marked as a guess until a
         person confirms it.

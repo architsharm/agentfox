@@ -84,7 +84,7 @@ agentfox policy proposals show chp_…`}</Code>
       </ul>
 
       <h2>If something goes wrong</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>You see</th>
@@ -110,7 +110,7 @@ agentfox policy proposals show chp_…`}</Code>
             </td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <NextSteps
         items={[

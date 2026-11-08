@@ -24,15 +24,15 @@ export default function Page() {
       <Steps>
         <Step title="Create a key">
           <p>
-            <Link href="/signup">Sign up</Link>. On the Agents page, press <strong>Create a key</strong>{" "}
-            and copy it. It is shown once.
+            <Link href="/login">Sign in</Link>; signing in creates your workspace. On the Agents page,
+            press <strong>Create a key</strong> and copy it. It is shown once.
           </p>
           <Screenshot {...SCREENS.setupKey} />
         </Step>
 
         <Step title="Run init in your repository">
           <p>Copy the command from the card. It has your key and server filled in.</p>
-          <Code>{`pip install agentfox
+          <Code>{`pip install -U agentfox
 agentfox init --key nom_api_… --server https://…`}</Code>
           <p>
             <code>init</code> reads your code without running it and lists the agents and tools it
@@ -79,7 +79,7 @@ agentfox init --key nom_api_… --server https://…`}</Code>
       </ul>
 
       <h2>If something goes wrong</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>You see</th>
@@ -107,7 +107,7 @@ agentfox init --key nom_api_… --server https://…`}</Code>
             </td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <NextSteps
         items={[

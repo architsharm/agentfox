@@ -65,7 +65,7 @@ export default function Page() {
         granting them. <strong>Partial</strong> means some of the risk is enforced, some is
         only recorded until you promote a pack, and some is not addressed at all.
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>Item</th>
@@ -86,7 +86,7 @@ export default function Page() {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
       <p>
         Two things apply to every row. AgentFox sees only what is routed through it (the
         SDK, <code>agentfox.auto()</code>, the gateway, MCP governance or coding-agent

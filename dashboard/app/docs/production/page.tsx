@@ -22,7 +22,7 @@ export default function Page() {
         one habit.
       </p>
 
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>Check</th>
@@ -107,7 +107,7 @@ export default function Page() {
             </td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h2>Rotate a key</h2>
       <p>

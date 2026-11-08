@@ -3576,7 +3576,8 @@
   text-transform: uppercase;
   color: var(--mk-muted);
 }
-.docs-nav div:first-child p { margin-top: 0; }
+.docs-nav-list > div:first-child p { margin-top: 0; }
+.docs-nav-toggle { display: none; }
 .docs-nav ul {
   list-style: none;
   margin: 0;
@@ -3628,6 +3629,15 @@
   color: var(--mk-text);
   text-wrap: pretty;
 }
+/* Every docs table sits in one of these (the pages wrap them), so a wide table
+   scrolls inside its own box instead of pushing the page sideways on a phone. */
+.docs-table {
+  max-width: 100%;
+  margin-top: 14px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.docs-table > table { margin-top: 0 !important; }
 .docs-doc table {
   width: 100%;
   margin-top: 14px;
@@ -3672,6 +3682,7 @@
   font-family: var(--mk-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   white-space: pre;
 }
+.docs-doc :not(pre) > code { overflow-wrap: anywhere; }
 .docs-doc p code,
 .docs-doc li code {
   font-family: var(--mk-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
@@ -3686,7 +3697,19 @@
     gap: 28px;
     padding-top: 28px;
   }
-  .docs-nav { position: static; }
+  /* On a phone the contents collapse behind one bordered button that names the
+     current page; the article starts right under it. */
+  .docs-nav { position: static; max-height: none; overflow: visible; border: 1px solid var(--mk-border); border-radius: 10px; background: var(--mk-surface); }
+  .docs-nav-toggle {
+    display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px;
+    border: 0; background: transparent; color: var(--mk-text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; text-align: left;
+  }
+  .docs-nav-current { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; color: var(--mk-muted); }
+  .docs-nav-toggle svg { flex: 0 0 auto; transition: transform 150ms; }
+  .docs-nav.is-open .docs-nav-toggle svg { transform: rotate(180deg); }
+  .docs-nav-list { display: none; padding: 4px 14px 14px; border-top: 1px solid var(--mk-border); }
+  .docs-nav.is-open .docs-nav-list { display: block; }
+  .docs-nav-list > div:first-child p { margin-top: 12px; }
 }
 
 

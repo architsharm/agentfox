@@ -98,7 +98,7 @@ export default function Page() {
       </p>
 
       <h2>If something goes wrong</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>You see</th>
@@ -122,7 +122,7 @@ export default function Page() {
             <td>By design. Values are masked when recorded and the original is not stored.</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <NextSteps
         items={[

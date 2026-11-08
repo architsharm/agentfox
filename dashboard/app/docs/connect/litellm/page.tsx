@@ -62,7 +62,7 @@ export AGENTFOX_API_KEY=nom_api_…`}</Code>
       </Steps>
 
       <h2>What is checked</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>When</th>
@@ -83,7 +83,7 @@ export AGENTFOX_API_KEY=nom_api_…`}</Code>
             <td>Text streams as normal. Once a tool call starts, the rest is held until it is checked.</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         A stopped call returns HTTP 400 with the rule&apos;s message. A call that needs approval carries
         an <code>approval_id</code>; once someone approves it, the same call sent again goes through
