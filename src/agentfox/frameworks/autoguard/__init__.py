@@ -98,7 +98,9 @@ Frameworks (LangGraph, CrewAI, LlamaIndex, AutoGen, the OpenAI Agents SDK, ...) 
 detected, not patched: they reach the model through one of the client libraries
 above, and the summary says which of those routes are actually governed. The
 exception is where their tools run: LangChain's and CrewAI's tools are patched there
-(see above), because that is the only place their tool calls can be seen.
+(see above), because that is the only place their tool calls can be seen. And a few
+of their own objects are watched (``delegation``), to tell an agent's own parts — a
+hand-off, an agent used as a tool, a structured-output tool — from its capabilities.
 
 Everything is import-guarded: a codebase with only `anthropic` installed never sees an
 OpenAI import error, and `auto()` on a machine with neither still succeeds — it simply
@@ -120,7 +122,6 @@ import inspect
 import json
 import logging
 import os
-import re
 import sys
 import time
 from collections.abc import Callable
@@ -133,6 +134,7 @@ from agentfox.core.config import get_settings
 from agentfox.core.db import init_db, session_scope
 from agentfox.core.models import utcnow
 from agentfox.errors import AgentFoxError
+from agentfox.frameworks.autoguard import delegation as _delegation
 from agentfox.frameworks.autoguard.environment import (
     _FRAMEWORK_ROUTES,
     _framework_routes,
@@ -571,7 +573,7 @@ def _run_preflight(
 ) -> tuple[_Call, EnforcementResult, bool, bool]:
     """The pre-flight itself. Returns (call, worst result, enforced, effective)."""
     messages = _messages_from(kwargs)
-    _watch_agents_sdk_handoffs()  # cheap once done; the SDK may load after auto()
+    _watch_framework_parts()  # cheap once done; a framework may load after auto()
     if state.remote is not None:
         return _remote_preflight(state, kwargs, evidence, messages)
     with session_scope() as session:
@@ -586,7 +588,7 @@ def _run_preflight(
             environment=state.environment,
             session_id=state.session_id,
             intent=state.intent,
-            trust_map=_TOOL_RESULTS.declared(state.session_id, messages) or None,
+            trust_map=_declared_for(state)(messages) or None,
         )
         trace = outcome.trace
         result = outcome.result
@@ -648,8 +650,17 @@ def _run_preflight(
 
 def _declared_for(state: AutoState) -> Callable[[list[Any]], dict[str, str]]:
     """Messages quoting a tool result this conversation's tools returned, declared
-    ``tool_result`` for provenance marking (see `_ToolResults`)."""
-    return lambda messages: _TOOL_RESULTS.declared(state.session_id, messages)
+    ``tool_result`` for provenance marking (see `_ToolResults`); and a hand-off's own
+    tool message, declared ``user``: a hand-off carries the conversation the person
+    typed to the next agent, and its acknowledgement is no tool's output."""
+
+    def declared(messages: list[Any]) -> dict[str, str]:
+        return {
+            **_TOOL_RESULTS.declared(state.session_id, messages),
+            **_delegation.handoff_messages(messages),
+        }
+
+    return declared
 
 
 def _preflight(state: AutoState, kwargs: dict[str, Any], evidence: dict[str, Any]) -> _Call | None:
@@ -708,6 +719,13 @@ def _postflight(
     provider_ms = (time.perf_counter() - call.started) * 1000
     refusal: Blocked | None = None
     tool_failure: Exception | None = None
+    # A structured-output tool call (pydantic-ai's `final_result`) is the answer: with
+    # no text beside it, what it carries is checked as the output. Its arguments
+    # cannot be rewritten in place, so a redaction that applies refuses it instead.
+    if not text and tool_calls:
+        payload = _output_payload(tool_calls)
+        if payload:
+            text, response = payload, None
     try:
         if (text or usage or tool_calls) and state.remote is not None:
             refusal, text = _remote_postflight(call, text, usage, tool_calls, response)
@@ -797,38 +815,35 @@ def _postflight(
         log.info("agentfox: would have blocked (%s mode) — %s", state.mode, call.flagged)
 
 
-# -- Hand-offs: a call that passes the conversation to another agent ------------------
+# -- An agent's own parts: hand-offs, agents used as tools, output tools ---------------
 #
-# Agent frameworks give a model its hand-offs as tools: the OpenAI Agents SDK's
-# `transfer_to_<agent>` functions, LangGraph supervisor/swarm handoff tools, CrewAI's
-# "Delegate work to coworker". A hand-off moves the conversation between agents of
-# the same system; it reaches nothing outside it. Decided as a tool call it needs a
-# capability grant, so the first run of a multi-agent example reads as "tried to
-# transfer_to_X without permission", and once the agent holds any grant it is
-# refused. It is recorded instead as what it is: a `subagent` span and a
-# `delegates_to` edge (the lineage vocabulary `rebuild_lineage` reads), with the
-# relation discovery uses (`discovery.agents.RELATIONS`: "handoff", "delegates").
-# The enforcer has no hand-off policy to decide it against; the agent it hands to is
-# governed on its own model calls and tools.
+# See `delegation`: a hand-off or an agent used as a tool is recorded as a delegation
+# (a `subagent` span and a `delegates_to` edge), never decided as a tool needing a
+# grant; a framework's structured-output tool (pydantic-ai's `final_result`) is not
+# decided at all, and what it carries is checked as the model's output.
 
-#: Tool name -> the agent it hands off to, learned from the Agents SDK's own
-#: `Handoff` objects as they are turned into tools (see `_watch_agents_sdk_handoffs`).
-_HANDOFF_TOOLS: dict[str, str] = {}
-
-#: The Agents SDK's default hand-off description (`Handoff.default_tool_description`),
-#: for a hand-off converted before its converter was watched.
-_AGENTS_SDK_HANDOFF = re.compile(r"^Handoff to the (?P<agent>.+?) agent to handle the request\.")
+_handoff_of = _delegation.handoff_of
+_lc_handoff = _delegation.lc_handoff
+_crew_handoff = _delegation.crew_handoff
+#: Tool name -> (agent reached, relation); see `delegation.DELEGATION_TOOLS`.
+_HANDOFF_TOOLS = _delegation.DELEGATION_TOOLS
 
 
-def _handoff_of(name: str, spec: dict[str, Any] | None) -> tuple[str, str] | None:
-    """(target agent, relation) when the tool call `name` is a hand-off, else None."""
-    target = _HANDOFF_TOOLS.get(name)
-    if target:
-        return target, "handoff"
-    match = _AGENTS_SDK_HANDOFF.match(str((spec or {}).get("description") or ""))
-    if match:
-        return match.group("agent"), "handoff"
-    return None
+def _watch_framework_parts() -> None:
+    """Learn hand-off, agent-as-tool and output-tool names from the framework modules
+    already imported (`delegation.watch`); cheap once done."""
+    _delegation.watch(_PATCHED)
+
+
+def _output_payload(tool_calls: list[_ToolCall]) -> str:
+    """What the response's structured-output tool calls carry, as text: the answer a
+    framework like pydantic-ai returns through a tool rather than as text."""
+    parts = [
+        json.dumps(t.arguments, default=str, ensure_ascii=False)
+        for t in tool_calls
+        if _delegation.is_output_tool(t.name)
+    ]
+    return "\n".join(parts)
 
 
 def _record_handoff(
@@ -878,51 +893,6 @@ def _handoff_where_it_runs(state: AutoState, tool: str, target: str, relation: s
         return None
     finally:
         _IN_AGENTFOX.reset(token)
-
-
-def _lc_handoff(tool: Any) -> tuple[str, str] | None:
-    """A LangChain tool that is a hand-off: LangGraph's supervisor and swarm mark
-    theirs with ``metadata["__handoff_destination"]``."""
-    destination = (getattr(tool, "metadata", None) or {}).get("__handoff_destination")
-    return (str(destination), "handoff") if destination else None
-
-
-def _crew_handoff(tool: Any, arguments: dict[str, Any]) -> tuple[str, str] | None:
-    """CrewAI's delegation tools ("Delegate work to coworker", "Ask question to
-    coworker"): `BaseAgentTool`s, reached through the structured tool's original."""
-    original = getattr(tool, "_original_tool", None) or tool
-    if not any(c.__name__ == "BaseAgentTool" for c in type(original).__mro__):
-        return None
-    return str(arguments.get("coworker") or "coworker"), "delegates"
-
-
-def _watch_agents_sdk_handoffs() -> None:
-    """Learn the Agents SDK's hand-off tool names from its `Handoff` objects, as its
-    converters turn them into tools for a request: the name and the target agent,
-    whatever description the app gave. Only when the SDK is already loaded; the
-    description fallback in `_handoff_of` covers a call made before."""
-    for module_name, attr in (
-        ("agents.models.openai_responses", "_convert_handoff_tool"),
-        ("agents.models.chatcmpl_converter", "convert_handoff_tool"),
-    ):
-        module = sys.modules.get(module_name)
-        owner = getattr(module, "Converter", None)
-        raw = getattr(owner, "__dict__", {}).get(attr)
-        if not isinstance(raw, classmethod) or getattr(raw.__func__, "__agentfox__", False):
-            continue
-        func = raw.__func__
-
-        def watched(cls: Any, handoff: Any, *args: Any, __func: Any = func, **kwargs: Any) -> Any:
-            name, target = getattr(handoff, "tool_name", None), getattr(handoff, "agent_name", None)
-            if name and target:
-                _HANDOFF_TOOLS[str(name)] = str(target)
-            return __func(cls, handoff, *args, **kwargs)
-
-        functools.update_wrapper(watched, func)
-        watched.__agentfox__ = True  # type: ignore[attr-defined]
-        watched.__agentfox_original__ = raw  # type: ignore[attr-defined]
-        setattr(owner, attr, classmethod(watched))
-        _PATCHED[f"openai-agents.handoffs.{attr}"] = (owner, attr, True)
 
 
 def _register_tool(session: Any, name: str, descriptor: dict[str, Any] | None) -> None:
@@ -1063,6 +1033,8 @@ def _govern_tool_calls(
         if handoff is not None:
             _record_handoff(session, state, call.trace_id, tool_call.name, *handoff)
             continue
+        if _delegation.is_output_tool(tool_call.name):
+            continue  # the answer, not a capability: checked as output (`_postflight`)
         _register_tool(session, tool_call.name, call.tool_specs.get(tool_call.name))
         seen = len(tracker.marks)
         result = enforcer.guard_tool_call(
@@ -2067,6 +2039,8 @@ def _lc_tool_decide(
     this conversation already ran (`_ToolResults`). A hand-off (``handoff``: target,
     relation) is recorded, not decided (see `_handoff_of`)."""
     if handoff is not None:
+        if handoff[1] == "handoff":
+            _delegation.learn_handoff(name, handoff[0])
         return True, EnforcementResult(), _handoff_where_it_runs(state, name, *handoff)
     if state.remote is not None:
         return _remote_tool_decide(state, name, arguments)
@@ -2194,6 +2168,8 @@ def _remote_preflight(
     trace_id: str | None = None
     worst: dict[str, Any] = {"verdict": "allow"}
     quoted = _TOOL_RESULTS.declared(state.session_id, fresh)
+    # A hand-off's acknowledgement carries the person's conversation, not a tool's.
+    handed = {id(messages[int(i)]) for i in _delegation.handoff_messages(messages)}
     for index, message in enumerate(fresh):
         body = state.remote.post(
             "/v1/guard/input",
@@ -2202,7 +2178,8 @@ def _remote_preflight(
                 "content": str(message.get("content")),
                 "taint_source": (
                     "tool_result"
-                    if message.get("role") == "tool" or str(index) in quoted
+                    if (message.get("role") == "tool" and id(message) not in handed)
+                    or str(index) in quoted
                     else "user"
                 ),
                 "environment": state.environment,
@@ -2323,8 +2300,10 @@ def _remote_postflight(
     if tool_calls and not _tools_governed_where_they_run(state):
         prior = list(call.prior_tools)
         for tool_call in tool_calls:
-            if _handoff_of(tool_call.name, call.tool_specs.get(tool_call.name)):
-                continue  # a hand-off, not a tool: nothing for the gateway to grant
+            if _handoff_of(
+                tool_call.name, call.tool_specs.get(tool_call.name)
+            ) or _delegation.is_output_tool(tool_call.name):
+                continue  # an agent's own part, not a tool: nothing for the gateway to grant
             body = _remote_tool_body(
                 state,
                 tool_call.name,
@@ -2414,6 +2393,12 @@ def _lc_tool_method(state: AutoState, *, is_async: bool) -> Callable[[Any], Any]
         return _lc_tool_reply(text, name, call_id, error=True), name, arguments, call_id, trace_id
 
     def after(output: Any, name: str, call_id: str | None, trace_id: str | None) -> Any:
+        if _delegation.is_handoff_message(name):
+            # A hand-off returns the framework's routing (LangGraph: a `Command` that
+            # carries the whole conversation on to the next agent), not content from
+            # outside the system: nothing to check, and no tool result for the next
+            # agent's arguments to be copied from.
+            return output
         text = getattr(output, "content", output)
         st = _live(state)
         text = text if isinstance(text, str) else str(text)
@@ -2851,6 +2836,9 @@ def auto(
     warm_in_background()
 
     state.patches = [result for patch in _PATCHERS for result in patch(state)]
+    # Hand-offs, agents used as tools and output tools, learned from the frameworks'
+    # own objects: those imported already, and those imported after this line.
+    _delegation.start(_PATCHED)
     state.started = True
     _STATE = state
 
@@ -2895,6 +2883,6 @@ def off() -> list[str]:
             pass
     _PATCHED.clear()
     _TOOL_RESULTS.clear()
-    _HANDOFF_TOOLS.clear()
+    _delegation.stop()
     _STATE = None
     return restored

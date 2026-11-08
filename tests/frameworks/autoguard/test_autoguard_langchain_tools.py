@@ -126,3 +126,34 @@ def test_observe_mode_lets_everything_run(agent_db):
     out = refund.invoke(_call("refund", order_id="A1", amount=900))
     assert out.content == "refunded 900 on A1"
     assert state().would_have_blocked >= 1
+
+
+def test_what_a_handoff_returns_is_not_a_tool_result_for_the_next_agent(agent_db):
+    """langgraph-supervisor: `transfer_to_math_expert` returns a `Command` carrying the
+    whole conversation to the expert, and it was kept as a tool result, so the
+    expert's `refund(order_id="A1", ...)`, copied from the person's own request, read
+    as copied out of `tool:transfer_to_math_expert` and was held for approval."""
+    from agentfox.frameworks.autoguard import _TOOL_RESULTS
+
+    request = "Refund order ORDER-55821 for 40 dollars please"
+
+    @tool
+    def transfer_to_billing_expert() -> str:
+        """Ask the billing expert for help."""
+        return f"Command(goto='billing_expert', update={{'messages': ['{request}']}})"
+
+    # As langgraph-supervisor's `create_handoff_tool` marks its tools.
+    transfer_to_billing_expert.metadata = {"__handoff_destination": "billing_expert"}
+
+    @tool
+    def read_ticket() -> str:
+        """Read the ticket."""
+        return f"Ticket says: {request}"
+
+    auto(agent=AGENT, quiet=True, mode="observe")
+    transfer_to_billing_expert.invoke(_call("transfer_to_billing_expert"))
+    assert _TOOL_RESULTS._results(None) == []
+    with session_scope() as session:
+        assert session.query(Decision).filter_by(tool_key="transfer_to_billing_expert").count() == 0
+    read_ticket.invoke(_call("read_ticket"))
+    assert [t for t, _text in _TOOL_RESULTS._results(None)] == ["read_ticket"]

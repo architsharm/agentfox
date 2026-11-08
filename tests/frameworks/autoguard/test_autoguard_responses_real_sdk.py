@@ -293,3 +293,43 @@ async def test_an_agents_sdk_handoff_is_recorded_not_refused():
         assert session.query(Finding).filter(Finding.type == "containment").count() == 0
         spans = session.query(Span).filter(Span.kind == "subagent").all()
         assert [s.name for s in spans] == ["Seat Booking Agent"]
+
+
+async def test_an_agent_used_as_a_tool_is_recorded_not_refused():
+    """openai-agents-python's agents_as_tools examples: the orchestrator calls its own
+    sub-agent through `agent.as_tool(...)`, with an agent that holds a grant (so
+    default-deny is on)."""
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Finding, Span
+    from agentfox.platform.identity.service import ensure_identity, grant_capability
+    from agentfox.platform.registry.service import register_agent
+
+    agents = pytest.importorskip("agents")
+    with session_scope() as session:
+        agent = register_agent(session, "orchestrator", name="orchestrator")
+        grant_capability(session, ensure_identity(session, agent), "get_user_name")
+    governed = auto(agent="orchestrator", quiet=True)
+    server = _Server(
+        _response(_function_call("respond_spanish", {"input": "good morning"})),
+        _response(_message("Buenos días"), response_id="resp_2"),
+        _response(_message("Spanish: Buenos días"), response_id="resp_3"),
+    )
+    _sync, client = _clients(server)
+    model = agents.OpenAIResponsesModel(model="gpt-4o-mini", openai_client=client)
+    spanish = agents.Agent(name="spanish_agent", instructions="Spanish.", model=model)
+    orchestrator = agents.Agent(
+        name="orchestrator",
+        model=model,
+        tools=[spanish.as_tool(tool_name="respond_spanish", tool_description="Spanish")],
+    )
+
+    result = await agents.Runner.run(orchestrator, "Say good morning in Spanish")
+    assert result.final_output == "Spanish: Buenos días"
+    assert governed.calls_blocked == 0
+    assert _tool_keys() == []
+    with session_scope() as session:
+        assert session.query(Finding).filter(Finding.type == "containment").count() == 0
+        spans = session.query(Span).filter(Span.kind == "subagent").all()
+        assert [(s.name, s.attributes_json["agentfox.handoff.relation"]) for s in spans] == [
+            ("spanish_agent", "as_tool")
+        ]
