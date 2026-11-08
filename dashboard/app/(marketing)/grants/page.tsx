@@ -34,7 +34,7 @@ export default function Page() {
       kicker="Access control"
       title={["What each agent", "is allowed to do"]}
       lede="You write that down before the agent runs. A prompt cannot add to it."
-      docs="/docs/guides/contain-tool-calls"
+      docs="/docs/govern"
       challenge={
         <p>A text filter has to guess. This asks whether the agent was allowed to do this.</p>
       }

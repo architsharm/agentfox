@@ -206,8 +206,8 @@ export function Body() {
         retried on every scheduler tick, so one broken endpoint never stops the others. Opting
         in also creates a monitor, so an escape alerts through Slack or a webhook like any other
         finding. The setup is in{" "}
-        <Link href="/docs/guides/live-probes">Probe deployed agents</Link>, and the alerting in{" "}
-        <Link href="/docs/guides/monitoring">Monitor connected sources</Link>.
+        <Link href="/docs/test/ci">Probe deployed agents</Link>, and the alerting in{" "}
+        <Link href="/docs/discover">Monitor connected sources</Link>.
       </p>
 
       <h2 id="in-ci">Red teaming in CI</h2>
@@ -223,7 +223,7 @@ agentfox test gate support-quality --junit reports/agentfox-junit.xml --sarif re
         persisted, so a CI run never writes decisions into production history or shows up in a
         policy simulation. <code>test gate</code> runs an evaluation suite and writes JUnit and
         SARIF, which most CI systems display natively. See{" "}
-        <Link href="/docs/guides/red-team-and-evals">Red team and evals in CI</Link>.
+        <Link href="/docs/test/ci">Red team and evals in CI</Link>.
       </p>
 
       <h2 id="what-it-does-not-prove">What it does not prove</h2>

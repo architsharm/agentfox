@@ -307,7 +307,7 @@ function Live({ data }: { data: Showcase }) {
             The agent is {data.agent.name}: {data.agent.purpose} It runs on {data.target.model ?? "an offline model"},
             which costs nothing and never calls out, in a tenant of its own. The same probes run
             against your agents once you opt in:{" "}
-            <Link href="/docs/guides/live-probes">probing deployed agents</Link>.
+            <Link href="/docs/test/ci">probing deployed agents</Link>.
           </p>
         </div>
       </section>
@@ -334,7 +334,7 @@ export default async function LivePage() {
               <Link href="/playground" className="mk-btn mk-btn-primary">
                 Attack it yourself
               </Link>
-              <Link href="/docs/guides/live-probes" className="mk-btn mk-btn-outline">
+              <Link href="/docs/test/ci" className="mk-btn mk-btn-outline">
                 Probe your own agent
               </Link>
             </div>

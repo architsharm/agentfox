@@ -115,7 +115,7 @@ export const BLOG_POSTS: BlogPost[] = [
     },
     pillars: [
       { href: "/docs/quickstart", label: "Quickstart", why: "From pip install to a governed agent." },
-      { href: "/docs/guides/scan-a-repo", label: "Scan a repo", why: "See every agent, tool and MCP server your code defines." },
+      { href: "/docs/discover", label: "Scan a repo", why: "See every agent, tool and MCP server your code defines." },
       { href: "/pricing", label: "Editions", why: "What is open core and what is Enterprise." },
     ],
   },
@@ -170,7 +170,7 @@ export const BLOG_POSTS: BlogPost[] = [
     },
     pillars: [
       { href: "/mcp", label: "MCP security", why: "The six MCP risks, and the two we do not cover." },
-      { href: "/docs/guides/mcp", label: "MCP servers guide", why: "Scan configs, pin tools, govern calls." },
+      { href: "/docs/connect/mcp", label: "MCP servers guide", why: "Scan configs, pin tools, govern calls." },
       { href: "/coverage", label: "Coverage", why: "Every failure mode we test, gaps included." },
     ],
   },
@@ -199,7 +199,7 @@ export const BLOG_POSTS: BlogPost[] = [
     pillars: [
       { href: "/benchmark", label: "Benchmarks", why: "The containment and AgentDojo results, losses included." },
       { href: "/grants", label: "Capability grants", why: "What each agent is allowed to do, written down first." },
-      { href: "/docs/guides/contain-tool-calls", label: "Contain tool calls", why: "Declarations, grants and provenance, with code." },
+      { href: "/docs/govern", label: "Contain tool calls", why: "Declarations, grants and provenance, with code." },
     ],
   },
   {
@@ -226,7 +226,7 @@ export const BLOG_POSTS: BlogPost[] = [
     },
     pillars: [
       { href: "/hooks", label: "Coding agents", why: "Which hooks can stop a call, and which one cannot." },
-      { href: "/docs/guides/coding-agents", label: "Coding agents guide", why: "Install the hooks and the coding-agent pack." },
+      { href: "/docs/connect/coding-agents", label: "Coding agents guide", why: "Install the hooks and the coding-agent pack." },
       { href: "/control-points", label: "Control points", why: "The same policy at the hook, gateway and SDK." },
     ],
   },
@@ -255,7 +255,7 @@ export const BLOG_POSTS: BlogPost[] = [
     pillars: [
       { href: "/live", label: "Live", why: "Our own agent, attacked hourly, results unedited." },
       { href: "/coverage", label: "Coverage", why: "The failure modes we test, scored, gaps listed." },
-      { href: "/docs/guides/live-probes", label: "Probe deployed agents", why: "Scheduled, opt-in attacks on your own agent." },
+      { href: "/docs/test/ci", label: "Probe deployed agents", why: "Scheduled, opt-in attacks on your own agent." },
     ],
   },
   {
@@ -311,7 +311,7 @@ export const BLOG_POSTS: BlogPost[] = [
     pillars: [
       { href: "/evidence", label: "Evidence and audit", why: "An audit trail you can check without our code." },
       { href: "/frameworks", label: "Compliance", why: "EU AI Act, NIST, OWASP and ATLAS, mapped as drafts." },
-      { href: "/docs/guides/audit-evidence", label: "Prove it to an auditor", why: "The report, evidence packages, the verifier." },
+      { href: "/docs/prove/audit", label: "Prove it to an auditor", why: "The report, evidence packages, the verifier." },
     ],
   },
 ];

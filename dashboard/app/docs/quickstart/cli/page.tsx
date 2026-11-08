@@ -1,0 +1,105 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+
+import { Code, NextSteps, Screenshot, Step, Steps } from "@/components/docs/blocks";
+import { SCREENS } from "@/lib/docs/screens";
+import { publicPageMetadata } from "@/lib/site";
+
+export const metadata: Metadata = publicPageMetadata({
+  title: "Quickstart without an account",
+  description:
+    "Find your agents, watch every call your app makes and read the issues, all on your own machine: agentfox scan, agentfox up, agentfox findings.",
+  path: "/docs/quickstart/cli",
+});
+
+export default function Page() {
+  return (
+    <article className="docs-doc">
+      <h1>Quickstart without an account</h1>
+      <p className="docs-lede">
+        Find the agents in your repository, watch every call your app makes, and read what AgentFox
+        found. Nothing leaves your machine. You need Python 3.11 or newer.
+      </p>
+
+      <Steps>
+        <Step title="Scan the repository">
+          <Code>{`pip install agentfox
+agentfox scan`}</Code>
+          <p>
+            <code>scan</code> reads your code without running it. It names each agent, the tools it
+            can reach, and any agent that reads private data, reads untrusted content and can send data
+            out.
+          </p>
+          <Screenshot {...SCREENS.scanTerminal} />
+        </Step>
+
+        <Step title="Set up">
+          <Code>{`agentfox up`}</Code>
+          <p>
+            Every question has a recommended answer; press Enter to take it. <code>up</code> registers
+            your agents under the names your code uses and adds <code>agentfox.auto()</code> to your
+            Python entry point. It starts in watch mode, so nothing is blocked yet.
+          </p>
+        </Step>
+
+        <Step title="Run your app">
+          <p>
+            Run it as you always do. Each model and tool call is checked and recorded in a database on
+            this machine. When the app exits, it prints how many calls it checked.
+          </p>
+        </Step>
+
+        <Step title="Read what it found">
+          <Code>{`agentfox findings`}</Code>
+          <p>
+            Each row is something a person should look at. &quot;Would have been&quot; means a rule
+            caught it and watch mode let it through.
+          </p>
+        </Step>
+      </Steps>
+
+      <h2>Connect to an account later</h2>
+      <p>
+        <Link href="/signup">Sign up</Link>, press <strong>Create a key</strong> on the Agents page, and
+        run the <code>init</code> command from the card in the same repository. It saves the key in{" "}
+        <code>.agentfox/agentfox.env</code>, and from then on your app&apos;s calls go to your account
+        and show up on the dashboard. The <Link href="/docs/quickstart">Quickstart</Link> walks through
+        it. To set the key another way, see <Link href="/docs/connect/python#key">where auto() finds the key</Link>.
+      </p>
+
+      <h2>If something goes wrong</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>You see</th>
+            <th>Do this</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>The scan finds no agent</td>
+            <td>
+              Run it in the repository where the agent is defined. It reads Python, TypeScript and
+              JavaScript.
+            </td>
+          </tr>
+          <tr>
+            <td><code>agentfox findings</code> is empty</td>
+            <td>
+              Check that your app starts with <code>agentfox.auto()</code> and that you ran it from the
+              folder where you ran <code>up</code>.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <NextSteps
+        items={[
+          { href: "/docs/concepts", label: "Core concepts", why: "the words the rest of the docs use" },
+          { href: "/docs/connect", label: "Connect your agent", why: "if your stack is not plain Python" },
+          { href: "/docs/reference/cli#cmd-up", label: "agentfox up options", why: "take every default, or change nothing" },
+        ]}
+      />
+    </article>
+  );
+}

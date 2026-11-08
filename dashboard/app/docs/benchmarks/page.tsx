@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Callout, Code, NextSteps, Output } from "@/components/docs/blocks";
+import { Callout, Code, NextSteps } from "@/components/docs/blocks";
 import { publicPageMetadata } from "@/lib/site";
 
 export const metadata: Metadata = publicPageMetadata({
@@ -13,20 +13,13 @@ export const metadata: Metadata = publicPageMetadata({
 export default function Page() {
   return (
     <article className="docs-doc">
-      <p className="docs-kicker">Operate</p>
       <h1>Benchmarks</h1>
       <p className="docs-lede">
         What containment and detection were measured to do, what containment costs in
-        escalated legitimate work, and where each number stops applying.
-      </p>
-
-      <h2>When to use this</h2>
-      <p>
-        Before you quote a number, decide on <code>taint_scope</code>, or turn on a judgment
-        tier. Every figure on this page is bound to a results file in{" "}
-        <code>benchmarks/claims.yaml</code>, and CI fails if a page quotes one that no longer
-        matches its source. The full methodology is on <Link href="/benchmark">Benchmarks</Link>{" "}
-        and in each <code>benchmarks/&lt;name&gt;/README.md</code>.
+        escalated legitimate work, and where each number stops applying. Read it before you quote
+        a number or choose <code>taint_scope</code>. The method for each result is on{" "}
+        <Link href="/benchmark">Benchmark methodology</Link> and in each{" "}
+        <code>benchmarks/&lt;name&gt;/README.md</code>.
       </p>
       <Callout kind="warning" title="Read this first">
         AgentFox does not claim adversarial robustness. An attacker who can read the verdict
@@ -140,8 +133,7 @@ export default function Page() {
       </ul>
       <p>
         The setting that picks the row is <code>taint_scope</code> (
-        <Link href="/docs/concepts#taint-scope">Concepts</Link>). The{" "}
-        <Link href="/docs/quickstart">Quickstart</Link> shows the same trade on four tickets.
+        <Link href="/docs/concepts#taint-scope">Concepts</Link>).
       </p>
 
       <h2>Detection, the layer we trust least</h2>
@@ -219,20 +211,12 @@ export default function Page() {
       </p>
 
       <h2>Check the numbers yourself</h2>
-      <p>From a clone of the repository:</p>
-      <Code>{`python scripts/check/claims.py`}</Code>
-      <Output>{`  containment.attacks_contained_with_detectors_off                 8/8   quoted in 5 place(s)
-  containment.legitimate_calls_allowed_with_detectors_off          4/4   quoted in 3 place(s)
-  agentdojo.session_taint.attack_pairs_contained               588/588   quoted in 9 place(s)
-  agentdojo.session_taint.benign_tasks_allowed               n=24, d=97, pct=24.7, ci=[17.2, 34.2]   quoted in 12 place(s)
-  agentdojo.argument_taint                                   bk=37, bn=97, bpct=38.1, bci=[29.1, 48.1], ak=527, an=588, ck=641, cn=702, missed=61   quoted in 7 place(s)
-…`}</Output>
       <p>
-        <code>python scripts/check/claims.py --check</code> is what CI runs. It prints{" "}
-        <code>all 30 published claims match their sources</code>, or the quote that drifted.
-        Each directory under <code>benchmarks/</code> has its own fetch and run scripts,
-        committed data, and a README with the method and its caveats.
+        Headline numbers are bound to their result files in <code>benchmarks/claims.yaml</code>.
+        From a clone of the repository, this lists each one with its current value; with{" "}
+        <code>--check</code>, as CI runs it, it fails if a page quotes a number that drifted.
       </p>
+      <Code>{`python scripts/check/claims.py --check`}</Code>
 
       <NextSteps
         items={[

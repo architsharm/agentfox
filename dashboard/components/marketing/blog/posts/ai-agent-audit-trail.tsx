@@ -175,7 +175,7 @@ CHAIN TAMPERED — 2 break(s)
       <p>
         The command exits 1, so the same check can run on a schedule and page someone. The
         walkthrough, including how to try it on your own data, is in{" "}
-        <Link href="/docs/guides/audit-evidence">Prove it to an auditor</Link>.
+        <Link href="/docs/prove/audit">Prove it to an auditor</Link>.
       </p>
 
       <InlineCTA
@@ -183,7 +183,7 @@ CHAIN TAMPERED — 2 break(s)
         body="Every allowed and blocked call, chained and signed, with a verifier that needs nothing but Python."
         href="/evidence"
         label="Evidence and audit"
-        secondary={{ href: "/docs/guides/audit-evidence", label: "Read the guide" }}
+        secondary={{ href: "/docs/prove/audit", label: "Read the guide" }}
       />
 
       <h2 id="evidence-package">The evidence package</h2>

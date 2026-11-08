@@ -70,7 +70,7 @@ export default function Page() {
       kicker="MCP security"
       title={["Tool poisoning", "and rug pulls"]}
       lede="Approving the server once is not enough. If a tool changes later, that shows up when it is called."
-      docs="/docs/guides/mcp"
+      docs="/docs/connect/mcp"
       challenge={
         <p>You review a server once. The agent calls it for months.</p>
       }

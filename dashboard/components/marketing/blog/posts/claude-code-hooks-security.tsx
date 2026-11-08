@@ -176,7 +176,7 @@ export function Body() {
         body="The evidence behind each row, the Claude Code version it was checked on, and what each hook can and cannot do."
         href="/hooks"
         label="Coding agent guardrails"
-        secondary={{ href: "/docs/guides/coding-agents", label: "Setup guide" }}
+        secondary={{ href: "/docs/connect/coding-agents", label: "Setup guide" }}
       />
 
       <h2 id="install">Install a working baseline</h2>
@@ -295,7 +295,7 @@ agentfox admin hooks daemon                               # a warm process the h
       <InlineCTA
         title="Put guardrails on your coding agent in five minutes"
         body="Install, write the hooks, start the daemon, and run in observe mode for a day before you enforce."
-        href="/docs/guides/coding-agents"
+        href="/docs/connect/coding-agents"
         label="Follow the guide"
         secondary={{ href: "/playground", label: "Try the playground" }}
       />
