@@ -246,12 +246,41 @@ def _scan_note(run: Run) -> str:
     return "counts and top-level folders only — never code, paths or line numbers"
 
 
+def _scan_label(run: Run) -> str:
+    """The repository's name in a recorded scan: its proposals are ``<label>/<agent>``."""
+    return run.ctx.github_repo or run.ctx.project
+
+
+def _register(run: Run) -> None:
+    """Register the agent `up` runs under as the agent the scan finds in the same code:
+    the name the scan gives it (``<repo>/<agent>``, so the scan's proposal lands on this
+    agent instead of beside it, see ``registry.service.propose_from_scan``), its
+    framework, the tools it is handed (what `agentfox test redteam` attacks through),
+    and the repository `agentfox init` maps it from. Development: it runs here."""
+    from agentfox.capabilities.onboarding.mapper import _project_name
+    from agentfox.platform.registry.service import slugify
+
+    spec = next((a for a in run.ctx.report.agents if slugify(a.name or a.key) == run.agent), None)
+    tools = list(spec.tools) if spec is not None else []
+    if "tools" in run.picked:
+        # `_tools_apply` grants each found tool to this agent: declared alike.
+        tools += list(run.answers.get("tools") or _inferred(run))
+    run.target.backend.register_agent(
+        run.agent,
+        environment="development",
+        framework=spec.framework if spec is not None else None,
+        name=(f"{_scan_label(run)}/{spec.name or slugify(spec.key)}" if spec is not None else None),
+        declared_tools=list(dict.fromkeys(tools)) or None,
+        project=_project_name(run.ctx.root),
+    )
+
+
 def _apply_scan(run: Run) -> None:
     # A local database is this machine: each agent's tool names may go there, so its
     # project shows its tools before any traffic. Never to a server or Cloud.
     local = isinstance(run.target.backend, Local)
     payload = run.ctx.report.to_submission_payload(source="check", tool_names=local)
-    payload["label"] = run.ctx.github_repo or run.ctx.project
+    payload["label"] = _scan_label(run)
     # Each recorded scan proposes its own draft agents and policies, so the same scan
     # sent again would pile up duplicates for someone to review. Per destination: a
     # scan recorded locally has not reached a team server or Cloud.
@@ -265,7 +294,10 @@ def _apply_scan(run: Run) -> None:
         run.done("scan-report", "scan unchanged since it was last recorded here; not sent again")
         return
     try:
-        result = run.target.backend.submit_scan(payload)
+        # Its drafts run where `up` set things up: development, unless saved otherwise.
+        result = run.target.backend.submit_scan(
+            payload, environment=run.ctx.saved.get("environment", "development")
+        )
     except BackendError as exc:
         run.failed("scan-report", str(exc))
         return
@@ -495,7 +527,7 @@ def _auto_lines(run: Run) -> str:
 
 
 def _python_apply(run: Run) -> None:
-    run.target.backend.register_agent(run.agent, environment="development", framework=None)
+    _register(run)
     choice = run.answers.get("python-app", "none")
     block = _auto_lines(run)
     if choice == "none":
@@ -559,7 +591,7 @@ def _gateway_apply(run: Run) -> None:
             "AGENTFOX_AGENT": run.agent,
         }
     )
-    run.target.backend.register_agent(run.agent, environment="development", framework=None)
+    _register(run)
     if not run.target.remote and not _ensure_local_api(run):
         run.say("[yellow]the local gateway is not running yet[/]")
     elif not run.target.remote:

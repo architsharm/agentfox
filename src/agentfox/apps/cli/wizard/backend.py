@@ -43,7 +43,22 @@ class Backend(Protocol):
 
     def edition(self) -> Edition: ...
 
-    def register_agent(self, slug: str, *, environment: str, framework: str | None) -> None: ...
+    def register_agent(
+        self,
+        slug: str,
+        *,
+        environment: str,
+        framework: str | None,
+        name: str | None = None,
+        declared_tools: list[str] | None = None,
+        project: str | None = None,
+    ) -> None:
+        """Register (or update) the agent `up` runs under. ``name`` is the one the scan
+        gives the same code (``<repo>/<agent>``), so the scan's proposal for it lands on
+        this agent instead of beside it (``registry.service.propose_from_scan``), and a
+        draft an earlier scan left beside it is folded in. ``declared_tools`` are the
+        tools it is handed; ``project`` the repository `agentfox init` maps it from."""
+        ...
 
     def declare_tool(self, key: str, *, impact: str, description: str) -> bool:
         """Declare a tool whose impact was inferred. False when it already exists, so a
@@ -59,7 +74,12 @@ class Backend(Protocol):
 
     def register_mcp_server(self, name: str, *, url: str, transport: str) -> None: ...
 
-    def submit_scan(self, payload: dict[str, Any]) -> dict[str, Any]: ...
+    def submit_scan(
+        self, payload: dict[str, Any], *, environment: str = "production"
+    ) -> dict[str, Any]:
+        """Record a scan. ``environment`` is where its draft agents run (a local
+        database only: a server decides that for itself)."""
+        ...
 
     def policy_modes(self) -> dict[str, str]:
         """Each bound policy's key and live mode."""
@@ -97,20 +117,50 @@ class Local:
             version=__version__,
         )
 
-    def register_agent(self, slug: str, *, environment: str, framework: str | None) -> None:
+    def register_agent(
+        self,
+        slug: str,
+        *,
+        environment: str,
+        framework: str | None,
+        name: str | None = None,
+        declared_tools: list[str] | None = None,
+        project: str | None = None,
+    ) -> None:
+        from sqlalchemy import select
+
+        from agentfox.core.models import Agent
         from agentfox.platform.identity import ensure_identity
-        from agentfox.platform.registry.service import register_agent
+        from agentfox.platform.registry.service import (
+            fold_duplicate_drafts,
+            register_agent,
+            slugify,
+        )
 
         with self._session() as session:
+            # Adopting what is there (a draft the scan proposed for this code, or the
+            # agent an earlier `up` registered): its risk tier and purpose, as set.
+            existing = session.scalar(select(Agent).where(Agent.slug == slugify(slug)))
+            tools = (
+                list(dict.fromkeys([*(existing.declared_tools or []), *(declared_tools or [])]))
+                if existing
+                else declared_tools
+            )
             agent = register_agent(
                 session,
                 slug,
-                name=slug,
+                name=name or (existing.name if existing is not None else slug),
                 environment=environment,
                 framework=framework,
-                purpose="registered by agentfox up",
+                purpose=""
+                if existing is not None and existing.purpose
+                else "registered by agentfox up",
+                risk_tier=existing.risk_tier if existing is not None else "limited",
+                declared_tools=tools or None,
+                project=project,
             )
             ensure_identity(session, agent)
+            fold_duplicate_drafts(session, agent, actor="agentfox up")
 
     def declare_tool(self, key: str, *, impact: str, description: str) -> bool:
         from sqlalchemy import select
@@ -220,7 +270,9 @@ class Local:
                 payload={"mode": mode},
             )
 
-    def submit_scan(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def submit_scan(
+        self, payload: dict[str, Any], *, environment: str = "production"
+    ) -> dict[str, Any]:
         """Record the scan the way the gateway's submit route does, so the local
         dashboard shows it with its draft agents and proposed policies."""
         from agentfox.core.models import ScanRun, utcnow
@@ -246,6 +298,7 @@ class Local:
                 author="agentfox up",
                 agents=payload.get("agents", []),
                 agent_edges=payload.get("agent_edges", []),
+                environment=environment,
             )
             run.summary_json = {
                 "cli_command": "up",
@@ -313,16 +366,27 @@ class Remote:
             version=body.get("code_version", ""),
         )
 
-    def register_agent(self, slug: str, *, environment: str, framework: str | None) -> None:
+    def register_agent(
+        self,
+        slug: str,
+        *,
+        environment: str,
+        framework: str | None,
+        name: str | None = None,
+        declared_tools: list[str] | None = None,
+        project: str | None = None,
+    ) -> None:
         response = self._call(
             "POST",
             "/api/agents",
             json={
                 "slug": slug,
-                "name": slug,
+                "name": name or slug,
                 "environment": environment,
                 "framework": framework,
                 "purpose": "registered by agentfox up",
+                "declared_tools": declared_tools or [],
+                **({"project": project} if project else {}),
             },
         )
         if response.status_code >= 400:
@@ -384,7 +448,9 @@ class Remote:
                 f"registering {name} failed: {response.status_code} {response.text[:200]}"
             )
 
-    def submit_scan(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def submit_scan(
+        self, payload: dict[str, Any], *, environment: str = "production"
+    ) -> dict[str, Any]:
         response = self._call("POST", "/api/discovery/submit", json=payload)
         if response.status_code >= 400:
             raise BackendError(f"scan upload failed: {response.status_code} {response.text[:200]}")

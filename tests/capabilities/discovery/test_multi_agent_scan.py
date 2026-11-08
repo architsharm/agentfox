@@ -623,7 +623,9 @@ def test_json_and_submission_payload_carry_the_structure(tmp_path):
     assert "team.py" not in dumped and "secret_internal_tool" not in dumped
 
 
-def test_single_agent_repo_sends_no_structure(tmp_path):
+def test_single_agent_repo_sends_its_agent_but_no_edges(tmp_path):
+    """The one agent is sent, so the proposal carries the name `up` and `init` register
+    it under (a directory proposal beside it was the agent registered twice)."""
     _write(
         tmp_path,
         "bot.py",
@@ -635,7 +637,9 @@ def test_single_agent_repo_sends_no_structure(tmp_path):
     report = scan(tmp_path)
     assert len(report.agents) == 1 and not report.multi_agent
     payload = report.to_submission_payload(source="check")
-    assert payload["agents"] == [] and payload["agent_edges"] == []
+    assert [a["name"] for a in payload["agents"]] == ["Solo"]
+    assert payload["agent_edges"] == []
+    assert "bot.py" not in repr(payload["agents"])
 
 
 def test_terminal_summary_names_who_hands_work_to_whom(tmp_path):
