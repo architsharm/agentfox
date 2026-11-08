@@ -187,22 +187,29 @@ async function Attacks({ agents }: { agents: any[] }) {
           <button type="submit" className="k-btn-primary">Run</button>
         </form>
       </Card>
-      {last && (
-        <Grid cols={3}>
-          <Kpi label="Attacks tried (last run)" value={num(last.summary?.probes_run || 0)} />
-          <Kpi
-            label="Stopped"
-            value={num(campaignNumbers(last.summary).stopped)}
-            hint={campaignNumbers(last.summary).watching ? `${campaignNumbers(last.summary).watching} more would be stopped once watching rules block` : undefined}
-          />
-          <Kpi
-            label="Got through"
-            value={campaignNumbers(last.summary).ran ? num(campaignNumbers(last.summary).through) : "—"}
-            tone={campaignNumbers(last.summary).tone}
-            hint={campaignNumbers(last.summary).ran ? undefined : "No attack ran"}
-          />
-        </Grid>
-      )}
+      {last && (() => {
+        const n = campaignNumbers(last.summary);
+        return (
+          <Grid cols={3}>
+            <Kpi
+              label="Attacks (last run)"
+              value={num(n.ran)}
+              hint={n.controls ? `plus ${n.controls} normal requests: ${n.answered} of ${n.controls} answered` : undefined}
+            />
+            <Kpi
+              label="Stopped"
+              value={num(n.stopped)}
+              hint={n.watching ? `${n.watching} more caught by watching rules: they count as got through until those rules block` : undefined}
+            />
+            <Kpi
+              label="Got through"
+              value={n.ran ? num(n.through) : "—"}
+              tone={n.tone}
+              hint={n.ran ? "Not stopped in live traffic" : "No attack ran"}
+            />
+          </Grid>
+        );
+      })()}
       <Card title="Past runs" flush>
         {list.length ? (
           <table className="k-table">
@@ -212,31 +219,34 @@ async function Attacks({ agents }: { agents: any[] }) {
                 <th className="num">Attacks</th>
                 <th className="num">Stopped</th>
                 <th className="num">Got through</th>
-                <th className="tight">Score</th>
+                <th className="tight" title="Share of attacks stopped in live traffic. A catch by a rule that only watches does not count.">Stopped live</th>
+                <th className="num">Normal requests answered</th>
                 <th className="tight">When</th>
               </tr>
             </thead>
             <tbody>
-              {list.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.name}</td>
-                  <td className="num">{num(c.summary?.probes_run || 0)}</td>
-                  <td className="num">{num(campaignNumbers(c.summary).stopped)}</td>
-                  <td className="num">
-                    {campaignNumbers(c.summary).through ? <Pill tone="bad">{campaignNumbers(c.summary).through}</Pill> : campaignNumbers(c.summary).ran ? "0" : "—"}
-                  </td>
-                  <td className="tight">
-                    {campaignNumbers(c.summary).ran ? (
-                      <Pill tone={(c.summary?.posture_score ?? 0) >= 0.9 && !campaignNumbers(c.summary).through ? "ok" : "warn"}>
-                        {Math.round((c.summary?.posture_score ?? 0) * 100)}%
-                      </Pill>
-                    ) : (
-                      <span className="muted">—</span>
-                    )}
-                  </td>
-                  <td className="tight muted">{ago(c.created_at)}</td>
-                </tr>
-              ))}
+              {list.map((c) => {
+                const n = campaignNumbers(c.summary);
+                return (
+                  <tr key={c.id}>
+                    <td>{c.name}</td>
+                    <td className="num">{num(n.ran)}</td>
+                    <td className="num">{num(n.stopped)}</td>
+                    <td className="num">
+                      {n.through ? <Pill tone="bad">{n.through}</Pill> : n.ran ? "0" : "—"}
+                    </td>
+                    <td className="tight">
+                      {n.stoppedShare != null ? (
+                        <Pill tone={n.through ? "warn" : "ok"}>{Math.round(n.stoppedShare * 100)}%</Pill>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
+                    <td className="num">{n.controls ? `${n.answered} of ${n.controls}` : "—"}</td>
+                    <td className="tight muted">{ago(c.created_at)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         ) : (

@@ -196,6 +196,27 @@ describe("red-team campaign numbers (Testing → Attack tests)", () => {
     expect(n).toMatchObject({ stopped: 0, watching: 11, through: 22, tone: "bad" });
   });
 
+  it("adds up: attacks = stopped + got through, normal requests apart, no 100% beside a breach", () => {
+    // The demo sweep the audit saw: "22 tried, 7 stopped, 11 got through, Score 100%".
+    const n = campaignNumbers({
+      probes_run: 22,
+      attacks_run: 18,
+      attacks_blocked: 18,
+      attacks_succeeded: 0,
+      attacks_stopped_live: 7,
+      attacks_watching: 11,
+      attacks_through_live: 11,
+      benign_probes_run: 4,
+      benign_over_blocked_live: 0,
+      posture_score: 1,
+    });
+    expect(n.ran).toBe(18);
+    expect(n.stopped + n.through).toBe(n.ran);
+    expect(n).toMatchObject({ controls: 4, answered: 4, watching: 11 });
+    expect(n.stoppedShare).toBeCloseTo(7 / 18);
+    expect(campaignNumbers({ attacks_run: 0 }).stoppedShare).toBeNull();
+  });
+
   it("falls back to the old counts", () => {
     expect(campaignNumbers({ attacks_run: 5, attacks_blocked: 5, attacks_succeeded: 0 })).toMatchObject({ stopped: 5, through: 0, tone: "ok" });
   });

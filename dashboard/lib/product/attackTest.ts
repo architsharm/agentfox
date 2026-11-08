@@ -243,14 +243,36 @@ export function campaignNumbers(summary: Record<string, any> | null | undefined)
   watching: number;
   through: number;
   tone: "ok" | "bad" | undefined;
+  /** Normal requests in the run (benign controls), and how many were answered. */
+  controls: number;
+  answered: number;
+  /** Share of attacks stopped live, 0..1, or null when none ran. Replaces "Score",
+   *  which was recall counting watching catches as stopped: "100%" beside "11 got
+   *  through". */
+  stoppedShare: number | null;
 } {
   const s = summary || {};
+  // Attacks only: `probes_run` also counts the normal requests, which made "22 tried"
+  // sit above 7 stopped + 11 got through.
   const ran = Number(s.attacks_run ?? s.probes_run ?? 0) || 0;
   const live = typeof s.attacks_stopped_live === "number";
   const stopped = live ? s.attacks_stopped_live : Number(s.attacks_blocked || 0);
   const watching = live ? Number(s.attacks_watching || 0) : 0;
   const through = live ? Number(s.attacks_through_live || 0) : Number(s.attacks_succeeded || 0);
-  return { ran, stopped, watching, through, tone: !ran ? undefined : through ? "bad" : "ok" };
+  const controls = Number(s.benign_probes_run || 0) || 0;
+  const blocked = Number(
+    (typeof s.benign_over_blocked_live === "number" ? s.benign_over_blocked_live : s.benign_false_positives) || 0,
+  );
+  return {
+    ran,
+    stopped,
+    watching,
+    through,
+    tone: !ran ? undefined : through ? "bad" : "ok",
+    controls,
+    answered: Math.max(0, controls - blocked),
+    stoppedShare: ran ? stopped / ran : null,
+  };
 }
 
 export const POLL_MS = 1500;

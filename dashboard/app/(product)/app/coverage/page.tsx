@@ -75,7 +75,7 @@ export default async function Coverage({
         <Stat n={counts.uncovered || 0} label="nothing watching" tone={counts.uncovered ? "bad" : "ok"} />
         <Stat n={counts.observing || 0} label="watching, not stopping" tone={counts.observing ? "warn" : "ok"} />
         {(data.threats || []).some((t: any) => t.redteam_attempts) ? (
-          <Stat n={counts.breached || 0} label="red team got through" tone={counts.breached ? "bad" : "ok"} />
+          <Stat n={counts.breached || 0} label="threats where an attack test got through (not stopped live)" tone={counts.breached ? "bad" : "ok"} />
         ) : (
           <Stat n="—" label="not attack-tested yet" href="/app/test?tab=attacks" />
         )}
