@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any
 
 from agentfox.capabilities.onboarding.project_files import (  # noqa: F401 - re-exported
     _MAIN_GUARD,
+    ENTRY_NAMES,
     ENV_FILE,
     STATE_DIR,
     git_ignore,
@@ -43,6 +44,9 @@ class Harness:
     display: str
     present: bool  # this project or this machine uses it
     hooked: list[str] = field(default_factory=list)  # agents its hooks already govern
+    #: This repository is set up for it (its config directory or instructions file),
+    #: not only this machine.
+    in_repo: bool = False
 
 
 @dataclass
@@ -62,6 +66,16 @@ class Context:
     @property
     def project(self) -> str:
         return slugify(self.root.resolve().name)
+
+    @property
+    def git_root(self) -> Path | None:
+        return git_root(self.root)
+
+    @property
+    def is_agent_project(self) -> bool:
+        """The repository holds an agent or model calls of its own, as opposed to being
+        a codebase someone works on with a coding agent."""
+        return bool(self.report.agents or self.report.model_calls)
 
     @property
     def python_calls(self) -> int:
@@ -115,40 +129,38 @@ def _harnesses(root: Path, machine: MachineReport | None) -> list[Harness]:
             hooked = sorted(adapter.hooked_agents(root))
         except Exception:  # an unreadable settings file is not a reason to stop
             hooked = []
-        found.append(Harness(adapter.name, adapter.display_name, present or bool(hooked), hooked))
+        in_repo = any(p.exists() for p in signs.get(adapter.name, ()))
+        found.append(
+            Harness(
+                adapter.name, adapter.display_name, present or bool(hooked), hooked, in_repo=in_repo
+            )
+        )
     return found
 
 
-_ENTRY_NAMES = ("main.py", "app.py", "server.py", "agent.py", "run.py", "__main__.py")
+def git_root(root: Path) -> Path | None:
+    """The top of the git repository ``root`` is in (``.git`` a directory or, in a
+    worktree or submodule, a file), or None outside one. Read from the filesystem: no
+    git binary needed."""
+    here = root.resolve()
+    for candidate in (here, *here.parents):
+        if (candidate / ".git").exists():
+            return candidate
+    return None
 
 
 def _entry_points(root: Path, report: ScanReport) -> list[Path]:
-    """Python files that start the agent, best guess first: files with model calls
-    that are also run as a script or named like an entry point."""
-    scored: dict[Path, int] = {}
+    """Python files that start the agent, best guess first (see `entry_points`): the
+    files the project declares, runs as a script or runs an agent from, anywhere
+    under src/ or a package, not only at the top."""
+    from agentfox.capabilities.onboarding.project_files import entry_points
+
+    calls: dict[str, int] = {}
     for site in report.model_calls:
-        if not site.file.endswith(".py"):
-            continue
-        path = root / site.file
-        scored[path] = scored.get(path, 0) + 1
-    for name in _ENTRY_NAMES:
-        for path in root.glob(f"*/{name}"):
-            scored.setdefault(path, 0)
-        if (root / name).is_file():
-            scored.setdefault(root / name, 0)
-
-    def score(path: Path) -> tuple[int, int, str]:
-        try:
-            text = path.read_text(errors="ignore")
-        except OSError:
-            return (0, 0, str(path))
-        runs = 2 if _MAIN_GUARD.search(text) else 0
-        named = 1 if path.name in _ENTRY_NAMES else 0
-        return (runs + named, scored[path], str(path))
-
-    ranked = sorted((p for p in scored if p.is_file()), key=score, reverse=True)
-    # A file nobody runs and that makes no model call is not an entry point.
-    return [p for p in ranked if score(p)[0] or scored[p]][:5]
+        if site.file.endswith(".py"):
+            calls[site.file] = calls.get(site.file, 0) + 1
+    agents = {a.file for a in report.agents if a.file.endswith(".py")}
+    return entry_points(root, model_call_files=calls, agent_files=agents)[:5]
 
 
 _REMOTE = re.compile(r"github\.com[:/]([^/\s]+)/([^/\s]+?)(?:\.git)?/?$")

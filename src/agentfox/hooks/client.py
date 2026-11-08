@@ -68,6 +68,37 @@ def ask(payload: dict[str, Any], *, path: Path | None = None, timeout: float = T
         sock.close()
 
 
+def remove_stale_socket(path: Path | None = None) -> bool:
+    """Delete a socket file no daemon listens on (one killed without unwinding).
+    True when one was removed. A live daemon's socket is never touched: anything that
+    accepts a connection counts as live."""
+    import os
+    import stat
+
+    target = path or socket_path()
+    try:
+        if not stat.S_ISSOCK(os.stat(target).st_mode):
+            return False
+    except OSError:
+        return False
+    probe = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    probe.settimeout(0.5)
+    try:
+        probe.connect(str(target))
+        return False
+    except ConnectionRefusedError:
+        pass
+    except OSError:
+        return False
+    finally:
+        probe.close()
+    try:
+        target.unlink()
+    except OSError:
+        return False
+    return True
+
+
 def ping(path: Path | None = None) -> bool:
     try:
         reply = ask({"type": "ping", "protocolVersion": PROTOCOL_VERSION}, path=path, timeout=1.0)

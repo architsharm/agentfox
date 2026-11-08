@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import typer
 from rich.panel import Panel
 
@@ -96,8 +98,38 @@ def seed(
     )
 
 
-def demo() -> None:
-    """Run the end-to-end walkthrough (offline)."""
+def demo(
+    in_workspace: bool = typer.Option(
+        False,
+        "--in-workspace",
+        help="Write the demo's agents, traffic and findings into your workspace database "
+        "instead of its own. They stay there.",
+    ),
+) -> None:
+    """Run the end-to-end walkthrough (offline), in a database of its own.
+
+    Three made-up agents, sample traffic and the findings it opens go to `demo.db`
+    beside your workspace database, so `agentfox findings` in a real project never
+    opens with the demo's. The closing panel says how to look around it."""
+    from contextlib import nullcontext
+
+    from agentfox.apps.cli.demo import footer, own_database, run
+    from agentfox.core.config import get_settings
+
+    workspace = get_settings().database_url
+    scope = nullcontext((None, workspace)) if in_workspace else own_database()
+    with scope as (demo_url, workspace_url):
+        _prepare_demo()
+        summary = run()
+    console.print()
+    console.rule(style="green")
+    console.print(
+        footer(demo_url, workspace_url, evidence=bool(summary.get("evidence_available"))),
+        soft_wrap=True,
+    )
+
+
+def _prepare_demo() -> None:
     from agentfox.core.db import init_db, session_scope
     from agentfox.core.models import Agent
     from agentfox.fixtures.seed import register_scripts
@@ -106,15 +138,64 @@ def demo() -> None:
     init_db()
     with session_scope() as session:
         if session.query(Agent).count() == 0:
-            console.print("[dim]no agents found — seeding first[/]")
+            console.print("[dim]setting up the demo's agents (first run)[/]")
             run_seed(session)
     # The offline provider's scripted replies live in process memory, so a demo run
     # against an already-seeded database has to re-register them.
     register_scripts()
 
-    from agentfox.apps.cli.demo import run
 
-    run()
+def _serve_record() -> Path:
+    from agentfox.core.config import run_dir
+
+    return run_dir() / "serve.json"
+
+
+def running_serve() -> dict | None:
+    """The `agentfox serve` this installation started and that is still alive, as
+    ``{"pid", "port", "database"}``; None when there is none (or it died without
+    cleaning up, in which case its record is removed)."""
+    import json
+    import os
+
+    path = _serve_record()
+    try:
+        record = json.loads(path.read_text())
+        os.kill(int(record["pid"]), 0)
+    except (OSError, ValueError, KeyError, TypeError):
+        path.unlink(missing_ok=True)
+        return None
+    return record
+
+
+def _record_serve(port: int) -> None:
+    """Say which database this API serves, so a second project's `agentfox up` can
+    tell "the API on :8080 is this installation's, on this database" from "something
+    else is on the port". Removed again on exit."""
+    import atexit
+    import json
+    import os
+
+    from agentfox.core.config import get_settings
+
+    path = _serve_record()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps({"pid": os.getpid(), "port": port, "database": get_settings().database_url})
+        )
+    except OSError:
+        return
+    pid = os.getpid()
+
+    def _remove() -> None:
+        try:
+            if json.loads(path.read_text()).get("pid") == pid:
+                path.unlink()
+        except (OSError, ValueError):
+            pass
+
+    atexit.register(_remove)
 
 
 def serve(
@@ -122,13 +203,22 @@ def serve(
     port: int = 8080,
     reload: bool = False,
 ) -> None:
-    """Start the gateway and control-plane API."""
+    """Start the gateway and control-plane API.
+
+    It serves JSON: the API under /api, the gateway under /v1, and interactive API
+    docs at /docs. The web dashboard is AgentFox Cloud (`agentfox up --target cloud`)
+    or the self-hosted stack (`agentfox up --target self-hosted`)."""
     import uvicorn
 
+    _record_serve(port)
     console.print(f"[cyan]AgentFox[/] {__version__} → http://{host}:{port}")
     console.print(f"  [dim]inline:  POST http://{host}:{port}/v1/chat/completions[/]")
     console.print(f"  [dim]api:     http://{host}:{port}/api/agents[/]")
     console.print(f"  [dim]docs:    http://{host}:{port}/docs[/]")
+    console.print(
+        "  [dim]web dashboard: not served here — sign in to AgentFox Cloud "
+        "(`agentfox up --target cloud`) or self-host it (`agentfox up --target self-hosted`)[/]"
+    )
     from agentfox.platform.identity.operators import auth_posture
 
     posture = auth_posture()

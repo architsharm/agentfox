@@ -257,7 +257,9 @@ def test_install_writes_codex_hooks_and_registers_the_agent_as_codex(installed):
     data = json.loads((installed / ".codex" / "hooks.json").read_text())
     assert set(data["hooks"]) == {"UserPromptSubmit", "PreToolUse", "PostToolUse"}
     command = data["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
-    assert command == f"agentfox hooks run --harness codex --agent {AGENT}"
+    # By absolute path: a hook runs outside the venv AgentFox is installed in.
+    assert command.endswith(f"agentfox hooks run --harness codex --agent {AGENT}")
+    assert command.split()[0].startswith(("/", "'/"))
     assert "matcher" not in data["hooks"]["UserPromptSubmit"][0]
     with session_scope() as session:
         agent = session.query(Agent).filter_by(slug=AGENT).one()

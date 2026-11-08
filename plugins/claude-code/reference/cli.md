@@ -73,7 +73,7 @@ configs). They are the same commands as `admin hooks run` and `serve mcp`.
 | `agentfox doctor [--json]` | R\* | Exit 1 if any check is bad, with or without `--json`. |
 | `agentfox --version` | R | Version string. `admin version` lists every component that takes part in a decision. |
 
-`--submit` POSTs a redacted summary to `$AGENTFOX_API_URL/api/discovery/submit`. Never
+`--submit` POSTs a redacted summary to `$AGENTFOX_URL/api/discovery/submit`. Never
 pass it without the user's explicit consent — it is the only path that sends scan data
 anywhere.
 

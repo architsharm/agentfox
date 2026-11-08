@@ -33,13 +33,13 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from collections.abc import AsyncGenerator
 from typing import Any
 
 import httpx
 from fastapi import HTTPException
 
+from agentfox.core.config import api_key_from_env, api_url_from_env
 from agentfox.runtime.enforcement.result import STOPPING_VERDICTS
 
 log = logging.getLogger(__name__)
@@ -81,12 +81,8 @@ class AgentFoxGuardrail(CustomGuardrail):
         transport: httpx.AsyncBaseTransport | None = None,
         **kwargs: Any,
     ) -> None:
-        self.api_base = (
-            api_base or os.environ.get("AGENTFOX_URL") or "http://localhost:8080"
-        ).rstrip("/")
-        self.api_key = (
-            api_key or os.environ.get("AGENTFOX_API_KEY") or os.environ.get("AGENTFOX_API_TOKEN")
-        )
+        self.api_base = (api_base or api_url_from_env() or "http://localhost:8080").rstrip("/")
+        self.api_key = api_key or api_key_from_env()
         self.agent = agent
         self.fail_open = fail_open
         self._client = httpx.AsyncClient(timeout=timeout, transport=transport)

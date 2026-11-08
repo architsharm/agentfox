@@ -30,6 +30,7 @@ from rich.console import Console
 from agentfox.apps.cli.wizard.backend import Backend, BackendError, Local, Remote
 from agentfox.apps.cli.wizard.detect import STATE_DIR, Context, git_ignore, read_env
 from agentfox.apps.cli.wizard.prompt import Choice, Prompter
+from agentfox.core.config import api_url_from_env
 
 #: AgentFox Cloud's web app. Overridable for a staging workspace.
 CLOUD_APP_URL = os.environ.get("AGENTFOX_CLOUD_URL", "https://useagentfox.com").rstrip("/")
@@ -105,7 +106,9 @@ def choose(
 
 
 def _saved_token(ctx: Context) -> str:
-    return read_env(ctx.root).get("AGENTFOX_API_TOKEN") or os.environ.get("AGENTFOX_API_TOKEN", "")
+    from agentfox.core.config import api_key_from_env
+
+    return api_key_from_env(read_env(ctx.root), os.environ) or ""
 
 
 def _connect(url: str, token: str, console: Console) -> Remote:
@@ -141,7 +144,7 @@ def _cloud(
     )
     url = api_url or prompter.text(
         "Gateway address",
-        ctx.saved.get("api_url") or os.environ.get("AGENTFOX_API_URL", ""),
+        ctx.saved.get("api_url") or (api_url_from_env() or ""),
     )
     token = api_token or prompter.text("API key", _saved_token(ctx), secret=True)
     backend = _connect(url, token, console)
@@ -150,7 +153,7 @@ def _cloud(
         backend,
         backend.where,
         dashboard_url=CLOUD_APP_URL,
-        env={"AGENTFOX_API_URL": backend.where, "AGENTFOX_API_TOKEN": token},
+        env={"AGENTFOX_URL": backend.where, "AGENTFOX_API_KEY": token},
     )
 
 
@@ -182,7 +185,7 @@ def _self_hosted(
     )
     if how == "connect":
         url = api_url or prompter.text(
-            "Gateway address", ctx.saved.get("api_url") or os.environ.get("AGENTFOX_API_URL", "")
+            "Gateway address", ctx.saved.get("api_url") or (api_url_from_env() or "")
         )
         token = api_token or prompter.text(
             "API key (agentfox admin auth issue <email> on that server)",
@@ -199,7 +202,7 @@ def _self_hosted(
             backend,
             backend.where,
             dashboard_url=dashboard.rstrip("/"),
-            env={"AGENTFOX_API_URL": backend.where, "AGENTFOX_API_TOKEN": token},
+            env={"AGENTFOX_URL": backend.where, "AGENTFOX_API_KEY": token},
         )
 
     if not ctx.docker:
@@ -227,7 +230,7 @@ def _self_hosted(
         backend,
         backend.where,
         dashboard_url=SELFHOST_DASHBOARD_URL,
-        env={"AGENTFOX_API_URL": backend.where, "AGENTFOX_API_TOKEN": token},
+        env={"AGENTFOX_URL": backend.where, "AGENTFOX_API_KEY": token},
         notes=[
             f"Sign in to the dashboard at {SELFHOST_DASHBOARD_URL}/login with the API key "
             "in .agentfox/agentfox.env (“Self-hosted? Sign in with an API token”).",

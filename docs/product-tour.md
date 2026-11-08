@@ -66,7 +66,7 @@ or ask about a single tool call:
 
 ```bash
 curl -s -X POST http://localhost:8080/v1/guard/tool_call \
-  -H "Authorization: Bearer $AGENTFOX_TOKEN" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $AGENTFOX_API_KEY" -H "Content-Type: application/json" \
   -d '{"agent":"payments-ops","tool":"payments.transfer",
        "arguments":{"amount":250,"currency":"USD","to":"acct_991"},
        "provenance":{"to":"tool_result","amount":"user"},
@@ -277,7 +277,7 @@ connection. The hosted runner is triggered by
 
 ## Commands, grouped by what you are trying to do
 
-`agentfox --help` lists thirteen top-level commands in six groups: Start (`up`, `init`), See (`scan`,
+`agentfox --help` lists fourteen top-level commands in six groups: Start (`up`, `init`, `demo`), See (`scan`,
 `agents`), Watch (`serve`, `findings`), Contain (`permit`, `declare`, `policy`), Prove (`test`,
 `report`) and Operate (`doctor`, `admin`). Below, the same commands by task.
 
@@ -395,7 +395,10 @@ agentfox agents resume support-triage
 
 ## What the demo prints
 
-Real output from `agentfox init && agentfox demo`, trimmed. Step 3 is the one worth reading: the
+Real output from `agentfox init && agentfox demo`, trimmed. The demo writes to a database of its
+own (`demo.db` beside your workspace's `agentfox.db`), so a real project's `agentfox findings`
+never opens with its made-up agents; its last lines say how to look around that database.
+`agentfox demo --in-workspace` writes into the workspace instead. Step 3 is the one worth reading: the
 injection has already succeeded, and the transfer is refused anyway:
 
 ```
@@ -404,14 +407,17 @@ injection has already succeeded, and the transfer is refused anyway:
 
   transfer, recipient from the poisoned document  enforced=escalate  policy-would=escalate  4.6ms
       taint.irreversible_tool → escalate  tool-containment is in enforce
-        Irreversible tool invoked with arguments originating in untrusted content (retrieved document, tool result or
+        Irreversible tool invoked with arguments originating in untrusted content (retrieved
+        document, tool result or sub-agent output). Human approval required.
       capability.approval_required → escalate  tool-containment is in enforce
-        arguments ['to'] carry provenance above the capability's max_taint 'user' (to from tool_result), so a person m
+        arguments ['to'] carry provenance above the capability's max_taint 'user' (to from
+        tool_result), so a person must approve this call before it runs
   → suspended pending human approval (apr_01m48cfawhd0qv8mr1)
 
   transfer above the capability's argument constraint  enforced=block  policy-would=block  5.2ms
       capability.constraint_violated → block  tool-containment is in enforce
-        agent:payments-ops holds a grant for 'payments.transfer', so this is not a missing permission. The grant allow
+        agent:payments-ops holds a grant for 'payments.transfer', so this is not a missing
+        permission. The grant allows amount below 1000, but this call passed 25000.
 ```
 
 Three calls, three outcomes, none decided by a detector. The first is clean. The second is identical

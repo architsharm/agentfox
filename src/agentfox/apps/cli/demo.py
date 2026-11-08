@@ -11,11 +11,16 @@ Nothing is narrated that did not actually happen.
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any
 
 from rich.console import Console
+from rich.markup import escape
+from rich.padding import Padding
 from rich.panel import Panel
 from rich.table import Table
+from rich.text import Text
 
 from agentfox.apps.cli._style import SEVERITY_COLOUR
 from agentfox.capabilities.detection.tuning import explain_recorded
@@ -88,7 +93,10 @@ def _show(result, label: str, session=None) -> None:
         # The mode that decided this rule's effect, not the mode of the merged set.
         where = f"  [dim]{pack} is in {mode}[/]" if mode else ""
         console.print(f"      [magenta]{rule_id}[/] → {rule.get('effect')}{where}")
-        console.print(f"        [dim]{rule.get('reason', '')[:110]}[/]")
+        # Wrapped under its rule, never cut: a reason ending mid-word ("The grant allow")
+        # reads as a rendering fault and hides the half that explains the verdict.
+        reason = Text(str(rule.get("reason") or "").strip(), style="dim")
+        console.print(Padding(reason, (0, 0, 0, 8), expand=False))
         if rule.get("controls"):
             console.print(f"        [dim]controls: {', '.join(rule['controls'])}[/]")
     if result.entities:
@@ -191,6 +199,96 @@ def _current_mode(key: str) -> str | None:
             )
         ).first()
         return binding.mode if binding else None
+
+
+#: The demo's own database, beside the workspace one.
+DEMO_DATABASE = "demo.db"
+
+
+def demo_database_url(workspace_url: str) -> str:
+    """Where the walkthrough writes: a SQLite file beside the workspace's own database
+    (``~/.agentfox/demo.db`` for ``~/.agentfox/agentfox.db``), or in AgentFox's state
+    directory when the workspace is not a SQLite file (Postgres, in memory)."""
+    from pathlib import Path
+
+    from agentfox.core.config import STATE_ROOT
+
+    prefix = "sqlite:///"
+    path = workspace_url.removeprefix(prefix) if workspace_url.startswith(prefix) else ""
+    if path and path != ":memory:" and not path.startswith("file:"):
+        directory = Path(path).expanduser().parent
+    else:
+        directory = STATE_ROOT
+    return f"{prefix}{directory / DEMO_DATABASE}"
+
+
+@contextmanager
+def own_database() -> Iterator[tuple[str, str]]:
+    """Run the body against the demo's own database, then put the workspace back.
+
+    The walkthrough seeds three made-up agents (payments-ops, support-triage,
+    hr-screening), records traffic and opens a dozen findings. Written into the
+    workspace database, as it used to be, those came back as the first thing
+    `agentfox findings` and `agentfox declare list` showed in the person's real
+    project. Yields ``(demo_url, workspace_url)``."""
+    import os
+
+    from agentfox.core.config import ENV_PREFIX, get_settings
+    from agentfox.core.db import reset_engine
+
+    workspace = get_settings().database_url
+    url = demo_database_url(workspace)
+    key = f"{ENV_PREFIX}DATABASE_URL"
+    previous = os.environ.get(key)
+    os.environ[key] = url
+    get_settings.cache_clear()
+    reset_engine()
+    try:
+        yield url, workspace
+    finally:
+        if previous is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = previous
+        get_settings.cache_clear()
+        reset_engine()
+
+
+def footer(demo_url: str | None, workspace_url: str, *, evidence: bool) -> str:
+    """The closing lines: where the demo's data is, how to look around it, how to get
+    back to your own project. Only commands that exist in this installation."""
+    look = [
+        ("agentfox findings", "what it found, worst first"),
+        ("agentfox report verify", "re-check the audit chain"),
+    ]
+    if evidence:  # Enterprise only: without it the command does not exist
+        look.append(("agentfox report evidence --agent payments-ops", "an evidence package"))
+    lines = ["[bold green]Walkthrough complete.[/]"]
+    if demo_url:
+        lines += [
+            f"Its data is in its own database, [bold]{escape(_short_db(demo_url))}[/]: your "
+            f"workspace ({escape(_short_db(workspace_url))}) is untouched.",
+            "",
+            "Look around the demo's data:",
+            f"  [cyan]export AGENTFOX_DATABASE_URL={escape(demo_url)}[/]",
+        ]
+    width = max(len(cmd) for cmd, _ in look)
+    lines += [f"  [cyan]{cmd:<{width}}[/]  [dim]{why}[/]" for cmd, why in look]
+    if demo_url:
+        lines.append("  [cyan]unset AGENTFOX_DATABASE_URL[/]  [dim]back to your workspace[/]")
+    lines += ["", "Then your own project: [cyan]agentfox scan[/], then [cyan]agentfox up[/]"]
+    # Not boxed: the export line is copied, and a box wraps it with borders inside it.
+    return "\n".join(lines)
+
+
+def _short_db(url: str) -> str:
+    from pathlib import Path
+
+    if not url.startswith("sqlite:///"):
+        return url
+    path = url.removeprefix("sqlite:///")
+    home = str(Path.home())
+    return "~" + path[len(home) :] if path.startswith(home + "/") else path
 
 
 def run() -> dict[str, Any]:
@@ -663,18 +761,9 @@ def _walkthrough() -> dict[str, Any]:
         order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
         for finding in sorted(findings, key=lambda f: order.get(f.severity, 9))[:12]:
             colour = SEVERITY_COLOUR.get(finding.severity, "dim")
-            table.add_row(f"[{colour}]{finding.severity}[/]", finding.type, finding.title[:78])
+            table.add_row(f"[{colour}]{finding.severity}[/]", finding.type, escape(finding.title))
         console.print(table)
         summary["open_findings"] = len(findings)
 
-    console.print()
-    console.print(
-        Panel.fit(
-            "[bold green]Walkthrough complete.[/]\n"
-            "[dim]agentfox serve[/]      control plane on :8080\n"
-            "[dim]agentfox report verify[/]  re-check the chain\n"
-            "[dim]agentfox report evidence --agent payments-ops[/]",
-            border_style="green",
-        )
-    )
+    summary["evidence_available"] = build_evidence is not None
     return summary

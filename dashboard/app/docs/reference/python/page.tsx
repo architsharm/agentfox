@@ -913,7 +913,8 @@ govern(fox, triage_agent, tool_prefix="support")`}</Code>
         observe mode lets the run through. Needs <code>agentfox[openai-agents]</code>.{" "}
         <code>AgentFox(...)</code> does not read <code>AGENTFOX_URL</code>: pass{" "}
         <code>base_url</code> to use a gateway (then <code>api_key</code> falls back to{" "}
-        <code>AGENTFOX_API_TOKEN</code>), or omit it to check in process.{" "}
+        <code>AGENTFOX_API_KEY</code>, or the older <code>AGENTFOX_API_TOKEN</code>), or omit it
+        to check in process.{" "}
         <code>guarded_function_tool(fox, tool=...)</code> wraps a single tool for SDK versions
         without tool guardrails.
       </p>

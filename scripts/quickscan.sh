@@ -2,18 +2,40 @@
 # AgentFox Quickscan — one command, no account, nothing leaves this machine.
 #
 #   curl -fsSL https://raw.githubusercontent.com/architsharm/agentfox/main/scripts/quickscan.sh | bash
+#   curl -fsSL …/quickscan.sh | bash -s -- --main      # the current git main instead
+#   curl -fsSL …/quickscan.sh | bash -s -- path/to/repo
 #
 # Installs AgentFox into a throwaway virtualenv (removed on exit either way) and runs
 # `agentfox scan --sessions` against the current directory, which also reads the MCP
-# servers and skills your AI tools load at user level (`agentfox scan machine`). It installs from git rather than
-# PyPI so a first look always runs the current main, not the last release — this script
-# exists only to skip "create a venv, activate it, pip install" for that first look. No step here talks to
-# anything but PyPI/GitHub (to fetch the package itself) and your local filesystem.
+# servers and skills your AI tools load at user level (`agentfox scan machine`). It
+# installs the published release from PyPI, the same `pip install agentfox` the README
+# tells you to run, so what you see here is what you get when you install it.
+# `--main` (or AGENTFOX_QUICKSCAN_SOURCE=main) installs the current git main instead.
+# This script exists only to skip "create a venv, activate it, pip install" for that
+# first look. No step here talks to anything but PyPI (or GitHub, with --main) to
+# fetch the package itself, and your local filesystem.
 
 set -euo pipefail
 
 REPO_URL="https://github.com/architsharm/agentfox.git"
-TARGET_DIR="${1:-.}"
+SOURCE="${AGENTFOX_QUICKSCAN_SOURCE:-pypi}"
+TARGET_DIR="."
+for arg in "$@"; do
+  case "$arg" in
+    --main) SOURCE="main" ;;
+    --pypi) SOURCE="pypi" ;;
+    -h | --help)
+      printf 'usage: quickscan.sh [--main] [DIRECTORY]\n' >&2
+      exit 0
+      ;;
+    *) TARGET_DIR="$arg" ;;
+  esac
+done
+if [ "$SOURCE" = "main" ]; then
+  PACKAGE="git+${REPO_URL}"
+else
+  PACKAGE="agentfox"
+fi
 
 info() { printf '%s\n' "$*" >&2; }
 
@@ -45,11 +67,11 @@ info "AgentFox Quickscan — setting up in a throwaway environment (nothing leav
 # shellcheck disable=SC1091
 source "$WORKDIR/venv/bin/activate"
 
-if ! pip install --quiet --disable-pip-version-check "git+${REPO_URL}" >"$WORKDIR/install.log" 2>&1; then
+if ! pip install --quiet --disable-pip-version-check "$PACKAGE" >"$WORKDIR/install.log" 2>&1; then
   info "Install failed. Last few lines:"
   tail -n 20 "$WORKDIR/install.log" >&2
   info ""
-  info "You can also install it yourself: pip install \"git+${REPO_URL}\""
+  info "You can also install it yourself: pip install \"${PACKAGE}\""
   exit 1
 fi
 

@@ -31,7 +31,6 @@ from __future__ import annotations
 
 import functools
 import logging
-import os
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -42,6 +41,7 @@ import httpx
 from sqlalchemy.orm import Session
 
 from agentfox.capabilities.detection import TaintTracker
+from agentfox.core.config import api_key_from_env
 from agentfox.core.db import session_scope
 
 # One class each, shared with the LangGraph integration and under `AgentFoxError`:
@@ -251,8 +251,8 @@ class AgentFox:
         """
         self.agent = agent
         self.base_url = base_url.rstrip("/") if base_url else None
-        # The same variable the CLI reads, so one exported token serves both.
-        self.api_key = api_key or (os.environ.get("AGENTFOX_API_TOKEN") if base_url else None)
+        # AGENTFOX_API_KEY (or the older AGENTFOX_API_TOKEN): the key auto() and the CLI read.
+        self.api_key = api_key or (api_key_from_env() if base_url else None)
         self.environment = environment
         self.timeout = timeout
         # Stored as `_session`: `session` is the context-manager method above.

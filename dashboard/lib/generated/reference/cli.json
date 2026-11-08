@@ -120,7 +120,7 @@
       "required": false,
       "multiple": false,
       "default": null,
-      "help": "Name for your agent. Default: the project's."
+      "help": "Name for your agent. Default: the one the scan finds in your code."
      },
      {
       "kind": "option",
@@ -278,6 +278,30 @@
       "multiple": false,
       "default": "",
       "help": "The AgentFox API to report to. Default: http://127.0.0.1:8080."
+     }
+    ],
+    "default_subcommand": null,
+    "commands": []
+   },
+   {
+    "path": "demo",
+    "name": "demo",
+    "summary": "Run the end-to-end walkthrough (offline), in a database of its own.",
+    "help": "Run the end-to-end walkthrough (offline), in a database of its own.\n\nThree made-up agents, sample traffic and the findings it opens go to `demo.db`\nbeside your workspace database, so `agentfox findings` in a real project never\nopens with the demo's. The closing panel says how to look around it.",
+    "panel": "Start",
+    "params": [
+     {
+      "kind": "option",
+      "name": "in_workspace",
+      "opts": [
+       "--in-workspace"
+      ],
+      "type": "flag",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": null,
+      "help": "Write the demo's agents, traffic and findings into your workspace database instead of its own. They stay there."
      }
     ],
     "default_subcommand": null,
@@ -1144,7 +1168,7 @@
       "path": "serve api",
       "name": "api",
       "summary": "Start the gateway and control-plane API.",
-      "help": "Start the gateway and control-plane API.",
+      "help": "Start the gateway and control-plane API.\n\nIt serves JSON: the API under /api, the gateway under /v1, and interactive API\ndocs at /docs. The web dashboard is AgentFox Cloud (`agentfox up --target cloud`)\nor the self-hosted stack (`agentfox up --target self-hosted`).",
       "panel": null,
       "params": [
        {
