@@ -53,7 +53,7 @@ agentfox init --key nom_api_… --server https://…`}</Code>
         <Step title="Test, then add the basic guardrails">
           <p>
             The first attack test starts by itself, with no guardrails. When it finishes, press{" "}
-            <strong>Add and test again</strong>. Each row shows how many attacks got through before
+            <strong>Turn on basic guardrails and test again</strong>. Each row shows how many attacks got through before
             and after.
           </p>
           <Screenshot {...SCREENS.attackTest} />

@@ -248,7 +248,123 @@ def test_session_creation_is_rate_limited_per_client(client, monkeypatch):
         playground_sessions.session_creation_limiter,
     )
     assert client.post("/api/playground/sessions").status_code == 201
-    assert client.post("/api/playground/sessions").status_code == 429
+    refused = client.post("/api/playground/sessions")
+    assert refused.status_code == 429
+    # Says when, in the header, in the body and in the sentence a visitor reads.
+    body = refused.json()
+    assert 1 <= body["retry_after_seconds"] <= 60
+    assert refused.headers["Retry-After"] == str(body["retry_after_seconds"])
+    assert "in a minute" in body["detail"]
+
+
+def test_the_world_is_served_without_making_a_sandbox(client):
+    """The page renders from `/world` and makes a sandbox on the first action, so a
+    visitor who only looks (or reloads) spends none of the per-address allowance."""
+    from agentfox.apps.gateway.playground_sessions import get_store
+
+    before = get_store()._ids_where()
+    resp = client.get("/api/playground/world")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "session_id" not in body
+    assert body["agents"][0]["slug"] == "airline-cs" and body["agents"][0]["prompts"]
+    assert body["poisoned_document"] and body["mode"] == "observe"
+    assert get_store()._ids_where() == before
+    created = client.post("/api/playground/sessions").json()
+    assert created["agents"] == body["agents"]
+
+
+class TestRetryAfter:
+    def test_counts_down_to_when_the_oldest_hit_ages_out(self, monkeypatch):
+        from agentfox.apps.gateway import playground_sessions as pg
+
+        clock = [1000.0]
+        monkeypatch.setattr(pg.time, "monotonic", lambda: clock[0])
+        limiter = pg.RateLimiter(limit=2, window_seconds=3600)
+        assert limiter.retry_after("k") == 0
+        limiter.check("k")
+        clock[0] += 600
+        limiter.check("k")
+        assert limiter.check("k") is False
+        assert limiter.retry_after("k") == 3000
+        clock[0] += 3000
+        assert limiter.retry_after("k") == 0
+        assert limiter.check("k") is True
+
+    def test_phrase(self):
+        from agentfox.apps.gateway.playground_sessions import retry_phrase
+
+        assert retry_phrase(30) == "in a minute"
+        assert retry_phrase(61) == "in about 2 minutes"
+        assert retry_phrase(3000) == "in about 50 minutes"
+        assert retry_phrase(3600) == "in about an hour"
+
+
+class TestClientAddress:
+    """Behind Vercel every visitor arrived from the same `request.client.host`, so the
+    playground's per-address limit was one bucket for everybody."""
+
+    @staticmethod
+    def _request(peer: str, forwarded: str | None):
+        from starlette.requests import Request
+
+        headers = [(b"x-forwarded-for", forwarded.encode())] if forwarded is not None else []
+        return Request({"type": "http", "client": (peer, 1234), "headers": headers})
+
+    def test_no_trusted_proxy_ignores_the_header(self):
+        from agentfox.apps.gateway.client_address import client_address
+
+        req = self._request("10.0.0.1", "203.0.113.9")
+        assert client_address(req, hops=0) == "10.0.0.1"
+
+    def test_one_trusted_proxy_reads_the_entry_it_wrote(self):
+        from agentfox.apps.gateway.client_address import client_address
+
+        # The client put a fake address first; the proxy appended the real one.
+        req = self._request("10.0.0.1", "1.2.3.4, 203.0.113.9")
+        assert client_address(req, hops=1) == "203.0.113.9"
+        assert client_address(req, hops=2) == "1.2.3.4"
+
+    def test_too_few_entries_falls_back_to_the_peer(self):
+        from agentfox.apps.gateway.client_address import client_address
+
+        assert client_address(self._request("10.0.0.1", None), hops=1) == "10.0.0.1"
+        assert client_address(self._request("10.0.0.1", "203.0.113.9"), hops=2) == "10.0.0.1"
+
+    def test_vercel_is_one_hop_unless_configured(self, monkeypatch):
+        from agentfox.core.config import Settings
+
+        monkeypatch.delenv("AGENTFOX_TRUSTED_PROXY_HOPS", raising=False)
+        monkeypatch.delenv("VERCEL", raising=False)
+        assert Settings().forwarded_for_hops == 0
+        monkeypatch.setenv("VERCEL", "1")
+        assert Settings().forwarded_for_hops == 1
+        monkeypatch.setenv("AGENTFOX_TRUSTED_PROXY_HOPS", "0")
+        assert Settings().forwarded_for_hops == 0
+
+
+def test_creation_limit_counts_each_forwarded_visitor_separately(client, monkeypatch):
+    from agentfox.apps.gateway import playground_sessions
+
+    monkeypatch.setenv("VERCEL", "1")
+    from agentfox.core.config import reset_settings_cache
+
+    reset_settings_cache()
+    limiter = playground_sessions.RateLimiter(limit=1, window_seconds=60)
+    monkeypatch.setattr(
+        importlib.import_module("agentfox.apps.gateway.routes.playground"),
+        "session_creation_limiter",
+        limiter,
+    )
+    try:
+        a = {"X-Forwarded-For": "203.0.113.1"}
+        b = {"X-Forwarded-For": "203.0.113.2"}
+        assert client.post("/api/playground/sessions", headers=a).status_code == 201
+        assert client.post("/api/playground/sessions", headers=b).status_code == 201
+        assert client.post("/api/playground/sessions", headers=a).status_code == 429
+    finally:
+        monkeypatch.delenv("VERCEL")
+        reset_settings_cache()
 
 
 def test_actions_on_one_sandbox_are_rate_limited(client, monkeypatch):

@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 335,
+ "count": 336,
  "routes": [
   {
    "method": "GET",
@@ -9322,7 +9322,7 @@
    "section": "playground",
    "audience": "public-unauthenticated",
    "summary": "Create a playground sandbox.",
-   "description": "Create a playground sandbox.\n\nA private tenant in the deployment database, seeded with the demo fixtures.\n`session_id` is the only credential. It survives this process, so a follow-up\nrequest served by a different instance finds the same sandbox; it expires\n`expires_in_seconds` after the last action on it, and its data is then deleted.",
+   "description": "Create a playground sandbox.\n\nA private tenant in the deployment database, seeded with the demo fixtures.\n`session_id` is the only credential. It survives this process, so a follow-up\nrequest served by a different instance finds the same sandbox; it expires\n`expires_in_seconds` after the last action on it, and its data is then deleted.\n\nLimited per visitor address (behind a trusted proxy, the forwarded one). Over the\nlimit the answer is 429 with `Retry-After` and `retry_after_seconds`, and a\nsentence that says when.",
    "params": [],
    "body": null
   },
@@ -9370,8 +9370,8 @@
    "path": "/api/playground/sessions/{session_id}/enforce",
    "section": "playground",
    "audience": "public-unauthenticated",
-   "summary": "Flip the baseline policy observe -> enforce (or back) for this sandbox only.",
-   "description": "Flip the baseline policy observe -> enforce (or back) for this sandbox only.\n\nNothing about the visitor's earlier messages changes retroactively — the point\nis to re-send the same injection afterwards and watch the verdict actually\nchange from \"would have blocked\" to \"blocked\", the same \"aha\" `agentfox demo`\nalready walks through interactively (`cli/demo.py`, section 08).",
+   "summary": "Flip every content check observe -> enforce (or back) for this sandbox only.",
+   "description": "Flip every content check observe -> enforce (or back) for this sandbox only.\n\nThat is the baseline, each sandbox agent's own protection layer and the custom\nwords and topics (`sandbox_agents.content_policy_keys`). Limits on what an agent\nmay do (tool grants, amounts, approvals) enforce in both modes.\n\nNothing about the visitor's earlier messages changes retroactively — the point\nis to re-send the same injection afterwards and watch the verdict actually\nchange from \"would have blocked\" to \"blocked\", the same \"aha\" `agentfox demo`\nalready walks through interactively (`cli/demo.py`, section 08).",
    "params": [
     {
      "name": "session_id",
@@ -9459,6 +9459,16 @@
      }
     ]
    }
+  },
+  {
+   "method": "GET",
+   "path": "/api/playground/world",
+   "section": "playground",
+   "audience": "public-unauthenticated",
+   "summary": "The agents, tools and suggested prompts, without making a sandbox.",
+   "description": "The agents, tools and suggested prompts, without making a sandbox.\n\nThe page renders from this, and makes a sandbox (`POST /sessions`) only when the\nvisitor first sends something. Making one on every page load spent the\nper-address allowance on people who only looked, and a reload counted again.",
+   "params": [],
+   "body": null
   },
   {
    "method": "GET",

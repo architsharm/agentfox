@@ -25,3 +25,16 @@ export function apiBase(): string {
 export function publicApiBase(): string {
   return (env("PUBLIC_API_URL") || apiBase()).replace(/\/+$/, "");
 }
+
+const LOOPBACK = /^https?:\/\/(localhost|127(?:\.\d+){3}|0\.0\.0\.0|\[::1\])(:\d+)?$/i;
+
+/**
+ * The gateway URL for a snippet that runs somewhere else: a CI runner, a
+ * teammate's machine. `publicApiBase()`, unless that is a loopback address, which
+ * on a CI runner is the runner itself; then the snippet reads `$AGENTFOX_URL`,
+ * the variable the SDK and CLI already use, and `isLoopback` says so.
+ */
+export function remoteApiBase(): { url: string; isLoopback: boolean } {
+  const base = publicApiBase();
+  return LOOPBACK.test(base) ? { url: "$AGENTFOX_URL", isLoopback: true } : { url: base, isLoopback: false };
+}

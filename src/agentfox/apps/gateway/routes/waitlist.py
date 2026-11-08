@@ -47,6 +47,7 @@ from agentfox.apps.gateway.deps import db
 # point: two rate limiters with two sets of semantics is how one of them ends up
 # quietly not working. Its limits are per process — see the class docstring for what
 # that does and does not bound on a serverless deployment.
+from agentfox.apps.gateway.client_address import client_address
 from agentfox.apps.gateway.playground_sessions import RateLimiter
 from agentfox.core.models import WaitlistSignup
 
@@ -114,15 +115,12 @@ class WaitlistRequest(BaseModel):
 
 
 def _client_key(request: Request) -> str:
-    """The address the limiter counts against.
-
-    `request.client.host`, matching `playground.py` — deliberately not
-    `X-Forwarded-For`, which is a header the client sets and can therefore rotate to
-    defeat the limit unless a proxy is known to overwrite it. Behind a proxy this
-    counts every visitor as one address, which fails closed (too strict) rather than
-    open, and the cap is sized with that in mind.
+    """The address the limiter counts against: the visitor's, read from
+    `X-Forwarded-For` only as far as trusted proxies wrote it
+    (`client_address.client_address`, `trusted_proxy_hops`). With no trusted proxy it
+    is `request.client.host`, because the header is the client's to set.
     """
-    return request.client.host if request.client else "unknown"
+    return client_address(request)
 
 
 @router.post("/api/waitlist", summary="Join the hosted-cloud waitlist")

@@ -133,6 +133,44 @@ def test_a_blocked_red_team_payload_is_not_a_breach(seeded):
     assert llm02["status"] != "breached"
 
 
+def test_an_attack_caught_only_by_a_watching_rule_got_through(seeded):
+    """The Testing page's definition: got through = not stopped in live traffic. A
+    watching catch was recorded and let through, so Threat coverage counts it too;
+    normal requests run beside the attacks are not attempts at all."""
+    seeded.add(
+        RedTeamFinding(
+            campaign_id="rtc_test",
+            probe="watched",
+            succeeded=False,
+            owasp_id="LLM01",
+            evidence_json={"expect_blocked": True, "verdict": "block", "applied_verdict": "allow"},
+        )
+    )
+    seeded.add(
+        RedTeamFinding(
+            campaign_id="rtc_test",
+            probe="stopped",
+            succeeded=False,
+            owasp_id="LLM01",
+            evidence_json={"expect_blocked": True, "verdict": "block", "applied_verdict": "block"},
+        )
+    )
+    seeded.add(
+        RedTeamFinding(
+            campaign_id="rtc_test",
+            probe="benign",
+            succeeded=False,
+            owasp_id="LLM01",
+            evidence_json={"expect_blocked": False, "applied_verdict": "allow"},
+        )
+    )
+    seeded.flush()
+    llm01 = _row(coverage(seeded), "LLM01")
+    assert llm01["redteam_attempts"] == 2
+    assert llm01["redteam_breaches"] == 1
+    assert llm01["status"] == "breached"
+
+
 def test_out_of_scope_threats_are_excluded_rather_than_failed(cov):
     """Training-data poisoning is not something a runtime control plane is in the
     path of. Scoring it would drag the number down with something nobody can act on,

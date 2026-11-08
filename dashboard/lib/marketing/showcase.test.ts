@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ofTotal, toFeed } from "@/lib/marketing/showcase";
+import { ago, freshness, ofTotal, toFeed } from "@/lib/marketing/showcase";
 
 const LIVE = {
   enabled: true,
@@ -27,5 +27,19 @@ describe("the /live feed", () => {
     expect(ofTotal(3, 9)).toBe("3 of 9");
     expect(ofTotal(0, 9)).toBe("none of 9");
     expect(ofTotal(0, 0)).toBe("0");
+  });
+});
+
+describe("freshness", () => {
+  const now = Date.parse("2026-11-08T12:00:00Z");
+  it("says how long ago the last run was", () => {
+    expect(freshness("2026-11-08T11:17:00Z", now)).toEqual({ ago: "43 minutes ago", stale: false });
+    expect(ago(90 * 60_000)).toBe("2 hours ago");
+    expect(ago(3 * 24 * 3_600_000)).toBe("3 days ago");
+  });
+  it("is stale past two hours, or with no run at all", () => {
+    expect(freshness("2026-11-07T16:53:00Z", now).stale).toBe(true);
+    expect(freshness("2026-11-08T10:30:00Z", now).stale).toBe(false);
+    expect(freshness(null, now)).toEqual({ ago: "never", stale: true });
   });
 });

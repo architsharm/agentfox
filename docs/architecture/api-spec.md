@@ -138,7 +138,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-335 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+336 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -481,9 +481,10 @@ from the code. Regenerate after changing any route:
 |---|---|---|
 | `POST` | `/api/playground/sessions` | Create a playground sandbox. |
 | `POST` | `/api/playground/sessions/{session_id}/chat` | Chat |
-| `POST` | `/api/playground/sessions/{session_id}/enforce` | Flip the baseline policy observe -> enforce (or back) for this sandbox only. |
+| `POST` | `/api/playground/sessions/{session_id}/enforce` | Flip every content check observe -> enforce (or back) for this sandbox only. |
 | `GET` | `/api/playground/sessions/{session_id}/state` | Everything the live sidebar needs: recent traces (decisions + detector runs |
 | `POST` | `/api/playground/sessions/{session_id}/tool-call` | Try a tool call directly, with no model in the loop. |
+| `GET` | `/api/playground/world` | The agents, tools and suggested prompts, without making a sandbox. |
 
 ### Public showcase (unauthenticated, cached, rate-limited)
 

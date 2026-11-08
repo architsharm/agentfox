@@ -183,7 +183,7 @@ class ThreatCoverage:
         if self.redteam_breaches:
             return (
                 f"{self.redteam_breaches} of {self.redteam_attempts} red-team "
-                "attempt(s) got through."
+                "attack(s) got through live traffic (caught only by a watching rule counts)."
             )
         if not self.watching:
             if self.controls:
@@ -380,6 +380,8 @@ def coverage(
     rt_attempts: dict[str, int] = {}
     rt_breaches: dict[str, int] = {}
     for finding in session.scalars(select(RedTeamFinding)):
+        if not _is_attack(finding):
+            continue
         for raw in (finding.owasp_id, finding.atlas_id):
             if not raw:
                 continue
@@ -447,5 +449,23 @@ def _is_breach(finding: Any) -> bool:
     `RedTeamFinding.succeeded` is from the attacker's point of view: true means the
     attack worked. Reading it the other way round would turn the most alarming number
     on the page into the most reassuring one.
+
+    And "got through" means what it means on the Testing page: not stopped in live
+    traffic. An attack caught only by a rule that watches was recorded and then let
+    through, so it is a breach here too. Counting it as stopped is how Threat coverage
+    said "0 red team got through" beside a Testing page that said 11 had.
     """
-    return bool(getattr(finding, "succeeded", False))
+    if bool(getattr(finding, "succeeded", False)):
+        return True
+    evidence = getattr(finding, "evidence_json", None) or {}
+    if evidence.get("expect_blocked") is False:  # a normal request, not an attack
+        return False
+    from agentfox.capabilities.evaluation.redteam import LIVE_STOPS
+
+    return evidence.get("applied_verdict") not in LIVE_STOPS
+
+
+def _is_attack(finding: Any) -> bool:
+    """Red-team findings also record the normal requests run beside the attacks."""
+    evidence = getattr(finding, "evidence_json", None) or {}
+    return evidence.get("expect_blocked") is not False

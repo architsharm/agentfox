@@ -393,6 +393,9 @@ def to_test_run(run: dict[str, Any], *, runner_connected: bool, now: dt.datetime
         "total": sum(v for k, v in totals.items() if not k.startswith("_"))
         if totals
         else run["total"],
+        # The normal requests in the suite, so a page can say "117 attacks + 12 normal
+        # requests" the way the CLI does, instead of one saying 117 and the other 129.
+        "controlsTotal": sum((totals.get("_controls") or {}).values()) if totals else 0,
         "gotThrough": counted["gotThrough"],
         "stopped": counted["stopped"],
         "resisted": counted["resisted"],

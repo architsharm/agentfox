@@ -51,7 +51,7 @@ export default function Page() {
 
         <Step title="Add guardrails and test again">
           <p>
-            Press <strong>Add and test again</strong>. It turns on the basic guardrails and reruns
+            Press <strong>Turn on basic guardrails and test again</strong>. It turns on the basic guardrails and reruns
             the same attacks. Each row then reads <em>no guardrails → basic guardrails</em>. For
             what is still getting through, add a{" "}
             <Link href="/docs/protect/custom-rules">custom rule</Link> or tighten{" "}

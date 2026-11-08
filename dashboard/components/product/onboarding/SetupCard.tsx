@@ -166,7 +166,7 @@ export function SetupCard({
       setDetail((d) => ({
         ...d,
         guarding: tests?.first
-          ? `${tests.first.total ?? "The"} attacks on your agent as it is, no guardrails yet. Tools are faked, nothing real happens. Results show beside the map.`
+          ? `${tests.first.total ?? "The"} attacks${tests.first.controlsTotal ? ` + ${tests.first.controlsTotal} normal requests` : ""} on your agent as it is, with AgentFox only watching (nothing blocks yet). Tools are faked, nothing real happens. Results show beside the map.`
           : "No tools found to test yet.",
       }));
       if (stop) return;

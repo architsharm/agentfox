@@ -4,7 +4,8 @@
  * The public playground. Unauthenticated, talks straight to the gateway's own
  * unauthenticated `/api/playground/*` routes (see
  * `src/agentfox/apps/gateway/routes/playground.py`) — no session cookie, no
- * `lib/product/api.ts`. Every visitor gets their own throwaway sandbox on mount; nothing
+ * `lib/product/api.ts`. Every visitor gets their own throwaway sandbox on their first
+ * message (the agents come from `/world`, which makes none); nothing
  * here is shared between visitors and nothing here is real (no real money, no
  * real email, no real model call — see the backend module's own docstring).
  *
@@ -36,7 +37,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Verdict } from "@/components/ui";
-import { ApiError, playgroundCall, SANDBOX_TIMEOUT_MS } from "@/lib/marketing/playground";
+import {
+  ApiError,
+  explainVerdict,
+  playgroundCall,
+  retryPhrase,
+  SANDBOX_TIMEOUT_MS,
+} from "@/lib/marketing/playground";
 
 /**
  * The offline `echo` provider tags its deterministic replies with
@@ -239,13 +246,14 @@ function VerdictLine({
   const held = v.effective_verdict !== v.verdict;
   const caughtByWindow =
     w && w.effective_verdict === "block" && v.effective_verdict !== "block";
+  const why = explainVerdict(v);
   return (
     <details className="pg-verdict">
       <summary>
         {held ? (
           <>
-            <span className="tag warn">flagged, not stopped</span>
-            <span className="pg-would">would be {plain(v.effective_verdict)} with blocking on</span>
+            <span className="tag warn">{WOULD[v.effective_verdict] || "would block"}</span>
+            <span className="pg-would">flagged, not stopped: blocking is off</span>
           </>
         ) : (
           <Verdict value={v.verdict} label={plain(v.verdict)} />
@@ -255,18 +263,30 @@ function VerdictLine({
         <span className="pg-why">why</span>
       </summary>
       <div className="pg-verdict-body">
-        <p>{v.reason}</p>
-        {v.rules_fired?.map((r, i) => (
-          <p key={i} className="mono">
-            {r.rule_id}
-            {r.reason?.trim() !== v.reason?.trim() && <> — {r.reason}</>}
-          </p>
-        ))}
-        {v.latency_ms != null && <p className="mono">{v.latency_ms.toFixed(1)}ms</p>}
+        <p>{why.sentence}</p>
+        {why.citations.length > 0 && (
+          <details className="pg-cite">
+            <summary>Regulations this maps to</summary>
+            {why.citations.map((c) => (
+              <p key={c}>{c}</p>
+            ))}
+          </details>
+        )}
+        {v.latency_ms != null && <p className="mono">checked in {v.latency_ms.toFixed(1)}ms</p>}
       </div>
     </details>
   );
 }
+
+/** The flagged-in-watching chip: what blocking on would have done. */
+const WOULD: Record<string, string> = {
+  block: "would block",
+  escalate: "would hold for approval",
+  redact: "would remove sensitive data",
+  mask: "would mask sensitive data",
+  tokenize: "would replace sensitive data",
+  abstain: "would decline",
+};
 
 /** A tool the agent tried, drawn the way a chat client draws tool use. */
 function ActionCard({ t }: { t: Extract<Turn, { kind: "action" }> }) {
@@ -290,9 +310,16 @@ function ActionCard({ t }: { t: Extract<Turn, { kind: "action" }> }) {
         </div>
       ) : (
         t.result != null && (
-          <pre className="pg-result mono">
-            {typeof t.result === "string" ? t.result : JSON.stringify(t.result, null, 2)}
-          </pre>
+          <>
+            <pre className="pg-result mono">
+              {typeof t.result === "string" ? t.result : JSON.stringify(t.result, null, 2)}
+            </pre>
+            {/* Watching, a poisoned result reaches the model; say it was caught. */}
+            {t.resultVerdict &&
+              t.resultVerdict.effective_verdict !== t.resultVerdict.verdict && (
+                <VerdictLine v={t.resultVerdict} surface="the result" />
+              )}
+          </>
         )
       )}
     </div>
@@ -318,6 +345,12 @@ export function Playground({ apiBase }: { apiBase: string }) {
   const [sandboxLost, setSandboxLost] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [bootstrapping, setBootstrapping] = useState(true);
+  /** Set by a 429 on making a sandbox. No "start a new one" button while it
+   *  stands: pressing it would only be refused again. */
+  const [limited, setLimited] = useState<{ message: string; retryAfter?: number } | null>(null);
+  // The sandbox being made, so two quick clicks share one.
+  const creating = useRef<Promise<string | null> | null>(null);
+  const [starting, setStarting] = useState(false);
 
   const streamRef = useRef<HTMLDivElement>(null);
 
@@ -331,47 +364,111 @@ export function Playground({ apiBase }: { apiBase: string }) {
     [apiBase],
   );
 
+  /** An ApiError carries the gateway's own sentence, already plain English.
+   *  Anything else is the network, and "Failed to fetch" is not something to put
+   *  in front of a visitor. A 429 is not an error to retry now: it says when. */
+  const reportStartFailure = useCallback((e: any) => {
+    if (e instanceof ApiError && e.status === 429) {
+      setLimited({ message: e.message, retryAfter: e.retryAfterSeconds });
+      return;
+    }
+    setBootstrapError(
+      e instanceof ApiError
+        ? e.message
+        : "The sandbox could not be reached. This is usually temporary.",
+    );
+  }, []);
+
   /**
-   * Sandboxes are thrown away on the server, so any route here can start
-   * returning 404 mid-demo. Bootstrapping is a named, re-runnable action rather
-   * than a one-shot mount effect, so the recovery button can call it.
+   * What the page shows (agents, prompts, the document), without a sandbox.
+   * The sandbox is made on the first action (`ensureSession`): making one on
+   * every page load spent the per-address allowance on people who only looked.
+   * A gateway without `/world` (an older deploy) gets the old behaviour.
    */
-  const bootstrap = useCallback(async () => {
+  const loadWorld = useCallback(async () => {
     setBootstrapping(true);
     setBootstrapError(null);
-    setSandboxLost(false);
-    setError(null);
     try {
-      const body = await call<World>(
-        "/api/playground/sessions",
-        { method: "POST" },
-        SANDBOX_TIMEOUT_MS,
-      );
-      setSessionId(body.session_id);
+      const body = await call<World>("/api/playground/world", { method: "GET" }, SANDBOX_TIMEOUT_MS);
       setWorld(body);
       setAgent(body.agents[0]?.slug || "support-triage");
       setDocumentText(body.poisoned_document);
-      setMode("observe");
-      setTurns([]);
-      setChain(null);
     } catch (e: any) {
-      setSessionId(null);
-      // An ApiError carries the gateway's own sentence (the rate limiter's, for
-      // example), already plain English. Anything else is the network, and
-      // "Failed to fetch" is not something to put in front of a visitor.
-      setBootstrapError(
-        e instanceof ApiError
-          ? e.message
-          : "The sandbox could not be reached. This is usually temporary.",
-      );
+      if (e instanceof ApiError && e.status === 404) {
+        try {
+          const body = await call<World>(
+            "/api/playground/sessions",
+            { method: "POST" },
+            SANDBOX_TIMEOUT_MS,
+          );
+          setSessionId(body.session_id);
+          setWorld(body);
+          setAgent(body.agents[0]?.slug || "support-triage");
+          setDocumentText(body.poisoned_document);
+        } catch (e2: any) {
+          reportStartFailure(e2);
+        }
+      } else {
+        reportStartFailure(e);
+      }
     } finally {
       setBootstrapping(false);
     }
-  }, [call]);
+  }, [call, reportStartFailure]);
 
   useEffect(() => {
-    void bootstrap();
-  }, [bootstrap]);
+    void loadWorld();
+  }, [loadWorld]);
+
+  /**
+   * The sandbox, made now if there is none. Sandboxes are thrown away on the
+   * server, so any route can start returning 404 mid-demo; the recovery button
+   * clears the old id and the next action makes a fresh one. A mode chosen
+   * before the sandbox existed is applied to it.
+   */
+  const ensureSession = useCallback(async (): Promise<string | null> => {
+    if (sessionId) return sessionId;
+    if (creating.current) return creating.current;
+    creating.current = (async () => {
+      setBootstrapError(null);
+      setSandboxLost(false);
+      setLimited(null);
+      setStarting(true);
+      try {
+        const body = await call<World>(
+          "/api/playground/sessions",
+          { method: "POST" },
+          SANDBOX_TIMEOUT_MS,
+        );
+        if (mode === "enforce") {
+          await call(`/api/playground/sessions/${body.session_id}/enforce`, {
+            method: "POST",
+            body: JSON.stringify({ mode }),
+          });
+        }
+        setSessionId(body.session_id);
+        setChain(null);
+        return body.session_id;
+      } catch (e: any) {
+        reportStartFailure(e);
+        return null;
+      } finally {
+        creating.current = null;
+        setStarting(false);
+      }
+    })();
+    return creating.current;
+  }, [call, mode, reportStartFailure, sessionId]);
+
+  function startOver() {
+    setSessionId(null);
+    setSandboxLost(false);
+    setBootstrapError(null);
+    setTurns([]);
+    setChain(null);
+    setMode("observe");
+    if (!world) void loadWorld();
+  }
 
   useEffect(() => {
     streamRef.current?.scrollTo({
@@ -404,12 +501,19 @@ export function Playground({ apiBase }: { apiBase: string }) {
   }
 
   async function say(text: string, withDocument = attachDocument) {
-    if (!sessionId || !text.trim()) return;
+    if (!world || !text.trim()) return;
     setBusy(true);
     setError(null);
+    const before = turns.length;
     setTurns((t) => [...t, { kind: "user", text }]);
+    const sid = await ensureSession();
+    if (!sid) {
+      setTurns((t) => t.slice(0, before));
+      setBusy(false);
+      return;
+    }
     try {
-      const body = await call(`/api/playground/sessions/${sessionId}/chat`, {
+      const body = await call(`/api/playground/sessions/${sid}/chat`, {
         method: "POST",
         body: JSON.stringify({
           agent,
@@ -427,7 +531,7 @@ export function Playground({ apiBase }: { apiBase: string }) {
           scripted: Boolean(body.reply),
         },
       ]);
-      void refreshChain(sessionId);
+      void refreshChain(sid);
     } catch (e: any) {
       reportFailure(e);
     } finally {
@@ -441,11 +545,12 @@ export function Playground({ apiBase }: { apiBase: string }) {
    * the call is in flight, which is what every chat client does.
    */
   async function act(s: Suggestion) {
-    if (!sessionId || !s.tool) return;
+    if (!world || !s.tool) return;
     setBusy(true);
     setError(null);
     const args = s.args || {};
-    const slot = turns.length + 1;
+    const before = turns.length;
+    const slot = before + 1;
     const settle = (patch: Partial<Extract<Turn, { kind: "action" }>>) =>
       setTurns((t) =>
         t.map((turn, i) =>
@@ -457,8 +562,14 @@ export function Playground({ apiBase }: { apiBase: string }) {
       { kind: "user", text: s.say },
       { kind: "action", tool: s.tool!, args, pending: true },
     ]);
+    const sid = await ensureSession();
+    if (!sid) {
+      setTurns((t) => t.slice(0, before));
+      setBusy(false);
+      return;
+    }
     try {
-      const body = await call(`/api/playground/sessions/${sessionId}/tool-call`, {
+      const body = await call(`/api/playground/sessions/${sid}/tool-call`, {
         method: "POST",
         body: JSON.stringify({ agent, tool: s.tool, arguments: args, intent: s.intent }),
       });
@@ -468,7 +579,7 @@ export function Playground({ apiBase }: { apiBase: string }) {
         resultWithheld: body.result_withheld,
         resultVerdict: body.result_verdict,
       });
-      void refreshChain(sessionId);
+      void refreshChain(sid);
     } catch (e: any) {
       if (e instanceof ApiError && e.status === 404) {
         setSandboxLost(true);
@@ -481,8 +592,12 @@ export function Playground({ apiBase }: { apiBase: string }) {
   }
 
   async function toggleMode() {
-    if (!sessionId) return;
     const next = mode === "observe" ? "enforce" : "observe";
+    // No sandbox yet: remember the choice; `ensureSession` applies it.
+    if (!sessionId) {
+      setMode(next);
+      return;
+    }
     try {
       await call(`/api/playground/sessions/${sessionId}/enforce`, {
         method: "POST",
@@ -499,6 +614,38 @@ export function Playground({ apiBase }: { apiBase: string }) {
     setMessage("");
     void say(text);
   }
+
+  const selected = world?.agents.find((a) => a.slug === agent);
+
+  /** The suggestions, before the first message and under the conversation after
+   *  it. The poisoned document stays on offer in both places. */
+  const chips = (
+    <>
+      {tries?.map((s) => (
+        <button
+          key={s.label}
+          type="button"
+          className="pg-chip"
+          disabled={busy}
+          onClick={() => (s.tool ? void act(s) : void say(s.say, false))}
+        >
+          {s.label}
+        </button>
+      ))}
+      <button
+        type="button"
+        className="pg-chip"
+        disabled={busy}
+        onClick={() => {
+          setShowDocument(true);
+          setAttachDocument(true);
+          void say("Summarise the Q3 refunds document.", true);
+        }}
+      >
+        Summarise a poisoned document
+      </button>
+    </>
+  );
 
   // The page chrome is rendered by app/(marketing)/playground/page.tsx, which is a Server
   // Component. It has to be: the nav reads the session cookie, and a client
@@ -537,55 +684,51 @@ export function Playground({ apiBase }: { apiBase: string }) {
               </button>
             ))}
           </div>
+          {/* On a phone the picker is one scrolling row of names; the chosen
+              agent's line sits under it so the chat stays near the top. */}
+          {selected && (
+            <p className="pg-agent-note">{selected.summary || AGENTS[selected.slug]?.holds || selected.purpose}</p>
+          )}
 
-          {(sandboxLost || bootstrapError) && (
-            <div className="pg-lost">
-              <p>{sandboxLost ? "That sandbox expired. Nothing was saved." : bootstrapError}</p>
-              <button
-                type="button"
-                className="mk-btn mk-btn-primary"
-                onClick={() => void bootstrap()}
-                disabled={bootstrapping}
-              >
-                {bootstrapping ? "Starting…" : "Start a new one"}
-              </button>
+          {limited ? (
+            <div className="pg-lost pg-limited" role="status">
+              <b>The playground is busy on your network</b>
+              <p>
+                {limited.message.includes("You can start another")
+                  ? limited.message
+                  : `${limited.message} You can start another ${retryPhrase(limited.retryAfter)}.`}
+              </p>
+              <p className="pg-lost-aside">
+                Or run the same checks on your own machine: <code>pip install agentfox</code>, then{" "}
+                <code>agentfox demo</code>.
+              </p>
             </div>
+          ) : (
+            (sandboxLost || bootstrapError) && (
+              <div className="pg-lost">
+                <p>{sandboxLost ? "That sandbox expired. Nothing was saved." : bootstrapError}</p>
+                <button
+                  type="button"
+                  className="mk-btn mk-btn-primary"
+                  onClick={startOver}
+                  disabled={bootstrapping}
+                >
+                  {bootstrapping ? "Starting…" : "Start a new one"}
+                </button>
+              </div>
+            )
           )}
 
           {error && <div className="error">{error}</div>}
 
-          {sessionId && (
+          {world && (
             <div className="pg-main">
               <section className="pg-chat" aria-label="Conversation">
                 <div className="pg-stream" ref={streamRef}>
                   {turns.length === 0 ? (
                     <div className="pg-empty">
                       <span className="pg-empty-label">Try</span>
-                      <div className="pg-chips">
-                        {tries?.map((s) => (
-                          <button
-                            key={s.label}
-                            type="button"
-                            className="pg-chip"
-                            disabled={busy}
-                            onClick={() => (s.tool ? void act(s) : void say(s.say, false))}
-                          >
-                            {s.label}
-                          </button>
-                        ))}
-                        <button
-                          type="button"
-                          className="pg-chip"
-                          disabled={busy}
-                          onClick={() => {
-                            setShowDocument(true);
-                            setAttachDocument(true);
-                            void say("Summarise the Q3 refunds document.", true);
-                          }}
-                        >
-                          Summarise a poisoned document
-                        </button>
-                      </div>
+                      <div className="pg-chips">{chips}</div>
                     </div>
                   ) : (
                     turns.map((t, i) => {
@@ -607,21 +750,12 @@ export function Playground({ apiBase }: { apiBase: string }) {
                       );
                     })
                   )}
+                  {starting && <span className="pg-pending">Starting a private sandbox for you…</span>}
                 </div>
 
-                {turns.length > 0 && tries && tries.length > 0 && (
+                {turns.length > 0 && (
                   <div className="pg-chips pg-chips-more" aria-label="More to try">
-                    {tries.map((s) => (
-                      <button
-                        key={s.label}
-                        type="button"
-                        className="pg-chip"
-                        disabled={busy}
-                        onClick={() => (s.tool ? void act(s) : void say(s.say, false))}
-                      >
-                        {s.label}
-                      </button>
-                    ))}
+                    {chips}
                   </div>
                 )}
 
@@ -703,10 +837,11 @@ export function Playground({ apiBase }: { apiBase: string }) {
                 <details className="pg-tip">
                   <summary>What does that change?</summary>
                   <p>
-                    While watching, checks on what people type only flag it, so you can
-                    see what would be stopped before anything is. With blocking on, it is
-                    stopped. Limits on what each agent may do (which tools, how much
-                    money) apply either way.
+                    While watching, every check on what people type and what tools
+                    return only flags it: the agent still answers, and you see what
+                    would have been stopped. With blocking on, it is stopped. Limits on
+                    what each agent may do (which tools, how much money, what needs
+                    approval) apply either way.
                   </p>
                 </details>
 
@@ -726,9 +861,7 @@ export function Playground({ apiBase }: { apiBase: string }) {
             </div>
           )}
 
-      {!sessionId && !bootstrapError && (
-        <p className="pg-lede">Starting a private sandbox for you. This takes about ten seconds.</p>
-      )}
+      {!world && bootstrapping && <p className="pg-lede">Loading the agents…</p>}
         </div>
       </section>
     </>

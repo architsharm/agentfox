@@ -121,6 +121,12 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "what": "Comma-separated browser origins allowed to call the public playground, added to localhost."
       },
       {
+        "key": "trusted_proxy_hops",
+        "env": "AGENTFOX_TRUSTED_PROXY_HOPS",
+        "def": "1 on Vercel, else 0",
+        "what": "Proxies in front of the gateway that append to X-Forwarded-For. The per-visitor limits (playground, waitlist, showcase) read the visitor's address that many entries from the right. 0 ignores the header."
+      },
+      {
         "key": "onboarding_key_ttl_days",
         "env": "AGENTFOX_ONBOARDING_KEY_TTL_DAYS",
         "def": "30",
