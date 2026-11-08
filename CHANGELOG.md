@@ -12,7 +12,6 @@ the file it came from.
 ## [Unreleased]
 
 ### Changed
-
 - **`agentfox up` adds `agentfox.auto()` where your agent starts, and only that.** It
   finds the file that starts the agent under `src/` and in packages, from
   `[project.scripts]` (and Poetry's), the graphs `langgraph.json` loads, a `__main__`
@@ -53,7 +52,6 @@ the file it came from.
   start.
 
 ### Fixed
-
 - `agentfox report evidence` without AgentFox Enterprise says what it is instead of
   "unexpected extra argument (evidence)".
 - `agentfox doctor` printed `pip install 'agentfox'` for `agentfox[classifiers]`: Rich
@@ -65,8 +63,6 @@ the file it came from.
 - A hook daemon killed with SIGTERM or SIGHUP removes its socket; a socket left by one
   killed harder is detected and removed by `agentfox up` and `agentfox admin hooks status`.
 - `agentfox init`'s closing steps mention `agentfox demo` and `agentfox up`.
-### Fixed
-
 - **`agentfox scan` counts model calls, not agent definitions.** `StateGraph(...)`,
   `builder.compile()`, `Crew(...)` and any `re.compile` in a file importing LangGraph
   were counted as ungoverned model calls (LangGraph's own repository read "2039 of 8
@@ -97,8 +93,6 @@ the file it came from.
   prose between two code blocks (a closing fence used to open a new block), or
   `skill_poisoning` for a skill that quotes "ignore previous instructions" to tell the
   model to refuse it.
-### Fixed
-
 - **The attack test no longer shows a pass it isn't.** On the map's panel, a test where
   nothing ran (the agent couldn't be imported) says "Not run" with the reason and the
   fix, instead of a green "0/26". Errored and not-run attacks are counted on each row,
