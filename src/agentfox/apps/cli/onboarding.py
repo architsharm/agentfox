@@ -315,7 +315,8 @@ def setup_workspace(
             mode = modes[document.key]
             colour = "red" if mode == "enforce" else "yellow"
             meaning = _MODE_MEANING.get(mode, "")
-            note = "  [dim](kept)[/]" if document.key in kept else ""
+            # Kept: a pack someone switched to blocking stays blocking on a rerun.
+            note = "  [dim](kept)[/]" if document.key in kept and mode != "observe" else ""
             say(f"      {document.key:<24} [{colour}]{mode}[/]  [dim]{meaning}[/]{note}")
         if coding_agents:
             say(f"      [dim]coding-agent applies to: {', '.join(coding_agents)}[/]")
