@@ -112,25 +112,33 @@ export AGENTFOX_API_KEY=nom_api_…`}</Code>
       <h2>What it covers</h2>
       <ul>
         <li>
-          <strong>Patched:</strong> <code>openai</code> chat completions, <code>anthropic</code>{" "}
-          messages, <code>litellm</code>, and LangChain chat models and tools. Sync, async and
-          streamed.
+          <strong>Patched:</strong> <code>openai</code> chat completions and the Responses API,{" "}
+          <code>anthropic</code> messages, <code>litellm</code>, LangChain chat models and tools,
+          and CrewAI tools. Sync, async and streamed.
         </li>
         <li>
-          <strong>LangChain, LangGraph, CrewAI, LlamaIndex, AutoGen:</strong> covered through the
-          client they call the model with. For checks on graph nodes, see{" "}
+          <strong>LangChain, LangGraph, CrewAI, LlamaIndex, AutoGen, the OpenAI Agents SDK:</strong>{" "}
+          covered through the client they call the model with. LangChain and CrewAI tools are also
+          checked where they run, so a CrewAI agent&apos;s text tool calls (&quot;Action:
+          ...&quot;) are checked too. For checks on graph nodes, see{" "}
           <Link href="/docs/connect/langgraph">LangGraph</Link>.
         </li>
         <li>
-          <strong>Not covered:</strong> the OpenAI Responses API, a tool your code calls without the
-          model asking, and other processes.
+          <strong>Not covered:</strong> a tool your code calls without the model asking (LangChain
+          and CrewAI tools excepted), and other processes. Tools OpenAI hosts (web search, file
+          search, code interpreter) are recorded, not stopped: they ran before the response came
+          back.
         </li>
       </ul>
 
       <Callout kind="note" title="OpenAI Agents SDK">
         <p>
-          The Agents SDK calls the model through the Responses API, so <code>auto()</code> alone checks
-          nothing. Add <code>govern()</code> once, after you build your agents (
+          The Agents SDK calls the model through the Responses API, which <code>auto()</code>{" "}
+          patches: every model call, each tool call the model asks for (before the SDK runs it) and
+          each tool result fed back are checked, with nothing else added. A refused tool call raises{" "}
+          <code>agentfox.Blocked</code> out of <code>Runner.run</code>. If you would rather the
+          refusal went back to the model as the tool&apos;s answer, so the run carries on, use{" "}
+          <code>govern()</code> instead, once, after you build your agents (
           <code>pip install &quot;agentfox[openai-agents]&quot;</code>):
         </p>
         <Code lang="python">{`import os
@@ -158,8 +166,8 @@ govern(fox, triage_agent)  # its hand-offs and tools too`}</Code>
           <tr>
             <td>Nothing on Activity</td>
             <td>
-              <code>auto()</code> ran after the first model call, the app uses the Responses API, or no{" "}
-              <a href="#key">key</a> was found.
+              <code>auto()</code> ran after the first model call, or no <a href="#key">key</a> was
+              found.
             </td>
           </tr>
           <tr>

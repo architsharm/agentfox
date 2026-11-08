@@ -11,6 +11,39 @@ the file it came from.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`agentfox.auto()` governs the OpenAI Responses API, so an OpenAI Agents SDK app is
+  checked with the one line alone.** Found by a new-user walkthrough: the Agents SDK's
+  customer_service example with `auto()` added recorded 0 traces and 0 decisions,
+  because the SDK calls `client.responses.create`, which was not patched.
+  `Responses.create` and `.parse` are patched, sync and async, which covers
+  `responses.stream()`, `stream=True` and the `with_streaming_response` /
+  `with_raw_response` paths (a raw response is checked when it is parsed). The request's
+  `instructions` and `input` are the pre-flight messages; a `function_call_output` item is
+  a tool result (`tool_result` taint, checked on the tool-result surface); the `message`
+  items' text is the output, and an applied redaction is written back into it; each
+  `function_call` item (and a shell, computer or patch action the app executes) is a tool
+  call decided before the response is handed back. Tools OpenAI hosts (web search, file
+  search, code interpreter, hosted MCP) are recorded as tool spans, not authorised: they
+  ran before the response arrived. A request continuing a conversation held by OpenAI
+  (`previous_response_id`, `conversation`) records its provenance for earlier turns as
+  unknown. The banner no longer says the Responses API is not governed.
+- **CrewAI tool calls are checked.** A CrewAI agent writes its tool calls as text
+  ("Action: ... / Action Input: ..."), so no model-level patch saw one, and the tool's
+  result came back to the model marked `user` taint. `auto()` now patches CrewAI's tool
+  entry points where they run (`CrewStructuredTool.invoke` / `ainvoke` for a text call,
+  `BaseTool.run` / `arun` and `Tool.run` / `arun` for a native one), as it patches
+  LangChain's: each call goes through the tool-call check, a refusal is handed to the
+  agent as the tool's result (`tool_refusals="raise"` raises instead), and the result is
+  checked as `tool_result` before the agent reads it. Native tool calls in a CrewAI
+  agent's model replies are left to that check, so each call is decided once.
+- **Tools checked where they run (LangChain, CrewAI) get argument provenance.** Their
+  results are kept per conversation (bounded), so an argument copied out of an earlier
+  tool's result is `tool_result` taint and the containment and composition rules apply;
+  a model request that quotes a result inside another message (CrewAI's "Observation:")
+  has that message marked `tool_result`.
+
 ## [0.5.0] - 2026-11-07
 
 ### Added
