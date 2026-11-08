@@ -716,6 +716,58 @@ def _sdk_unfakeable(agent: Any) -> list[str]:
     return bad
 
 
+def _sdk_context_type(agent: Any, modules: list[Any]) -> type | None:
+    """The run-context type an Agents SDK agent expects, if its code names one: the
+    ``Agent[SomeContext](...)`` it was built as (on it or on an agent it hands off
+    to), else a ``RunContextWrapper[SomeContext]`` annotation on a function in the
+    repository (a tool or hand-off callback)."""
+    import typing
+
+    seen: set[int] = set()
+    stack = [agent]
+    while stack:
+        a = stack.pop()
+        if a is None or id(a) in seen:
+            continue
+        seen.add(id(a))
+        args = typing.get_args(getattr(a, "__orig_class__", None))
+        if args and isinstance(args[0], type):
+            return args[0]
+        for h in getattr(a, "handoffs", None) or []:
+            stack.append(getattr(h, "agent", None) or h)
+    wrapper = getattr(sys.modules.get("agents.run_context"), "RunContextWrapper", None)
+    if wrapper is None:
+        return None
+    for m in modules:
+        for value in list(vars(m).values()):
+            if not inspect.isfunction(value) or getattr(value, "__module__", "") != m.__name__:
+                continue
+            try:
+                hints = typing.get_type_hints(value)
+            except Exception:  # noqa: BLE001 - an annotation we can't resolve says nothing
+                continue
+            for hint in hints.values():
+                if typing.get_origin(hint) is wrapper:
+                    found = typing.get_args(hint)
+                    if found and isinstance(found[0], type):
+                        return found[0]
+    return None
+
+
+def default_context(kind: type) -> tuple[Any, str | None]:
+    """A fresh instance of a run-context type, built with its defaults (a pydantic
+    model, a dataclass or any class constructible with no arguments), or (None, why
+    it couldn't be built)."""
+    try:
+        return kind(), None
+    except Exception:  # noqa: BLE001 - required fields with no defaults
+        return None, kind.__name__
+
+
+#: A result's reason when an agent needs a run context AgentFox couldn't build.
+NEEDS_CONTEXT = "Not run: {name} needs a run context AgentFox couldn't build ({kind})."
+
+
 @dataclass
 class Driver:
     """How one agent is run: ``call(message) -> reply``, or why it can't be."""
@@ -725,6 +777,10 @@ class Driver:
     refuse: str | None = None
     install: Callable[[], None] = lambda: None
     restore: Callable[[], None] = lambda: None
+    #: The agent expects a run context AgentFox couldn't build: an attack that then
+    #: fails on the missing context is reported not run with this reason, not as the
+    #: agent's error.
+    context_missing: str | None = None
 
 
 _SDK_LOOP: asyncio.AbstractEventLoop | None = None
@@ -835,15 +891,28 @@ def make_driver(
         except (ImportError, TypeError):
             config = {}
 
+        # The run context the app passes (`Runner.run(..., context=AirlineContext())`):
+        # without it, tools and hand-off callbacks that read it fail on None. A fresh
+        # default instance per attack, so one attack's writes never reach the next.
+        kind = _sdk_context_type(obj, modules or [])
+        missing = None
+        if kind is not None:
+            _probe, why = default_context(kind)
+            if why is not None:
+                missing = NEEDS_CONTEXT.format(name=name, kind=why)
+
         def run_sdk(message: str, agent: Any = obj) -> str:
+            extra = dict(config)
+            if kind is not None and missing is None:
+                extra["context"] = default_context(kind)[0]
             # Not `run_sync`: it makes a new event loop per call, and the SDK's shared
             # OpenAI client binds to the first one, so concurrent attacks failed with
             # "bound to a different event loop". Every run goes to one loop instead.
             return _reply_text(
-                _on_sdk_loop(lambda: Runner.run(agent, message, max_turns=12, **config))
+                _on_sdk_loop(lambda: Runner.run(agent, message, max_turns=12, **extra))
             )
 
-        return Driver(name, call=run_sdk)
+        return Driver(name, call=run_sdk, context_missing=missing)
     if hasattr(obj, "invoke"):
         keys = getattr(obj, "input_keys", None)
         legacy = isinstance(keys, (list, tuple)) and "input" in keys and "messages" not in keys
@@ -1020,6 +1089,21 @@ def run_attack(driver: Driver, attack: Attack, run: _Run) -> dict[str, Any]:
                     reply = str(v.content)
     finally:
         _CTX.reset(token)
+    if error and driver.context_missing and "NoneType" in error:
+        # The agent failed on the run context AgentFox couldn't give it: that says
+        # nothing about the agent, so the attack wasn't run rather than errored.
+        reason = driver.context_missing
+        return {
+            **base,
+            "outcome": "not_run",
+            "gotThrough": False,
+            "error": None,
+            "reason": reason,
+            "sentence": reason,
+            "toolCall": "",
+            "severity": 0,
+            "calls": [],
+        }
     if run.guard_error:
         # Not a verdict: an attack AgentFox couldn't check is errored, never stopped.
         run.interventions = [i for i in run.interventions if i.get("reason") != UNCHECKED]
@@ -1406,6 +1490,11 @@ def explain_not_run(reason: str) -> str:
         return (
             f"{text.rstrip('.')}. Add it under Projects (or run agentfox init again), then "
             "run the test again."
+        )
+    if "needs a run context" in text:
+        return (
+            f"{text.rstrip('.')}. Give its fields defaults so it can be built with no "
+            "arguments, then run the test again."
         )
     if text.startswith("it needs a tool"):
         return f"The attack sets chosen don't apply to this agent: {text.rstrip('.')}."

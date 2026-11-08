@@ -33,6 +33,14 @@ the file it came from.
   known. The report separates blocked from "would block (watching)", summarises per
   attack set, and ends with a one-line verdict ("N of M attacks get through today;
   K once the watching rules block. X of Y normal requests answered").
+- **Agents SDK agents get the run context their code expects in the attack test.** An
+  agent built as `Agent[SomeContext]` (or whose tools and hand-off callbacks are
+  annotated `RunContextWrapper[SomeContext]`) is now run with a fresh default
+  `SomeContext()` per attack, as the app passes one to `Runner.run`. Before, its
+  callbacks failed on `context.context.<field>` and those attacks were reported as the
+  agent's errors (11 of 60 on OpenAI's customer-service example; now none). A context
+  that can't be built with no arguments is said as such: the attacks that fail on it
+  are "not run: needs a run context AgentFox couldn't build (<Type>)", not errors.
 - The OpenAI Agents SDK's own trace export is switched off while attack tests run,
   so `[non-fatal] Tracing client error 400` lines no longer leak into `agentfox init`'s
   progress output.

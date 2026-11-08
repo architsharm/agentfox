@@ -253,12 +253,20 @@ def nothing_ran(results: list[dict[str, Any]]) -> str:
 
 def errored_summary(results: list[dict[str, Any]]) -> str | None:
     """The most common error among attacks that errored, as a plain sentence."""
-    from agentfox.capabilities.onboarding.runner import explain_model_error
+    from agentfox.capabilities.onboarding.runner import GUARD_ERROR_PREFIX, explain_model_error
 
     errors = [str(r["error"]) for r in results if r.get("error") and outcome_of(r) == "errored"]
     if not errors:
         return None
-    return explain_model_error(max(set(errors), key=errors.count))
+    common = max(set(errors), key=errors.count)
+    if common.startswith(GUARD_ERROR_PREFIX):
+        # Some attacks only: the test went on, so it didn't "stop".
+        why = common[len(GUARD_ERROR_PREFIX) :].strip(" ()")
+        return (
+            f"AgentFox couldn't check them against your guardrails ({why}). Your agent and "
+            "its model are fine: check that the AgentFox server is reachable, then try again."
+        )
+    return explain_model_error(common)
 
 
 #: What a result may carry beyond its first fields: its precise ``outcome``, the

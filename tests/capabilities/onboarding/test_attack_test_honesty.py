@@ -131,3 +131,112 @@ def test_the_sdks_own_tracing_is_off_while_a_suite_runs(monkeypatch):
     with runner.faking():
         assert provider.disabled is True
     assert provider.disabled is True and provider._manual_disabled is True
+
+
+# --- The run context an Agents SDK agent expects ----------------------------------------
+#
+# cx's customer-service agents are `Agent[AirlineAgentContext]`, and the app runs them
+# with `Runner.run(..., context=AirlineAgentContext())`. Run without it, the hand-off
+# callback failed on `context.context.flight_number` and every such attack "errored".
+
+
+class _Generic:
+    """Stands in for an SDK agent built as ``Agent[Ctx](...)``."""
+
+    def __init__(self, ctx: type | None = None, handoffs: list | None = None) -> None:
+        if ctx is not None:
+            import typing
+
+            self.__orig_class__ = typing.List[ctx]  # noqa: UP006 - any alias with args
+        self.handoffs = handoffs or []
+
+
+def test_the_context_type_is_read_off_the_agent_or_one_it_hands_off_to():
+    from dataclasses import dataclass
+
+    @dataclass
+    class Ctx:
+        flight_number: str | None = None
+
+    assert runner._sdk_context_type(_Generic(Ctx), []) is Ctx
+    assert runner._sdk_context_type(_Generic(None, [_Generic(Ctx)]), []) is Ctx
+    assert runner._sdk_context_type(_Generic(None), []) is None
+
+
+def test_a_default_context_is_built_fresh_or_said_why_not():
+    from dataclasses import dataclass
+
+    @dataclass
+    class Ctx:
+        seat: str | None = None
+
+    one, why = runner.default_context(Ctx)
+    assert why is None and isinstance(one, Ctx) and one is not runner.default_context(Ctx)[0]
+
+    class Needs:
+        def __init__(self, account_id: str) -> None:
+            self.account_id = account_id
+
+    none, why = runner.default_context(Needs)
+    assert none is None and why == "Needs"
+
+
+def test_an_attack_failing_on_a_context_that_couldnt_be_built_is_not_run():
+    from agentfox.capabilities.onboarding.attacks import build_suite
+
+    attack = build_suite(STRUCTURE, ["jailbreak"])[0]
+
+    def call(_message: str) -> str:
+        raise AttributeError("'NoneType' object has no attribute 'flight_number'")
+
+    missing = runner.NEEDS_CONTEXT.format(name="Seat Booking Agent", kind="Ctx needs x")
+    driver = runner.Driver("Seat Booking Agent", call=call, context_missing=missing)
+    out: list[dict] = []
+    runner.run_suite(driver, [attack], STRUCTURE, out.append, concurrency=1)
+    assert out[0]["outcome"] == "not_run" and out[0]["error"] is None
+    assert "needs a run context AgentFox couldn't build" in out[0]["reason"]
+    assert "Give its fields defaults" in runner.explain_not_run(out[0]["reason"])
+
+    # With a context it could build, the same failure is the agent's own error.
+    plain = runner.Driver("Seat Booking Agent", call=call)
+    out.clear()
+    runner.run_suite(plain, [attack], STRUCTURE, out.append, concurrency=1)
+    assert out[0]["outcome"] == "errored"
+
+
+def test_attacks_agentfox_couldnt_check_dont_say_the_test_stopped():
+    error = f"{runner.GUARD_ERROR_PREFIX} (agentfox.ApiError: 500: Internal Server Error)"
+    said = service.errored_summary(
+        [{"id": "j1", "type": "jailbreak", "outcome": "errored", "error": error}]
+    )
+    assert said and said.startswith("AgentFox couldn't check them against your guardrails")
+    assert "stopped" not in said
+
+
+def test_an_sdk_agent_runs_with_a_default_context(tmp_path):
+    import pytest
+
+    pytest.importorskip("agents.tool")
+    from agents import Agent, RunContextWrapper, set_tracing_disabled
+    from pydantic import BaseModel
+
+    set_tracing_disabled(True)
+
+    class Ctx(BaseModel):
+        flight_number: str | None = None
+
+    seen: list = []
+
+    async def instructions(ctx: RunContextWrapper[Ctx], _agent) -> str:
+        seen.append(ctx.context)
+        ctx.context.flight_number = "FLT-1"  # fails on None without a context
+        return "Help."
+
+    agent = Agent[Ctx](name="Seat", instructions=instructions, model="none")
+    driver = runner.make_driver(agent, name="Seat", kind="object")
+    assert driver.context_missing is None
+    try:
+        driver.call("hi")
+    except Exception:  # noqa: BLE001 - no model here: only the context matters
+        pass
+    assert seen and isinstance(seen[0], Ctx)
