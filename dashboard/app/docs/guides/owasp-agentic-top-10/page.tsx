@@ -140,7 +140,7 @@ export default function Page() {
       </p>
       <p>
         See <Link href="/docs/guides/contain-tool-calls">Contain tool calls</Link>,{" "}
-        <Link href="/benchmark#containment">containment when detection has failed</Link> and{" "}
+        <Link href="/benchmark#detectors-off">containment when detection has failed</Link> and{" "}
         <Link href="/benchmark#adaptive">the adaptive attacker</Link>.
       </p>
 
