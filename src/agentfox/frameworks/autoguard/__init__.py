@@ -302,6 +302,40 @@ class AutoState:
             "would_have_blocked": self.would_have_blocked,
         }
 
+    def banner(self) -> str:
+        """What `auto()` prints when it starts: at most three lines.
+
+        It runs on every start of somebody's script, so it says only what changes
+        what they do next: which agent, which mode, what was patched, anything that is
+        NOT governed, and where the rest is. :meth:`summary` is the full account
+        (``AGENTFOX_VERBOSE=1`` prints it instead)."""
+        patched = [p.library for p in self.patches if p.patched]
+        head = f"AgentFox is governing '{self.agent}' in {self.mode} mode ({self.environment})"
+        if self.remote is not None:
+            head += f", reporting to your AgentFox account at {self.remote.url}"
+        # Line two: what is covered, and anything that is not, said plainly.
+        gaps = [
+            f"{framework} calls are NOT governed (none of "
+            f"{'/'.join(_FRAMEWORK_ROUTES[framework])} is installed or patched)"
+            for framework, routes in self.framework_routes().items()
+            if not routes
+        ]
+        covered = (
+            f"Patched: {', '.join(dict.fromkeys(p.removesuffix('.async') for p in patched))}"
+            if patched
+            else "Nothing patched: install openai or anthropic, or use the SDK directly"
+        )
+        if self.frameworks:
+            covered += f" · detected: {', '.join(self.frameworks)}"
+        what = {
+            "observe": "Observe: decisions are recorded, nothing is blocked.",
+            "enforce": "Enforce (strict): anything a policy would stop raises agentfox.Blocked.",
+        }.get(self.mode, "Each policy's own mode decides what is blocked.")
+        if self.policies_bound == 0:
+            what += " No policy bound: the baseline applies, in observe (`agentfox init`)."
+        what += " `agentfox findings` shows what it saw; AGENTFOX_VERBOSE=1 for details."
+        return "\n".join([head + ".", "  " + "; ".join([covered, *gaps]), "  " + what])
+
     def summary(self) -> str:
         """One paragraph a developer reads once and never again."""
         # Whether anything is actually in force. See `policies_bound` — a banner
@@ -2855,7 +2889,11 @@ def auto(
     _STATE = state
 
     if not quiet:
-        print(state.summary(), file=sys.stderr)  # noqa: T201 - the point is to be seen
+        # Short by default: this prints on every run of the app. The full account
+        # is one variable away, and `agentfox.state().summary()` returns it.
+        verbose = os.environ.get("AGENTFOX_VERBOSE", "").lower() in ("1", "true", "yes")
+        text = state.summary() if verbose else state.banner()
+        print(text, file=sys.stderr)  # noqa: T201 - the point is to be seen
     atexit.register(_report_at_exit)
     return state
 

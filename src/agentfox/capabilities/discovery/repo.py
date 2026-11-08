@@ -280,6 +280,37 @@ _SQL_BUILD = re.compile(
     r"""(?:SELECT|INSERT|UPDATE|DELETE|DROP|TRUNCATE|ALTER)""",
     re.I,
 )
+
+
+def _sql_is_built(line: str, match: re.Match[str]) -> bool:
+    """Whether the SQL string `_SQL_BUILD` matched is assembled from values rather than
+    written out. A constant query with placeholders (`"... WHERE id = ?", (uid,)`)
+    is the safe shape and is not a finding; an f-string, `%` or `.format()` on the
+    literal, or `+` onto it, is. A literal that runs past the line, or ends it, is
+    reported, since the rest cannot be seen from here."""
+    text = match.group(0)
+    quote_at = max(text.rfind('"'), text.rfind("'"))
+    if quote_at < 0:  # pragma: no cover - the pattern always contains a quote
+        return True
+    if text[:quote_at].endswith("f"):
+        return True
+    quote = text[quote_at]
+    start = match.start() + quote_at + 1
+    i = start
+    while i < len(line):
+        if line[i] == "\\":
+            i += 2
+            continue
+        if line[i] == quote:
+            break
+        i += 1
+    else:
+        return True
+    rest = line[i + 1 :].lstrip()
+    # Nothing after the literal on this line: what joins it comes on the next one.
+    return not rest or rest.startswith(("%", "+", ".format"))
+
+
 _SHELL_CALL = re.compile(r"\b(?:os\.system|subprocess\.(?:run|call|Popen|check_output))\s*\(")
 
 #: Secrets in source. Narrow on purpose — a loose pattern here produces a wall of
@@ -853,7 +884,10 @@ class _Visitor(ast.NodeVisitor):
                     line=node.lineno,
                     detail=f"{label}(...)" + (f" — {what}" if what else ""),
                     provider=provider,
-                    severity="high",
+                    # A run site is where an agent starts, not a risk of its own: it is
+                    # counted as a model call (ungoverned until auto() covers it) and
+                    # listed for information. A direct client call stays high.
+                    severity="info" if what else "high",
                 )
             )
         elif (
@@ -1349,7 +1383,7 @@ def _scan_javascript(source: str, rel: str) -> tuple[list[Site], set[str]]:
                     line=line_no,
                     detail=f"{runs.group(0).strip()} — runs an agent",
                     provider="openai-agents",
-                    severity="high",
+                    severity="info",
                 )
             )
         for pattern, provider, required in () if runs else _JS_MODEL_CALLS:
@@ -1459,7 +1493,8 @@ def scan_file(
         frameworks |= js_frameworks
 
     for line_no, line in enumerate(source.splitlines(), start=1):
-        if _SQL_BUILD.search(line):
+        sql = _SQL_BUILD.search(line)
+        if sql and _sql_is_built(line, sql):
             sites.append(
                 Site(
                     kind="sql_build",
@@ -1619,7 +1654,7 @@ def _promote_agent_runs(
                     line=line,
                     detail=f"{label}(...) — runs {agent.name}",
                     provider=re.sub(r"[^a-z0-9]+", "-", agent.framework.lower()).strip("-"),
-                    severity="info" if file in governed else "high",
+                    severity="info",
                     governed=file in governed,
                 )
             )

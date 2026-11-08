@@ -886,6 +886,9 @@ class _Extractor:
         self.imported: set[str] = set()
         #: variable -> dict literal it was assigned (a tool schema named once, listed later)
         self.dicts: dict[str, ast.AST] = {}
+        #: variable -> the `AgentTool(agent)` / `agent.as_tool(...)` call it holds, so
+        #: `tools=[math_tool]` after `math_tool = AgentTool(math_agent)` is a child.
+        self.agent_tools: dict[str, ast.Call] = {}
         #: every function by name, for the description and arguments of a tool it becomes
         self.defs: dict[str, ast.FunctionDef | ast.AsyncFunctionDef] = {}
         #: variable -> the model id of the chat-model object it holds
@@ -1091,6 +1094,8 @@ class _Extractor:
             if isinstance(value.func, ast.Name):
                 self.out.aliases.setdefault(var, value.func.id)
             path = _path(value.func)
+            if path.rsplit(".", 1)[-1] in ("AgentTool", "as_tool", "asTool"):
+                self.agent_tools[var] = value
             if path.rsplit(".", 1)[-1] == "create_handoff_tool":
                 target = _str(_kw(value, "agent_name")) or (
                     _str(value.args[0]) if value.args else None
@@ -1804,6 +1809,9 @@ class _Extractor:
                 continue
             if isinstance(elt, ast.Name) and elt.id in self.dicts:
                 self._tool_elements(raw, [self.dicts[elt.id]])
+                continue
+            if isinstance(elt, ast.Name) and elt.id in self.agent_tools:
+                self._tool_elements(raw, [self.agent_tools[elt.id]])
                 continue
             if isinstance(elt, ast.Call):
                 made = wrapped_tool(elt, self.imported)
@@ -2926,10 +2934,16 @@ class _Linker:
 
 
 _SLUG = re.compile(r"[^a-z0-9-]+")
+#: Word boundaries inside a CamelCase name: `GameBuilderCrew`, `LLMAgent`.
+_CAMEL = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 
 
 def _slug(value: str) -> str:
-    return _SLUG.sub("-", (value or "").strip().lower()).strip("-") or "agent"
+    """The key form of a name the code gives: lower case, words joined by hyphens,
+    whether the code wrote them `snake_case`, `CamelCase` or as a sentence, so
+    `GameBuilderCrew`, `game_builder_crew` and "Game builder crew" are one key."""
+    words = _CAMEL.sub("-", (value or "").strip())
+    return _SLUG.sub("-", words.lower()).strip("-") or "agent"
 
 
 def agent_key(name: str, file: str, taken: set[str]) -> str:

@@ -495,7 +495,7 @@ For the one-page version to forward to whoever signs off, run `agentfox report` 
 ```
   ✓    database            reachable — 5 agent(s), 11 trace(s)
   ✓    enforcement         17 of 22 decisions enforced
-  !    authentication      DEVELOPMENT auth is active (environment=development, auth_mode=auto):
+  i    authentication      DEVELOPMENT auth is active (environment=development, auth_mode=auto):
                            an /api request with no token acts as the user named in
                            X-AgentFox-User, or as admin@example.com (an owner, once seeded) —
                            anyone who can reach this port is any user they name. Fine locally,
@@ -506,13 +506,15 @@ For the one-page version to forward to whoever signs off, run `agentfox report` 
                            these is refused whether or not a detector fires
   ✓    detectors           5 running: injection.heuristic, pii.native, safety.lexicon,
                            schema.json, secrets.native
-  !    detector failure    fail-open: a detector that times out lets the request through and
+  i    detector failure    fail-open: a detector that times out lets the request through and
                            records the gap
   !    findings            18 open — run `agentfox findings`
 ```
 
-Trimmed. Note the two lines marked `!` that are not about your agents at all. AgentFox tells you that it
-fails open, and that your auth mode is a development mode, rather than leaving you to discover it.
+Trimmed. Note the two lines marked `i` that are not about your agents at all. AgentFox tells you that it
+fails open, and that your auth mode is a development mode, rather than leaving you to discover it. On a
+local development setup these are information (`i`): they are the defaults of a first run. In staging
+or production the same lines are warnings (`!`), or a failed check (`✗`) for development auth.
 
 Three commands worth knowing here:
 

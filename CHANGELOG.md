@@ -12,6 +12,51 @@ the file it came from.
 ## [Unreleased]
 
 ### Changed
+- **`agentfox up` sets up the agent the entry file runs, and only its system.** The name
+  is the agent a run site in that file starts (`agent.run_stream(...)` in AutoGen,
+  `agent.run_sync(...)` in pydantic-ai, `Runner.run(...)`, `crew.kickoff()`,
+  `graph.invoke()`, on the variable the code holds it in), not the first agent defined
+  or one from another file. In a folder of independent examples it sets up one system,
+  grants it only its own and its sub-agents' tools, and says how to pick another
+  (`agentfox up --agent <name>`, which also moves `auto()` to that agent's file, with the
+  best few named). When nothing (a declared script, langgraph.json, a single runnable
+  file) singles one out, it starts with the system that has tools of its own and a run
+  site, then the most agents and tools, never a tool-less agent beside one with tools.
+  The count of separate systems is the number of independent systems, the same on every
+  run. Choosing another file at the question re-derives the agent and its tools, a saved
+  name included; with `--agent`, `up` says when that file does not run it. A swarm,
+  crew or graph the code names only by its variable (`builder = create_swarm(...)`)
+  runs under its project's name (`pyproject.toml`, else the folder); its members keep
+  theirs. The name is shown before anything changes, and asked in a terminal so it can
+  be edited; the plan lists it.
+- **One naming scheme.** Agent keys are the code's name as lower-case words joined by
+  hyphens, CamelCase included (`GameBuilderCrew` is `game-builder-crew`, no longer
+  `gamebuildercrew`), with the file's name added only when two agents share one. `scan`
+  lists agents by that key, the one its hand-off lines, `up` and `auto()` use.
+- **Findings that were not findings.** An agent run site (`Runner.run(...) — runs an
+  agent`) is information, not severity high; it still counts as an ungoverned model
+  call. A constant query with placeholders (`execute("... WHERE id = ?", params)`) is no
+  longer "SQL built from a string"; f-strings, `%`, `.format()` and `+` still are. A
+  remote MCP server over HTTPS with no auth header, or with an OAuth login in its config,
+  is information (remote servers sign in with OAuth), not medium; plain http stays.
+- **Skills inside virtualenvs and installed packages are not the project's.** `up`,
+  `scan` and `scan skills` skip what the repository scan skips (`.venv`, `site-packages`,
+  `node_modules` …) and any virtualenv under another name (`pyvenv.cfg`).
+- **First-run copy.** A scan after `up` says the next step (run the app, `agentfox
+  findings`, `agentfox test redteam <agent>`) instead of "Start watching this agent:
+  agentfox up". `up`'s scan lists only the coding agents this project is set up for
+  (others are named as "on this machine"). `agentfox doctor` shows the normal defaults of
+  a local first run (no traffic yet, development auth, nothing declared, fail-open, an
+  optional detector not installed) as information (`i`), not warnings; in staging or
+  production they are warnings again. Text that pointed at dashboard pages ("Policies →
+  Libraries") on an install without one names the CLI command instead. `init --key`
+  shows a crew or swarm as the system that runs its members, not as an agent with an
+  unknown model.
+- **`auto()`'s start-up banner is three lines**: the agent and mode, what is patched and
+  anything that is not governed, and what is blocked. `AGENTFOX_VERBOSE=1` prints the
+  full account (`agentfox.state().summary()` returns it). The README's quickstart says
+  the prompt-injection classifier is the `agentfox[classifiers]` extra and what runs
+  without it.
 - **`agentfox up` adds `agentfox.auto()` where your agent starts, and only that.** It
   finds the file that starts the agent under `src/` and in packages, from
   `[project.scripts]` (and Poetry's), the graphs `langgraph.json` loads, a `__main__`
