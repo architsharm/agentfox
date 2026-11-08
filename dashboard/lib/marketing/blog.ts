@@ -171,6 +171,7 @@ export const BLOG_POSTS: BlogPost[] = [
     pillars: [
       { href: "/docs/guides/mcp", label: "MCP guide", why: "Put AgentFox in front of an MCP server." },
       { href: "/docs/guides/mcp", label: "MCP servers guide", why: "Scan configs, pin tools, govern calls." },
+      { href: "/live", label: "Live", why: "Our own agent, attacked hourly, results unedited." },
       { href: "/docs/limits", label: "Limits", why: "What AgentFox does not catch yet." },
     ],
   },

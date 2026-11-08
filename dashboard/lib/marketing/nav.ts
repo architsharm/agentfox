@@ -18,14 +18,26 @@ export type FooterColumn = { heading: string; items: NavItem[] };
 const BENCHMARK: NavItem = {
   label: "Benchmark",
   href: "/benchmark",
-  note: "AgentFox against LLM Guard, NeMo Guardrails and Prompt Guard 2 on public datasets, including where it loses.",
+  note: "Security benchmarks: containment with every detector off, an AgentDojo replay with its utility cost, detection rates against other guards, and an adaptive attack, each with its limits.",
   sitemap: { changeFrequency: "monthly", priority: 0.8 },
+};
+const LATENCY: NavItem = {
+  label: "Latency benchmark",
+  href: "/benchmark/latency",
+  note: "What a guard check adds to an agent, measured on traffic from 109 real agent repositories, and against other guards on the same machine.",
+  sitemap: { changeFrequency: "monthly", priority: 0.7 },
 };
 const PLAYGROUND: NavItem = {
   label: "Playground",
   href: "/playground",
   note: "Send attacks to a running agent in the browser. No account.",
   sitemap: { changeFrequency: "monthly", priority: 0.8 },
+};
+const LIVE: NavItem = {
+  label: "Live",
+  href: "/live",
+  note: "Our own demo agent, attacked every hour through the real enforcement path. Results unedited, including what got through.",
+  sitemap: { changeFrequency: "weekly", priority: 0.7 },
 };
 const PRICING: NavItem = {
   label: "Pricing",
@@ -79,16 +91,17 @@ export const HOME: NavItem = {
 };
 
 /** Header links. Docs is the header's button rather than a link. */
-export const HEADER: NavItem[] = [BENCHMARK, PLAYGROUND, PRICING, BLOG];
+export const HEADER: NavItem[] = [PLAYGROUND, LIVE, BENCHMARK, PRICING, BLOG];
 export const HEADER_CTA: NavItem = DOCS;
 
 export const FOOTER: FooterColumn[] = [
-  { heading: "Product", items: [PLAYGROUND, BENCHMARK, PRICING] },
+  { heading: "Product", items: [PLAYGROUND, LIVE, PRICING] },
+  { heading: "Benchmarks", items: [BENCHMARK, LATENCY] },
   { heading: "Resources", items: [DOCS, BLOG, SUPPORT] },
   { heading: "Company", items: [SECURITY, PRIVACY, TERMS] },
 ];
 
 /** Every page, in one list. */
-export const ALL_PAGES: NavItem[] = [HOME, BENCHMARK, PLAYGROUND, PRICING, BLOG, DOCS, SECURITY, SUPPORT, PRIVACY, TERMS];
+export const ALL_PAGES: NavItem[] = [HOME, BENCHMARK, LATENCY, PLAYGROUND, LIVE, PRICING, BLOG, DOCS, SECURITY, SUPPORT, PRIVACY, TERMS];
 
 export const ALL_PATHS: string[] = ALL_PAGES.map((p) => p.href);

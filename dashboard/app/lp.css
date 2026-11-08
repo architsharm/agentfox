@@ -155,7 +155,7 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
 .lp-foot-brand .lp-brand { color: var(--lp-ink); }
 .lp-foot-brand p { margin-top: 12px; max-width: 16rem; line-height: 1.55; }
 .lp-foot-mail { display: inline-block; margin-top: 12px; color: var(--af-fg-2); }
-.lp-foot-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 160px)); justify-content: end; gap: 48px; }
+.lp-foot-cols { display: grid; grid-template-columns: repeat(4, minmax(0, 160px)); justify-content: end; gap: 40px; }
 .lp-foot-col { display: grid; align-content: start; gap: 9px; }
 .lp-foot-col span { font-size: 12px; font-weight: 600; color: var(--af-fg-2); margin-bottom: 2px; }
 .lp-foot-col a, .lp-foot-mail, .lp-foot-legal a { transition: color 120ms; }
@@ -365,7 +365,7 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
   .lp-stats, .lp-cards { grid-template-columns: minmax(0, 1fr); }
   .lp-test { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .lp-foot-in { grid-template-columns: minmax(0, 1fr); }
-  .lp-foot-cols { grid-template-columns: repeat(3, minmax(0, 1fr)); justify-content: start; }
+  .lp-foot-cols { grid-template-columns: repeat(4, minmax(0, 1fr)); justify-content: start; }
     .lp-section, .lp-cta { padding: 80px 0; }
 }
 @media (max-width: 640px) {

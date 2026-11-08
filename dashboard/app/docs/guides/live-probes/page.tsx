@@ -221,7 +221,7 @@ curl -s http://localhost:8080/api/probes/targets/prb_01m47cbfbs44p7x069/opt-in \
 
       <h2 id="showcase">The public showcase</h2>
       <p>
-        The hosted service runs this feature against AgentFox itself: an
+        <Link href="/live">/live</Link> is this feature pointed at AgentFox itself: an
         in-process target on the playground&apos;s support agent, in a tenant of its own, on
         the offline <code>echo-1</code> model, probed every hour. The page reads{" "}
         <code>GET /api/public/showcase</code>, which is unauthenticated, cached for a minute,
@@ -249,6 +249,7 @@ curl -s http://localhost:8080/api/probes/targets/prb_01m47cbfbs44p7x069/opt-in \
       <NextSteps
         items={[
           { href: "/docs/guides/red-team-and-evals", label: "Red team and evals in CI", why: "test the configuration before it ships" },
+          { href: "/live", label: "The live showcase", why: "the same probes against our own agent" },
           { href: api("api-probes"), label: "HTTP API reference", why: "every /api/probes route" },
           { href: "/docs/guides/observability", label: "Webhooks", why: "get a probe finding in Slack or a SIEM" },
         ]}

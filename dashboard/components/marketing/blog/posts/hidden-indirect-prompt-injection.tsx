@@ -71,7 +71,7 @@ export function Body() {
       <p>
         The obvious version, <em>ignore all previous instructions</em> in plain text, is easy to
         catch. That is why it is rarely what you see. Our own{" "}
-        <Link href="/docs/guides/live-probes">hourly showcase</Link> sends nine attacks at a demo agent, and when we
+        <Link href="/live">hourly showcase</Link> sends nine attacks at a demo agent, and when we
         first ran it, three of the nine got past the detector. They are the three techniques in
         this post. After the change described here, the showcase test asserts all nine are
         contained.

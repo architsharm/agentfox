@@ -8,14 +8,14 @@ import coverage from "@/lib/generated/coverage.json";
 /*
  * Every coverage figure in this post is computed from lib/generated/coverage.json, the
  * same file /coverage renders, so the post cannot disagree with the page. The
- * showcase numbers change every hour and are deliberately not quoted at all.
+ * numbers on /live change every hour and are deliberately not quoted at all.
  */
 const ABSENT = coverage.rows.filter((r) => r.verdict === "absent");
 const PCT = Math.round(coverage.weighted_coverage * 100);
 
 export const toc: TocItem[] = [
   { id: "reports-go-stale", label: "Red-team reports go stale" },
-  { id: "what-live-is", label: "Our own agent, probed hourly" },
+  { id: "what-live-is", label: "What /live is" },
   { id: "how-a-probe-scores", label: "How a probe is scored" },
   { id: "your-own-agent", label: "Probing your own agent" },
   { id: "in-ci", label: "Red teaming in CI" },
@@ -29,7 +29,7 @@ export const faq: FaqItem[] = [
   },
   {
     q: "How often does AgentFox probe its own demo agent?",
-    a: "Every hour, including any attack that got through. Probe targets you add for your own agents default to once a day and can run at most hourly.",
+    a: "Every hour. The public /live page shows the results, unedited, including any attack that got through. Probe targets you add for your own agents default to once a day and can run at most hourly.",
   },
   {
     q: "Is it safe to red team a production AI agent?",
@@ -71,9 +71,9 @@ export function Body() {
         to show it works is to do it to ourselves, in public.
       </p>
 
-      <h2 id="what-live-is">Our own agent, probed hourly</h2>
+      <h2 id="what-live-is">What /live is</h2>
       <p>
-        We run <Link href="/docs/guides/live-probes">live probes</Link> against our own demo agent every hour.
+        <Link href="/live">/live</Link> shows AgentFox probing its own demo agent every hour.
         The agent is a support-triage bot on <code>echo-1</code>, an offline model that follows
         injected instructions on purpose. That choice matters: a model that resists attacks on
         its own would make the guardrail look better than it is. With a model that always
@@ -81,8 +81,8 @@ export function Body() {
       </p>
       <Figure
         src="/blog/live-page.png"
-        alt="The demo agent's probe results over the last 30 days."
-        caption="Probe results for the demo agent, from the gateway's showcase feed. An attack that gets through is shown as one."
+        alt="The AgentFox live page, showing the demo agent's probe results over the last 30 days."
+        caption="The live page renders from the gateway's public showcase feed. Nothing on it is typed by hand, and an attack that gets through is shown as one."
         width={1600}
         height={900}
       />
@@ -169,10 +169,10 @@ export function Body() {
       </p>
 
       <InlineCTA
-        title="Probe your own agent"
-        body="The same hourly probes, pointed at your deployed agent, through the real enforcement path."
-        href="/docs/guides/live-probes"
-        label="Read the guide"
+        title="Watch our own agent get attacked"
+        body="Hourly probes through the real enforcement path, with thirty days of history and every finding the probes opened."
+        href="/live"
+        label="See the live results"
         secondary={{ href: "/playground", label: "Attack it yourself" }}
       />
 
@@ -254,7 +254,7 @@ agentfox test gate support-quality --junit reports/agentfox-junit.xml --sarif re
         </li>
         <li>
           <strong>The showcase tests the guardrail, not a model.</strong> <code>echo-1</code>{" "}
-          always complies, which is the point, and it says nothing about how a real
+          always complies, which is the point, and it means /live says nothing about how a real
           model resists.
         </li>
         <li>

@@ -44,8 +44,6 @@ const nextConfig = {
       ["/frameworks", "/docs/guides/audit-evidence"],
       ["/coverage", "/docs/limits"],
       ["/compare", "/benchmark"],
-      ["/benchmark/latency", "/benchmark"],
-      ["/live", "/playground"],
       ["/legal", "/terms"],
       ["/lp", "/"],
       ["/lp/:path*", "/"],
