@@ -30,7 +30,7 @@ export default function Terms() {
   return (
     <div className="mk">
       <MarketingNav />
-      <main>
+      <main className="mk-prose">
         <section className="mk-section mk-page-hero mk-ink-act">
           <div className="mk-wrap">
             <div className="mk-narrow">

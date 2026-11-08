@@ -119,7 +119,7 @@ export function LpFooter() {
             <Logo size={22} />
             <span>AgentFox</span>
           </span>
-          <p>{HOME_DESCRIPTION} Open source under Apache-2.0.</p>
+          <p>{HOME_DESCRIPTION} Open source under <span style={{ whiteSpace: "nowrap" }}>Apache-2.0</span>.</p>
           <a href={`mailto:${SUPPORT_EMAIL}`} className="lp-foot-mail">
             {SUPPORT_EMAIL}
           </a>

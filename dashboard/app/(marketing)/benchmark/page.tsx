@@ -140,7 +140,7 @@ export default function Benchmark() {
               items={[
                 "No model was run. The agent's calls are AgentDojo's own answer key, so this measures the guardrail, not how easily a model is fooled.",
                 "Sending a call to a person counts as stopping it. If the reviewer approves an attacker's call, it goes through.",
-                "Prompt Guard 2 isn't in this table: the model is gated on Hugging Face and our access request wasn't granted.",
+                "Prompt Guard 2 isn't in this AgentDojo replay. It is measured in the detector comparison below.",
               ]}
             />
           </DocSection>
@@ -365,7 +365,7 @@ export default function Benchmark() {
             <Rerun
               commands={[
                 "uv run python -m benchmarks.containment.run_containment_benchmark",
-                "PYTHONPATH=src .venv/bin/python -m benchmarks.head_to_head.run_agentdojo_h2h",
+                "uv run python -m benchmarks.head_to_head.run_agentdojo_h2h",
                 "uv run python -m benchmarks.agent_security.tier_b_indirect_injection",
                 "uv run python -m benchmarks.injection.run_prompt_injection_benchmark",
                 "uv run python -m benchmarks.adaptive.run_adaptive_benchmark",

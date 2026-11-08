@@ -1474,6 +1474,12 @@
 .mk-notify h3 { margin: 0; }
 .mk-notify p { margin: 6px 0 0; max-width: 54ch; font-size: var(--t-small); }
 .mk-notify .wl { flex: 0 0 auto; min-width: min(100%, 22rem); }
+/* Phones: the form takes the card's full width, so Join wraps under the field
+   inside the card instead of standing out past its edge. */
+@media (max-width: 640px) {
+  .mk-notify .wl { flex: 1 1 100%; min-width: 0; max-width: 100%; }
+  .mk-notify .wl-row .wl-input { flex-basis: 100%; }
+}
 
 /* --- The decision card, arriving in the order the check runs ---------------
  *
@@ -4163,3 +4169,7 @@
 :root[data-theme="dark"] :is(.blog-cover, .blog-figure) .shot-frame,
 :root[data-theme="dark"] .blog-card-img { border-color: var(--mk-border-strong); }
 :root[data-theme="dark"] :is(.blog-cover, .blog-figure, .blog-card-img) img { filter: brightness(0.82) contrast(1.04); }
+
+/* Legal pages (privacy, terms): text at a readable measure, in the same 800px
+   column the other public pages (support, security, 404) use for their header. */
+.mk-prose .mk-narrow { max-width: 800px; }

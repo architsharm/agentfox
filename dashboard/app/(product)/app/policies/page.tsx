@@ -261,7 +261,7 @@ async function PerformanceTab({ sp }: { sp: SP }) {
   const cats = CATEGORIES.filter((c) => rules.some((r) => ruleCategory(r.rule_id) === c.key));
   const cell = (rs: any[], cat: string) => {
     const inCat = rs.filter((r) => ruleCategory(r.rule_id) === cat);
-    if (inCat.some((r) => r.enforcement === "enforce")) return <Pill tone="ok">Blocking</Pill>;
+    if (inCat.some((r) => r.enforcement === "enforce")) return <Pill tone="brand">Blocking</Pill>;
     if (inCat.length) return <Pill tone="outline">Watching</Pill>;
     return <span className="k-muted">—</span>;
   };

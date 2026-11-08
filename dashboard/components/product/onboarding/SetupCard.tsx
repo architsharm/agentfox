@@ -301,7 +301,7 @@ export function SetupCard({
             </p>
             <Link
               href="/app/welcome?again=1"
-              className="inline-flex h-8 items-center gap-2 rounded-md bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover"
+              className="inline-flex h-8 items-center gap-2 rounded-full bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover"
             >
               Scan a repository
             </Link>
@@ -335,7 +335,7 @@ export function SetupCard({
                       type="button"
                       onClick={replaceKey}
                       disabled={creating}
-                      className="inline-flex h-8 items-center gap-2 rounded-md bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
+                      className="inline-flex h-8 items-center gap-2 rounded-full bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
                     >
                       {creating ? <Loader2 className="size-3.5 animate-spin" /> : <KeyRound className="size-3.5" />}
                       {creating ? "Making…" : "Make a new key"}
@@ -348,7 +348,7 @@ export function SetupCard({
                   <button
                     type="button"
                     onClick={() => setReplacing(true)}
-                    className="mt-3 inline-flex h-8 items-center gap-2 rounded-md border bg-card px-3.5 text-[13px] font-medium hover:bg-muted"
+                    className="mt-3 inline-flex h-8 items-center gap-2 rounded-full border bg-card px-3.5 text-[13px] font-medium hover:bg-muted"
                   >
                     <KeyRound className="size-3.5" /> Make a new key
                   </button>
@@ -366,7 +366,7 @@ export function SetupCard({
                   type="button"
                   onClick={createKey}
                   disabled={creating}
-                  className="mt-3 inline-flex h-8 items-center gap-2 rounded-md bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
+                  className="mt-3 inline-flex h-8 items-center gap-2 rounded-full bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
                 >
                   {creating ? <Loader2 className="size-3.5 animate-spin" /> : <KeyRound className="size-3.5" />}
                   {creating ? "Creating…" : "Create a key"}
@@ -403,7 +403,7 @@ export function SetupCard({
                       type="button"
                       onClick={addAgents}
                       disabled={adding}
-                      className="mt-3 inline-flex h-8 items-center gap-2 rounded-md bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
+                      className="mt-3 inline-flex h-8 items-center gap-2 rounded-full bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
                     >
                       {adding ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
                       {adding ? "Adding…" : found?.agents.length === 1 ? "Add to AgentFox" : `Add ${found?.agents.length} agents to AgentFox`}

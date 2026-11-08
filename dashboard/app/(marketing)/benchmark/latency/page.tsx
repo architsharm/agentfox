@@ -61,7 +61,7 @@ const RACE: { name: string; checks: string; ms: number; ours?: boolean }[] = [
 const LAYERS: [string, string, string, string][] = [
   ["Deterministic", "Patterns, PII, secrets, schema, unicode and code checks", "2.3 / 6.4", "8.8"],
   ["Default", "Deterministic + ML prompt-injection classifier", "57.4 / 302", "179"],
-  ["Extended", "Default + similarity search against known attacks", "9.9 / 276", "77.1"],
+  ["Extended", "Default + similarity search against known attacks, score cache on", "9.9 / 276", "77.1"],
   ["With an LLM judge", "Extended + injection and PII judged by gpt-4.1-mini", "76.5 / 1,009", "1,086"],
 ];
 
@@ -214,6 +214,11 @@ export default function LatencyBenchmarkPage() {
               calls, summed in the last column.
             </p>
             <p>
+              Extended&apos;s median is lower than Default&apos;s because it was measured with the score cache on, so text the
+              classifier has already scored is not read again. The similarity search itself adds only a few milliseconds over Default with the
+              cache on (benchmarks/latency/README.md).
+            </p>
+            <p>
               Messages under 200 characters take 54.5 ms at the median and 83.5 ms at p95. Between 200 and 600 characters they
               take 188 ms and 374 ms, because longer text gets a 1,000 ms budget so the classifier can finish reading it. Replies
               with judges on pay the commitment check, about 0.88 s.
@@ -280,10 +285,10 @@ export default function LatencyBenchmarkPage() {
           >
             <Rerun
               commands={[
-                "python -m benchmarks.latency.fetch_repos var/latency/repos",
-                "python -m benchmarks.latency.map_repos var/latency/repos var/latency",
-                "python -m benchmarks.latency.run_latency var/latency/maps var/latency/run",
-                "python -m benchmarks.latency.report var/latency var/latency/results run",
+                "uv run python -m benchmarks.latency.fetch_repos var/latency/repos",
+                "uv run python -m benchmarks.latency.map_repos var/latency/repos var/latency",
+                "uv run python -m benchmarks.latency.run_latency var/latency/maps var/latency/run",
+                "uv run python -m benchmarks.latency.report var/latency var/latency/results run",
               ]}
             />
             <Source label="benchmarks/latency" path="benchmarks/latency/README.md" />

@@ -5,7 +5,8 @@
  * live in the product all day.
  *   - White ground and cards with warm grey lines (light); cool slate (dark).
  *   - Rose is the brand: identity and the ONE primary action on a screen.
- *   - Indigo is its complement: links, focus, selection. (Teal read green on cream.)
+ *   - Links, focus and selection use the rose too, as the public site does; the
+ *     app had indigo links and read as a different product (audit 2026-11-08).
  *   - Errors are vermilion, never rose, and always carry an icon or a word.
  *   - Sans (IBM Plex Sans) for reading; mono (Geist Mono) only where the value is
  *     code: IDs, timestamps, event names, tool names, keys. `//` comments are mono.
@@ -37,7 +38,7 @@
 
   --af-brand: #c8285a;    /*  5.2:1 */
   --af-brand-press: #a91f4a;
-  --af-link: #4338ca;     /*  7.4:1, indigo */
+  --af-link: #c8285a;     /*  5.2:1, the brand rose, same as the site */
   --af-on-brand: #ffffff;
 
   --af-ok: #18794e;
@@ -67,7 +68,7 @@
   :root:not([data-theme="light"]) {
     --af-bg: #0e0f13; --af-surface: #15161c; --af-subtle: #1b1d24; --af-line: #262833; --af-line-2: #363946;
     --af-fg: #ecedf1; --af-fg-2: #b4b8c5; --af-muted: #8b90a0;
-    --af-brand: #f0668d; --af-brand-press: #f388a6; --af-link: #8b8ff7; --af-on-brand: #0e0f13;
+    --af-brand: #f0668d; --af-brand-press: #f388a6; --af-link: #f0668d; --af-on-brand: #0e0f13;
     --af-ok: #4cc38a; --af-warn: #f0b44c; --af-err: #f2715c; --af-info: #5db8f2; --af-tool: #b48cf5;
     --af-s1: #8b8ff7; --af-s2: #8b8ff7; --af-s3: #f0b44c; --af-s4: #f0668d;
     --af-s5: #5db8f2; --af-s6: #b48cf5; --af-s7: #9bcb4e; --af-s8: #a3a8b6;
@@ -79,7 +80,7 @@
 :root[data-theme="dark"] {
   --af-bg: #0e0f13; --af-surface: #15161c; --af-subtle: #1b1d24; --af-line: #262833; --af-line-2: #363946;
   --af-fg: #ecedf1; --af-fg-2: #b4b8c5; --af-muted: #8b90a0;
-  --af-brand: #f0668d; --af-brand-press: #f388a6; --af-link: #8b8ff7; --af-on-brand: #0e0f13;
+  --af-brand: #f0668d; --af-brand-press: #f388a6; --af-link: #f0668d; --af-on-brand: #0e0f13;
   --af-ok: #4cc38a; --af-warn: #f0b44c; --af-err: #f2715c; --af-info: #5db8f2; --af-tool: #b48cf5;
   --af-s1: #8b8ff7; --af-s2: #8b8ff7; --af-s3: #f0b44c; --af-s4: #f0668d;
   --af-s5: #5db8f2; --af-s6: #b48cf5; --af-s7: #9bcb4e; --af-s8: #a3a8b6;
@@ -147,6 +148,9 @@
 .shell code, .shell pre, .shell kbd, .shell .mono { font-family: var(--af-mono); }
 .shell a { color: inherit; }
 .shell main a:not([class]), .shell .link { color: var(--af-link); }
+/* Links inside sentences carry an underline, as on the site, so the colour is not the only cue. */
+.shell main :is(p, li, dd) a:not([class]) { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.shell :where(input[type="checkbox"], input[type="radio"], input[type="range"], progress) { accent-color: var(--af-brand); }
 .shell :where(a, button, [role="button"], input, select, textarea, summary, [tabindex]):focus-visible {
   outline: 2px solid var(--af-link);
   outline-offset: 2px;
@@ -198,6 +202,10 @@ nav.side a {
 nav.side a svg { opacity: .8; }
 nav.side a:hover { background: color-mix(in srgb, var(--af-brand) 5%, transparent); color: var(--af-fg); }
 nav.side a.active { background: color-mix(in srgb, var(--af-brand) 11%, transparent); color: var(--af-fg); font-weight: 400; box-shadow: none; }
+/* The page names themselves are set in the site's sans, as they are written
+   ("Agents", "Activity"): the same words the H1s and the public site use. The
+   `~/ agentfox` header, the scope box and the group labels keep the console mono. */
+nav.side a:not(.brand) { font-family: var(--af-sans); text-transform: none; font-size: 14px; }
 nav.side a.active::before { content: none; }
 nav.side a.active svg { color: var(--af-brand); opacity: 1; }
 
@@ -253,7 +261,7 @@ nav.side .side-foot .theme-toggle { margin: 0; padding: 0; border: 0; }
 
 /* ── Buttons: 32px, radius 6, one rose primary per view ────────────────────── */
 .btn-github, .btn-scan, .btn-primary, .btn-approve, .btn-reject, .btn-cancel {
-  height: 32px; padding: 0 14px; border-radius: var(--af-r-control); font-family: var(--af-sans); font-size: 13px; font-weight: 500;
+  height: 32px; padding: 0 14px; border-radius: 999px; font-family: var(--af-sans); font-size: 13px; font-weight: 500;
   background: var(--af-surface); color: var(--af-fg); border: 1px solid var(--af-line-2); box-shadow: var(--af-shadow-1);
   transition: background 120ms var(--af-ease), border-color 120ms var(--af-ease), color 120ms var(--af-ease);
 }
@@ -286,9 +294,14 @@ nav.side .side-foot .theme-toggle { margin: 0; padding: 0; border: 0; }
 .shell .tag.warn, .shell .tag.escalate, .shell .k-pill-warn, .shell .k-pill-held { --c: var(--af-warn); }
 .shell .tag.bad, .shell .k-pill-bad { --c: var(--af-err); }
 .shell .tag.info, .shell .k-pill-info { --c: var(--af-info); }
+.shell .k-pill-brand { --c: var(--af-brand); }
 .shell .k-pill-outline { --c: var(--af-muted); background: transparent; box-shadow: inset 0 0 0 1px var(--af-line); }
 .shell .k-pill-outline::before { content: none; }
-.shell .chip { border-radius: var(--af-r-control); font-size: 12px; }
+.shell .chip { border-radius: 999px; font-size: 12px; }
+/* A filter that is on looks the same whether it is a chip row or a .k-seg:
+   the ink fill. Rose is kept for the one primary action on a screen. */
+.shell .chip.active { background: var(--af-fg); border-color: var(--af-fg); color: var(--af-bg); }
+.shell .chip.active .chip-n { background: color-mix(in srgb, var(--af-bg) 22%, transparent); }
 
 /* ── Things that float: menus, popovers, modals ────────────────────────────── */
 .shell [role="menu"], .shell [role="listbox"], .shell .popover { border-radius: var(--af-r-card); box-shadow: var(--af-shadow-2); }
@@ -714,6 +727,14 @@ a.gm-add { align-self: flex-start; text-decoration: none; }
   /* The top bar under it: crumbs on one line, the actions beside them; no email text. */
   .topbar { position: static; padding: 8px 16px; gap: 8px; flex-wrap: wrap; }
   .topbar .account-summary { display: none; }
+}
+@media (max-width: 600px) {
+  /* Phones: the page's H1 already names where you are, so the crumbs go and the
+     actions sit in one short right-aligned row under the brand bar. */
+  .topbar .crumbs { display: none; }
+  .topbar { justify-content: flex-end; padding: 4px 12px; min-height: 0; }
+  .topbar-right { gap: 6px; }
+  .shell main { padding-top: 12px; }
   .shell main { padding: 20px 16px 48px; }
 }
 @media (max-width: 760px) {

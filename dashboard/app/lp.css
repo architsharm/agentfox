@@ -503,3 +503,13 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
 .lp-page td { padding: 12px 16px 12px 0; border-bottom: 1px solid var(--lp-hair); vertical-align: top; color: var(--af-fg-2); }
 .lp-page td:first-child { color: var(--lp-ink); }
 @media (max-width: 640px) { .lp-page { padding: 64px 0 80px; } .lp-page h1 { font-size: 36px; } }
+
+/* Phones: the hero's chat cards sat left and right of the gate line and ran off
+   both edges of the screen. Centred on the gate and capped to the viewport, a
+   long request truncates instead of clipping. */
+@media (max-width: 640px) {
+  .lp-chip, .lp-chip[data-side="l"] { left: 50%; width: max-content; max-width: calc(100vw - 32px); transform: translate(-50%, -100%) scale(0.96); }
+  .lp-chip.is-in, .lp-chip[data-side="l"].is-in { transform: translate(-50%, calc(-100% - 6px)) scale(1); }
+  .lp-chip-top { min-width: 0; }
+  .lp-chip code { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+}
