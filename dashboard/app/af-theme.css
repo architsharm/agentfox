@@ -259,9 +259,9 @@ nav.side .side-foot .theme-toggle { margin: 0; padding: 0; border: 0; }
 .shell td { padding: 10px 16px; border-bottom: 1px solid var(--af-line); vertical-align: middle; }
 .shell tbody tr:hover { background: color-mix(in srgb, var(--af-subtle) 60%, transparent); }
 
-/* ── Buttons: 32px, radius 6, one rose primary per view ────────────────────── */
+/* ── Buttons: 32px, radius 8 like the site, one rose primary per view ────────────────────── */
 .btn-github, .btn-scan, .btn-primary, .btn-approve, .btn-reject, .btn-cancel {
-  height: 32px; padding: 0 14px; border-radius: 999px; font-family: var(--af-sans); font-size: 13px; font-weight: 500;
+  height: 32px; padding: 0 14px; border-radius: 8px; font-family: var(--af-sans); font-size: 13px; font-weight: 500;
   background: var(--af-surface); color: var(--af-fg); border: 1px solid var(--af-line-2); box-shadow: var(--af-shadow-1);
   transition: background 120ms var(--af-ease), border-color 120ms var(--af-ease), color 120ms var(--af-ease);
 }
