@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { businessRuleName, inlineMarkdown, parsePyDict, splitControls, suggestedLadderName, unusedSentences, versionNote } from "./policyWords";
+import { businessRuleName, defaultRuleScope, inlineMarkdown, parsePyDict, splitControls, suggestedLadderName, unusedSentences, versionNote } from "./policyWords";
 
 describe("a rule's description", () => {
   it("renders the inline marks rule docstrings use", () => {
@@ -62,6 +62,15 @@ describe("business rule names", () => {
     const def = { tool: "payments.transfer", unit: "USD", bands: [{ upto: 100, outcome: "allow" }, { upto: null, outcome: "escalate" }] };
     expect(suggestedLadderName(def)).toBe("Approval above $100 on payments.transfer");
     expect(suggestedLadderName({ tool: "*", bands: [{ upto: null, outcome: "escalate" }] })).toBe("Approval limit");
+  });
+});
+
+describe("who a new rule applies to", () => {
+  it("starts on the agent it was opened for, else the project's only agent, else every agent", () => {
+    expect(defaultRuleScope("pay", [{ slug: "a" }, { slug: "b" }])).toBe("pay");
+    expect(defaultRuleScope(undefined, [{ slug: "a" }])).toBe("a");
+    expect(defaultRuleScope(undefined, [{ slug: "a" }, { slug: "b" }])).toBe("");
+    expect(defaultRuleScope(undefined, [])).toBe("");
   });
 });
 

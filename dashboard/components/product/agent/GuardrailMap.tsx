@@ -1309,7 +1309,7 @@ function Panel({
           <h4>Approval limits</h4>
           <ul className="gm-rules">
             {tl.ladders.map((l) => (
-              <li key={l.key}>
+              <li key={l.key} style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
                 <Link href={`/app/policies/business/${encodeURIComponent(l.key)}`}>{businessRuleName({ key: l.key, name: l.name, tool: tl.key })}</Link> <ModePill mode={l.mode} />
               </li>
             ))}
