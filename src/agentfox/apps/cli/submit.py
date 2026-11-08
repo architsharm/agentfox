@@ -26,21 +26,24 @@ class SubmissionUnavailable(Exception):
 
 
 def submit_scan_report(report: ScanReport, *, source: str) -> dict[str, Any]:
-    """POST the redacted summary of `report` to `AGENTFOX_API_URL`.
+    """POST the redacted summary of `report` to `AGENTFOX_URL`.
 
     Raises `SubmissionUnavailable` on anything that stops the submission — no URL
     configured, no credential configured, the request itself failing — so callers can
     show one friendly message rather than a traceback.
     """
-    base = env("API_URL")
+    from agentfox.core.config import api_key_from_env, api_url_from_env
+
+    # AGENTFOX_URL / AGENTFOX_API_KEY, the names auto() reads; the older
+    # AGENTFOX_API_URL / AGENTFOX_API_TOKEN still work.
+    base = api_url_from_env()
     if not base:
         raise SubmissionUnavailable(
-            "AGENTFOX_API_URL is not set — point it at a running `agentfox serve` "
+            "AGENTFOX_URL is not set — point it at a running `agentfox serve` "
             "(yours or your team's) to submit."
         )
 
-    # Through config.env(), like every other switch read outside Settings.
-    token = env("API_TOKEN")
+    token = api_key_from_env()
     dev_user = env("USER")
     headers: dict[str, str] = {}
     if token:
@@ -49,7 +52,7 @@ def submit_scan_report(report: ScanReport, *, source: str) -> dict[str, Any]:
         headers["X-AgentFox-User"] = dev_user
     else:
         raise SubmissionUnavailable(
-            "no credentials configured — set AGENTFOX_API_TOKEN (`agentfox admin auth issue "
+            "no credentials configured — set AGENTFOX_API_KEY (`agentfox admin auth issue "
             "<email>` on that deployment) or AGENTFOX_USER for a dev deployment."
         )
 

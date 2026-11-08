@@ -22,6 +22,7 @@ from typing import Any
 
 import typer
 from rich.console import Console
+from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 
@@ -202,11 +203,15 @@ def init(
     setup_workspace(path, environment, demo=demo)
     _print_next_steps(
         [
-            ("agentfox scan", "scan this repo and see what is ungoverned"),
-            ("import agentfox; agentfox.auto()", "one line in your entry point"),
             (
-                "agentfox declare tool <key> --impact irreversible",
-                "declare what each tool can do — this is what still holds when a detector misses",
+                "agentfox demo",
+                "look around first: a thirteen-step walkthrough, in a database of its own",
+            ),
+            ("agentfox scan", "scan this repo and see what is ungoverned"),
+            (
+                "agentfox up",
+                'registers your agents and adds agentfox.auto("<agent>") to the file that '
+                "starts one, under the name the scan prints",
             ),
             ("agentfox doctor", "check containment readiness, not just detectors"),
         ]
@@ -781,7 +786,9 @@ def doctor(
     marks = {"ok": "[green]✓[/]", "warn": "[yellow]![/]", "bad": "[red]✗[/]"}
     table = Table(box=None, padding=(0, 2), show_header=False)
     for state, what, detail in checks:
-        table.add_row(marks[state], f"[bold]{what}[/]", detail)
+        # Escaped: details quote install hints such as `agentfox[classifiers]`, which Rich
+        # read as a markup tag and printed as `pip install 'agentfox'`.
+        table.add_row(marks[state], f"[bold]{what}[/]", escape(detail))
     console.print(table)
 
     if failed:
