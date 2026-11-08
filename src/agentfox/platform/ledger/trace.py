@@ -499,7 +499,7 @@ def search_traces(
     # once a person has answered instead of "Held" for ever.
     held: dict[str, str] = {}
     if traces:
-        from agentfox.capabilities.containment.findings import decision_scope, recorded_only
+        from agentfox.platform.ledger.decision_scope import decision_scope, recorded_only
 
         for d in session.scalars(
             select(Decision).where(Decision.trace_id.in_({t.id for t in traces}))

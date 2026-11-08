@@ -28,8 +28,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox.apps import showcase
-from agentfox.apps.gateway.deps import current_user, db, require
 from agentfox.apps.gateway.client_address import client_address
+from agentfox.apps.gateway.deps import current_user, db, require
 from agentfox.apps.gateway.playground_sessions import RateLimiter
 from agentfox.capabilities.evaluation import live_probes
 from agentfox.core.crypto import EncryptionNotConfigured

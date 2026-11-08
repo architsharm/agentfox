@@ -27,6 +27,10 @@ from typing import Any
 
 from agentfox.capabilities.detection.composition import tool_key_from_origin
 from agentfox.core.vocab import EFFECT_RANK, taint_rank
+from agentfox.platform.ledger.decision_scope import (  # noqa: F401  (re-exported)
+    decision_scope,
+    recorded_only,
+)
 
 #: The finding type. Distinct from ``guardrail_detection`` on purpose: a detector
 #: catch and a containment refusal are triaged differently — the first asks "was the
@@ -290,15 +294,6 @@ def rule_applied(
     return rule.get("mode", "enforce") == "enforce" and decision_verdict != "allow"
 
 
-def recorded_only(rule: dict[str, Any], scope: tuple[str, frozenset[str]]) -> bool:
-    """Whether this rule only watched: its pack observes, or the caller let the call
-    run past it (``scope``: auto() in observe mode, or a rule it exempts)."""
-    in_process, exempt = scope
-    if rule.get("mode", "enforce") == "observe":
-        return True
-    return in_process == "none" or str(rule.get("rule_id") or "") in exempt
-
-
 def applied_verdict(
     verdict: str,
     rules_fired: list[dict[str, Any]],
@@ -325,15 +320,6 @@ def applied_verdict(
     if not stopping:
         return "allow"
     return "block" if "block" in stopping and verdict == "block" else "escalate"
-
-
-def decision_scope(taint_summary: dict[str, Any] | None) -> tuple[str, frozenset[str]]:
-    """The caller's in-process scope as the enforcer recorded it on the decision."""
-    summary = taint_summary or {}
-    return (
-        str(summary.get("in_process") or "enforced"),
-        frozenset(summary.get("exempt_rules") or ()),
-    )
 
 
 def raise_containment_findings(

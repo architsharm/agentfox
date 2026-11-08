@@ -730,7 +730,7 @@ def control_counts(suite: list[Attack]) -> dict[str, int]:
 
 
 def suite_size(suite: list[Attack]) -> str:
-    """"117 attacks + 12 normal requests": the suite counted the way the dashboard
+    """ "117 attacks + 12 normal requests": the suite counted the way the dashboard
     counts it (the run's ``total`` and ``controlsTotal``). The CLI used to print
     ``len(suite)``, 129 "attacks and checks", beside a card that said 117 attacks."""
     attacks = sum(counts(suite).values())

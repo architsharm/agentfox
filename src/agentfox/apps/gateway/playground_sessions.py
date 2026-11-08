@@ -498,7 +498,7 @@ class RateLimiter:
 
 
 def retry_phrase(seconds: int) -> str:
-    """"in about 12 minutes", for a sentence a visitor reads."""
+    """ "in about 12 minutes", for a sentence a visitor reads."""
     if seconds <= 60:
         return "in a minute"
     minutes = (seconds + 59) // 60

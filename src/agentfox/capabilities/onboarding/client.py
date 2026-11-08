@@ -566,7 +566,9 @@ def _run_job(
     checked = bool(job.get("policies")) or phase == "after"
     label = "with your guardrails" if checked else "without guardrails"
     suite = build_suite(structure, job.get("sets"))
-    console.print(f"[bold]Running {suite_size(suite)} {label}[/bold] · tools are faked, nothing real happens")
+    console.print(
+        f"[bold]Running {suite_size(suite)} {label}[/bold] · tools are faked, nothing real happens"
+    )
     out = _Results(api, run_id)
     drivers = _drivers(console, root, mapped, structure, loaded)
     guards = _guards(api, run_id, structure, drivers) if checked else None
