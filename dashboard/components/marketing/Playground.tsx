@@ -36,6 +36,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Verdict } from "@/components/ui";
+import { ApiError, playgroundCall, SANDBOX_TIMEOUT_MS } from "@/lib/marketing/playground";
 
 /**
  * The offline `echo` provider tags its deterministic replies with
@@ -107,14 +108,6 @@ type World = {
   tools: Record<string, { name: string; impact: string }>;
   poisoned_document: string;
 };
-
-class ApiError extends Error {
-  status: number;
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
-}
 
 /* --- What each agent is, and what to try on it ---------------------------- */
 
@@ -320,16 +313,8 @@ export function Playground({ apiBase }: { apiBase: string }) {
   const tries = world?.agents.find((a) => a.slug === agent)?.prompts || AGENTS[agent]?.tries;
 
   const call = useCallback(
-    async function call<T = any>(path: string, init?: RequestInit): Promise<T> {
-      const res = await fetch(`${apiBase}${path}`, {
-        ...init,
-        headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new ApiError(res.status, body.detail || `${res.status} ${res.statusText}`);
-      }
-      return res.json();
+    function call<T = any>(path: string, init?: RequestInit, timeoutMs?: number): Promise<T> {
+      return playgroundCall<T>(apiBase, path, init, timeoutMs);
     },
     [apiBase],
   );
@@ -345,7 +330,11 @@ export function Playground({ apiBase }: { apiBase: string }) {
     setSandboxLost(false);
     setError(null);
     try {
-      const body = await call<World>("/api/playground/sessions", { method: "POST" });
+      const body = await call<World>(
+        "/api/playground/sessions",
+        { method: "POST" },
+        SANDBOX_TIMEOUT_MS,
+      );
       setSessionId(body.session_id);
       setWorld(body);
       setAgent(body.agents[0]?.slug || "support-triage");
