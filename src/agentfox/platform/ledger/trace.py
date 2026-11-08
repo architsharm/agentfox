@@ -464,18 +464,29 @@ def search_traces(
     would: dict[str, str] = {}
     strength = {"block": 3, "escalate": 2, "redact": 1, "mask": 1, "tokenize": 1}
     if traces:
+        from agentfox.capabilities.containment.findings import decision_scope, recorded_only
+
         for d in session.scalars(
             select(Decision).where(Decision.trace_id.in_({t.id for t in traces}))
         ):
             checks[d.trace_id] = checks.get(d.trace_id, 0) + 1
+            scope = (
+                decision_scope(d.taint_summary_json)
+                if d.surface == "tool_args"
+                else ("enforced", frozenset())
+            )
             for r in d.rules_fired_json or []:
                 rid = r.get("rule_id") if isinstance(r, dict) else None
                 if rid and rid not in fired.setdefault(d.trace_id, []):
                     fired[d.trace_id].append(rid)
                 effect = r.get("effect") if isinstance(r, dict) else None
+                # A rule that only watched: its pack observes, or the caller ran the
+                # call past it (auto() in observe mode, the no-grants carve-out).
                 if (
-                    r.get("mode") if isinstance(r, dict) else None
-                ) == "observe" and effect in strength:
+                    isinstance(r, dict)
+                    and effect in strength
+                    and (r.get("mode") == "observe" or recorded_only(r, scope))
+                ):
                     if strength[effect] > strength.get(would.get(d.trace_id, ""), 0):
                         would[d.trace_id] = effect
             if d.tool_key and d.tool_key not in tools.setdefault(d.trace_id, []):

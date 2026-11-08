@@ -18,6 +18,15 @@ hand-off or an agent-as-tool is recorded as what it is instead, a delegation (a
 calls and tools. An output tool is not decided at all; what it carries is the
 answer, checked as the model's output.
 
+**Which agent is running.** After a hand-off the calls belong to the agent handed to,
+not to the one `auto()` names: the FAQ agent's own lookup tool is the FAQ agent's,
+and crediting it to the triage agent read as "triage tried a tool without
+permission". Where the framework knows the agent running a model call, that agent is
+credited (`agent_for`): the Agents SDK's current agent span (read as its models are
+called), a LangGraph supervisor or swarm member (the graph namespace the call runs
+in), a CrewAI agent running its task. The agent the system starts with is credited
+to the name `auto()` was given, so a one-agent app and the entry agent keep one name.
+
 The names are learned from the frameworks' own objects as they turn them into tools
 for a request (`watch`). A framework imported after `auto()` (``auto()`` is the first
 line of the file) is watched as it is imported (`_ImportWatch`), so the first
@@ -26,9 +35,11 @@ request is already known.
 
 from __future__ import annotations
 
+import contextvars
 import functools
 import importlib.abc
 import importlib.util
+import inspect
 import logging
 import re
 import sys
@@ -43,6 +54,19 @@ DELEGATION_TOOLS: dict[str, tuple[str, str]] = {}
 
 #: Names of tools a framework gives its model only to return structured output.
 OUTPUT_TOOLS: set[str] = set()
+
+#: The framework agent running the current model call or tool, when the framework says
+#: (`_sdk_scope`, `crew_scope`). LangGraph's is read from the graph's own context.
+_ACTIVE: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "agentfox_active_agent", default=None
+)
+
+#: Framework agents first seen running without anything having handed off to them:
+#: the system's entry agent, credited to the name `auto()` was given.
+_ROOTS: set[str] = set()
+
+#: CrewAI agents that are members of a crew of several: each is credited by name.
+_MEMBERS: set[str] = set()
 
 #: The Agents SDK's default hand-off description (`Handoff.default_tool_description`),
 #: for a hand-off converted before its converter was watched.
@@ -119,6 +143,143 @@ def crew_handoff(tool: Any, arguments: dict[str, Any]) -> tuple[str, str] | None
     if not any(c.__name__ == "BaseAgentTool" for c in type(original).__mro__):
         return None
     return str(arguments.get("coworker") or "coworker"), "delegates"
+
+
+# -- Which agent is running ----------------------------------------------------------
+
+
+def _targets() -> set[str]:
+    """Every agent something hands off to or runs as a tool, by name."""
+    return {target for target, _relation in DELEGATION_TOOLS.values()}
+
+
+def _slug(name: str) -> str:
+    from agentfox.platform.registry.service import slugify
+
+    return slugify(name)
+
+
+def _langgraph_agent() -> str | None:
+    """The LangGraph supervisor or swarm member a call runs in: the outermost node of
+    the graph's checkpoint namespace (``"faq_agent:<task>|agent:<task>"``), once the
+    graph has handed off between agents. A plain graph's nodes are not agents."""
+    try:
+        from langchain_core.runnables.config import var_child_runnable_config
+    except Exception:
+        return None
+    config = var_child_runnable_config.get() or {}
+    namespace = str(
+        (config.get("metadata") or {}).get("langgraph_checkpoint_ns")
+        or (config.get("configurable") or {}).get("checkpoint_ns")
+        or ""
+    )
+    if not namespace:
+        return None
+    if not _targets():
+        return None  # no hand-off anywhere: one agent, whatever its nodes are called
+    return namespace.split("|")[0].partition(":")[0] or None
+
+
+def running_agent() -> str | None:
+    """The framework agent running the current call, by the framework's own name, or
+    None when no framework says."""
+    return _ACTIVE.get() or _langgraph_agent()
+
+
+def agent_for(default: str) -> str:
+    """The registered agent to credit the current call to.
+
+    ``default`` is the agent `auto()` names. The framework agent running the call is
+    credited by its own name (slugged, as `agentfox init` registers it) once
+    something has handed off to it or it is one member of a crew; the agent a system
+    starts with, which nothing handed off to, is ``default``. With no framework
+    agent known, ``default``."""
+    name = running_agent()
+    if not name:
+        return default
+    slug = _slug(name)
+    if slug == default or name in _ROOTS:
+        return default
+    if name in _MEMBERS or name in _targets():
+        return slug
+    _ROOTS.add(name)
+    return default
+
+
+class active:
+    """``with active(name):`` credits the calls made inside to framework agent
+    ``name``. Never fails the call it wraps."""
+
+    def __init__(self, name: Any) -> None:
+        self.name = str(name) if name else None
+        self.token: contextvars.Token[str | None] | None = None
+
+    def __enter__(self) -> active:
+        if self.name:
+            self.token = _ACTIVE.set(self.name)
+        return self
+
+    def __exit__(self, *_exc: Any) -> None:
+        if self.token is not None:
+            try:
+                _ACTIVE.reset(self.token)
+            except ValueError:  # pragma: no cover - exited in another context
+                _ACTIVE.set(None)
+            self.token = None
+
+
+def crew_member(agent: Any) -> str | None:
+    """A CrewAI agent's name (its role), noted as a crew member when its crew has
+    several agents, so each is credited by its own name."""
+    role = getattr(agent, "role", None)
+    if not role:
+        return None
+    crew = getattr(agent, "crew", None)
+    if len(getattr(crew, "agents", None) or ()) > 1:
+        _MEMBERS.add(str(role))
+    return str(role)
+
+
+def _sdk_current_agent() -> str | None:
+    """The Agents SDK agent whose turn this is: the current agent (or turn) span, which
+    the SDK opens for the running agent whether or not tracing is exported."""
+    try:
+        from agents.tracing import get_current_span
+    except Exception:
+        return None
+    data = getattr(get_current_span(), "span_data", None)
+    kind = type(data).__name__
+    if kind == "AgentSpanData":
+        return getattr(data, "name", None)
+    if kind == "TurnSpanData":
+        return getattr(data, "agent_name", None)
+    return None
+
+
+def _scoped(func: Callable[..., Any]) -> Callable[..., Any]:
+    """`func` (an Agents SDK model's ``get_response`` / ``stream_response``) run with the
+    SDK's current agent as the running agent."""
+    if inspect.isasyncgenfunction(func):
+
+        async def scoped_stream(*args: Any, **kwargs: Any) -> Any:
+            with active(_sdk_current_agent()):
+                async for item in func(*args, **kwargs):
+                    yield item
+
+        return scoped_stream
+    if inspect.iscoroutinefunction(func):
+
+        async def scoped_call(*args: Any, **kwargs: Any) -> Any:
+            with active(_sdk_current_agent()):
+                return await func(*args, **kwargs)
+
+        return scoped_call
+
+    def scoped(*args: Any, **kwargs: Any) -> Any:
+        with active(_sdk_current_agent()):
+            return func(*args, **kwargs)
+
+    return scoped
 
 
 # -- Learning the names from the frameworks' own objects -----------------------------
@@ -240,19 +401,53 @@ def _wrap(owner: Any, attr: str, learn: Callable[..., None], patched: dict[str, 
     patched[f"agent-parts.{name}.{attr}"] = (owner, attr, True)
 
 
+#: module -> [(class, method)]: the Agents SDK's models, whose calls run with the SDK's
+#: current agent as the running agent (`_scoped`).
+_SCOPED: dict[str, list[tuple[str, str]]] = {
+    "agents.models.openai_responses": [
+        ("OpenAIResponsesModel", "get_response"),
+        ("OpenAIResponsesModel", "stream_response"),
+    ],
+    "agents.models.openai_chatcompletions": [
+        ("OpenAIChatCompletionsModel", "get_response"),
+        ("OpenAIChatCompletionsModel", "stream_response"),
+    ],
+    "agents.extensions.models.litellm_model": [
+        ("LitellmModel", "get_response"),
+        ("LitellmModel", "stream_response"),
+    ],
+}
+
+
+def _wrap_scope(owner: Any, attr: str, patched: dict[str, Any]) -> None:
+    raw = getattr(owner, "__dict__", {}).get(attr)
+    if not callable(raw) or getattr(raw, "__agentfox__", False):
+        return
+    scoped = _scoped(raw)
+    functools.update_wrapper(scoped, raw)
+    scoped.__agentfox__ = True  # type: ignore[attr-defined]
+    scoped.__agentfox_original__ = raw  # type: ignore[attr-defined]
+    setattr(owner, attr, scoped)
+    patched[f"agent-parts.{getattr(owner, '__name__', owner)}.{attr}"] = (owner, attr, True)
+
+
 def _watch_module(module_name: str, patched: dict[str, Any]) -> None:
     module = sys.modules.get(module_name)
     if module is None:
         return
-    for owner_name, attr, learn in _WATCHED[module_name]:
+    for owner_name, attr, learn in _WATCHED.get(module_name, ()):
         owner = getattr(module, owner_name, None) if owner_name else module
         if owner is not None:
             _wrap(owner, attr, learn, patched)
+    for owner_name, attr in _SCOPED.get(module_name, ()):
+        owner = getattr(module, owner_name, None)
+        if owner is not None:
+            _wrap_scope(owner, attr, patched)
 
 
 def watch(patched: dict[str, Any]) -> None:
     """Watch every framework module already imported; cheap once done."""
-    for module_name in _WATCHED:
+    for module_name in {**_WATCHED, **_SCOPED}:
         _watch_module(module_name, patched)
 
 
@@ -265,7 +460,8 @@ class _ImportWatch(importlib.abc.MetaPathFinder):
         self._busy = threading.local()
 
     def find_spec(self, fullname: str, path: Any = None, target: Any = None) -> Any:
-        if fullname not in _WATCHED or getattr(self._busy, "on", False):
+        watched = fullname in _WATCHED or fullname in _SCOPED
+        if not watched or getattr(self._busy, "on", False):
             return None
         self._busy.on = True
         try:
@@ -316,3 +512,5 @@ def stop() -> None:
         _IMPORT_WATCH = None
     DELEGATION_TOOLS.clear()
     OUTPUT_TOOLS.clear()
+    _ROOTS.clear()
+    _MEMBERS.clear()
