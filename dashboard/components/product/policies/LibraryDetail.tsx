@@ -11,7 +11,8 @@ export type LibraryView = {
   rules: number;
   /** Which agents it is on, said in a line ("support-agent, billing-agent"). */
   on: string;
-  mode: "watching" | "blocking" | null;
+  /** `mixed`: Your rules, when some of its rules block and others only watch. */
+  mode: "watching" | "blocking" | "mixed" | null;
   contents: LibraryContents | null;
   /** The starter rules come from the applied rules, not a shipped library. */
   ruleRows?: LibraryRule[];
@@ -39,7 +40,7 @@ export function LibraryDetail({ v }: { v: LibraryView }) {
         items={[
           ["Rules", String(v.rules)],
           ["On", v.on],
-          ["Mode", v.mode ? <Pill tone={v.mode === "blocking" ? "ok" : "warn"}>{v.mode === "blocking" ? "Blocking" : "Watching"}</Pill> : "—"],
+          ["Mode", v.mode ? <Pill tone={v.mode === "blocking" ? "ok" : "warn"}>{v.mode === "blocking" ? "Blocking" : v.mode === "mixed" ? "Some blocking, some watching" : "Watching"}</Pill> : "—"],
         ]}
       />
       {v.note && <p className="lib-detail-note">{v.note}</p>}

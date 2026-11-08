@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { actionArguments, actionLabel, actionSummary, decidedBy, firstSentence, minutesLabel, onExpiry, readableReason, waitMinutes } from "./approvals";
+import { actionArguments, actionLabel, actionSummary, approvalOutcome, decidedBy, firstSentence, minutesLabel, onExpiry, readableReason, waitMinutes } from "./approvals";
 
 const message = {
   tool: "message:input",
@@ -61,5 +61,16 @@ describe("approvals display", () => {
     expect(onExpiry("deny")).toMatch(/denied/);
     expect(onExpiry(undefined)).toMatch(/denied/);
     expect(onExpiry("allow")).toMatch(/approved/);
+  });
+});
+
+describe("a held call's outcome on its run", () => {
+  it("says who approved or denied it, and nothing while it waits", () => {
+    expect(approvalOutcome({ status: "pending" })).toBeNull();
+    expect(approvalOutcome(null)).toBeNull();
+    expect(approvalOutcome({ status: "approved", resolver: "ana@x.test" })).toEqual({ label: "Approved by ana@x.test", tone: "ok" });
+    expect(approvalOutcome({ status: "used", resolver: "ana@x.test" })?.label).toBe("Approved by ana@x.test · ran");
+    expect(approvalOutcome({ status: "denied", resolver: "bo@x.test" })).toEqual({ label: "Denied by bo@x.test", tone: "bad" });
+    expect(approvalOutcome({ status: "expired" })?.label).toBe("Nobody answered · denied");
   });
 });

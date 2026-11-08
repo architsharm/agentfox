@@ -58,6 +58,26 @@ def applied_rules(session: Session) -> dict[str, Any]:
             lib = library_of(r["rule_id"], key, r.get("level") or "", names.get(key, ""))
             row["libraries"][lib] = lib
 
+    # Business rules (an approval limit written in New rule, a library's ladders) are
+    # stored apart from the packs but are rules in force all the same: on the agent
+    # they are limited to, or on every agent.
+    from agentfox.capabilities.business.store import rule_entries
+
+    for entry in rule_entries(session):
+        on = [a for a in agents if entry["agent"] in (None, a.slug)]
+        if not on:
+            continue
+        rows[entry["rule_id"]] = {
+            "id": entry["rule_id"],
+            "description": entry["description"] or entry["title"],
+            "effects": Counter({entry["effect"]: len(on)}),
+            "enforcing": len(on) if entry["enforcement"] == "enforce" else 0,
+            "agents": [
+                {"slug": a.slug, "name": a.name or a.slug, "draft": a.status == "draft"} for a in on
+            ],
+            "libraries": {entry["library"]: entry["library"]},
+        }
+
     out = []
     for row in rows.values():
         effect, _n = row["effects"].most_common(1)[0]

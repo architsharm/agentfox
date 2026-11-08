@@ -40,7 +40,10 @@ export type RuleInfo = {
 /** Every installed pack with its live rules, and every rule with the packs it is in. */
 export async function loadRules(): Promise<{ packs: PackInfo[]; rules: RuleInfo[] }> {
   // One request for every pack and its live rules (`?full=1`), not one per pack.
-  const list = await safeApi<any>("/api/policies?full=1", { policies: [] });
+  const [list, business] = await Promise.all([
+    safeApi<any>("/api/policies?full=1", { policies: [] }),
+    safeApi<any>("/api/business/rules", { rules: [] }),
+  ]);
   const packs: PackInfo[] = (list.policies || []).map((d: any) => {
     const compiled = d.live_compiled && d.live_compiled.rules ? d.live_compiled : d.compiled || {};
     return {
@@ -82,6 +85,12 @@ export async function loadRules(): Promise<{ packs: PackInfo[]; rules: RuleInfo[
       byId.set(r.id, entry);
     }
   }
+  // A business rule (an approval limit) is a rule like any other to a person: listed
+  // as `business.<key>`, in Your rules, in its own mode.
+  for (const b of business.rules || []) {
+    const entry = businessRule(b);
+    byId.set(entry.rule_id, entry);
+  }
   // Workspace-wide packs first; an agent's own protection layer (`agent.<slug>`) after.
   const agentLayer = (key: string) => (key.startsWith("agent.") ? 1 : 0);
   for (const r of byId.values()) r.packs.sort((a, b) => agentLayer(a.key) - agentLayer(b.key));
@@ -93,4 +102,28 @@ export function ruleMode(r: RuleInfo): string | null {
   const on = r.packs.filter((p) => p.enabled);
   if (!on.length) return null;
   return on.some((p) => p.mode === "enforce") ? "enforce" : "observe";
+}
+
+/** The library a business rule lives in, as the rule's page and Applied rules name it. */
+export const BUSINESS_LIBRARY = { key: "custom", name: "Your rules" };
+
+/** The strongest outcome among a business rule's bands: what it "does". */
+const STRONGEST = ["block", "escalate", "verify", "redact", "allow"];
+
+/** A business rule (GET /api/business/rules row) as a rule: id `business.<key>`, its own mode. */
+export function businessRule(b: any): RuleInfo {
+  const bands: any[] = b.definition?.bands || [];
+  const outcomes = new Set(bands.map((x) => x.outcome || "allow"));
+  const effect = STRONGEST.find((o) => outcomes.has(o)) || "allow";
+  const said = bands.find((x) => x.outcome === effect && x.reason)?.reason || "";
+  const enabled = b.enabled !== false;
+  return {
+    rule_id: `business.${b.key}`,
+    description: b.description || said || b.name || b.key,
+    effect,
+    severity: "medium",
+    enabled,
+    finds: "",
+    packs: [{ ...BUSINESS_LIBRARY, mode: b.mode, effect, enabled, message: "", onBlock: "refuse", minScore: null }],
+  };
 }

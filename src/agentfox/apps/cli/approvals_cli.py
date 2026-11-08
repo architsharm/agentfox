@@ -19,7 +19,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from agentfox.apps.cli._style import match_id, short_id
+from agentfox.apps.cli._style import match_id
 
 console = Console()
 
@@ -37,7 +37,7 @@ def _session():
 
 
 def _find(session, typed: str):
-    """The approval the user named, by full id or by the short id `list` prints."""
+    """The approval the user named, by full id or by a unique end of one."""
     from sqlalchemy import select
 
     from agentfox.core.models import ApprovalRequest
@@ -89,6 +89,10 @@ def _slugs(session) -> dict[str, str]:
     return {a.id: a.slug for a in session.scalars(select(Agent))}
 
 
+#: Below this many columns `list` prints one block per approval instead of a table.
+WIDE = 120
+
+
 def _arguments(arguments: dict[str, Any]) -> str:
     text = json.dumps(arguments, default=str, ensure_ascii=False)
     return text if len(text) <= 80 else text[:79] + "…"
@@ -132,21 +136,35 @@ def approvals_list(
         console.print(f"[green]no {status if status != 'all' else ''} approvals{scope}[/]")
         return
 
-    table = Table(box=None, padding=(0, 2), header_style="dim")
-    table.add_column("id", no_wrap=True)
-    table.add_column("status")
-    table.add_column("agent", overflow="fold")
-    table.add_column("call", overflow="fold", min_width=24)
-    table.add_column("why", overflow="fold")
-    for row in rows:
-        table.add_row(
-            f"[dim]{short_id(row['id'])}[/]",
-            row["status"],
-            row["agent"] or "—",
-            f"{row['tool'] or '—'} {_arguments(row['arguments'])}",
-            row["reason"] or "",
-        )
-    console.print(table)
+    # The full id, on one line: it is what `approve`/`deny` and the agent's retry take,
+    # and a shortened one could not be pasted into a retry. The rest wraps between
+    # words, never inside one: a table where the terminal is wide enough for one, and
+    # otherwise one block per approval, so the reason is never squeezed into a sliver.
+    if console.width >= WIDE:
+        table = Table(box=None, padding=(0, 2), header_style="dim")
+        table.add_column("id", no_wrap=True)
+        table.add_column("status", no_wrap=True)
+        table.add_column("agent")
+        table.add_column("call", min_width=24)
+        table.add_column("why", min_width=30)
+        for row in rows:
+            table.add_row(
+                f"[dim]{row['id']}[/]",
+                row["status"],
+                row["agent"] or "—",
+                f"{row['tool'] or '—'} {_arguments(row['arguments'])}",
+                row["reason"] or "",
+            )
+        console.print(table)
+    else:
+        for row in rows:
+            console.print(
+                f"[bold]{row['id']}[/]  {row['status']}  {row['agent'] or '—'}", soft_wrap=True
+            )
+            console.print(f"  {row['tool'] or '—'} {_arguments(row['arguments'])}", markup=False)
+            if row["reason"]:
+                console.print(f"  why: {row['reason']}", markup=False)
+            console.print()
     if status == "pending":
         console.print(
             "\n  [dim]Decide one with `agentfox permit approvals approve <id>` or `deny <id>`. "
@@ -156,7 +174,7 @@ def approvals_list(
 
 @approvals_app.command("show")
 def approvals_show(
-    approval_id: str = typer.Argument(..., help="Approval id, or the short id `list` prints."),
+    approval_id: str = typer.Argument(..., help="Approval id, or a unique end of one."),
     as_json: bool = typer.Option(False, "--json", help="Machine-readable output for scripts."),
 ) -> None:
     """One approval in full: the call, its arguments, why it was held, and the decision."""
@@ -222,7 +240,7 @@ def _decide(approval_id: str, approved: bool, rationale: str, actor: str | None)
 
 @approvals_app.command("approve")
 def approvals_approve(
-    approval_id: str = typer.Argument(..., help="Approval id, or the short id `list` prints."),
+    approval_id: str = typer.Argument(..., help="Approval id, or a unique end of one."),
     rationale: str = typer.Option("", "--rationale", "-r", help="Why, for the audit record."),
     actor: str | None = typer.Option(
         None, "--as", help="Who is deciding (an email), for the audit record."
@@ -234,13 +252,13 @@ def approvals_approve(
 
 @approvals_app.command("deny")
 def approvals_deny(
-    approval_id: str = typer.Argument(..., help="Approval id, or the short id `list` prints."),
+    approval_id: str = typer.Argument(..., help="Approval id, or a unique end of one."),
     rationale: str = typer.Option("", "--rationale", "-r", help="Why, for the audit record."),
     actor: str | None = typer.Option(
         None, "--as", help="Who is deciding (an email), for the audit record."
     ),
 ) -> None:
-    """Refuse the held call. A retry presenting this approval escalates again."""
+    """Refuse the held call. A retry of it presenting this approval is blocked, with your reason."""
     _decide(approval_id, False, rationale, actor)
 
 

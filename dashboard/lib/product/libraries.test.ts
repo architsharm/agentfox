@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checksLabel, doesLabel, libraryPath, libraryState, simulationSummary, whereOn } from "./libraries";
+import { businessWouldStop, checksLabel, doesLabel, libraryPath, libraryState, ownRulesState, packWouldStop, simulationSummary, whereOn } from "./libraries";
 
 describe("checksLabel", () => {
   it("names each surface once, in people's words", () => {
@@ -52,5 +52,21 @@ describe("whereOn / libraryPath", () => {
     expect(whereOn(2, 2)).toBe("all 2 agents");
     expect(libraryPath("payments/refunds")).toBe("payments/refunds");
     expect(libraryPath("a b")).toBe("a%20b");
+  });
+});
+
+describe("Your rules and simulations", () => {
+  it("says each rule's state, not the pack's, for Your rules", () => {
+    expect(ownRulesState([])).toEqual({ text: "No rules yet", tone: "", mode: null });
+    expect(ownRulesState(["enforce", "enforce"]).text).toBe("2 rules · blocking");
+    expect(ownRulesState(["observe"]).text).toBe("1 rule · watching");
+    expect(ownRulesState(["enforce", "observe"])).toEqual({ text: "2 rules · 1 blocking, 1 watching", tone: "pol-watch", mode: "mixed" });
+  });
+
+  it("counts what the pack's own rules would stop, not what is newly blocked", () => {
+    expect(packWouldStop({ counts: { newly_blocked: 0, would_stop: 8, own_would_stop: 2 }, runs_would_stop: 6, runs_own_would_stop: 2 })).toBe(2);
+    expect(packWouldStop({ counts: { newly_blocked: 0, would_stop: 8 }, runs_would_stop: 6 })).toBe(6);
+    expect(packWouldStop(null)).toBe(0);
+    expect(businessWouldStop({ counts: { would_stop: 3 } })).toBe(3);
   });
 });

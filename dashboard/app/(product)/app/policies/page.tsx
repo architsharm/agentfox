@@ -23,6 +23,7 @@ import {
   num,
 } from "@/components/kit";
 import { Act } from "@/components/kit/Act";
+import { BusinessMode } from "@/components/product/policies/BusinessMode";
 import { FilterBar } from "@/components/kit/FilterBar";
 import { Checks } from "@/components/product/policies/Checks";
 import { ImportGuard } from "@/components/product/policies/ImportGuard";
@@ -187,14 +188,12 @@ async function RulesTab({ sp }: { sp: SP }) {
               {business.rules.map((b: any) => (
                 <tr key={b.key}>
                   <td>
-                    <Link className="k-name" href={`/app/policies/business/${encodeURIComponent(b.key)}`}>{b.name}</Link>
+                    <Link className="k-name" href={`/app/policies/rules/${encodeURIComponent(`business.${b.key}`)}`}>{b.name}</Link>
                     <span className="sub">{b.tool || "Any tool"}{b.description ? ` · ${b.description}` : ""}</span>
                   </td>
                   <td className="tight"><ModePill mode={b.enabled ? b.mode : null} /></td>
                   <td className="tight" style={{ textAlign: "right" }}>
-                    <Act url={`/api/business/rules/${encodeURIComponent(b.key)}/mode`} body={{ mode: b.mode === "enforce" ? "observe" : "enforce" }} className={b.mode === "enforce" ? "k-btn" : "k-btn-primary"}>
-                      {b.mode === "enforce" ? "Switch to watching" : "Start blocking"}
-                    </Act>
+                    <BusinessMode ruleKey={b.key} mode={b.mode} name={b.name} />
                   </td>
                 </tr>
               ))}

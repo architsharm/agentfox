@@ -98,3 +98,34 @@ export function libraryState(st: LibraryStatus, total: number): { text: string; 
 export function libraryPath(id: string): string {
   return encodeURIComponent(id).replace(/%2F/g, "/");
 }
+
+/**
+ * Requests a pack's own rules would have stopped, from a policy simulation. Not
+ * `newly_blocked`: that compares with what each call would already have had, so a
+ * watching rule's own catches read 0 ("0 would have been stopped" right after a
+ * words rule flagged a message). An older gateway without the own count falls back
+ * to every stop the replay found.
+ */
+export function packWouldStop(sim: any): number {
+  return sim?.runs_own_would_stop ?? sim?.counts?.own_would_stop ?? sim?.runs_would_stop ?? sim?.counts?.would_stop ?? 0;
+}
+
+/**
+ * Your rules' one-line state from each rule's own mode: "2 rules · blocking" only
+ * when every one blocks, "2 rules · 1 blocking, 1 watching" when they differ. The
+ * words rules share the custom pack's mode; each business rule has its own.
+ */
+export function ownRulesState(modes: (string | null | undefined)[]): { text: string; tone: "" | "pol-on" | "pol-watch"; mode: "blocking" | "watching" | "mixed" | null } {
+  const n = modes.length;
+  if (!n) return { text: "No rules yet", tone: "", mode: null };
+  const count = `${n} ${n === 1 ? "rule" : "rules"}`;
+  const blocking = modes.filter((m) => m === "enforce").length;
+  if (blocking === n) return { text: `${count} · blocking`, tone: "pol-on", mode: "blocking" };
+  if (!blocking) return { text: `${count} · watching`, tone: "pol-watch", mode: "watching" };
+  return { text: `${count} · ${blocking} blocking, ${n - blocking} watching`, tone: "pol-watch", mode: "mixed" };
+}
+
+/** Calls a business rule would have held, from its simulation (POST …/simulate). */
+export function businessWouldStop(sim: any): number {
+  return sim?.counts?.would_stop ?? 0;
+}

@@ -3,11 +3,12 @@ import { safeApi } from "@/lib/product/api";
 import { loadRules, type PackInfo } from "@/lib/product/rules";
 import { Act } from "@/components/kit/Act";
 import { ModePill } from "@/components/kit";
+import { BusinessMode } from "@/components/product/policies/BusinessMode";
 import { PackMode } from "@/components/product/policies/PackMode";
 import { SimulateThenBlock } from "@/components/product/policies/SimulateLibrary";
 import { ApplyChoice, LibraryCard } from "@/components/product/policies/LibraryCard";
 import { LibraryDetail, type LibraryView } from "@/components/product/policies/LibraryDetail";
-import { libraryPath, libraryState, whereOn, type LibraryContents, type LibraryStatus as Status } from "@/lib/product/libraries";
+import { libraryPath, libraryState, ownRulesState, whereOn, type LibraryContents, type LibraryStatus as Status } from "@/lib/product/libraries";
 
 const NONE: Status = { agents: [], blocking: false, workspace: false };
 /** The pack every rule a person writes lands in (`custom_store.POLICY_KEY`). */
@@ -33,7 +34,9 @@ function PackSwitches({ packs }: { packs: PackInfo[] }) {
  */
 function ownLibrary(own: PackInfo | undefined, business: any[], project: string): Library {
   const n = (own?.rules.length || 0) + business.length;
-  const mode = own?.rules.length ? (own.mode === "enforce" ? "blocking" : own.mode ? "watching" : null) : null;
+  // Each rule's own mode: the words rules share the pack's, each business rule has its own.
+  const st = ownRulesState([...(own?.rules || []).map(() => own?.mode ?? null), ...business.map((b: any) => (b.enabled ? b.mode : null))]);
+  const mode = st.mode;
   return {
     id: OWN,
     title: "Your rules",
@@ -47,9 +50,7 @@ function ownLibrary(own: PackInfo | undefined, business: any[], project: string)
     contents: null,
     ruleRows: (own?.rules || []).map((r: any) => ({ id: r.id, description: r.description, surfaces: r.when?.surface || [], effect: r.effect })),
     project,
-    state: n
-      ? { text: `${n} ${n === 1 ? "rule" : "rules"}${mode ? ` · ${mode}` : ""}`, tone: mode === "blocking" ? "pol-on" : mode ? "pol-watch" : "" }
-      : { text: "No rules yet", tone: "" },
+    state: { text: st.text, tone: st.tone },
     extra: business.length ? (
       <table className="k-table lib-rules">
         <thead>
@@ -63,14 +64,12 @@ function ownLibrary(own: PackInfo | undefined, business: any[], project: string)
           {business.map((b: any) => (
             <tr key={b.key}>
               <td>
-                <Link className="k-name" href={`/app/policies/business/${encodeURIComponent(b.key)}`}>{b.name}</Link>
+                <Link className="k-name" href={`/app/policies/rules/${encodeURIComponent(`business.${b.key}`)}`}>{b.name}</Link>
                 <span className="sub">{b.tool || "Any tool"}</span>
               </td>
               <td className="tight"><ModePill mode={b.enabled ? b.mode : null} /></td>
               <td className="tight" style={{ textAlign: "right" }}>
-                <Act url={`/api/business/rules/${encodeURIComponent(b.key)}/mode`} body={{ mode: b.mode === "enforce" ? "observe" : "enforce" }} className={b.mode === "enforce" ? "k-btn" : "k-btn-primary"}>
-                  {b.mode === "enforce" ? "Switch to watching" : "Start blocking"}
-                </Act>
+                <BusinessMode ruleKey={b.key} mode={b.mode} name={b.name} />
               </td>
             </tr>
           ))}

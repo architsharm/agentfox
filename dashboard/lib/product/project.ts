@@ -30,13 +30,19 @@ export const MAP_PROJECT_COOKIE = "agentfox_map_project";
  */
 export const NEW_PROJECT = "__new__";
 
+/** Member states that are not an agent someone added: a scan's proposal, an agent seen running unregistered. */
+const NOT_ADDED = new Set(["draft", "shadow"]);
+
 /**
- * The project shown when none is chosen: the first with an agent someone added, so a
- * scan's proposals (drafts nobody has accepted) never stand in for the real agent.
- * Falls back to the first project. Takes GET /api/projects rows.
+ * The project shown when none is chosen: of the projects with an agent someone added
+ * (not a scan's proposal, not a shadow agent seen running unregistered), the one with
+ * the most recent traffic; with no traffic anywhere, the first of them in the API's
+ * order. Falls back to the first project. Takes GET /api/projects rows.
  */
-export function defaultProject<T extends { project: string; members?: { status?: string }[] }>(projects: T[]): T | undefined {
-  return projects.find((p) => (p.members ?? []).some((m) => m.status && m.status !== "draft")) ?? projects[0];
+export function defaultProject<T extends { project: string; last_seen_at?: string | null; members?: { status?: string }[] }>(projects: T[]): T | undefined {
+  const added = projects.filter((p) => (p.members ?? []).some((m) => m.status && !NOT_ADDED.has(m.status)));
+  const seen = added.filter((p) => p.last_seen_at).sort((a, b) => String(b.last_seen_at).localeCompare(String(a.last_seen_at)));
+  return seen[0] ?? added[0] ?? projects[0];
 }
 
 /** The views of one project, in the order the page offers them. */

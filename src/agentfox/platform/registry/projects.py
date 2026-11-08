@@ -27,7 +27,7 @@ from typing import Any
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from agentfox.core.models import Agent, LineageEdge, Tool
+from agentfox.core.models import Agent, LineageEdge, Tool, as_aware
 
 #: Edges `agentfox init` declares from the code. What else each says is in
 #: ``LineageEdge.attrs`` (``kind`` is only a delegation's relation).
@@ -183,6 +183,9 @@ def list_projects(session: Session) -> list[dict[str, Any]]:
         rows = [agents[m["slug"]] for m in system["members"]]
         seen = [a.updated_at or a.created_at for a in rows if a.updated_at or a.created_at]
         updated = max(seen) if seen else None
+        # When any member last had traffic: what the dashboard opens on by default,
+        # so the project in use is shown rather than the one registered last.
+        active = [as_aware(a.last_seen_at) for a in rows if a.last_seen_at]
         root = agents[system["root"]]
         out.append(
             {
@@ -202,6 +205,7 @@ def list_projects(session: Session) -> list[dict[str, Any]]:
                 ],
                 "repos": sorted({a.project for a in rows if a.project}),
                 "updated_at": updated,
+                "last_seen_at": max(active).isoformat() if active else None,
             }
         )
     out = _order(out)

@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 from agentfox.core.ids import span_id as new_span_id
 from agentfox.core.models import (
     Agent,
+    ApprovalRequest,
     Decision,
     DetectionFinding,
     DetectorRun,
@@ -275,6 +276,7 @@ def full_trace(
             }
         )
 
+    approvals = _approvals_of(session, decisions)
     decision_rows = [
         {
             "id": d.id,
@@ -286,6 +288,9 @@ def full_trace(
             "policy_version_id": d.policy_version_id,
             "latency_ms": d.latency_ms,
             "approval_id": d.approval_id,
+            # What became of the approval this decision filed (or redeemed): a held
+            # call's run reads "Held" only while nobody has answered.
+            "approval": approvals.get(d.approval_id or ""),
             "taint": d.taint_summary_json,
             "detector_run_ids": d.detector_run_ids or [],
         }
@@ -358,6 +363,33 @@ def full_trace(
             {"path": t.path, "source": t.source, "trust": t.trust, "from": t.propagated_from}
             for t in taints
         ],
+    }
+
+
+def _approvals_of(session: Session, decisions: list[Decision]) -> dict[str, dict[str, Any]]:
+    """Each approval the decisions name: its status, who decided it, when and why."""
+    from agentfox.core.models import User
+
+    ids = {d.approval_id for d in decisions if d.approval_id}
+    if not ids:
+        return {}
+    rows = list(session.scalars(select(ApprovalRequest).where(ApprovalRequest.id.in_(ids))))
+    users = {r.resolver_user_id for r in rows if r.resolver_user_id}
+    emails = (
+        {u.id: u.email or u.id for u in session.scalars(select(User).where(User.id.in_(users)))}
+        if users
+        else {}
+    )
+    return {
+        r.id: {
+            "id": r.id,
+            "status": r.status,
+            # The CLI records its `--as` name (or "cli") in place of a user id.
+            "resolver": emails.get(r.resolver_user_id or "") or r.resolver_user_id,
+            "resolved_at": None if r.status == "pending" else _iso(r.updated_at),
+            "rationale": r.resolution_rationale or None,
+        }
+        for r in rows
     }
 
 
@@ -463,11 +495,16 @@ def search_traces(
     # blocked is the fact a team needs before switching a rule to enforce.
     would: dict[str, str] = {}
     strength = {"block": 3, "escalate": 2, "redact": 1, "mask": 1, "tokenize": 1}
+    # The approval a held call filed, so a list of runs can say Approved or Denied
+    # once a person has answered instead of "Held" for ever.
+    held: dict[str, str] = {}
     if traces:
         for d in session.scalars(
             select(Decision).where(Decision.trace_id.in_({t.id for t in traces}))
         ):
             checks[d.trace_id] = checks.get(d.trace_id, 0) + 1
+            if d.verdict == "escalate" and d.approval_id:
+                held.setdefault(d.trace_id, d.approval_id)
             for r in d.rules_fired_json or []:
                 rid = r.get("rule_id") if isinstance(r, dict) else None
                 if rid and rid not in fired.setdefault(d.trace_id, []):
@@ -482,6 +519,17 @@ def search_traces(
                 tools[d.trace_id].append(d.tool_key)
             if d.surface and d.surface not in surfaces.setdefault(d.trace_id, []):
                 surfaces[d.trace_id].append(d.surface)
+        statuses = (
+            dict(
+                session.execute(
+                    select(ApprovalRequest.id, ApprovalRequest.status).where(
+                        ApprovalRequest.id.in_(set(held.values()))
+                    )
+                ).all()
+            )
+            if held
+            else {}
+        )
         # A refusal before any check (a paused agent) left a span, not a decision.
         for sp in session.scalars(
             select(Span).where(Span.trace_id.in_({t.id for t in traces}), Span.kind == REFUSAL_SPAN)
@@ -517,6 +565,7 @@ def search_traces(
             "would_verdict": would.get(t.id),
             "checks": checks.get(t.id, 0),
             "session_id": t.session_id,
+            "approval_status": statuses.get(held.get(t.id, "")) if held else None,
         }
         for t in traces
     ]
@@ -550,6 +599,7 @@ def _group_conversations(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     group[key].append(item)
         if _OUTCOME_RANK.get(row["verdict"], 0) > _OUTCOME_RANK.get(group["verdict"], 0):
             group["verdict"] = row["verdict"]
+            group["approval_status"] = row.get("approval_status")
         if _OUTCOME_RANK.get(row.get("would_verdict") or "", 0) > _OUTCOME_RANK.get(
             group.get("would_verdict") or "", 0
         ):

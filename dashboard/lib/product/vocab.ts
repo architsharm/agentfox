@@ -159,6 +159,9 @@ const RULE_TITLES: Record<string, string> = {
   "agent.quarantined": "Agent paused",
   "agent.killed": "Agent stopped",
   "agent.circuit_open": "Circuit breaker open",
+  // A held call a person answered.
+  "approval.redeemed": "Approved by a person",
+  "approval.denied": "Denied by a person",
   "injection.direct": "Jailbreaks & prompt injection",
   "injection.indirect": "Injection in documents or tool results",
   "injection.system_prompt_leak": "System prompt extraction",

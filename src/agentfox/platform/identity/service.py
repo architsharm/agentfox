@@ -728,6 +728,32 @@ def redeem_approval(
     return request, ""
 
 
+def denial_of(
+    session: Session,
+    approval_id: str,
+    *,
+    agent_id: str | None,
+    tool_key: str | None,
+    arguments: dict[str, Any] | None,
+) -> ApprovalRequest | None:
+    """The denied approval ``approval_id``, when the retry presenting it is the very
+    call a person denied: the same agent, tool and arguments. None otherwise.
+
+    A denial is an answer, not a request to ask again: a retry of the denied call is
+    refused with the denial's reason rather than filing a fresh approval that shows a
+    reviewer the call they just turned down as if it were new. A different call (other
+    arguments, another agent) is not what was denied, and escalates as usual.
+    """
+    request = session.get(ApprovalRequest, approval_id)
+    if request is None or request.status != "denied":
+        return None
+    if request.agent_id != agent_id or (request.tool_key or None) != (tool_key or None):
+        return None
+    if _binding(request.tool_key, request.arguments_json) != _binding(tool_key, arguments):
+        return None
+    return request
+
+
 def find_approved(
     session: Session,
     *,
