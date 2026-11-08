@@ -615,14 +615,20 @@ def _gateway_apply(run: Run) -> None:
 
 
 def _tools_unavailable(run: Run) -> str:
-    return "" if run.ctx.tool_names else "no tool definitions found in this repository"
+    if run.ctx.tool_names or run.ctx.agent_tools:
+        return ""
+    return "no tool definitions found in this repository"
 
 
 def _tools_note(run: Run) -> str:
     own, every = len(_own_tools(run)), len(run.ctx.tool_names)
     if own < every:
-        return f"{plural(own, 'tool')} of {run.agent}'s ({every} in all); impact inferred"
-    return f"{plural(every, 'tool')} found; impact inferred from the name"
+        note = f"{plural(own, 'tool')} of {run.agent}'s ({every} in all); impact inferred"
+    else:
+        note = f"{plural(every, 'tool')} found; impact inferred from the name"
+    if run.ctx.agent_tools:
+        note += f"; {plural(len(run.ctx.agent_tools), 'agent')} used as a tool"
+    return note
 
 
 def _own_tools(run: Run) -> list[str]:
@@ -679,13 +685,30 @@ def _tools_apply(run: Run) -> None:
         except BackendError as exc:
             run.failed("tools", str(exc))
             return
+    # An agent another uses as a tool (`agent.as_tool(...)`, AutoGen's `AgentTool`) is
+    # one of the system's own parts: `auto()` records a call to it as a delegation,
+    # and declared and granted here it is never "tried without permission" on a route
+    # that cannot tell (the gateway). It reaches nothing itself; the sub-agent's own
+    # tools are declared above and decided on their own.
+    subagents = {n: c for n, c in run.ctx.agent_tools.items() if n not in impacts}
+    for name, child in subagents.items():
+        try:
+            if run.target.backend.declare_tool(
+                name, impact="read", description=f"runs the {child} agent (an agent used as a tool)"
+            ):
+                added += 1
+            else:
+                kept += 1
+        except BackendError as exc:
+            run.failed("tools", str(exc))
+            return
     granted = ""
     if {"python-app", "gateway"} & set(run.picked):
         # Declared and granted: the agent may call its own tools, and what still stops a
         # call is containment (a tainted argument to an irreversible tool), not a
         # missing grant on day one.
         try:
-            for name in impacts:
+            for name in [*impacts, *subagents]:
                 run.target.backend.grant(run.agent, name)
             granted = f", granted to {run.agent}"
         except BackendError as exc:
@@ -1125,7 +1148,7 @@ CATALOGUE: tuple[Component, ...] = (
         "Tool containment — declare the tools found",
         _tools_note,
         _tools_unavailable,
-        lambda r: bool(_own_tools(r)),
+        lambda r: bool(_own_tools(r) or r.ctx.agent_tools),
         _tools_apply,
         _tools_ask,
     ),

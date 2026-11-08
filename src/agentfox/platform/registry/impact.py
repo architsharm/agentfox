@@ -57,6 +57,30 @@ NOUN_VERBS = frozenset(
 #: Words that join two phrases.
 JOINERS = frozenset({"and", "then"})
 
+#: Write verbs that also name a pure computation: ``add`` (two numbers), ``apply`` (a
+#: function), ``merge`` / ``append`` / ``replace`` (lists, strings). One of these acts
+#: only on a thing it names after it (``add_user``, ``apply_discount``,
+#: ``merge_pull_request``); bare (``add``, a calculator's tool) or on values
+#: (``add_numbers``, ``merge_lists``) it computes, and changes nothing.
+COMPUTE_VERBS = frozenset(
+    {"add", "apply", "merge", "append", "replace", "swap", "process", "sum"}
+)  # fmt: skip
+
+#: What a computation works on: values, not things in the world.
+VALUE_WORDS = frozenset(
+    {
+        "number", "numbers", "num", "nums", "int", "ints", "integer", "integers",
+        "float", "floats", "decimal", "decimals", "value", "values", "digit", "digits",
+        "fraction", "fractions", "vector", "vectors", "matrix", "matrices", "string",
+        "strings", "str", "text", "list", "lists", "array", "arrays", "dict", "dicts",
+        "tuple", "tuples", "two", "three", "pair", "x", "y", "a", "b", "n", "operand",
+        "operands", "terms", "args", "inputs",
+    }
+)  # fmt: skip
+
+#: Words between a verb and its object (``add_to_cart``).
+_LINKING = frozenset({"to", "the", "an", "of", "for", "in", "into", "on", "with", "by", "new"})
+
 #: Verbs that change something. Everything else defaults to read, and an operator can
 #: override per tool in the registry — this is a starting classification, not a claim
 #: to understand every server's semantics.
@@ -126,17 +150,31 @@ def actions(toks: list[str]) -> list[str]:
     word in :data:`WRITE_VERBS` acts wherever it is (``tickets_close``)."""
     out: list[str] = []
     reading = False
-    for t in toks:
+    for i, t in enumerate(toks):
         if t in JOINERS:
             reading = False
             continue
         if t in READ_VERBS:
             reading = True
             continue
+        if t in COMPUTE_VERBS and not _acts_on_a_thing(toks[i + 1 :]):
+            continue
         if t in WRITE_VERBS and not (reading and t in NOUN_VERBS):
             out.append(t)
             reading = False
     return out
+
+
+def _acts_on_a_thing(rest: list[str]) -> bool:
+    """Whether the phrase after a `COMPUTE_VERBS` word names something in the world to
+    act on, rather than nothing or values (see `COMPUTE_VERBS`)."""
+    for t in rest:
+        if t in JOINERS:
+            return False
+        if t in _LINKING or t in VALUE_WORDS or t.isdigit():
+            continue
+        return True
+    return False
 
 
 def infer_impact(
@@ -196,9 +234,11 @@ _DECLARED: dict[str, str] = {}
 
 
 __all__ = [
+    "COMPUTE_VERBS",
     "NOUN_VERBS",
     "PEOPLE",
     "READ_VERBS",
+    "VALUE_WORDS",
     "WRITE_VERBS",
     "actions",
     "declare_impact",

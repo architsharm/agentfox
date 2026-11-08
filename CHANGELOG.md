@@ -231,6 +231,27 @@ the file it came from.
   (`metadata["__handoff_destination"]`) and CrewAI's delegation tools, and are
   recorded as a `subagent` span and a `delegates_to` lineage edge with no tool
   decision, grant or containment finding.
+- **An agent's own parts are no longer "tried X without permission".** Found by the
+  2026-11-08 re-audit, where the first findings on three examples were false alarms:
+  - Agents used as tools (the Agents SDK's `agent.as_tool(...)`, AutoGen's
+    `AgentTool` / `TeamTool`) are recorded as a delegation to the sub-agent (relation
+    `as_tool`), like a hand-off, instead of decided as an ungranted tool. The names are
+    learned from the frameworks' own objects, including a framework imported after
+    `auto()` (it is watched as it is imported, so the first request is known).
+  - A structured-output tool (pydantic-ai's `final_result` for any `output_type=`, or
+    a `ToolOutput(name=...)`) is not a capability: it is not decided, and what it
+    carries is checked as the model's output.
+  - `agentfox scan` reads the tool name each `as_tool` edge is called by (`tool_name=`,
+    else the framework default; AutoGen's `x_tool = AgentTool(x)` passed by name now
+    maps too), and `agentfox up` declares those tools and grants them to the agent, so
+    default-deny never refuses an orchestrator its own sub-agents.
+- **Ordinary delegation is no longer held for approval** (langgraph-supervisor's
+  quickstart: "(3x7)+5" had `add` held). A hand-off's own message is the person's
+  conversation carried to the next agent, not a tool result, so the expert's
+  arguments no longer read as copied from `tool:transfer_to_math_expert`. And impact
+  inference no longer reads a computation as a write: `add`, `add_numbers`,
+  `merge_lists`, `replace_text` are `read`; `add_user`, `apply_discount`,
+  `merge_pull_request` still `write`.
 - **Tools checked where they run (LangChain, CrewAI) get argument provenance.** Their
   results are kept per conversation (bounded), so an argument copied out of an earlier
   tool's result is `tool_result` taint and the containment and composition rules apply;

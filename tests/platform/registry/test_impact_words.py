@@ -73,3 +73,33 @@ def test_words_and_phrases():
     assert actions(tokens("issue_compensation")) == ["issue"]
     assert handoff(tokens("transfer_to_human")) and handoff(tokens("escalate_to_agent"))
     assert not handoff(tokens("transfer_funds"))
+
+
+@pytest.mark.parametrize(
+    ("name", "impact"),
+    [
+        # A computation changes nothing: langgraph-supervisor's math expert inferred
+        # `add` as `write` (and `multiply` as `read`), so a plain "(3x7)+5" was held
+        # for approval.
+        ("add", "read"),
+        ("multiply", "read"),
+        ("add_numbers", "read"),
+        ("addTwoNumbers", "read"),
+        ("merge_lists", "read"),
+        ("append_to_list", "read"),
+        ("replace_text", "read"),
+        ("sum", "read"),
+        # The same verbs acting on a thing in the world still write.
+        ("add_user", "write"),
+        ("add_to_cart", "write"),
+        ("apply_discount", "write"),
+        ("merge_pull_request", "write"),
+        ("append_row", "write"),
+        ("replace_file", "write"),
+        ("process_payment", "write"),
+        ("add_and_send", "irreversible"),
+    ],
+)
+def test_a_computation_is_not_a_write(name, impact):
+    assert infer_impact(name, cautious=True) == impact
+    assert infer_impact(name, {"description": "Add two numbers."}) == impact

@@ -67,7 +67,11 @@ def _messages_from(kwargs: dict[str, Any]) -> list[dict[str, Any]]:
                 content = [b for b in blocks if _get(b, "type") != "tool_result"]
                 if not content:
                     continue
-        out.append({"role": role, "content": content})
+        # Which call a tool message answers, and the calls an assistant turn made, so
+        # provenance can name the tool a result came from (and tell a hand-off's
+        # acknowledgement from a tool's output).
+        kept = {k: m[k] for k in ("name", "tool_call_id", "tool_calls") if m.get(k)}
+        out.append({"role": role, "content": content, **kept})
     return out
 
 
