@@ -197,6 +197,11 @@ class PromptInjectionClassifierDetector(_TransformersClassifier):
 
     key = "injection.classifier"
     version = "1.0"
+    #: Said with "cannot run here" (`warn_unrunnable`): what the checks are without it.
+    without_it = (
+        "prompt attacks are found, and blocked, by the pattern heuristic alone, which "
+        "misses reworded ones"
+    )
     surfaces = ("input", "retrieved", "tool_result", "output", "memory_write", "agent_message")
     label_map = {
         "injection": "INJECTION.JAILBREAK",

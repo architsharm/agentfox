@@ -290,6 +290,9 @@ def warm_all() -> None:
     whole process down with it. The same failure on a request is recorded as that
     detector's `error`, which is where it belongs."""
     warn_unrunnable(enabled_only=True)
+    from agentfox.capabilities.detection import warmup
+
+    warmup.startup_warned = True  # a later in-process warm-up need not say it again
     for key in sorted(_keys_to_warm()):
         detector = get_detector(key)
         if detector is None:
@@ -365,10 +368,14 @@ def warn_unrunnable(*, enabled_only: bool = True, once: bool = False) -> list[st
         if once and _already_warned(key, reason):
             log.debug("agentfox: detector %s cannot run here (%s); skipped.", key, reason)
             continue
+        # What running without it means, when the detector says (the classifier: prompt
+        # attacks are then found by the pattern heuristic alone, and blocked on it).
+        without = getattr(detector, "without_it", "") or ""
         log.warning(
-            "agentfox: detector %s is enabled but cannot run here (%s); it is skipped.%s",
+            "agentfox: detector %s is enabled but cannot run here (%s); it is skipped%s.%s",
             key,
             reason,
+            f": {without}" if without else "",
             " Said once; `agentfox doctor` lists it." if once else "",
         )
     return missing

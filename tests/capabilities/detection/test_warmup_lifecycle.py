@@ -201,3 +201,28 @@ def test_a_model_warm_all_loaded_is_not_warmed_again_in_the_background(loading):
 
     assert warmup.warm_in_background() is None
     assert not warmup.warming(loading.key)
+
+
+def test_without_the_classifier_the_warning_says_blocking_is_pattern_only(caplog):
+    """The default install blocks on the heuristic alone; it says so where it says the
+    classifier is skipped, next to the install command."""
+    from agentfox.capabilities.detection.base import warn_unrunnable
+
+    with caplog.at_level("WARNING"):
+        missing = warn_unrunnable()
+    if "injection.classifier" not in missing:
+        pytest.skip("the classifier can run here")
+    said = " ".join(r.getMessage() for r in caplog.records)
+    assert "blocked, by the pattern heuristic alone" in said
+
+
+def test_warm_all_then_an_in_process_warm_up_says_it_once(monkeypatch):
+    from agentfox.capabilities.detection import base
+
+    said = []
+    monkeypatch.setattr(base, "warn_unrunnable", lambda **kw: said.append(kw) or [])
+    warmup._reset()
+    base.warm_all()
+    warmup._warm([])
+
+    assert len(said) == 1

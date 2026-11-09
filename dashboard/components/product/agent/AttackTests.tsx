@@ -361,7 +361,9 @@ export function AttackTests({ project, paused }: { project: string; paused?: str
             <p>
               The run above had nothing blocking: AgentFox was only watching, which is why the rails on the map already
               count catches. Basic guardrails block attacks in what users send and in what the agent reads, and hide
-              personal data and secrets in replies.
+              personal data and secrets in replies. Attacks are found by pattern rules, plus the prompt-injection
+              classifier where your app has it (<code>pip install &apos;agentfox[classifiers]&apos;</code>); patterns
+              alone miss reworded attacks.
             </p>
           </div>
           <button type="button" className="at-btn" onClick={addBasic} disabled={busy || !here || Boolean(paused)} title={paused || undefined}>

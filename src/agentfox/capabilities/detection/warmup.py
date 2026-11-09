@@ -36,6 +36,8 @@ _pending: set[str] = set()
 _exiting = threading.Event()
 #: Detectors already warmed in this process, by any path (`warm_all()` included).
 _warmed: set[str] = set()
+#: Set by `warm_all()`, which has already listed what cannot run here.
+startup_warned = False
 #: Whether `warm_now()` already ran in this process.
 _done_now = False
 
@@ -99,7 +101,8 @@ def _warm(detectors: list) -> None:
     from agentfox.capabilities.detection.base import warn_unrunnable
 
     try:
-        warn_unrunnable(once=True)
+        if not startup_warned:  # `warm_all()` already said it in this process
+            warn_unrunnable(once=True)
     except Exception as exc:  # noqa: BLE001 - warming must never break the caller
         log.debug("agentfox: detector availability report skipped: %s", exc)
     for detector in detectors:
@@ -171,10 +174,11 @@ def warm_in_background() -> threading.Thread | None:
 
 def _reset() -> None:
     """For tests: allow a later `warm_in_background()` to start again."""
-    global _started, _done_now
+    global _started, _done_now, startup_warned
     with _lock:
         _started = None
         _done_now = False
+        startup_warned = False
         _pending.clear()
         _warmed.clear()
         _exiting.clear()
