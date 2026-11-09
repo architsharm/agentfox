@@ -391,9 +391,13 @@ export function AttackTests({
           <div>
             <strong>Next: run your app</strong>
             <p>
-              Add the one line <code>agentfox init</code> printed (<code>agentfox.auto(&quot;{pageAgent ?? "<agent>"}&quot;)</code>) where your app
-              starts, and run it as you always do. Each model and tool call then shows on Activity, with every check it went through.
+              Add the one line <code>agentfox init</code> printed where your app starts, and run it as you always do. Each model
+              and tool call then shows on Activity, with every check it went through.
             </p>
+            {/* On its own line, never wrapped: copied as one line, scrolled on a narrow screen. */}
+            <pre className="at-code">
+              <code>agentfox.auto(&quot;{pageAgent ?? "<agent>"}&quot;)</code>
+            </pre>
           </div>
           <Link className="at-btn" href={pageAgent ? projectHref(pageAgent, "activity") : "/app/traces"}>
             Open Activity
