@@ -279,10 +279,13 @@ def sample_production(
         output = ""
         retrieved: list[str] = []
         tool_calls: list[str] = []
+        asked = ""
         for span in spans:
             attrs = span.get("attributes") or {}
             if span.get("kind") == "llm" and attrs.get("agentfox.output"):
                 output = str(attrs["agentfox.output"])
+            if attrs.get("agentfox.input") and not asked:
+                asked = str(attrs["agentfox.input"])
             if span.get("kind") == "retrieval" and attrs.get("agentfox.content"):
                 retrieved.append(str(attrs["agentfox.content"]))
             if span.get("kind") == "tool":
@@ -293,7 +296,7 @@ def sample_production(
 
         case = EvalCase(
             suite_id=suite.id,
-            input_json={"prompt": trace.intent or ""},
+            input_json={"prompt": asked or trace.intent or ""},
             context_json={"retrieved": retrieved},
             labels=["online"],
             split="production",
