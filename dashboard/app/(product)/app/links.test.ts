@@ -244,3 +244,11 @@ describe("command names", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe("confirmations", () => {
+  it("the agent's Access tab asks in place, not with the browser's own dialog", () => {
+    for (const f of ["components/product/agent/AccessEditor.tsx", "components/product/agent/RemoveAgent.tsx"]) {
+      expect(readFileSync(join(ROOT, f), "utf8")).not.toContain("window.confirm");
+    }
+  });
+});
