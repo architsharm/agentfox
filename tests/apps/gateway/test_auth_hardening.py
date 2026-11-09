@@ -365,6 +365,29 @@ def test_repeated_bad_credentials_are_throttled_but_a_good_one_still_works(ready
     assert int(throttled.headers["Retry-After"]) >= 1
 
 
+def test_an_oversized_body_is_refused_before_it_is_read(ready, production, monkeypatch):
+    monkeypatch.setattr(get_settings(), "max_request_bytes", 1000)
+    client = _app()
+    big = {"agent": "support-triage", "content": "a" * 2000}
+    response = client.post("/v1/guard/input", json=big)
+    assert response.status_code == 413
+    assert "max_request_bytes" in response.json()["detail"]
+    assert response.headers["x-content-type-options"] == "nosniff"
+
+    def chunks():
+        yield b'{"agent": "support-triage", "content": "'
+        for _ in range(20):
+            yield b"a" * 100
+        yield b'"}'
+
+    chunked = client.post(
+        "/v1/guard/input", content=chunks(), headers={"Content-Type": "application/json"}
+    )
+    assert chunked.status_code == 413
+    small = client.post("/v1/guard/input", json={"agent": "support-triage", "content": "hi"})
+    assert small.status_code == 200
+
+
 @pytest.mark.parametrize("path", ["/api/health", "/api/agents", "/docs"])
 def test_gateway_responses_carry_security_headers(ready, production, path):
     response = _app().get(path)

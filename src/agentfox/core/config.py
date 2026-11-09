@@ -398,6 +398,13 @@ class Settings(BaseSettings):
             return max(0, self.trusted_proxy_hops)
         return 1 if os.environ.get("VERCEL") else 0
 
+    #: The largest request body the gateway reads, in bytes; 0 for no limit. Several
+    #: routes take a body from anyone (the guard API serves unregistered agents, the
+    #: playground and the waitlist are public), and without a cap one request can make
+    #: the process buffer as much as the client cares to send. Large enough for a long
+    #: prompt or a batch of trace spans; Vercel's own cap (4.5 MB) is lower still.
+    max_request_bytes: int = 10_000_000
+
     # --- Outbound finding webhooks ----------------------------------------
     # Every newly committed Finding at or above `webhook_min_severity` is POSTed
     # to `webhook_url` (see webhooks.py). Still gated by `allow_egress` above: a

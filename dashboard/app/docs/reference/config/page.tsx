@@ -127,6 +127,12 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "what": "Proxies in front of the gateway that append to X-Forwarded-For. The per-visitor limits (playground, waitlist, showcase) read the visitor's address that many entries from the right. 0 ignores the header."
       },
       {
+        "key": "max_request_bytes",
+        "env": "AGENTFOX_MAX_REQUEST_BYTES",
+        "def": "10000000",
+        "what": "The largest request body the gateway reads, in bytes. A larger one is refused with 413 before it is buffered. 0 for no limit."
+      },
+      {
         "key": "onboarding_key_ttl_days",
         "env": "AGENTFOX_ONBOARDING_KEY_TTL_DAYS",
         "def": "30",

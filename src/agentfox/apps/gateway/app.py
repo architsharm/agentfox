@@ -297,6 +297,85 @@ class SecurityHeaders:
         await self.app(scope, receive, send_with_headers)
 
 
+class _BodyTooLarge(Exception):
+    pass
+
+
+class BodySizeLimit:
+    """Refuse a request body over ``max_request_bytes`` with 413, before it is buffered.
+
+    A declared ``Content-Length`` over the limit is refused without reading anything; a
+    body sent without one (chunked) is counted as it arrives and cut off at the limit.
+    """
+
+    def __init__(self, app: Any) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        limit = get_settings().max_request_bytes
+        if scope["type"] != "http" or limit <= 0:
+            await self.app(scope, receive, send)
+            return
+        declared = dict(scope.get("headers") or []).get(b"content-length")
+        if declared is not None and declared.isdigit() and int(declared) > limit:
+            await self._too_large(send, limit)
+            return
+
+        received = 0
+        over = False
+        replaced = False
+        started = False
+
+        async def counting_receive() -> Any:
+            nonlocal received, over
+            message = await receive()
+            if message["type"] == "http.request":
+                received += len(message.get("body", b""))
+                if received > limit:
+                    over = True
+                    raise _BodyTooLarge
+            return message
+
+        async def tracking_send(message: Any) -> None:
+            nonlocal started, replaced
+            if over:
+                # FastAPI turns an error while reading the body into its own 400; the
+                # caller should hear what actually happened instead.
+                if not replaced and message["type"] == "http.response.start":
+                    replaced = started = True
+                    await self._too_large(send, limit)
+                return
+            if message["type"] == "http.response.start":
+                started = True
+            await send(message)
+
+        try:
+            await self.app(scope, counting_receive, tracking_send)
+        except _BodyTooLarge:
+            if started:
+                return
+            await self._too_large(send, limit)
+
+    @staticmethod
+    async def _too_large(send: Any, limit: int) -> None:
+        body = (
+            b'{"detail":"request body too large (the limit is '
+            + str(limit).encode()
+            + b' bytes, max_request_bytes)"}'
+        )
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 413,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"content-length", str(len(body)).encode()),
+                ],
+            }
+        )
+        await send({"type": "http.response.body", "body": body})
+
+
 def create_app() -> FastAPI:
     # Before anything else, and here rather than in `lifespan`: a serverless host may
     # never run the lifespan, and a process that is going to refuse should refuse
@@ -447,7 +526,9 @@ def create_app() -> FastAPI:
         finally:
             controller.leave()
 
-    # Added last, so outermost: the gates' own 429 and 503 answers get the headers too.
+    app.add_middleware(BodySizeLimit)
+    # Added last, so outermost: the gates' own 429 and 503 answers, and the 413 above,
+    # get the headers too.
     app.add_middleware(SecurityHeaders)
 
     app.include_router(inline.router)
