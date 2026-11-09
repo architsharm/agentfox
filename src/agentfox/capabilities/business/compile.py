@@ -501,7 +501,11 @@ def _best_own_tool(lowered: str, own: list[str], hint: str) -> str | None:
         parts = [_stem(p) for p in re.split(r"[^a-z]+", name.lower()) if p]
         if not any(stem.startswith(p) or p.startswith(stem) for p in parts if len(p) >= 3):
             continue
-        hits = sum(1 for p in parts if any(w.startswith(p) or p.startswith(w) for w in words if len(w) >= 3))
+        hits = sum(
+            1
+            for p in parts
+            if any(w.startswith(p) or p.startswith(w) for w in words if len(w) >= 3)
+        )
         scored.append((hits, name))
     if not scored:
         return None
@@ -1218,7 +1222,9 @@ def _build_ladders(
             )
         )
         return
-    if not picked and not any(re.search(r"\b[a-z_]+\.[a-z_]+\b", c.source.lower()) for c in clauses):
+    if not picked and not any(
+        re.search(r"\b[a-z_]+\.[a-z_]+\b", c.source.lower()) for c in clauses
+    ):
         assumptions.append(
             Assumption(
                 what=f"governs the tool '{tool}'",

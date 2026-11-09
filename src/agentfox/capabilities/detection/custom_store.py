@@ -287,7 +287,9 @@ def describe_change(before: dict[str, Any] | None, after: dict[str, Any]) -> str
         parts.append(f"Now checks {', '.join(said) or 'the default places'}")
     if before.get("agents") != after.get("agents"):
         agents = after.get("agents") or []
-        parts.append(f"Now applies to {', '.join(agents)}" if agents else "Now applies to every agent")
+        parts.append(
+            f"Now applies to {', '.join(agents)}" if agents else "Now applies to every agent"
+        )
     if before.get("config") != after.get("config"):
         parts.append("Condition changed")
     if before.get("enabled") != after.get("enabled"):

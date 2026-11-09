@@ -237,7 +237,11 @@ class OpaPolicyEngine:
 
         return PolicyDecision(
             verdict=(
-                (applied_effect(policy, fired) if any(f.mode != "enforce" for f in fired) else effective)
+                (
+                    applied_effect(policy, fired)
+                    if any(f.mode != "enforce" for f in fired)
+                    else effective
+                )
                 if policy.mode == "enforce"
                 else "allow"
             ),

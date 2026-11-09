@@ -159,7 +159,9 @@ def _earlier_tools(ctx: CheckContext, within: str) -> list[str]:
     ]
 
 
-def sequence_hit(seq: SequenceSpec, calls: list[tuple[str, dict[str, Any]]]) -> tuple[str, str] | None:
+def sequence_hit(
+    seq: SequenceSpec, calls: list[tuple[str, dict[str, Any]]]
+) -> tuple[str, str] | None:
     """The first (earlier, later) pair of ``calls`` this sequence rule would stop, the
     way :func:`custom_sequence_check` decides each call, or None. For trying a rule
     on a made-up run before saving it."""

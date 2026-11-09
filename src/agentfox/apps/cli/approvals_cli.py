@@ -292,7 +292,7 @@ def approvals_deny(
         help="Who is deciding (an email), for the audit record. Default: your git email.",
     ),
 ) -> None:
-    """Refuse the held call. The same call retried within 30 minutes is blocked, with your reason."""
+    """Refuse the held call. The same call retried within 30 minutes is blocked, with why."""
     _decide(approval_id, False, rationale, actor)
 
 

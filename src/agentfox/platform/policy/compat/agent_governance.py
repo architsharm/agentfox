@@ -626,7 +626,11 @@ def _literal(text: str) -> tuple[Any, bool] | None:
 
 def _field_surface(condition: str) -> str | None:
     """The one surface a condition's text fields name, if it names exactly one."""
-    fields = re.findall(r"(?<![\w.'\"])([a-z_]+(?:\.[a-z_]+)?)(?=\s+(?:contains|startswith|endswith|matches|==|!=|in)\b)", condition)
+    fields = re.findall(
+        r"(?<![\w.'\"])([a-z_]+(?:\.[a-z_]+)?)"
+        r"(?=\s*(?:==|!=|\s(?:contains|startswith|endswith|matches|in)\b))",
+        condition,
+    )
     said = {FIELD_SURFACE[f] for f in fields if f in FIELD_SURFACE}
     return said.pop() if len(said) == 1 else None
 

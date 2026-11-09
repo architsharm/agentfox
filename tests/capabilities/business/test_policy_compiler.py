@@ -405,9 +405,7 @@ def test_a_limit_binds_to_the_tool_the_agent_has():
 
 
 def test_a_picked_tool_is_the_one_the_limit_governs():
-    c = compile_document(
-        "Payments over $1,000 need approval.", tools=PAYABLES, tool="email_vendor"
-    )
+    c = compile_document("Payments over $1,000 need approval.", tools=PAYABLES, tool="email_vendor")
     assert _ladder(c).definition["tool"] == "email_vendor"
 
 

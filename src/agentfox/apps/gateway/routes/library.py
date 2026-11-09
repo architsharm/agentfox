@@ -328,9 +328,10 @@ def compile_text(
     else:
         from agentfox.core.models import Tool
 
-        tools = sorted(
-            {k for k in session.scalars(select(Tool.key)) if not k.startswith("redteam.")}
-        ) or None
+        tools = (
+            sorted({k for k in session.scalars(select(Tool.key)) if not k.startswith("redteam.")})
+            or None
+        )
     return _field_warnings(
         session,
         compile_document(
