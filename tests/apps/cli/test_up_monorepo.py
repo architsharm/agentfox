@@ -147,6 +147,8 @@ def test_up_in_a_folder_with_no_agent_sets_nothing_up(tmp_path):
     assert result.exit_code == 0, result.output
     out = " ".join(result.output.split())
     assert "Nothing to set up here" in out
+    # It read the AI tools' settings in the home folder too, and says so.
+    assert "home folder" in out and "--skip-machine" in out
     assert "Done" not in out
     assert not (root / "agentfox.toml").exists() and not (root / ".agentfox").exists()
 

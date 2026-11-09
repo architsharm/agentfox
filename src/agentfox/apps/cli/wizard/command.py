@@ -464,6 +464,12 @@ def _print_scan(ctx: Context) -> None:
     console.print(f"  [dim]{report.files_scanned} files in {escape(ctx.root.resolve().name)}/[/]")
     for label, value in rows:
         console.print(f"  {label:<16}{value}")
+    if machine is not None:
+        # Outside the repository: said, so nobody wonders why home-folder files count.
+        console.print(
+            "  [dim]also read, not changed: the AI tools' settings in your home folder "
+            "(~/.claude, ~/.cursor, …); --skip-machine leaves them out[/]"
+        )
     if machine is not None and (machine.trifectas or flagged or machine.critical):
         console.print(
             "  [dim]details:[/] [cyan]agentfox scan machine[/], [cyan]agentfox scan skills[/]"
