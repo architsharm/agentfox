@@ -515,6 +515,22 @@ def test_default_allow_is_surfaced():
     assert "passes" in payload["default_action"][0]["note"]
 
 
+def test_an_imported_policy_without_a_description_says_where_it_came_from():
+    """The policy page read "No description." for every imported file without one."""
+    out = _rules(
+        "  - name: no-rm\n    condition: \"tool_name == 'rm'\"\n    action: deny\n"
+        "  - name: no-curl\n    condition: \"tool_name == 'curl'\"\n    action: deny\n"
+    )
+    assert out.documents[0].description == (
+        "Imported from a governance rule file (Agent Governance Toolkit): 2 rules."
+    )
+    kept = translate(
+        "apiVersion: governance.toolkit/v1\nname: t\ndescription: Keep shell out.\n"
+        "rules:\n  - name: no-rm\n    condition: \"tool_name == 'rm'\"\n    action: deny\n"
+    )
+    assert kept.documents[0].description == "Keep shell out."
+
+
 def test_default_deny_blocks_unmatched_and_keeps_allow_exceptions():
     out = _rules(
         "  - name: reads\n"
