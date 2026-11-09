@@ -53,7 +53,10 @@ export function pendingPrompt(live: Arrival | null, dismissed: string[]): Pendin
   const project = live.structure?.project ?? null;
   const key = `${project ?? ""}@${live.connectedAt ?? ""}`;
   if (dismissed.includes(key)) return null;
-  return { key, project, agents: live.pending };
+  // One agent defined in two files is reported twice under one slug, and is one agent
+  // to add: "found 4 agents · billing, billing, support-triage, support-triage" was 2.
+  const agents = live.pending.filter((a, i, all) => all.findIndex((b) => b.slug === a.slug) === i);
+  return { key, project, agents };
 }
 
 /** "Add 3 agents to AgentFox" / "Add Shop Agent to AgentFox". */

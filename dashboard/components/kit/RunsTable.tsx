@@ -3,7 +3,7 @@ import { Dot, Empty, OutcomePill, Pill, ago } from "@/components/kit";
 import { SURFACES, WOULD, outcomeOf, ruleTitle } from "@/lib/product/vocab";
 import { approvalOutcome } from "@/lib/product/approvals";
 import { agentName } from "@/lib/product/names";
-import { runWhat } from "@/lib/product/runWhat";
+import { runSteps, runWhat } from "@/lib/product/runWhat";
 
 /** Runs as a list: when, which agent, what it was doing, what happened and why. */
 export function RunsTable({
@@ -32,7 +32,8 @@ export function RunsTable({
         {runs.map((t) => {
           const rules: string[] = t.rules || [];
           // What the person asked reads better than the developer's task label.
-          const what = runWhat(t, SURFACES);
+          const what = runWhat(t, SURFACES, names);
+          const steps = runSteps(t, names);
           return (
             <tr key={t.id}>
               <td className="tight muted" title={t.started_at}>
@@ -51,9 +52,9 @@ export function RunsTable({
                 <Link className="k-name" href={`/app/traces/${t.id}`}>
                   {what}
                 </Link>
-                {t.runs > 1 && (
-                  <span className="sub" title="Model calls, checks and tool calls in this conversation">
-                    {t.runs} steps{t.tools?.length ? ` · ${t.tools.length} tool${t.tools.length === 1 ? "" : "s"}` : ""}
+                {steps && (
+                  <span className="sub" title="The model calls, tool calls and checks in this turn">
+                    {steps}
                   </span>
                 )}
               </td>

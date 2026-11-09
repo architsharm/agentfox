@@ -109,3 +109,22 @@ describe("pendingPrompt: the Add step stays until done or dismissed", () => {
     expect(addLabel([{ name: "Planner" }])).toBe("Add Planner to AgentFox");
   });
 });
+
+describe("pendingPrompt counts each agent once", () => {
+  it("an agent init found in two files is one agent to add", () => {
+    const live = {
+      connected: true,
+      connectedAt: "2026-11-09T12:00:00Z",
+      structure: { project: "lg" },
+      pending: [
+        { slug: "billing", name: "billing" },
+        { slug: "billing", name: "billing" },
+        { slug: "support-triage", name: "support-triage" },
+        { slug: "support-triage", name: "support-triage" },
+      ],
+    };
+    const p = pendingPrompt(live, [])!;
+    expect(p.agents.map((a) => a.slug)).toEqual(["billing", "support-triage"]);
+    expect(addLabel(p.agents)).toBe("Add 2 agents to AgentFox");
+  });
+});

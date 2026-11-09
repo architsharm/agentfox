@@ -21,6 +21,7 @@ import { SURFACES, TRUST, WOULD, detectorName, outcomeOf, ruleTitle, sentence } 
 import type { ReactNode } from "react";
 import { NoticeToast } from "@/components/product/NoticeToast";
 import { approvalOutcome } from "@/lib/product/approvals";
+import { agentNames, withAgentNames } from "@/lib/product/names";
 
 export const metadata: Metadata = appPageMetadata("Run");
 export const dynamic = "force-dynamic";
@@ -93,6 +94,8 @@ export default async function RunDetail({
   }
 
   const t = d.trace;
+  // Issue titles carry the agent's slug; on screen it has its display name.
+  const names = (d.findings || []).length ? agentNames((await safeApi<any>("/api/agents", { agents: [] })).agents) : new Map<string, string>();
   const decisions: any[] = d.decisions || [];
   const outcome = outcomeOf(t.verdict);
   const surfaces = Array.from(new Set(decisions.map((x) => SURFACES[x.surface] || x.surface)));
@@ -160,7 +163,7 @@ export default async function RunDetail({
                     {(d.findings || []).map((f: any, i: number) => (
                       <span key={f.id}>
                         {i > 0 && ", "}
-                        <Link href={`/app/findings/${encodeURIComponent(f.id)}`}>{sentence(f.title)}</Link>
+                        <Link href={`/app/findings/${encodeURIComponent(f.id)}`}>{sentence(withAgentNames(f.title, names))}</Link>
                       </span>
                     ))}
                   </span>,

@@ -158,6 +158,20 @@ export function switcherOptions(projects: ProjectRow[]): ProjectRow[] {
   return [...out.values()];
 }
 
+/**
+ * The switcher option a page is scoped to: the one `asked` (a URL's project) or the
+ * cookie names (an option's key, a system's root or any agent in it), else the
+ * default. Every page that scopes to "the project" goes through this, so the switcher,
+ * the map and Policies count the same agents: Policies used to look the cookie up
+ * among systems, miss the repository key, and fall back to one system ("4 agents"
+ * beside the switcher's "11 agents").
+ */
+export function chosenOption(projects: ProjectRow[], cookie?: string | null, asked?: string | null): ProjectRow | undefined {
+  const options = switcherOptions(projects);
+  const find = (key?: string | null) => (key ? options.find((o) => o.project === key || o.slugs?.includes(key)) : undefined);
+  return find(asked) ?? find(cookie) ?? defaultProject(options);
+}
+
 /** The agents disconnecting an option takes off the dashboard: its members from its repository (or, with none, from none). */
 export function disconnectedBy(option: ProjectRow): ProjectMember[] {
   const repo = option.repo !== undefined ? option.repo : option.repos?.length === 1 ? option.repos[0] : null;

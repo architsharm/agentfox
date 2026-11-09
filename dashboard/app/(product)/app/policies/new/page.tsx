@@ -33,14 +33,16 @@ export default async function NewRule({ searchParams }: { searchParams: Promise<
     { key: "import", label: "Import" },
   ];
   const keep = { run: sp.run, agent: sp.agent };
+  // The heading names the agent as people named it, not by its slug.
+  const agentLabel = sp.agent ? ((await safeApi<any>(`/api/agents/${encodeURIComponent(sp.agent)}`, null))?.name || sp.agent) : undefined;
   // No builder chosen yet: start from what the person wants, not from our mechanisms.
-  if (!sp.from && !sp.run) return <Start agent={sp.agent} surfaces={sp.surfaces} />;
+  if (!sp.from && !sp.run) return <Start agent={sp.agent} label={agentLabel} surfaces={sp.surfaces} />;
   const tab = tabs.some((t) => t.key === sp.from) ? sp.from! : tabs[0].key;
   const scopeAgents = tab === "custom" || tab === "describe" ? await projectAgents() : [];
 
   return (
     <>
-      <Header back={{ href: "/app/policies", label: "Policies" }} title={sp.agent ? `New rule for ${sp.agent}` : "New rule"} />
+      <Header back={{ href: "/app/policies", label: "Policies" }} title={agentLabel ? `New rule for ${agentLabel}` : "New rule"} />
       <Tabs items={tabs.map((t) => ({ ...t, href: href("/app/policies/new", { ...keep, from: t.key }) }))} active={tab} />
       {DOCS[tab] && (
         <p className="k-help">
@@ -158,7 +160,7 @@ async function ToolAccess({ agent }: { agent?: string }) {
             <li key={a.slug}>
               <div className="k-list-main">
                 <span className="k-name">{a.name || a.slug}</span>
-                <span className="muted">{a.declared_tools?.length || 0} tools declared</span>
+                <span className="muted">{a.declared_tools?.length === 1 ? "1 tool declared" : `${a.declared_tools?.length || 0} tools declared`}</span>
               </div>
               <Link className="k-btn" href={href(`/app/projects/${encodeURIComponent(a.slug)}`, { view: "access" })}>
                 Edit access
@@ -211,10 +213,10 @@ const GOALS: { title: string; text: string; to: Record<string, string> | string 
   { title: "Bring rules you already have", text: "From Guardrails AI, or agent-governance YAML or a policy manifest.", to: { from: "import" } },
 ];
 
-function Start({ agent, surfaces }: { agent?: string; surfaces?: string }) {
+function Start({ agent, label, surfaces }: { agent?: string; label?: string; surfaces?: string }) {
   return (
     <>
-      <Header back={{ href: "/app/policies", label: "Policies" }} title={agent ? `Add rule for ${agent}` : "What do you want to do?"} />
+      <Header back={{ href: "/app/policies", label: "Policies" }} title={agent ? `Add rule for ${label || agent}` : "What do you want to do?"} />
       {agent && (
         <Card>
           <div className="k-pills" style={{ gap: 10, justifyContent: "space-between", flexWrap: "wrap" }}>

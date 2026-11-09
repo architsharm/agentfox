@@ -64,7 +64,7 @@ def list_traces(
     session: Session = Depends(db),
     _user: User = Depends(current_user),
 ) -> dict[str, Any]:
-    """Runs, newest first. ``group=true`` gives one row per conversation."""
+    """Runs, newest first. ``group=true`` gives one row per conversation turn."""
     since = dt.datetime.now(dt.UTC) - dt.timedelta(days=since_days) if since_days else None
     if start and (since is None or start > since):
         since = start
