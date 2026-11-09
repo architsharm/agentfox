@@ -526,7 +526,7 @@
         "required": false,
         "multiple": false,
         "default": null,
-        "help": "Exit non-zero if any model call is ungoverned (for CI)."
+        "help": "Exit non-zero if any model call is ungoverned (for CI). Only that: a critical finding such as a lethal trifecta is reported, not failed on."
        },
        {
         "kind": "option",

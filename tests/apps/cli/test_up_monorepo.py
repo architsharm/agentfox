@@ -136,3 +136,28 @@ def test_up_says_auto_does_not_govern_an_adk_agents_model_calls(tmp_path):
     assert "NOT governed by auto()" in out
     assert "google-genai" in out
     assert "records every call" not in out
+
+
+@pytest.mark.usefixtures("home")
+def test_up_in_a_folder_with_no_agent_sets_nothing_up(tmp_path):
+    root = tmp_path / "empty"
+    root.mkdir()
+    (root / "notes.txt").write_text("hello\n")
+    result = _up(str(root), "--yes")
+    assert result.exit_code == 0, result.output
+    out = " ".join(result.output.split())
+    assert "Nothing to set up here" in out
+    assert "Done" not in out
+    assert not (root / "agentfox.toml").exists() and not (root / ".agentfox").exists()
+
+
+@pytest.mark.usefixtures("home")
+def test_up_counts_the_apps_its_agent_systems_are_in(tmp_path):
+    root = _mono(tmp_path)
+    for app_dir, name in (("apps/research", "research"), ("apps/trip", "trip")):
+        (root / app_dir / "pyproject.toml").write_text(f'[project]\nname = "{name}"\n')
+    result = _up(str(root), "--yes", "--with", "python-app")
+    assert result.exit_code == 0, result.output
+    out = " ".join(result.output.split())
+    assert "2 separate agent systems here, in 2 apps" in out
+    assert "steps done" in out or "step done" in out

@@ -46,9 +46,22 @@ def _flags_text(site: Any) -> str:
     return ", ".join(FLAG_WORD.get(f, f) for f in site.capabilities)
 
 
+def handed_only(report: Any) -> list[tuple[str, str]]:
+    """``(tool, file)`` for each tool an agent is handed that the scan has no site for:
+    a library tool (`SerperDevTool()`, a toolkit's) whose code is not in the repository.
+    Counted with the rest, so "can reach" agrees with the tools listed per agent."""
+    have = {s.name for s in report.tools}
+    out: dict[str, str] = {}
+    for agent in report.agents:
+        for name in agent.tools:
+            if name not in have:
+                out.setdefault(name, agent.file)
+    return sorted(out.items())
+
+
 def surface_line(report: Any) -> str:
     """`4 tools · 2 MCP servers (filesystem, fetch)` — the one-line count."""
-    tools = report.tools
+    tools = [*report.tools, *handed_only(report)]
     servers = report.mcp_servers
     parts = [f"[bold]{len(tools)}[/] tool{'' if len(tools) == 1 else 's'}"]
     server_text = f"[bold]{len(servers)}[/] MCP server{'' if len(servers) == 1 else 's'}"
@@ -64,8 +77,11 @@ def print_surface(
 ) -> None:
     """What the agent can reach: each tool and MCP server and what it can do."""
     items = report.tools + report.mcp_servers
+    handed = handed_only(report)
+    if not items and not handed and not getattr(report, "code_files_scanned", 1):
+        return  # nothing read: "can reach 0 tools" would claim what was not checked
     console.print(f"  [dim]can reach:[/] {surface_line(report)}")
-    if not items:
+    if not items and not handed:
         return
     table = Table(box=None, padding=(0, 1), show_header=False)
     table.add_column("name", no_wrap=True)
@@ -76,6 +92,10 @@ def print_surface(
         if site.kind == "mcp_server":
             label = f"{label} [dim](MCP)[/]"
         table.add_row(f"    {label}", site.file, _flags_text(site))
+    room = max(limit - len(items), 0)
+    for name, file in handed[:room]:
+        table.add_row(f"    {name}", file, "[dim]a library tool: its code is not here[/]")
     console.print(table)
-    if len(items) > limit:
-        console.print(f"    [dim]… and {len(items) - limit} more ({more_hint})[/]")
+    total = len(items) + len(handed)
+    if total > limit:
+        console.print(f"    [dim]… and {total - limit} more ({more_hint})[/]")

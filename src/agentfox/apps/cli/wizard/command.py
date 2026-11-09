@@ -470,6 +470,27 @@ def _print_scan(ctx: Context) -> None:
         )
 
 
+def _nothing_here(ctx: Context) -> bool:
+    """Whether the scan found nothing `up` could govern in this folder."""
+    report = ctx.report
+    return not (
+        report.agents
+        or report.model_calls
+        or ctx.tool_names
+        or ctx.mcp_names
+        or any(h.in_repo or h.hooked for h in ctx.harnesses)
+    )
+
+
+def _apps(ctx: Any, roots: list[str]) -> int:
+    """How many apps (projects: the nearest `pyproject.toml` or `package.json`) the
+    agent systems rooted at ``roots`` live in."""
+    from agentfox.capabilities.onboarding.mapper import project_name_for
+
+    by_key = {a.key: a for a in ctx.report.agents}
+    return len({project_name_for(ctx.root, by_key[r].file) for r in roots if r in by_key})
+
+
 def _short(where: str) -> str:
     """A database URL or address short enough for one line: SQLite as a path under ~."""
     if not where.startswith("sqlite:///"):
@@ -583,6 +604,16 @@ def up(
         ctx = detect(root, machine=not skip_machine)
     _print_scan(ctx)
     saved = ctx.saved
+    if include is None and _nothing_here(ctx):
+        # An empty folder, or one with no agent: setting up a workspace, policies and
+        # a recorded scan of nothing would end in "Done", with nothing governed.
+        console.print(
+            "\n  [yellow]Nothing to set up here[/]: no agent, model call, tool, MCP server "
+            "or coding-agent setup in this folder. Run [cyan]agentfox up[/] in the folder "
+            "that holds your agent (`agentfox scan <path>` shows what it finds), or name "
+            "what to set up with [cyan]--with[/]."
+        )
+        raise typer.Exit(0)
 
     # 2. Where --------------------------------------------------------------------
     _step(2, "Where AgentFox runs")
@@ -666,8 +697,11 @@ def up(
         # The best other first runs, by the key `--agent` takes.
         shown = pick.others[:3]
         how = "pick its file above, or run" if interactive else "run"
+        apps = _apps(ctx, [s["root"] for s in _systems(ctx)])
         console.print(
-            f"  [yellow]{pick.systems} separate agent systems here[/] — setting up "
+            f"  [yellow]{pick.systems} separate agent systems here"
+            + (f", in {apps} apps" if apps > 1 else "")
+            + "[/] — setting up "
             f"[bold]{escape(run.agent)}[/] only"
             + (f" [dim]({escape(pick.file)})[/]" if pick.file else "")
             + f". For another, {how} [cyan]agentfox up --agent <name>[/]: "
@@ -737,7 +771,7 @@ def up(
     failed = [o for o in run.outcomes if o.status == "failed"]
     lines = [
         f"[bold]{'Done' if not failed else 'Done, with problems'}[/] — "
-        f"{sum(o.status == 'done' for o in run.outcomes)} set up"
+        f"{plural(sum(o.status == 'done' for o in run.outcomes), 'step')} done"
         + (f", [red]{len(failed)} failed[/]" if failed else ""),
     ]
     if run.running:
