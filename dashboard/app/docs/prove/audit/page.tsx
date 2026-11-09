@@ -38,8 +38,9 @@ export default function Page() {
         <Step title="Share the summary">
           <p>
             <strong>Reports → Summary</strong> is one page for someone who has never opened AgentFox:
-            what is running, what was stopped, and what rules in Watch would have stopped. Press{" "}
-            <strong>Print / save as PDF</strong> to send it on.
+            what is running and what was stopped. Press <strong>Print / save as PDF</strong> to send it
+            on. The CLI version below, and the <code>SUMMARY.md</code> in an evidence package, also list
+            what rules in Watch would have stopped.
           </p>
           <Code>{`agentfox report summary --since 30d --format html --out summary.html`}</Code>
         </Step>
