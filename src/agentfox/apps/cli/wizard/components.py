@@ -1300,7 +1300,7 @@ def apply_mode(run: Run) -> None:
     run.done("mode", text + (f" [dim](changed {', '.join(changed)})[/]" if changed else ""))
     for item in refused:
         run.failed("mode", item)
-    if want == "observe":
+    if want == "observe" and "tool-containment" not in blocking:
         run.later_steps.append(
             (
                 "agentfox policy enforce tool-containment",

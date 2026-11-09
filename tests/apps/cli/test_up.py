@@ -134,6 +134,8 @@ def test_running_up_again_keeps_a_policy_someone_switched_to_blocking(project):
     assert result.exit_code == 0, result.output
     assert "kept blocking: tool-containment" in " ".join(result.output.split())
     assert "(changed" not in result.output
+    # …and it does not suggest starting what already blocks.
+    assert "policy enforce tool-containment" not in result.output
 
     from sqlalchemy import select
 
