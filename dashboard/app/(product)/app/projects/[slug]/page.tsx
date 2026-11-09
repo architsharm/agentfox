@@ -26,6 +26,8 @@ import {
 import { Act } from "@/components/kit/Act";
 import { FilterBar } from "@/components/kit/FilterBar";
 import { RunsTable } from "@/components/kit/RunsTable";
+import { agentNames } from "@/lib/product/names";
+import { AgentRules } from "@/components/product/agent/AgentRules";
 import { AccessEditor } from "@/components/product/agent/AccessEditor";
 import { FeaturesEditor } from "@/components/product/features/FeaturesEditor";
 import { RANGE_DAYS, metricsQs, runsHref, verdictsFor, type Filters } from "@/lib/product/observe";
@@ -148,7 +150,7 @@ export default async function ProjectDetail({ params, searchParams }: { params: 
           {sub === "quality" && <Quality f={f} />}
         </>
       )}
-      {view === "access" && <Access slug={slug} prefill={sp.grant} />}
+      {view === "access" && <Access slug={slug} name={name} prefill={sp.grant} />}
       {view === "features" && <ProjectFeatures slug={slug} />}
       {view === "controls" && <Controls slug={a.slug} name={name} actor={actor} control={control} />}
       {view === "settings" && (
@@ -225,7 +227,7 @@ async function Canvas({ f, posture: agentPosture, controls, actor }: { f: Filter
   return map ? <GuardrailMap maps={[map, ...otherMaps]} focus={slug} project={project} catalog={catalog} facts={facts} actor={actor} /> : <Card><Empty>The canvas could not be loaded.</Empty></Card>;
 }
 
-async function Access({ slug, prefill }: { slug: string; prefill?: string }) {
+async function Access({ slug, name, prefill }: { slug: string; name: string; prefill?: string }) {
   const [access, boundaries] = await Promise.all([
     safeApi<any>(`/api/agents/${encodeURIComponent(slug)}/access`, null),
     safeApi<any>("/api/answerability/boundaries", { boundaries: [], question_types: [] }),
@@ -298,6 +300,7 @@ async function Access({ slug, prefill }: { slug: string; prefill?: string }) {
           </div>
         </form>
       </Card>
+      <AgentRules slug={slug} name={name} />
     </>
   );
 }
@@ -397,9 +400,11 @@ async function Activity({ f, outcome }: { f: Filters; outcome?: string }) {
   const v = verdictsFor(outcome);
   if (v) qs.set("verdict", v);
   if (outcome === "errors") qs.set("errors", "true");
-  const [runs, s] = await Promise.all([
+  const [runs, s, agents] = await Promise.all([
     safeApi<any>(`/api/traces?${qs}`, { traces: [] }),
     safeApi<any>(`/api/metrics/summary?${metricsQs(f)}`, null),
+    // Display names, for the agents a turn hands off to.
+    safeApi<any>("/api/agents", { agents: [] }),
   ]);
   const t = s?.totals || {};
   const p = s?.previous || {};
@@ -437,7 +442,7 @@ async function Activity({ f, outcome }: { f: Filters; outcome?: string }) {
         </Card>
       )}
       <Card flush>
-        <RunsTable runs={runs.traces} showAgent={false} />
+        <RunsTable runs={runs.traces} showAgent={false} names={agentNames(agents.agents)} />
       </Card>
     </>
   );
@@ -798,6 +803,7 @@ async function Controls({ slug, name, actor, control }: { slug: string; name: st
         )}
       </Card>
       {breaker ? <Breaker slug={slug} b={breaker} /> : <Card title="Circuit breaker"><Empty>The circuit breaker could not be loaded.</Empty></Card>}
+      <AgentRules slug={slug} name={name} />
     </>
   );
 }

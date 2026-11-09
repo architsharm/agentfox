@@ -193,3 +193,12 @@ export function ownRulesState(modes: (string | null | undefined)[]): { text: str
 export function businessWouldStop(sim: any): number {
   return sim?.counts?.would_stop ?? 0;
 }
+
+/** How many applied rules (GET /api/policies/applied) reach one agent and how many act now, as Policies → Applied rules counts them. */
+export function agentRuleCounts(
+  rules: { effect: string; mode: string; agents: { slug: string }[] }[],
+  slug: string,
+): { total: number; acting: number } {
+  const mine = rules.filter((r) => r.agents.some((a) => a.slug === slug));
+  return { total: mine.length, acting: mine.filter((r) => r.mode !== "observe" && r.effect !== "allow").length };
+}
