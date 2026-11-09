@@ -28,7 +28,25 @@ export default function Page() {
           <Link href="/docs/quickstart">Quickstart</Link>), and <code>init</code> is still running.
           The attacks run your agent on your machine, with every tool faked.
         </li>
+        <li>
+          Your agent is built with LangChain or LangGraph, the OpenAI Agents SDK, CrewAI, or is a
+          function that runs its own function-calling loop. It runs on its own model, with the key in
+          your environment.
+        </li>
       </ul>
+
+      <h3>CrewAI</h3>
+      <p>
+        AgentFox finds a crew in a module-level <code>Crew(...)</code> or in a{" "}
+        <code>@CrewBase</code> class (its <code>@crew</code> and <code>@agent</code> methods, with{" "}
+        <code>config/agents.yaml</code> and <code>tasks.yaml</code>), and builds a fresh crew for
+        each attack. The crew gets the attack in every <code>{"{input}"}</code> its tasks take, as{" "}
+        <code>kickoff(inputs=...)</code> would; a hierarchical crew runs its manager, which hands work
+        to the agents as it would live. Each agent is also attacked on its own, as the one task of a
+        crew. Your tools are faked; CrewAI&apos;s own delegation tools still run. A crew with no{" "}
+        <code>{"{input}"}</code> in its tasks, and an agent with MCP servers or CrewAI platform apps,
+        are reported as not run, with the reason.
+      </p>
 
       <Steps>
         <Step title="Run the attack test">

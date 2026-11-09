@@ -105,6 +105,14 @@ agentfox init --key nom_api_… --server https://…`}</Code>
             <td>Keep <code>init</code> running. It runs the tests on your machine.</td>
           </tr>
           <tr>
+            <td>An agent&apos;s attacks say Not run</td>
+            <td>
+              The line says why. The test runs LangChain, LangGraph, OpenAI Agents SDK and CrewAI
+              agents (a <code>@CrewBase</code> crew included); see{" "}
+              <Link href="/docs/test">Attack tests</Link>.
+            </td>
+          </tr>
+          <tr>
             <td>Nothing on Activity</td>
             <td>
               Start the app from the folder where <code>init</code> ran, or set{" "}
