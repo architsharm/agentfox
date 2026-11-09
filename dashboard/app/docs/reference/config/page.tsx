@@ -133,6 +133,12 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "what": "The largest request body the gateway reads, in bytes. A larger one is refused with 413 before it is buffered. 0 for no limit."
       },
       {
+        "key": "anonymous_inline_per_minute",
+        "env": "AGENTFOX_ANONYMOUS_INLINE_PER_MINUTE",
+        "def": "0",
+        "what": "Inline requests per minute per address from a caller with no credential (429 past it). 0 for no limit, the right setting for a self-hosted gateway serving its own unregistered agents; set it on a gateway open to the internet."
+      },
+      {
         "key": "onboarding_key_ttl_days",
         "env": "AGENTFOX_ONBOARDING_KEY_TTL_DAYS",
         "def": "30",

@@ -202,6 +202,9 @@ the file it came from.
 - **Failed authentication is logged and throttled.** Each refused credential is logged
   with the address and route (never the credential); past 30 failures in 5 minutes from
   one address a bad credential gets 429. A valid credential is never refused.
+- `anonymous_inline_per_minute` (`AGENTFOX_ANONYMOUS_INLINE_PER_MINUTE`, off by default):
+  a per-address limit on inline calls made with no credential, for a gateway open to
+  the internet, where each anonymous call writes a trace into the default tenant.
 - **Request bodies are capped** at `max_request_bytes` (`AGENTFOX_MAX_REQUEST_BYTES`,
   10 MB); a larger one gets 413 before it is buffered.
 - **Security headers.** The dashboard and the gateway refuse framing (`X-Frame-Options:

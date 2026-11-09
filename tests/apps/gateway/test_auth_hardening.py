@@ -426,6 +426,20 @@ def test_a_hosted_provider_is_never_called_with_egress_off(ready, monkeypatch):
     assert response.json()["error"]["type"] == "agentfox_provider_unavailable"
 
 
+def test_anonymous_inline_traffic_can_be_limited_per_address(ready, production, monkeypatch):
+    client = _app()
+    body = {"agent": "support-triage", "content": "hello"}
+    # Off by default: shadow traffic from one address is the self-hosted norm.
+    assert all(client.post("/v1/guard/input", json=body).status_code == 200 for _ in range(5))
+    monkeypatch.setattr(get_settings(), "anonymous_inline_per_minute", 3)
+    statuses = [client.post("/v1/guard/input", json=body).status_code for _ in range(4)]
+    assert statuses == [200, 200, 200, 429]
+    # A caller with a credential is not counted against it.
+    raw, _ = _agent_key()
+    keyed = client.post("/v1/guard/input", json=body, headers={"Authorization": f"Bearer {raw}"})
+    assert keyed.status_code == 200
+
+
 def test_an_oversized_body_is_refused_before_it_is_read(ready, production, monkeypatch):
     monkeypatch.setattr(get_settings(), "max_request_bytes", 1000)
     client = _app()

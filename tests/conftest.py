@@ -117,9 +117,10 @@ def isolated_db(tmp_path, monkeypatch, schema_template) -> Iterator[None]:
     reset_check_meter()
     # Nor one test's refused credentials against the next one's (gateway/deps.py).
     try:
-        from agentfox.apps.gateway.deps import failed_auth_limiter
+        from agentfox.apps.gateway import deps as gateway_deps
 
-        failed_auth_limiter._hits.clear()
+        gateway_deps.failed_auth_limiter._hits.clear()
+        gateway_deps._anonymous_limiter = None
     except ImportError:  # the gateway's dependencies are an extra
         pass
     yield

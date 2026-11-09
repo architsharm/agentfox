@@ -404,6 +404,12 @@ class Settings(BaseSettings):
     #: the process buffer as much as the client cares to send. Large enough for a long
     #: prompt or a batch of trace spans; Vercel's own cap (4.5 MB) is lower still.
     max_request_bytes: int = 10_000_000
+    #: Inline requests (`/v1/guard/*`, `/v1/chat/completions`, `/v1/messages`, `/v1/mcp/call`)
+    #: per minute per address from a caller with no credential; 0 for no limit. Off by
+    #: default because a self-hosted gateway serves its own unregistered agents (shadow
+    #: traffic), often from one address. A gateway on the public internet should set it:
+    #: each anonymous call writes a trace into the default tenant.
+    anonymous_inline_per_minute: int = 0
 
     # --- Outbound finding webhooks ----------------------------------------
     # Every newly committed Finding at or above `webhook_min_severity` is POSTed
