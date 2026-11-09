@@ -12,8 +12,8 @@ export const SCREENS = {
   setupKey: {
     src: "/docs/screens/setup-key.png",
     alt: "The Connect your first agent card. Step 1, Create a key, shows a new workspace key (masked here) with a copy button. Step 2 shows pip install -U agentfox and the agentfox init --key --server command with that key filled in.",
-    width: 1248,
-    height: 1334,
+    width: 1280,
+    height: 1382,
   },
   agentsArrive: {
     src: "/docs/screens/agents-arrive.png",
@@ -31,7 +31,7 @@ export const SCREENS = {
     src: "/docs/screens/scan-terminal.svg",
     alt: "Terminal output of agentfox scan: the agents it found by name, the tools they can reach, and a Next box that says agentfox up.",
     width: 1190,
-    height: 758,
+    height: 904,
   },
   attackTest: {
     src: "/docs/screens/attack-test.png",
@@ -53,7 +53,7 @@ export const SCREENS = {
   },
   yourRules: {
     src: "/docs/screens/your-rules.png",
-    alt: "The Your rules drawer: each rule you wrote, what it checks and what it would do, with Start blocking and Add a rule buttons.",
+    alt: "The Your rules drawer: each rule you wrote, what it checks and what it would do, with Simulate and Add a rule buttons.",
     width: 1280,
     height: 1660,
   },
@@ -101,7 +101,7 @@ export const SCREENS = {
   },
   ruleDetail: {
     src: "/docs/screens/rule-detail.png",
-    alt: "A library opened from Policies, Libraries: its rules, what each checks, what it would do, and a Start blocking button.",
+    alt: "A library opened from Policies, Libraries: its rules, what each checks, what it would do, and a Simulate button.",
     width: 2440,
     height: 1660,
   },
@@ -113,7 +113,7 @@ export const SCREENS = {
   },
   testing: {
     src: "/docs/screens/testing.png",
-    alt: "Testing, Attack tests: run a test against an agent, the last run's totals, and past runs.",
+    alt: "Testing, Attack tests: run a test against an agent, its past runs, and the runs checked without a model.",
     width: 2440,
     height: 1660,
   },
