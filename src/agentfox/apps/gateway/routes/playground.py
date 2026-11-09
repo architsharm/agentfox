@@ -197,6 +197,10 @@ def chat(
             agent_slug=payload.agent,
             messages=messages,
             model="echo-1",
+            # Pinned, not the deployment's default: a public, unauthenticated page
+            # must never reach a hosted model on the operator's API key, whatever
+            # `default_provider` this deployment runs with.
+            provider="echo",
             session_id=session_id,
             intent="playground chat",
             environment=sandbox_agents.ENVIRONMENT,

@@ -260,6 +260,122 @@ class RunDueJobsOnTraffic:
             await run_in_threadpool(_run_due_jobs)
 
 
+#: Sent on every gateway response. The gateway serves JSON and the API docs; nothing
+#: legitimately frames it, so framing is refused, and nothing it returns should be
+#: sniffed into another content type. Only `frame-ancestors` in the CSP: a script
+#: policy would break the bundled API docs page for no gain on a JSON API.
+SECURITY_HEADERS: tuple[tuple[bytes, bytes], ...] = (
+    (b"x-content-type-options", b"nosniff"),
+    (b"x-frame-options", b"DENY"),
+    (b"content-security-policy", b"frame-ancestors 'none'"),
+    (b"referrer-policy", b"no-referrer"),
+)
+
+
+class SecurityHeaders:
+    """Add :data:`SECURITY_HEADERS` to every HTTP response that does not set its own.
+
+    Plain ASGI for the reason `RunDueJobsOnTraffic` gives: no `BaseHTTPMiddleware`.
+    """
+
+    def __init__(self, app: Any) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def send_with_headers(message: Any) -> None:
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers") or [])
+                present = {k.lower() for k, _ in headers}
+                headers.extend((k, v) for k, v in SECURITY_HEADERS if k not in present)
+                message = {**message, "headers": headers}
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)
+
+
+class _BodyTooLarge(Exception):
+    pass
+
+
+class BodySizeLimit:
+    """Refuse a request body over ``max_request_bytes`` with 413, before it is buffered.
+
+    A declared ``Content-Length`` over the limit is refused without reading anything; a
+    body sent without one (chunked) is counted as it arrives and cut off at the limit.
+    """
+
+    def __init__(self, app: Any) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        limit = get_settings().max_request_bytes
+        if scope["type"] != "http" or limit <= 0:
+            await self.app(scope, receive, send)
+            return
+        declared = dict(scope.get("headers") or []).get(b"content-length")
+        if declared is not None and declared.isdigit() and int(declared) > limit:
+            await self._too_large(send, limit)
+            return
+
+        received = 0
+        over = False
+        replaced = False
+        started = False
+
+        async def counting_receive() -> Any:
+            nonlocal received, over
+            message = await receive()
+            if message["type"] == "http.request":
+                received += len(message.get("body", b""))
+                if received > limit:
+                    over = True
+                    raise _BodyTooLarge
+            return message
+
+        async def tracking_send(message: Any) -> None:
+            nonlocal started, replaced
+            if over:
+                # FastAPI turns an error while reading the body into its own 400; the
+                # caller should hear what actually happened instead.
+                if not replaced and message["type"] == "http.response.start":
+                    replaced = started = True
+                    await self._too_large(send, limit)
+                return
+            if message["type"] == "http.response.start":
+                started = True
+            await send(message)
+
+        try:
+            await self.app(scope, counting_receive, tracking_send)
+        except _BodyTooLarge:
+            if started:
+                return
+            await self._too_large(send, limit)
+
+    @staticmethod
+    async def _too_large(send: Any, limit: int) -> None:
+        body = (
+            b'{"detail":"request body too large (the limit is '
+            + str(limit).encode()
+            + b' bytes, max_request_bytes)"}'
+        )
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 413,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"content-length", str(len(body)).encode()),
+                ],
+            }
+        )
+        await send({"type": "http.response.body", "body": body})
+
+
 def create_app() -> FastAPI:
     # Before anything else, and here rather than in `lifespan`: a serverless host may
     # never run the lifespan, and a process that is going to refuse should refuse
@@ -409,6 +525,21 @@ def create_app() -> FastAPI:
             return await call_next(request)
         finally:
             controller.leave()
+
+    app.add_middleware(BodySizeLimit)
+    # Added last, so outermost: the gates' own 429 and 503 answers, and the 413 above,
+    # get the headers too.
+    app.add_middleware(SecurityHeaders)
+
+    from agentfox.runtime.enforcement import ProviderUnavailable
+
+    @app.exception_handler(ProviderUnavailable)
+    async def provider_unavailable(_request: Request, exc: ProviderUnavailable) -> JSONResponse:
+        """No provider could answer: a 502 that says so, rather than a bare 500."""
+        return JSONResponse(
+            status_code=502,
+            content={"error": {"type": "agentfox_provider_unavailable", "message": str(exc)}},
+        )
 
     app.include_router(inline.router)
     app.include_router(registry.router)

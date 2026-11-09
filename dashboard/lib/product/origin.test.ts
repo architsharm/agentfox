@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { NextRequest } from "next/server";
 import { requestOrigin } from "./origin";
 
@@ -12,5 +12,25 @@ describe("requestOrigin", () => {
       headers: { host: "internal:3000", "x-forwarded-host": "useagentfox.com", "x-forwarded-proto": "https" },
     });
     expect(requestOrigin(req)).toBe("https://useagentfox.com");
+  });
+
+  describe("with AGENTFOX_ALLOWED_ORIGINS", () => {
+    afterEach(() => {
+      delete process.env.AGENTFOX_ALLOWED_ORIGINS;
+    });
+    it("keeps a listed origin", () => {
+      process.env.AGENTFOX_ALLOWED_ORIGINS = "https://useagentfox.com, https://www.useagentfox.com/";
+      const req = new NextRequest("http://internal:3000/x", {
+        headers: { host: "internal:3000", "x-forwarded-host": "www.useagentfox.com", "x-forwarded-proto": "https" },
+      });
+      expect(requestOrigin(req)).toBe("https://www.useagentfox.com");
+    });
+    it("never builds a redirect from a host the client made up", () => {
+      process.env.AGENTFOX_ALLOWED_ORIGINS = "https://useagentfox.com";
+      const req = new NextRequest("http://internal:3000/x", {
+        headers: { host: "internal:3000", "x-forwarded-host": "evil.example", "x-forwarded-proto": "https" },
+      });
+      expect(requestOrigin(req)).toBe("https://useagentfox.com");
+    });
   });
 });

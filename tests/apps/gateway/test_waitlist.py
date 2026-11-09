@@ -75,8 +75,8 @@ def test_submitting_the_same_address_twice_is_idempotent(client):
     assert first.status_code == 200
     assert second.status_code == 200
     assert first.json()["status"] == "added"
-    assert second.json()["status"] == "already_on_list"
-    assert second.json()["email"] == "ada@example.com"
+    # Identical to a first signup: a different answer would say who is on the list.
+    assert second.json() == first.json()
 
     with session_scope() as session:
         assert session.scalar(select(func.count()).select_from(WaitlistSignup)) == 1

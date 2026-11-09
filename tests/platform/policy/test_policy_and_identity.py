@@ -438,6 +438,42 @@ def test_approval_lifecycle(session):
     assert resolved.resolution_rationale == "verified with customer"
 
 
+def test_two_people_deciding_at_once_do_not_both_win(session):
+    """The decision is a conditional update: whoever reads `pending` second loses."""
+    import pytest
+    from sqlalchemy import update
+
+    from agentfox.core.models import ApprovalRequest
+    from agentfox.platform.identity import ApprovalAlreadyDecided
+
+    request = request_approval(
+        session, agent_id=None, tool_key="payments.transfer", arguments={"amount": 1}, reason="r"
+    )
+    # Someone else's deny lands after this session read the row as pending.
+    real_get = session.get
+
+    def stale_get(cls, ident, *a, **kw):
+        row = real_get(cls, ident, *a, **kw)
+        if cls is ApprovalRequest:
+            session.execute(
+                update(ApprovalRequest)
+                .where(ApprovalRequest.id == ident)
+                .values(status="denied", resolver_user_id="usr_2")
+                .execution_options(synchronize_session=False)
+            )
+        return row
+
+    session.get = stale_get  # type: ignore[method-assign]
+    try:
+        with pytest.raises(ApprovalAlreadyDecided) as raised:
+            resolve_approval(session, request.id, True, "usr_1", "approving")
+    finally:
+        del session.get
+    assert raised.value.status == "denied"
+    session.refresh(request)
+    assert (request.status, request.resolver_user_id) == ("denied", "usr_2")
+
+
 def test_unanswered_approval_fails_closed(session):
     import datetime as dt
 

@@ -127,6 +127,18 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "what": "Proxies in front of the gateway that append to X-Forwarded-For. The per-visitor limits (playground, waitlist, showcase) read the visitor's address that many entries from the right. 0 ignores the header."
       },
       {
+        "key": "max_request_bytes",
+        "env": "AGENTFOX_MAX_REQUEST_BYTES",
+        "def": "10000000",
+        "what": "The largest request body the gateway reads, in bytes. A larger one is refused with 413 before it is buffered. 0 for no limit."
+      },
+      {
+        "key": "anonymous_inline_per_minute",
+        "env": "AGENTFOX_ANONYMOUS_INLINE_PER_MINUTE",
+        "def": "0",
+        "what": "Inline requests per minute per address from a caller with no credential (429 past it). 0 for no limit, the right setting for a self-hosted gateway serving its own unregistered agents; set it on a gateway open to the internet."
+      },
+      {
         "key": "onboarding_key_ttl_days",
         "env": "AGENTFOX_ONBOARDING_KEY_TTL_DAYS",
         "def": "30",
@@ -1186,7 +1198,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
           <tr><td><code>X-AgentFox-Intent</code></td><td>The declared task.</td></tr>
           <tr><td><code>X-AgentFox-Trust</code></td><td>JSON map of message index to source, e.g. <code>{`{"1":"retrieved"}`}</code>.</td></tr>
           <tr><td><code>X-AgentFox-Environment</code></td><td>Default <code>production</code>.</td></tr>
-          <tr><td><code>X-AgentFox-Provider</code></td><td>Which configured provider to forward to (default <code>default_provider</code>).</td></tr>
+          <tr><td><code>X-AgentFox-Provider</code></td><td>Which configured provider to forward to (default <code>default_provider</code>). Outside development, naming a provider other than the default needs an agent key or API token.</td></tr>
           <tr><td><code>X-AgentFox-Stream-Mode</code></td><td><code>buffered</code> or <code>windowed</code> for this request (below).</td></tr>
           <tr><td><code>X-AgentFox-Priority</code></td><td>Admission priority when shedding load (default <code>normal</code>).</td></tr>
           <tr><td><code>X-AgentFox-Approval</code></td><td>An approved <code>apr_…</code> id: the held request runs once.</td></tr>

@@ -69,8 +69,11 @@ services:
   opa:
     image: openpolicyagent/opa:0.70.0
     command: ["run", "--server", "--addr=0.0.0.0:8181", "--log-level=error"]
+    # Loopback only: OPA's REST API has no authentication, so a published port lets
+    # anyone on the network replace the policies. The gateway reaches it over the
+    # compose network (opa:8181), not through this mapping.
     ports:
-      - "8181:8181"
+      - "127.0.0.1:8181:8181"
 
   gateway:
     # Published by .github/workflows/publish-images.yml. Pulled by default; run

@@ -13,6 +13,31 @@ const nextConfig = {
   // unstyled. `NEXT_DIST_DIR=.next-dev npm run dev` keeps them apart. Unset, this
   // is exactly the previous behaviour, so CI and Vercel are unaffected.
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  // No `X-Powered-By: Next.js`: it tells a scanner which CVE list to try first.
+  poweredByHeader: false,
+  // Browser source maps stay off in production (the default), so the shipped bundle
+  // is not a readable copy of the source. Stated so nobody turns it on in passing.
+  productionBrowserSourceMaps: false,
+  // Security headers on every response. Nothing frames this site (no page embeds
+  // another, and no partner embeds ours), so framing is refused outright: that is
+  // the clickjacking defence. The CSP carries only `frame-ancestors` on purpose — a
+  // script-src policy would have to be tested against every Next.js inline script
+  // first. HSTS matches what the hosting edge already sends, for deployments without one.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
+          { key: "Strict-Transport-Security", value: "max-age=63072000" },
+        ],
+      },
+    ];
+  },
   // URLs that moved. Permanent, so old links, in-app links and search results land
   // on the new page; this is the only list of them. Each points at the final page, never
   // at another redirect. Docs pages are listed in lib/docs/pages.ts.

@@ -205,6 +205,42 @@ the file it came from.
   returning typed arrays) and GHSA-p3m5-59mp-jv5r (denial of service with Server Actions).
   Dev-only test tooling (vite, vitest) is updated for its own advisories. `npm audit`
   reports 0 vulnerabilities, and `next build` no longer stops on the security check.
+- **Open redirect closed.** A form's `return_to` written `/\example.com` (or with a tab
+  after the slash) passed the same-origin check and the browser followed it off-site;
+  the public waitlist form was reachable this way. The check now refuses backslashes and
+  control characters and confirms the parsed origin. The eval annotation form's
+  `redirect_to` goes through the same check.
+- **Anonymous callers cannot choose the model provider.** Outside development,
+  `X-AgentFox-Provider` naming anything but the default needs an agent key or API token,
+  so an unauthenticated `/v1/chat/completions` or `/v1/messages` cannot spend the
+  deployment's OpenAI or Anthropic key. The public playground always uses the offline
+  `echo` provider.
+- **`allow_egress = false` is enforced where the model is called**, not only in the
+  provider list: a hosted provider named by a request or the fallback chain is skipped.
+  When no provider can answer, the inline routes return 502 instead of 500.
+- **Failed authentication is logged and throttled.** Each refused credential is logged
+  with the address and route (never the credential); past 30 failures in 5 minutes from
+  one address a bad credential gets 429. A valid credential is never refused.
+- `anonymous_inline_per_minute` (`AGENTFOX_ANONYMOUS_INLINE_PER_MINUTE`, off by default):
+  a per-address limit on inline calls made with no credential, for a gateway open to
+  the internet, where each anonymous call writes a trace into the default tenant.
+- **Request bodies are capped** at `max_request_bytes` (`AGENTFOX_MAX_REQUEST_BYTES`,
+  10 MB); a larger one gets 413 before it is buffered.
+- **Security headers.** The dashboard and the gateway refuse framing (`X-Frame-Options:
+  DENY`, `frame-ancestors 'none'`) and send `nosniff` and a referrer policy; the
+  dashboard also sends HSTS and a permissions policy and no longer sends `X-Powered-By`.
+- `AGENTFOX_ALLOWED_ORIGINS` (dashboard): when set, redirects are built only from a listed
+  origin, never from a `Host` or `X-Forwarded-Host` the client made up.
+- Deciding an approval is atomic: two people approving and denying at once cannot both be
+  told their decision stood (the second gets 409).
+- The `endpoint_is_reachable` validator no longer follows a redirect into the private
+  network or cloud metadata; every hop is vetted.
+- The waitlist answers a repeat address exactly as a new one, so it no longer tells a
+  stranger who has signed up.
+- `docker-compose.yml` publishes OPA's unauthenticated API on 127.0.0.1 only.
+- Locked dependencies with published advisories are updated (certifi, urllib3, pyjwt,
+  pypdf, aiohttp, gitpython, pyasn1, setuptools, langgraph-sdk; the TypeScript SDK's
+  dev-only vitest).
 
 ## [0.5.1] - 2026-11-08
 
