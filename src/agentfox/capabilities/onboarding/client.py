@@ -545,10 +545,32 @@ def _guards(api: _Api, run_id: str, structure: dict[str, Any], drivers: dict[str
             continue
 
         def guard(surface: str, payload: dict[str, Any], slug: str = slug) -> Verdict:
-            return Verdict.from_json(api.post(path, {"agent": slug, "surface": surface, **payload}))
+            body = {"agent": slug, "surface": surface, **payload}
+            return Verdict.from_json(_retrying(lambda: api.post(path, body)))
 
         guards[agent["id"]] = guard
     return guards
+
+
+#: Waits before each retry of a check the server couldn't answer just then (its
+#: database busy, a restart): a few tries, then the attack is reported errored.
+GUARD_RETRIES = (0.25, 0.75, 2.0)
+
+
+def _retrying(send: Any) -> Any:
+    """``send()``, tried again after a retryable failure: a 429/502/503/504 or the
+    connection dropping. Anything else, or the last failure, is raised."""
+    for wait in (*GUARD_RETRIES, None):
+        try:
+            return send()
+        except ApiError as exc:
+            if wait is None or exc.status not in (429, 502, 503, 504):
+                raise
+        except httpx.TransportError:
+            if wait is None:
+                raise
+        time.sleep(wait)
+    raise AssertionError("unreachable")  # pragma: no cover
 
 
 def _run_job(

@@ -21,6 +21,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Depends, Header, HTTPException
 from pydantic import BaseModel
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from agentfox.apps.gateway.deps import WRITE_ROLES, current_user, db, may_enforce, require
@@ -33,6 +34,7 @@ from agentfox.capabilities.onboarding.schema import (
     Results,
     Structure,
 )
+from agentfox.core.db import sqlite_write_lock
 from agentfox.core.models import OnboardingRun, OnboardingSession, User, utcnow
 from agentfox.core.tenancy import bind_session
 
@@ -578,6 +580,21 @@ def runner_guard(
         raise HTTPException(422, "A tool_call check names its tool.")
 
     def check() -> dict[str, Any]:
+        try:
+            return _check()
+        except OperationalError as exc:
+            if "database is locked" not in str(exc):
+                raise
+            session.rollback()
+            # Said plainly, as a retryable 503, not a bare 500 the runner reads as
+            # "check the server is reachable".
+            raise HTTPException(
+                503,
+                "AgentFox's database was busy (database is locked): SQLite takes one "
+                "write at a time. Try again.",
+            ) from None
+
+    def _check() -> dict[str, Any]:
         return dry_run_check(
             session,
             body.agent,
@@ -595,6 +612,10 @@ def runner_guard(
         # holds SQLite's write lock until the request finishes.
         session.commit()
         with _SQLITE_DRY_RUN:
+            # The write lock first: the dry run reads, then writes inside its
+            # savepoint, and a read snapshot SQLite can't upgrade (the runner's results
+            # committed meanwhile) failed at once with "database is locked".
+            sqlite_write_lock(session)
             result = check()
             session.commit()
         return result

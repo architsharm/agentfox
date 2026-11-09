@@ -1545,8 +1545,7 @@ def explain_model_error(error: str) -> str:
     if error.startswith(GUARD_ERROR_PREFIX):
         return (
             "AgentFox couldn't check the attacks against your guardrails, so the test "
-            f"stopped ({error[len(GUARD_ERROR_PREFIX) :].strip(' ()')}). Your agent and its "
-            "model are fine: check that the AgentFox server is reachable, then try again."
+            f"stopped. {guard_cause(error[len(GUARD_ERROR_PREFIX) :].strip(' ()'))}"
         )
     text = error.lower()
     head = text.partition(":")[0]
@@ -1594,6 +1593,41 @@ def explain_model_error(error: str) -> str:
             "Check that your agent runs on its own, then try again."
         )
     return f"Your agent's model returned errors, so the attacks couldn't run: {error[:240]}"
+
+
+def guard_cause(why: str) -> str:
+    """Why a check against the guardrails failed, and what to do, from the check's
+    error: the server unreachable, its database busy, or the server failing. Said as
+    "check the server is reachable" for all three, it sent a user whose server was up
+    (and whose SQLite database was busy) looking for a network problem."""
+    import re
+
+    text = why.lower()
+    status = re.search(r"\b([45]\d\d)\b", why)
+    code = int(status.group(1)) if status else None
+    fine = "Your agent and its model are fine."
+    if "database is locked" in text or "database was busy" in text:
+        return (
+            f"AgentFox's database was busy ({_brief(why)}). {fine} Run the test again; if "
+            "it keeps happening, the server's SQLite database is handling too much at "
+            "once: use Postgres (AGENTFOX_DATABASE_URL) for a server many runs share."
+        )
+    if code is not None and code >= 500:
+        return (
+            f"The AgentFox server failed while checking them (HTTP {code}: {_brief(why)}). "
+            f"{fine} Its log says why; then run the test again."
+        )
+    if code in (401, 403):
+        return (
+            f"The AgentFox server refused the check (HTTP {code}). {fine} Check the key "
+            "agentfox init uses (its .agentfox/agentfox.env), then run the test again."
+        )
+    if any(w in text for w in ("connect", "timed out", "timeout", "readerror", "network")):
+        return (
+            f"AgentFox couldn't reach its server ({_brief(why)}). {fine} Check that the "
+            "AgentFox server is running and reachable from this machine, then try again."
+        )
+    return f"{_brief(why)}. {fine} Run the test again."
 
 
 def explain_not_run(reason: str) -> str:
