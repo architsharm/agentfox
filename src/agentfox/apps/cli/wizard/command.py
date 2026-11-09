@@ -381,6 +381,7 @@ def _follow_file(ctx: Any, pick: Pick, entry: str, agent: str | None, run: Run) 
         fresh.name = agent
     run.agent = fresh.name
     run.system_tools = fresh.tools if fresh.spec is not None else None
+    run.system_members = fresh.members if fresh.spec is not None else None
     return fresh
 
 
@@ -661,6 +662,7 @@ def up(
         interactive=interactive,
     )
     run.system_tools = pick.tools if pick.spec is not None else None
+    run.system_members = pick.members if pick.spec is not None else None
     if pick.spec is not None and pick.file:
         run.answers["entry-default"] = pick.file
     edition = run.edition

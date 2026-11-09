@@ -94,6 +94,9 @@ class Run:
     #: scan found them; None when the scan found no agent to scope them to (then every
     #: tool in the repository is the agent's).
     system_tools: list[str] | None = None
+    #: The agents of that system (scan keys), same None rule: an agent another uses as
+    #: a tool is declared for this agent only when it is one of them.
+    system_members: list[str] | None = None
     _edition: Edition | None = field(default=None, repr=False)
 
     @property
@@ -671,7 +674,9 @@ def _own_tools(run: Run) -> list[str]:
     examples does not hand one agent the tools of seventeen others."""
     if run.system_tools is None:
         return run.ctx.tool_names
-    return [n for n in run.ctx.tool_names if n in set(run.system_tools)]
+    # Every tool the system is handed, a library tool with no definition here
+    # (`SerperDevTool()`) included: the plan said "2 tools of its own", so 2 are declared.
+    return sorted(set(run.system_tools))
 
 
 def _inferred(run: Run) -> dict[str, str]:
@@ -724,7 +729,12 @@ def _tools_apply(run: Run) -> None:
     # and declared and granted here it is never "tried without permission" on a route
     # that cannot tell (the gateway). It reaches nothing itself; the sub-agent's own
     # tools are declared above and decided on their own.
-    subagents = {n: c for n, c in run.ctx.agent_tools.items() if n not in impacts}
+    members = None if run.system_members is None else set(run.system_members)
+    subagents = {
+        n: c
+        for n, c in run.ctx.agent_tools.items()
+        if n not in impacts and (members is None or c in members)
+    }
     tools_added = added
     for name, child in subagents.items():
         try:

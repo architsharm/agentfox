@@ -189,3 +189,42 @@ def test_sub_agents_used_as_tools_are_not_counted_as_tools(tmp_path):
     assert result.exit_code == 0, result.output
     out = " ".join(result.output.split())
     assert "declared 1 tool and 2 sub-agents it calls as tools" in out
+
+
+TEAM = """
+from agents import Agent
+
+checker = Agent(name="CheckerAgent", instructions="check")
+writer = Agent(name="WriterAgent", instructions="write",
+               tools=[checker.as_tool(tool_name="check_facts", tool_description="x")])
+"""
+
+SEARCH = """
+from agents import Agent, Runner
+from agents.tool import WebSearchTool
+
+searcher = Agent(name="SearchAgent", instructions="search", tools=[WebSearchTool()])
+
+if __name__ == "__main__":
+    Runner.run_sync(searcher, "hi")
+"""
+
+
+@pytest.mark.usefixtures("home")
+def test_up_declares_only_its_own_systems_tools_and_sub_agents(tmp_path):
+    from agentfox.platform.identity import check_capability, ensure_identity
+
+    root = tmp_path / "research"
+    root.mkdir()
+    (root / ".git").mkdir()
+    (root / "main.py").write_text(textwrap.dedent(SEARCH))
+    (root / "team.py").write_text(textwrap.dedent(TEAM))
+    result = _up(str(root), "--yes", "--with", "python-app,tools", "--agent", "search-agent")
+    assert result.exit_code == 0, result.output
+    out = " ".join(result.output.split())
+    assert "declared 1 tool" in out and "sub-agent" not in out
+    with session_scope() as session:
+        agent = session.scalar(select(Agent).where(Agent.slug == "search-agent"))
+        identity = ensure_identity(session, agent)
+        assert check_capability(session, identity, "WebSearchTool").granted
+        assert not check_capability(session, identity, "check_facts").granted
