@@ -161,7 +161,7 @@ export function AttackTests({
 }) {
   const router = useRouter();
   // The agent whose page this is: the one the next step's Activity link opens.
-  const agent = projectInPath(usePathname() || "") ?? undefined;
+  const pageAgent = agent ?? projectInPath(usePathname() || "") ?? undefined;
   const [tests, setTests] = useState<Tests | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -391,11 +391,11 @@ export function AttackTests({
           <div>
             <strong>Next: run your app</strong>
             <p>
-              Add the one line <code>agentfox init</code> printed (<code>agentfox.auto(&quot;{agent ?? "<agent>"}&quot;)</code>) where your app
+              Add the one line <code>agentfox init</code> printed (<code>agentfox.auto(&quot;{pageAgent ?? "<agent>"}&quot;)</code>) where your app
               starts, and run it as you always do. Each model and tool call then shows on Activity, with every check it went through.
             </p>
           </div>
-          <Link className="at-btn" href={agent ? projectHref(agent, "activity") : "/app/traces"}>
+          <Link className="at-btn" href={pageAgent ? projectHref(pageAgent, "activity") : "/app/traces"}>
             Open Activity
           </Link>
         </div>

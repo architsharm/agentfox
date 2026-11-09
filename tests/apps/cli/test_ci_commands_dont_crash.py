@@ -32,7 +32,7 @@ def test_simulating_a_missing_file_says_so_in_one_line(seeded, tmp_path):
     bad = tmp_path / "bad.yaml"
     bad.write_text("this: is: not: a policy")
     out = runner.invoke(app, ["policy", "simulate", "--file", str(bad)])
-    assert out.exit_code == 2 and "isn't a policy AgentFox can read" in out.output
+    assert out.exit_code == 2 and "isn't a policy AgentFox can read" in " ".join(out.output.split())
 
 
 def test_a_run_on_the_echo_model_says_it_proves_nothing_about_quality(seeded):
