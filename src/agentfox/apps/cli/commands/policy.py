@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 
 import typer
+from rich.markup import escape
 from rich.table import Table
 
 from agentfox.apps.cli._style import SEVERITY_COLOUR
@@ -300,7 +301,7 @@ def policy_simulate(
     if (key is None) == (file is None):
         raise typer.BadParameter("give a policy key or --file, not both", param_hint="KEY")
     if file is not None and not file.is_file():
-        console.print(f"[red]no such file: {file}[/]")
+        console.print(f"[red]No policy file at {escape(str(file))}.[/] Pass the YAML to simulate.")
         raise typer.Exit(2)
     remote = _account.use(console)
     if remote is not None:
@@ -325,6 +326,13 @@ def policy_simulate(
         )
         return
 
+    if file is not None:
+        try:
+            PolicyDocument.from_yaml(file.read_text())
+        except Exception as exc:  # noqa: BLE001 - any parse or schema error, said in one line
+            why = escape(str(exc))[:200]
+            console.print(f"[red]{escape(str(file))} isn't a policy AgentFox can read:[/] {why}")
+            raise typer.Exit(2) from None
     with _session() as session:
         if file is not None:
             candidate = PolicyDocument.from_yaml(file.read_text())

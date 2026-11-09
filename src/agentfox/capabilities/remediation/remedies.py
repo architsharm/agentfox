@@ -1016,7 +1016,7 @@ def _do_add_to_tests(session: Session, ctx: _Ctx, actor: str, inputs: dict[str, 
     )
     try:
         promote_trace(session, suite, ctx.evidence["trace_id"], actor=actor)
-    except LookupError as exc:
+    except (LookupError, ValueError) as exc:  # no such run, or no input to test with
         raise RemedyError(str(exc)) from exc
     return "Added to the Regressions suite."
 

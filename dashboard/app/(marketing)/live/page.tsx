@@ -346,8 +346,8 @@ export default async function LivePage() {
               <Link href="/playground" className="mk-btn mk-btn-primary">
                 Attack it yourself
               </Link>
-              <Link href="/docs/test/ci" className="mk-btn mk-btn-outline">
-                Probe your own agent
+              <Link href="/docs/test" className="mk-btn mk-btn-outline">
+                Attack-test your own agent
               </Link>
             </div>
           </div>

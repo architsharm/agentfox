@@ -147,7 +147,18 @@ function Library({ items, onAdd, onClose }: { items: LibrarySet[]; onAdd: (key: 
 }
 
 /** `paused`: why the test can't run now (an agent in the project is paused or stopped), shown on the Run button. */
-export function AttackTests({ project, paused }: { project: string; paused?: string | null }) {
+export function AttackTests({
+  project,
+  agent,
+  agentName,
+  paused,
+}: {
+  project: string;
+  /** The agent whose page this is: the project's test, as this agent saw it. */
+  agent?: string;
+  agentName?: string;
+  paused?: string | null;
+}) {
   const router = useRouter();
   // The agent whose page this is: the one the next step's Activity link opens.
   const agent = projectInPath(usePathname() || "") ?? undefined;
@@ -159,12 +170,12 @@ export function AttackTests({ project, paused }: { project: string; paused?: str
 
   const load = useCallback(async () => {
     try {
-      setTests(await send(`${base}/tests`));
+      setTests(await send(`${base}/tests${agent ? `?agent=${encodeURIComponent(agent)}` : ""}`));
       setError(null);
     } catch (e) {
       setError((e as Error).message);
     }
-  }, [base]);
+  }, [base, agent]);
 
   const live = liveRun(tests);
   useEffect(() => {

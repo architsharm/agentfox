@@ -14,7 +14,7 @@ import httpx
 from rich.console import Console
 from rich.table import Table
 
-from agentfox.capabilities.onboarding.attacks import build_suite, suite_size
+from agentfox.capabilities.onboarding.attacks import ATTACK_TYPES, build_suite, suite_size
 from agentfox.capabilities.onboarding.mapper import map_repository
 
 POLL_SECONDS = 2.0
@@ -630,10 +630,32 @@ def _guards(api: _Api, run_id: str, structure: dict[str, Any], drivers: dict[str
             continue
 
         def guard(surface: str, payload: dict[str, Any], slug: str = slug) -> Verdict:
-            return Verdict.from_json(api.post(path, {"agent": slug, "surface": surface, **payload}))
+            body = {"agent": slug, "surface": surface, **payload}
+            return Verdict.from_json(_retrying(lambda: api.post(path, body)))
 
         guards[agent["id"]] = guard
     return guards
+
+
+#: Waits before each retry of a check the server couldn't answer just then (its
+#: database busy, a restart): a few tries, then the attack is reported errored.
+GUARD_RETRIES = (0.25, 0.75, 2.0)
+
+
+def _retrying(send: Any) -> Any:
+    """``send()``, tried again after a retryable failure: a 429/502/503/504 or the
+    connection dropping. Anything else, or the last failure, is raised."""
+    for wait in (*GUARD_RETRIES, None):
+        try:
+            return send()
+        except ApiError as exc:
+            if wait is None or exc.status not in (429, 502, 503, 504):
+                raise
+        except httpx.TransportError:
+            if wait is None:
+                raise
+        time.sleep(wait)
+    raise AssertionError("unreachable")  # pragma: no cover
 
 
 def _run_job(
@@ -657,20 +679,33 @@ def _run_job(
     out = _Results(api, run_id)
     drivers = _drivers(console, root, mapped, structure, loaded)
     guards = _guards(api, run_id, structure, drivers) if checked else None
-    # An agent that won't run at all: its reason once, not once per attack (they are
-    # still reported to the server, each with the reason).
+    # What won't run, each reason once with how many attacks it covers (they are still
+    # reported to the server, each with the reason): an agent that can't be run, and a
+    # set that doesn't apply to an agent's tools. Printed per attack, a three-agent
+    # project gave ~30 identical "NOT RUN" lines.
     refused: dict[str, int] = {}
+    summarized = {
+        a.id for a in suite if a.skip or (drivers.get(a.agent_id) and drivers[a.agent_id].refuse)
+    }
     for a in suite:
         d = drivers.get(a.agent_id)
-        if d is not None and d.refuse and not a.skip:
-            refused[d.refuse] = refused.get(d.refuse, 0) + 1
+        if a.control:
+            continue
+        if d is not None and d.refuse:
+            # The agent can't be run at all: that is the reason for all its sets.
+            refused[d.refuse] = refused.get(d.refuse, 0) + (0 if a.skip else 1)
+        elif a.skip:
+            name = ATTACK_TYPES.get(a.type, a.type)
+            refused[f"{name} for {a.agent_name}: {a.skip.removeprefix('Not run: ')}"] = 0
     for reason, n in refused.items():
         if "couldn't load" not in reason:  # already said, with how to fix it
-            console.print(f"  {TAGS['not_run']}  {reason} ({n} attack{'s' if n != 1 else ''})")
+            count = f" ({n} attack{'s' if n != 1 else ''})" if n else ""
+            console.print(f"  {TAGS['not_run']}  {reason.removeprefix('Not run: ')}{count}")
 
     lock = threading.Lock()
     stats = {"done": 0, "through": 0, "ran": 0}
     errors: list[str] = []
+    said: set[str] = set()
     stop = threading.Event()
 
     def pump() -> None:
@@ -686,7 +721,14 @@ def _run_job(
                 stats["ran"] += 1
                 if r.get("error"):
                     errors.append(r["error"])
-        if r.get("outcome") == "not_run" and r.get("reason") in refused:
+        if r.get("outcome") == "not_run":
+            # Said once above (or, for one found only while running, once here).
+            why = str(r.get("reason") or r.get("sentence") or "")
+            with lock:
+                fresh = why not in said
+                said.add(why)
+            if fresh and r.get("id") not in summarized:
+                console.print(f"  {TAGS['not_run']}  {why.removeprefix('Not run: ')}")
             return
         tag = TAGS.get(r.get("outcome", ""), "")
         console.print(f"  {stats['done']:>3}/{len(suite)}  {tag}  {r['sentence']}")

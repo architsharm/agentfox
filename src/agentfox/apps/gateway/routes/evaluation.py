@@ -11,6 +11,7 @@ import datetime as dt
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -160,6 +161,7 @@ def promote_trace(
     The shortest path from "this went wrong in production" to "this can never ship
     again" is the feature that makes an eval suite grow instead of rot.
     """
+    from agentfox.capabilities.evaluation.cases import NoInput
     from agentfox.capabilities.evaluation.cases import promote_trace as promote
 
     suite = _suite(session, key)
@@ -167,6 +169,8 @@ def promote_trace(
         case = promote(session, suite, trace_id, actor=user.email or user.id)
     except LookupError as exc:
         raise HTTPException(404, str(exc)) from exc
+    except NoInput as exc:
+        raise HTTPException(422, str(exc)) from exc
     return {"id": case.id, "suite": key, "source_trace_id": trace_id}
 
 
@@ -445,14 +449,18 @@ class GateIn(BaseModel):
     scorers: list[str] | None = None
     baseline_run_id: str | None = None
     thresholds: dict[str, float] = Field(default_factory=dict)
-    min_pass_rate: float | None = None
+    #: A share, 0 to 1: 1.5 was accepted, and no suite could ever pass it.
+    min_pass_rate: float | None = Field(default=None, ge=0, le=1)
 
 
 @router.post("/eval/gate")
 def run_gate(
     payload: GateIn, session: Session = Depends(db), user: User = Depends(require("eval"))
 ) -> dict[str, Any]:
-    """The CI entry point. Non-zero exit maps from ``passed: false``."""
+    """The CI entry point. A gate that fails answers **412** with the same body
+    (``passed: false``, the regressions, JUnit and SARIF), so ``curl --fail`` and any
+    HTTP client fail the build on it. It answered 200 with ``passed: false``, and the
+    snippet's ``curl -s`` passed every build."""
     suite = _suite(session, payload.suite)
     agent = payload.target.get("agent")
     run = NativeEvalRunner().run(
@@ -477,11 +485,14 @@ def run_gate(
             "regressions": len(result.regressions),
         },
     )
-    return {
+    body = {
         **result.to_json(),
         "junit": to_junit(result, payload.suite),
         "sarif": to_sarif(result),
     }
+    if not result.passed:
+        return JSONResponse(status_code=412, content=jsonable_encoder(body))
+    return body
 
 
 # ---------------------------------------------------------------------------
@@ -608,7 +619,20 @@ def _run_redteam_sweep(session: Session, payload: dict[str, Any]) -> dict[str, A
     """The job's handler. See governance.py's _run_evidence_package for
     why the audit-chain entry lives here rather than in the route: this is what
     actually ran, whether that happened synchronously in the enqueueing
-    request or later via the cron backstop."""
+    request or later via the cron backstop.
+
+    A static campaign with no probes named runs what `agentfox test redteam` runs:
+    attacks written from the agent's own tools, each checked with the call it is
+    after (`agent_tool_probes`), so the API and the CLI give one set of numbers. The
+    built-in generic probes run when AgentFox knows none of the agent's tools."""
+    from agentfox.capabilities.evaluation.redteam import agent_tool_probes
+    from agentfox.platform.registry.service import slugify
+
+    own: dict[str, Any] = {}
+    if not payload.get("adaptive") and not payload.get("probes"):
+        written, _not_run = agent_tool_probes(session, slugify(payload["agent"]))
+        if written:
+            own = {"extra_probes": written, "builtin": False}
     campaign = run_campaign(
         session,
         payload["agent"],
@@ -619,6 +643,7 @@ def _run_redteam_sweep(session: Session, payload: dict[str, Any]) -> dict[str, A
         budget=int(payload.get("budget", 3)),
         seed=int(payload.get("seed", 1337)),
         include_deployment_probes=bool(payload.get("include_deployment_probes", True)),
+        **own,
     )
     findings = list(
         session.scalars(select(RedTeamFinding).where(RedTeamFinding.campaign_id == campaign.id))

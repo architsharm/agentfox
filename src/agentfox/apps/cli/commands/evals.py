@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import typer
+from rich.markup import escape
 from rich.table import Table
 
 from agentfox.apps.cli.commands._shared import _session, console
@@ -164,6 +165,8 @@ def _print_eval_summary(suite: str, summary: dict[str, Any], run_id: str | None 
             f"{rate:.0%}" if rate is not None else "—",
         )
     console.print(table)
+    if summary.get("warning"):
+        console.print(f"  [yellow]{escape(str(summary['warning']))}[/]")
 
 
 @eval_app.command("gate")
@@ -226,9 +229,11 @@ def eval_gate(
 
     _print_eval_summary(suite, summary, run_id)
     if junit:
+        junit.parent.mkdir(parents=True, exist_ok=True)  # `reports/` in a fresh CI checkout
         junit.write_text(junit_xml)
         console.print(f"  [dim]JUnit → {junit}[/]")
     if sarif:
+        sarif.parent.mkdir(parents=True, exist_ok=True)
         sarif.write_text(sarif_json)
         console.print(f"  [dim]SARIF → {sarif}[/]")
 

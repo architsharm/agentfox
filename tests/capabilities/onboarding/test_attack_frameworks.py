@@ -387,10 +387,18 @@ def test_no_openai_agents_sdk_tool_runs(tmp_path):
     assert list((root / "marks").iterdir()) == []
 
 
-def test_an_sdk_agent_with_a_hosted_tool_is_not_run(tmp_path):
+def test_an_sdk_agent_with_a_hosted_tool_that_acts_is_not_run(tmp_path):
     pytest.importorskip("agents.tool")
-    from agents import Agent, WebSearchTool
+    from agents import Agent, CodeInterpreterTool, WebSearchTool
 
-    agent = Agent(name="Searcher", tools=[WebSearchTool()])
-    driver = runner.make_driver(agent, name="Searcher", kind="object")
-    assert driver.refuse and "can't fake" in driver.refuse
+    # A hosted search only reads: a stand-in the test answers plays it.
+    searcher = Agent(name="Searcher", tools=[WebSearchTool()])
+    assert runner.make_driver(searcher, name="Searcher", kind="object").refuse is None
+    # Code interpreter acts on OpenAI's side: still not run, in one sentence.
+    config = {"type": "code_interpreter", "container": {"type": "auto"}}
+    coder = Agent(name="Coder", tools=[CodeInterpreterTool(tool_config=config)])
+    driver = runner.make_driver(coder, name="Coder", kind="object")
+    assert driver.refuse == (
+        "Not run: Coder uses code_interpreter, which runs outside this machine, so "
+        "AgentFox can't fake it safely."
+    )

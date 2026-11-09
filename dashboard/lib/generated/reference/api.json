@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 346,
+ "count": 348,
  "routes": [
   {
    "method": "GET",
@@ -5575,8 +5575,8 @@
    "path": "/api/eval/gate",
    "section": "eval",
    "audience": "operator",
-   "summary": "The CI entry point. Non-zero exit maps from ``passed: false``.",
-   "description": "The CI entry point. Non-zero exit maps from ``passed: false``.",
+   "summary": "The CI entry point. A gate that fails answers **412** with the same body (``passed: false``, the regressions, JUnit and SARIF), so ``curl --fail`` and any HTTP client fail the build on it. It answered 200 with ``passed: false``, and the snippet's ``curl -s`` passed every build.",
+   "description": "The CI entry point. A gate that fails answers **412** with the same body\n(``passed: false``, the regressions, JUnit and SARIF), so ``curl --fail`` and any\nHTTP client fail the build on it. It answered 200 with ``passed: false``, and the\nsnippet's ``curl -s`` passed every build.",
    "params": [
     {
      "name": "authorization",
@@ -8953,6 +8953,35 @@
    "body": null
   },
   {
+   "method": "POST",
+   "path": "/api/onboarding/agents/{slug}/tests",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "Run the attack test of the project this agent is in: the same test as the agent page's panel, against the real agent through its `agentfox init`.",
+   "description": "Run the attack test of the project this agent is in: the same test as the\nagent page's panel, against the real agent through its `agentfox init`.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
    "method": "GET",
    "path": "/api/onboarding/guardrails",
    "section": "onboarding",
@@ -9085,13 +9114,19 @@
    "section": "onboarding",
    "audience": "operator",
    "summary": "The project's first test (as it was) and its latest one with the basic guardrails, whether those are on (``basicOn``: watching or blocking; ``basicEnforcing``: blocking), and whether this project's `agentfox init` is connected (only it can run a test).",
-   "description": "The project's first test (as it was) and its latest one with the basic\nguardrails, whether those are on (``basicOn``: watching or blocking;\n``basicEnforcing``: blocking), and whether this project's `agentfox init` is\nconnected (only it can run a test).",
+   "description": "The project's first test (as it was) and its latest one with the basic\nguardrails, whether those are on (``basicOn``: watching or blocking;\n``basicEnforcing``: blocking), and whether this project's `agentfox init` is\nconnected (only it can run a test).\n\n``agent`` (a slug): each run as that agent saw it, its own attacks and results\nonly. The test covers every agent in the project; an agent's page shows its own.",
    "params": [
     {
      "name": "project",
      "in": "path",
      "required": true,
      "type": "string"
+    },
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
     },
     {
      "name": "authorization",
@@ -9279,6 +9314,18 @@
       "type": "object",
       "required": false,
       "description": ""
+     },
+     {
+      "name": "message",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "reads",
+      "type": "array",
+      "required": false,
+      "description": ""
      }
     ]
    }
@@ -9327,6 +9374,41 @@
      }
     ]
    }
+  },
+  {
+   "method": "GET",
+   "path": "/api/onboarding/runs",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "Every attack test the projects' panels ran, latest first (Testing → Attack tests). ``agent`` (a slug): only the runs that tested it, each as it saw it.",
+   "description": "Every attack test the projects' panels ran, latest first (Testing → Attack\ntests). ``agent`` (a slug): only the runs that tested it, each as it saw it.\n\nThere used to be two attack tests that didn't know about each other: the agent\npanel's, which sends the attacks to the real agent, and a different built-in one\nbehind Testing's Run button with its own numbers. Testing now lists these runs and\nstarts the same test (``POST /agents/{slug}/tests``).",
+   "params": [
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "limit",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
   },
   {
    "method": "DELETE",

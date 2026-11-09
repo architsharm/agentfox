@@ -138,7 +138,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-346 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+348 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -182,6 +182,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/metrics/rules` | How each rule behaved: fired, stopped something, or only watched. |
 | `GET` | `/api/metrics/summary` | Summary |
 | `GET` | `/api/onboarding` | Install state as a checklist, computed live. |
+| `POST` | `/api/onboarding/agents/{slug}/tests` | Run the attack test of the project this agent is in: the same test as the |
 | `GET` | `/api/onboarding/guardrails` | The setup wizard's suggested guardrails, as a list to show. No test reads them: |
 | `POST` | `/api/onboarding/guardrails` | Saves the wizard's toggles. They change what the wizard shows, nothing else. |
 | `GET` | `/api/onboarding/key` | This user's setup key. Made the first time it is asked for (or after the last |
@@ -194,6 +195,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/onboarding/runner/poll` | Heartbeat, and the next test to run if one is waiting. |
 | `POST` | `/api/onboarding/runner/runs/{run_id}/guard` | Check one surface of one attack against an agent's real policies, persisting nothing. |
 | `POST` | `/api/onboarding/runner/runs/{run_id}/results` | Runner Results |
+| `GET` | `/api/onboarding/runs` | Every attack test the projects' panels ran, latest first (Testing → Attack |
 | `DELETE` | `/api/onboarding/state` | Start over at step 1. The key survives, so a running `agentfox init` stays valid |
 | `GET` | `/api/onboarding/state` | Get State |
 | `PATCH` | `/api/onboarding/state` | Save State |
@@ -334,7 +336,7 @@ from the code. Regenerate after changing any route:
 |---|---|---|
 | `GET` | `/api/eval/annotations/queue` | Eval results a human should look at: score within `band` of the scorer's |
 | `GET` | `/api/eval/drift` | Read-only. Viewing drift persists nothing, so the number of drift findings |
-| `POST` | `/api/eval/gate` | The CI entry point. Non-zero exit maps from ``passed: false``. |
+| `POST` | `/api/eval/gate` | The CI entry point. A gate that fails answers **412** with the same body |
 | `POST` | `/api/eval/online` | Run Online |
 | `POST` | `/api/eval/results/{result_id}/annotate` | Record a human's judgment on a borderline eval result. Requires a note — |
 | `GET` | `/api/eval/runs` | List Runs |

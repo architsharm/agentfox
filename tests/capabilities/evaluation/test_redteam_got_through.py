@@ -39,7 +39,7 @@ def test_an_agent_with_only_grants_is_attacked_through_them(seeded):
     _granted_agent(seeded, "update_seat", "mcp__github__*")
     probes, _ = agent_tool_probes(seeded, "granted-agent", ["unsafe_tool_use"])
     assert probes and all((p.target_class or "").startswith(AGENT_TOOLS) for p in probes)
-    assert any(p.tool_key == "update_seat" for p in probes)
+    assert any((p.then_call or {}).get("tool") == "update_seat" for p in probes)
     assert not any("mcp__github" in (p.tool_key or "") for p in probes)
 
 
@@ -51,7 +51,7 @@ def test_why_no_own_tool_probes_were_written(seeded):
     assert "declares no tools and holds no tool grants" in no_tool_probes_reason(
         seeded, "bare-agent"
     )
-    assert "capability grant bare-agent" in no_tool_probes_reason(seeded, "bare-agent")
+    assert "permit grant bare-agent" in no_tool_probes_reason(seeded, "bare-agent")
     _granted_agent(seeded, "mcp__github__*")
     assert "only as wildcards (mcp__github__*)" in no_tool_probes_reason(seeded, "granted-agent")
 
@@ -90,7 +90,7 @@ def test_an_attack_only_a_watching_rule_catches_fails_the_run(seeded):
     seeded.commit()
     out = CliRunner().invoke(app, ["test", "redteam", "bare-agent"], env={"COLUMNS": "200"})
     text = " ".join(out.output.split())
-    watched = int(re.search(r"\((\d+) of them caught by rules that only watch\)", text).group(1))
+    watched = int(re.search(r"(\d+) caught only by rules that watch", text).group(1))
     through = int(re.search(r"\d+ blocked, (\d+) got through", text).group(1))
     assert through >= watched > 0
     assert f"Verdict: {through} of" in text

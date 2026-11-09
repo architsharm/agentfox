@@ -253,7 +253,11 @@ def nothing_ran(results: list[dict[str, Any]]) -> str:
 
 def errored_summary(results: list[dict[str, Any]]) -> str | None:
     """The most common error among attacks that errored, as a plain sentence."""
-    from agentfox.capabilities.onboarding.runner import GUARD_ERROR_PREFIX, explain_model_error
+    from agentfox.capabilities.onboarding.runner import (
+        GUARD_ERROR_PREFIX,
+        explain_model_error,
+        guard_cause,
+    )
 
     errors = [str(r["error"]) for r in results if r.get("error") and outcome_of(r) == "errored"]
     if not errors:
@@ -262,10 +266,7 @@ def errored_summary(results: list[dict[str, Any]]) -> str | None:
     if common.startswith(GUARD_ERROR_PREFIX):
         # Some attacks only: the test went on, so it didn't "stop".
         why = common[len(GUARD_ERROR_PREFIX) :].strip(" ()")
-        return (
-            f"AgentFox couldn't check them against your guardrails ({why}). Your agent and "
-            "its model are fine: check that the AgentFox server is reachable, then try again."
-        )
+        return f"AgentFox couldn't check them against your guardrails. {guard_cause(why)}"
     return explain_model_error(common)
 
 
@@ -324,7 +325,58 @@ def _legacy_feed(outcome: str) -> str:
     return "resisted"
 
 
-def to_test_run(run: dict[str, Any], *, runner_connected: bool, now: dt.datetime) -> dict[str, Any]:
+def for_agent(run: dict[str, Any], agent: str | None) -> dict[str, Any]:
+    """The run as one of its agents saw it: that agent's results, and the totals of its
+    own attacks. A project's test covers every agent in it, and the agent page showed
+    them all ("couldn't find where restaurant_scout is created" on another agent).
+    Unchanged for a run with one agent, or one that doesn't hold ``agent``."""
+    structure = run.get("structure") or {}
+    agents = list(structure.get("agents") or [])
+    mine = [a for a in agents if agent and agent in (a.get("slug"), a.get("name"), a.get("id"))]
+    if not mine or len(agents) <= 1:
+        return run
+    ids = {a.get("id") for a in mine}
+    names = {a.get("name") for a in mine}
+    sub = {
+        "agents": mine,
+        "tools": [t for t in structure.get("tools") or [] if t.get("agentId") in ids],
+    }
+    suite = build_suite(sub, run.get("sets") or None)
+    totals: dict[str, Any] = dict(counts(suite))
+    totals["_controls"] = control_counts(suite)
+    totals["_skipped"] = skipped(suite)
+    results = [r for r in run.get("results") or [] if r.get("agent") in names]
+    error = run.get("error")
+    attacks = [r for r in results if not r.get("control")]
+    finished = run.get("status") in ("done", "failed")
+    if finished and attacks and all(outcome_of(r) == "not_run" for r in attacks):
+        # The project's run went fine; this agent's part didn't run at all: why.
+        error = nothing_ran(attacks)
+    elif not attacks or any(outcome_of(r) != "not_run" for r in attacks):
+        # The project's error may be another agent's ("couldn't import planner").
+        error = error if error and not str(error).startswith("No attack could be run") else None
+    return {**run, "results": results, "totals": totals, "total": len(suite), "error": error}
+
+
+def not_run_reason(results: list[dict[str, Any]]) -> str | None:
+    """The one reason a set's attacks weren't run, as the CLI says it: the most common
+    one, without its "Not run:" lead (the panel says "N not run: ..." itself, which
+    read "20 not run: Not run: it needs ...")."""
+    reasons = [
+        str(r.get("reason") or "").strip()
+        for r in results
+        if outcome_of(r) == "not_run" and r.get("reason")
+    ]
+    if not reasons:
+        return None
+    why = max(set(reasons), key=reasons.count)
+    return why[len("Not run:") :].strip() if why.lower().startswith("not run:") else why
+
+
+def to_test_run(
+    run: dict[str, Any], *, runner_connected: bool, now: dt.datetime, agent: str | None = None
+) -> dict[str, Any]:
+    run = for_agent(run, agent)
     results = run["results"]
     totals = run["totals"] or {}
     control_totals = totals.get("_controls") or {}
@@ -343,9 +395,7 @@ def to_test_run(run: dict[str, Any], *, runner_connected: bool, now: dt.datetime
                 "done": len(attacks),
                 **counted,
                 "controlsTotal": control_totals.get(kind, 0),
-                "notRunReason": next(
-                    (r.get("reason") for r in attacks if outcome_of(r) == "not_run"), None
-                ),
+                "notRunReason": not_run_reason(attacks),
             }
         )
     done = len(results)

@@ -44,7 +44,7 @@ from agentfox.exporters.otel import ingest_otlp
 from agentfox.platform.registry.service import detect_shadow_agents
 from agentfox.runtime.agent_loop import LoopBudget, Step, govern_loop
 from agentfox.runtime.enforcement import EnforcementResult, Enforcer
-from agentfox.runtime.enforcement.summary import summarize
+from agentfox.runtime.enforcement.summary import record_input, record_output, summarize
 
 log = logging.getLogger(__name__)
 
@@ -1293,6 +1293,7 @@ def guard_content(
         )
     if surface == "input" and not trace.summary:
         trace.summary = summarize(payload.content)
+        record_input(session, trace, payload.content)
     if surface == "tool_result" and (payload.tool or payload.error):
         from agentfox.platform.ledger.trace import add_span
 
@@ -1326,6 +1327,12 @@ def guard_content(
             approval_id=payload.approval_id,
         )
         note_refusal(session, trace, result, surface=surface)
+        if surface == "output" and result.get("verdict") not in ("block", "escalate"):
+            # The reply the user got (the rewrite, when there is one), masked: what
+            # online scoring, drift and a test made from this run read.
+            record_output(
+                session, trace, result.get("content") or payload.content, agent=payload.agent
+            )
         if surface == "input" and result.get("verdict") not in ("block", "escalate"):
             # What the agent may answer, as on the model proxy. An app that calls the
             # model itself and checks here would otherwise never abstain: the

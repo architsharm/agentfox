@@ -16,6 +16,13 @@ from agentfox.platform.ledger import chain
 
 #: The suite an issue's "Add to tests" files into when no suite is named.
 REGRESSIONS_SUITE = "regressions"
+#: The span attribute a run's user message is recorded under (masked), by the guard
+#: and proxy paths (`runtime.enforcement.summary.record_input`).
+INPUT_ATTR = "agentfox.input"
+
+
+class NoInput(ValueError):
+    """A run with no recorded user input: there is nothing to test it with."""
 
 
 def ensure_suite(session: Session, key: str, *, name: str = "", description: str = "") -> EvalSuite:
@@ -47,16 +54,28 @@ def promote_trace(session: Session, suite: EvalSuite, trace_id: str, *, actor: s
 
     retrieved: list[str] = []
     output = ""
+    asked = ""
     for span in detail.get("spans", []):
         attrs = span.get("attributes") or {}
         if attrs.get("agentfox.output"):
             output = str(attrs["agentfox.output"])
+        if attrs.get(INPUT_ATTR) and not asked:
+            asked = str(attrs[INPUT_ATTR])
         if span.get("kind") == "retrieval" and attrs.get("agentfox.content"):
             retrieved.append(str(attrs["agentfox.content"]))
+    prompt = asked or (trace.intent or "")
+    if not prompt.strip():
+        # A case with no input asks nothing and passed at 100% ("No user input"): a
+        # regression test that can never fail. Refuse it, and say what's missing.
+        raise NoInput(
+            "This run has no recorded user input, so a test made from it would ask "
+            "nothing and always pass. Runs record the user's message (masked) from "
+            "this version on; promote a newer run of this agent."
+        )
 
     case = EvalCase(
         suite_id=suite.id,
-        input_json={"prompt": trace.intent or ""},
+        input_json={"prompt": prompt},
         expected_json={"goal": trace.intent or ""},
         context_json={"retrieved": retrieved, "observed_output": output},
         labels=["from-production", f"verdict:{trace.verdict}"],
@@ -77,4 +96,4 @@ def promote_trace(session: Session, suite: EvalSuite, trace_id: str, *, actor: s
     return case
 
 
-__all__ = ["REGRESSIONS_SUITE", "ensure_suite", "promote_trace"]
+__all__ = ["INPUT_ATTR", "REGRESSIONS_SUITE", "NoInput", "ensure_suite", "promote_trace"]

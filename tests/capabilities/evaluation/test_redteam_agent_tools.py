@@ -62,13 +62,15 @@ def test_probes_are_written_from_the_agents_own_tools(seeded):
     generic = {p.key for p in BUILTIN_PROBES}
     assert not generic & {p.key for p in probes}
     assert all((p.target_class or "").startswith(AGENT_TOOLS) for p in probes)
-    # The unsafe-use attacks name its own tool; its call is probed as a tool call.
-    unsafe = [p for p in probes if p.category == "unsafe_tool_use" and p.kind == "content"]
-    assert unsafe and all("update_seat" in p.payload for p in unsafe)
-    calls = [p for p in probes if p.kind == "tool_call"]
-    assert [c.tool_key for c in calls] == ["update_seat"]
-    assert set(calls[0].arguments) == {"confirmation_number", "new_seat"}
-    assert not calls[0].provision  # the real tool and grants, nothing provisioned
+    # The unsafe-use attacks name its own tool, and each checks the call it is after
+    # (as the agent would make it once the message reached it) after the message.
+    unsafe = [p for p in probes if p.category == "unsafe_tool_use"]
+    assert unsafe and all(p.kind == "content" and "update_seat" in p.payload for p in unsafe)
+    assert all(p.then_call and p.then_call["tool"] == "update_seat" for p in unsafe)
+    assert set(unsafe[0].then_call["arguments"]) == {"confirmation_number", "new_seat"}
+    assert all(not p.provision for p in probes)  # the real tool and grants, nothing provisioned
+    # One probe per attack: the same count the dashboard's attack test runs.
+    assert not [p for p in probes if p.kind == "tool_call"]
     # An injection is the record it reads; a leak is the reply that hands data over.
     assert {p.surface for p in probes if p.category == "prompt_injection"} >= {"tool_result"}
     leaks = [p for p in probes if p.category == "data_leak"]
@@ -120,7 +122,7 @@ def test_the_cli_attacks_through_its_tools_and_ends_with_a_verdict(seeded):
     assert out.exit_code == 0, out.output
     text = " ".join(out.output.split())
     assert "probes written from its 2 tools (attacks aim at update_seat)" in text
-    assert "watched" in text and "got through" in text  # the per-set columns
+    assert "would stop" in text and "through" in text  # the per-set columns
     assert "normal requests" in text
     assert "Verdict:" in text and "attacks get through today" in text
     # The generic library only on request.
