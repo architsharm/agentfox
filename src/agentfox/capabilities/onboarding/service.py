@@ -272,8 +272,9 @@ def errored_summary(results: list[dict[str, Any]]) -> str | None:
 
 #: What a result may carry beyond its first fields: its precise ``outcome``, the
 #: ``agent`` it ran against, the rule that stopped it (``stoppedBy``), whether it is a
-#: benign ``control``, and why it wasn't run (``reason``).
-RESULT_EXTRAS = ("outcome", "agent", "stoppedBy", "control", "reason")
+#: benign ``control``, why it wasn't run (``reason``), and the agent it handed off to
+#: that made the call it got through with (``via``).
+RESULT_EXTRAS = ("outcome", "agent", "stoppedBy", "control", "reason", "via")
 #: An attack's outcomes, and a control's.
 OUTCOMES = ("got_through", "stopped", "resisted", "errored", "not_run")
 CONTROL_OUTCOMES = ("allowed", "over_blocked", "errored")
@@ -337,11 +338,9 @@ def for_agent(run: dict[str, Any], agent: str | None) -> dict[str, Any]:
         return run
     ids = {a.get("id") for a in mine}
     names = {a.get("name") for a in mine}
-    sub = {
-        "agents": mine,
-        "tools": [t for t in structure.get("tools") or [] if t.get("agentId") in ids],
-    }
-    suite = build_suite(sub, run.get("sets") or None)
+    # Written from the whole map, then this agent's part: its attacks include the tools
+    # it reaches through hand-offs, which a map of it alone doesn't hold.
+    suite = [a for a in build_suite(structure, run.get("sets") or None) if a.agent_id in ids]
     totals: dict[str, Any] = dict(counts(suite))
     totals["_controls"] = control_counts(suite)
     totals["_skipped"] = skipped(suite)

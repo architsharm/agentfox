@@ -100,6 +100,7 @@ def redteam_run(
         agent_tool_map,
         agent_tool_probes,
         no_tool_probes_reason,
+        reached_tool_map,
     )
     from agentfox.capabilities.onboarding.attacks import ATTACK_TYPES, LIBRARY, roles
     from agentfox.core.models import RedTeamFinding
@@ -131,6 +132,9 @@ def redteam_run(
         slug = found.slug
         written, not_run = ([], []) if adaptive else agent_tool_probes(session, slug, chosen)
         tools = agent_tool_map(session, slug) if written else []
+        # The tools it reaches through hand-offs, and whose each is: its attacks aim at
+        # them too ("issue_refund, through refunds-specialist").
+        reached = reached_tool_map(session, slug) if written else []
         why_generic = "" if written or adaptive else no_tool_probes_reason(session, slug)
         previous = _previous_summary(session, slug)
         kwargs: dict[str, Any] = {}
@@ -171,10 +175,22 @@ def redteam_run(
         ]
 
     if written:
-        acting = [t["name"] for t in roles(tools).action]
+        own = {t["name"] for t in tools}
+        holder: dict[str, str] = {}
+        far: list[dict[str, Any]] = []
+        for other, theirs in reached:
+            for t in theirs:
+                if t["name"] not in own and t["name"] not in holder:
+                    holder[t["name"]] = other
+                    far.append(t)
+        acting = [
+            t["name"] + (f" (through {holder[t['name']]})" if t["name"] in holder else "")
+            for t in roles(tools, far).action
+        ]
+        reach = f" and {len(far)} it reaches through hand-offs" if far else ""
         console.print(
             f"[bold]{agent}[/] — {stats['probes_run']} probes written from its "
-            f"{len(tools)} tool{'s' if len(tools) != 1 else ''}"
+            f"{len(tools)} tool{'s' if len(tools) != 1 else ''}{reach}"
             + (f" (attacks aim at {', '.join(acting)})" if acting else "")
             + f": {stats.get('attacks_run', stats['probes_run'])} attacks, "
             f"{stats.get('benign_probes_run', 0)} normal requests"
