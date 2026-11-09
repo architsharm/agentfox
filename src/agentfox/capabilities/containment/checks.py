@@ -159,6 +159,19 @@ def _earlier_tools(ctx: CheckContext, within: str) -> list[str]:
     ]
 
 
+def sequence_hit(seq: SequenceSpec, calls: list[tuple[str, dict[str, Any]]]) -> tuple[str, str] | None:
+    """The first (earlier, later) pair of ``calls`` this sequence rule would stop, the
+    way :func:`custom_sequence_check` decides each call, or None. For trying a rule
+    on a made-up run before saving it."""
+    for index, (tool, arguments) in enumerate(calls):
+        if not fnmatch.fnmatch(tool, seq.then):
+            continue
+        before = next((t for t, _ in calls[:index] if fnmatch.fnmatch(t, seq.after)), None)
+        if before is not None and not _exempt(seq, arguments):
+            return before, tool
+    return None
+
+
 def _exempt(seq: SequenceSpec, arguments: dict[str, Any]) -> bool:
     """`unless`: the argument at `unless_path` matches, e.g. an internal recipient."""
     if not seq.unless_path or not seq.unless_matches:

@@ -418,17 +418,17 @@ export function CustomRule({
         </>
       )}
 
-      {kind !== "sequence" && (
+      {(
         <div className="k-field">
           <label htmlFor="cr-sample">Try it</label>
           <div className="k-pills" style={{ gap: 8 }}>
             <input
               id="cr-sample"
-              className={`k-input${toolSample ? " k-mono" : ""}`}
+              className={`k-input${toolSample || kind === "sequence" ? " k-mono" : ""}`}
               style={{ flex: 1, minWidth: 240 }}
               value={sample}
               onChange={(e) => setSample(e.target.value)}
-              placeholder={toolSample ? '{"amount": 750}' : "Paste a message"}
+              placeholder={kind === "sequence" ? `${after.trim() || "crm.lookup"} -> ${then.trim() || "email.send"} {"to": "someone@gmail.com"}` : toolSample ? '{"amount": 750}' : "Paste a message"}
             />
             <button className="k-btn" disabled={busy || !ready || !sample.trim()} onClick={tryIt}>
               Try
@@ -438,7 +438,7 @@ export function CustomRule({
                 {tried.matched ? (hit && kind !== "condition" ? `Matches “${hit}”` : "Matches") : "No match"}
               </span>
             )}
-            {tried?.matched && kind === "validator" && tried.matches[0]?.reason && <span className="muted">{tried.matches[0].reason}</span>}
+            {tried?.matched && (kind === "validator" || kind === "sequence") && tried.matches[0]?.reason && <span className="muted">{tried.matches[0].reason}</span>}
             {tried && kind === "condition" && <span className="muted">{read ? `Read ${read}` : "Field not found"}</span>}
           </div>
         </div>

@@ -319,3 +319,26 @@ def test_a_rules_history_says_what_changed_and_restoring_puts_the_words_back(cli
     assert _guard(client, "Ask Hooli")["effective_verdict"] == "allow"
     again = client.post("/api/custom-rules/rivals/versions/3/restore", headers=ADMIN)
     assert again.status_code == 409
+
+
+def test_a_sequence_rule_can_be_tried_on_a_made_up_run(client):
+    rule = {
+        "name": "No email after CRM",
+        "kind": "sequence",
+        "sequence": {
+            "after": "crm.*",
+            "then": "email.send",
+            "unless_path": "to",
+            "unless_matches": r"@acme\.com$",
+        },
+    }
+
+    def tried(text):
+        r = client.post("/api/custom-rules/try", json={"rule": rule, "text": text}, headers=ADMIN)
+        assert r.status_code == 200, r.text
+        return r.json()
+
+    hit = tried('crm.lookup -> email.send {"to": "x@gmail.com"}')
+    assert hit["matched"] and hit["matches"][0]["reason"] == "email.send after crm.lookup"
+    assert not tried('crm.lookup -> email.send {"to": "ops@acme.com"}')["matched"]
+    assert not tried("email.send, crm.lookup")["matched"]

@@ -165,8 +165,10 @@ def try_custom_rule(payload: TryIn, _user: User = Depends(current_user)) -> dict
     except ValidationError as exc:
         raise HTTPException(400, exc.errors()[0]["msg"]) from exc
     compiled = compile_rule(spec)
+    if compiled is None and spec.sequence is not None:
+        return _try_sequence(spec, payload.text)
     if compiled is None:
-        raise HTTPException(400, "a sequence rule is checked against a run, not a text")
+        raise HTTPException(400, "This rule is checked against a run, not a text.")
     tool = payload.tool or (
         spec.condition.tool
         if spec.condition and spec.condition.tool and "*" not in spec.condition.tool
@@ -208,6 +210,37 @@ def try_custom_rule(payload: TryIn, _user: User = Depends(current_user)) -> dict
             }
             for d in result.detections
         ],
+    }
+
+
+def _try_sequence(spec: CustomRuleSpec, text: str) -> dict[str, Any]:
+    """Try a sequence rule on a made-up run: one tool call per line (or separated by
+    commas or "->"), each optionally followed by its arguments as JSON."""
+    import json
+    import re
+
+    from agentfox.capabilities.containment.checks import sequence_hit
+
+    items = re.split(r"\n|->|→" + ("" if "{" in text else "|,"), text)
+    calls: list[tuple[str, dict[str, Any]]] = []
+    for item in items:
+        item = item.strip()
+        if not item:
+            continue
+        name, _, rest = item.partition(" ")
+        try:
+            arguments = json.loads(rest) if rest.strip().startswith("{") else {}
+        except ValueError as exc:
+            raise HTTPException(400, f"The arguments after {name} are not JSON.") from exc
+        calls.append((name, arguments if isinstance(arguments, dict) else {}))
+    if not calls:
+        raise HTTPException(400, "Write the calls of a run, one per line.")
+    assert spec.sequence is not None
+    hit = sequence_hit(spec.sequence, calls)
+    return {
+        "matched": hit is not None,
+        "observed": [],
+        "matches": [{"start": 0, "end": 0, "reason": f"{hit[1]} after {hit[0]}"}] if hit else [],
     }
 
 
