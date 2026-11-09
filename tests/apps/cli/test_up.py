@@ -89,7 +89,10 @@ def test_up_sets_up_a_project_locally(project):
     assert not (project / ".github").exists()
     # Python agent: one line, before the client import.
     text = (project / "main.py").read_text()
-    assert 'agentfox.auto("support-bot", mode="observe")' in text
+    # No `mode=`: the policies' modes decide, so `agentfox policy enforce …` (the next
+    # step `up` suggests) is all it takes to start blocking.
+    assert 'agentfox.auto("support-bot")  # added by `agentfox up`' in text
+    assert "mode=" not in text
     assert text.index("agentfox.auto(") < text.index("from openai import")
     # Answers saved for the next run.
     saved = json.loads((project / ".agentfox" / "up.json").read_text())
@@ -116,6 +119,32 @@ def test_up_sets_up_a_project_locally(project):
             binding, _ = current_binding(session, policy.id)
             if binding is not None:
                 assert binding.mode == "observe", policy.key
+
+
+def test_running_up_again_keeps_a_policy_someone_switched_to_blocking(project):
+    """Re-running `up` (Watch first) only adds what is new: it used to put every
+    blocking pack back to watching ("changed agent-integrity, baseline, …")."""
+    from agentfox.core.db import session_scope
+    from agentfox.platform.policy import set_mode
+
+    assert _up(str(project), "--yes").exit_code == 0
+    with session_scope() as session:
+        set_mode(session, "tool-containment", "enforce")
+    result = _up(str(project), "--yes")
+    assert result.exit_code == 0, result.output
+    assert "kept blocking: tool-containment" in " ".join(result.output.split())
+    assert "(changed" not in result.output
+    # …and it does not suggest starting what already blocks.
+    assert "policy enforce tool-containment" not in result.output
+
+    from sqlalchemy import select
+
+    from agentfox.core.models import Policy
+    from agentfox.platform.policy import current_binding
+
+    with session_scope() as session:
+        policy = session.scalar(select(Policy).where(Policy.key == "tool-containment"))
+        assert current_binding(session, policy.id)[0].mode == "enforce"
 
 
 def test_running_up_again_changes_nothing_new(project):
@@ -385,7 +414,8 @@ def test_up_connects_to_cloud_and_keeps_the_key_out_of_git(project, cloud):
     # existing declaration left alone.
     assert "OPENAI_BASE_URL=https://gw.acme.test/v1" in env.read_text()
     assert cloud.tools == {"lookup_order": "write", "refund_payment": "irreversible"}
-    assert cloud.modes["tool-containment"] == "observe"
+    # Watch first never downgrades: the account's blocking policy stays blocking.
+    assert cloud.modes == {"baseline": "observe", "tool-containment": "enforce"}
     # Declared and granted to the agent the gateway calls as, so its own tools are not
     # refused by default-deny on its first call.
     assert cloud.grants["support-bot"] == {"lookup_order", "refund_payment"}

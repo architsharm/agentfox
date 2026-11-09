@@ -61,10 +61,12 @@ Modes — who decides whether a call is refused in-process:
   exactly when the *enforced* verdict stops the call, i.e. when the gateway would have
   refused it. The shipped ``baseline`` pack is in observe mode, so adding the import
   blocks nothing; ``agentfox policy enforce baseline`` is the one step that starts
-  blocking, with no second knob to find here. Tool calls follow the same rule, with
-  one carve-out: capability default-deny raises only once the agent holds at least
-  one capability grant (see `_govern_tool_calls`), because before that it would
-  refuse every tool an existing app has.
+  blocking, with no second knob to find here. Tool calls follow the same rule:
+  Tool containment's checks, capability default-deny included, block only while the
+  tool-containment pack does (``agentfox policy enforce tool-containment``), with one
+  carve-out: default-deny raises only once the agent holds at least one capability
+  grant (see `_govern_tool_calls`), because before that it would refuse every tool an
+  existing app has.
 * ``"observe"`` — never raise. A library-level safety valve: every decision is still
   recorded, and what *would* have been blocked is logged and counted.
 * ``"enforce"`` — strict: raise whenever the *effective* verdict (what the policies
@@ -466,7 +468,8 @@ class AutoState:
                 "(baseline ships in observe) record what they would have blocked; "
                 "enforce-mode policies, the kill switch and budget caps raise "
                 "agentfox.Blocked — for a tool call too. A tool outside the agent's "
-                "capability grants raises once it has at least one grant. "
+                "capability grants raises once it has at least one grant and "
+                "tool-containment blocks (`agentfox policy enforce tool-containment`). "
                 "`agentfox policy enforce baseline` is the one step that starts "
                 "blocking content."
             )
@@ -1104,10 +1107,20 @@ def _describe_tool_refusal(
             "capability grant yet"
         )
     untrusted = [m for m in marks if m.trust == "untrusted"]
+    # A value copied out of another tool's result is what a composed escalation is
+    # about, even from a tool whose output is trusted: say where it came from rather
+    # than "no argument came from untrusted content" beside a refusal for exactly that.
+    copied = [m for m in marks if m.propagated_from]
     if untrusted:
         parts = [
             f"{m.path} from {m.source.replace('_', ' ')}{_describe_origin(m.propagated_from)}"
             for m in untrusted
+        ]
+        message += ". Argument provenance: " + "; ".join(parts)
+    elif copied:
+        parts = [
+            f"{m.path} copied from a tool result{_describe_origin(m.propagated_from)}"
+            for m in copied
         ]
         message += ". Argument provenance: " + "; ".join(parts)
     elif marks or tool_call.arguments:
@@ -1202,6 +1215,25 @@ def _govern_tool_calls(
             )
             if not note and (result.blocked or result.escalated):
                 note = f"auto() is in {state.mode} mode; recorded, not applied in-process"
+            elif not note:
+                # Nothing applied it: every rule that would refuse the call watches.
+                watching = sorted(
+                    {
+                        str(r.get("rule_id"))
+                        for r in _stopping_rules(result)
+                        if r.get("mode") == "observe"
+                    }
+                )
+                note = "recorded, not applied: " + (
+                    f"{', '.join(watching)} only watch"
+                    + (
+                        " (no capability grant exists for this agent yet)"
+                        if set(watching) & _CAPABILITY_REFUSAL_RULE_IDS and has_grants is False
+                        else ""
+                    )
+                    if watching
+                    else "the rules that would refuse it only watch"
+                )
 
         # One `tool` span per call, alongside the decision. The decision records what
         # the enforcer decided; this records what actually happened in this process,
@@ -2871,13 +2903,14 @@ def auto(
 
     * ``"policy"`` (default) — the policies decide: `Blocked` is raised exactly when
       the enforced verdict stops the call (an enforce-mode policy, the kill switch,
-      quarantine or a hard budget cap) — what the gateway would refuse. The shipped
-      detector packs observe, so model traffic is not refused until
-      ``agentfox policy enforce baseline``, and a new workspace starts tool
-      containment watching too (``agentfox policy enforce tool-containment`` starts
-      it blocking). A tool the agent was not given (once it holds any grant), a
-      destructive statement and the kill switch are refused whatever the packs'
-      modes. Start with ``mode="observe"`` to see what would be refused first.
+      quarantine or a hard budget cap) — what the gateway would refuse. A new
+      workspace starts every pack watching, so nothing is refused until you say so:
+      ``agentfox policy enforce tool-containment`` starts Tool containment blocking
+      (a tool the agent was not granted, once it holds any grant; an untrusted or
+      tool-derived argument to a tool that changes something), and
+      ``agentfox policy enforce baseline`` the content guardrails. A limit or "Ask
+      first" a person set on a grant, a destructive statement and the kill switch
+      apply whatever the packs' modes.
     * ``"observe"`` — never raise; would-have-blocked is logged and counted.
     * ``"enforce"`` — strict: raise whenever the effective verdict blocks, even for a
       policy still in observe. For tests and CI.

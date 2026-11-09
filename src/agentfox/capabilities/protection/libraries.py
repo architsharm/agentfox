@@ -38,6 +38,9 @@ OWN = "Set for this agent"
 #: The id the basic guardrails go by in the library routes.
 BASIC_ID = "basic"
 
+#: The library the enforcer's own containment facts belong to.
+CONTAINMENT_ID = "tool-containment"
+
 #: How far back a library's copies are replayed by :func:`simulate_library`; the
 #: same default as ``POST /api/policies/simulate``.
 SIMULATE_DAYS = 30
@@ -444,6 +447,8 @@ def library_status(session: Any, pack_id: str, slugs: list[str]) -> dict[str, An
             "workspace": False,
             "outdated": False,
             "outdatedAgents": [],
+            "builtIn": False,
+            "fallback": False,
         }
     on: list[str] = []
     outdated: list[str] = []
@@ -475,7 +480,40 @@ def library_status(session: Any, pack_id: str, slugs: list[str]) -> dict[str, An
         "blocking": bool(modes) and all(m == "enforce" for m in modes),
         "outdated": bool(outdated),
         "outdatedAgents": outdated,
+        # Tool containment's own facts (a missing grant, a composed escalation) are
+        # applied by the enforcer on every agent, applied library or not; where the
+        # library is not applied they watch (`platform.policy.containment_mode`).
+        "builtIn": pack_id == CONTAINMENT_ID and not on and not workspace,
+        # The shipped fallback: with nothing bound for an agent, the enforcer applies
+        # this library's policies watching (`platform.policy.fallback_policies`).
+        "fallback": not on and not workspace and _on_by_default(session, pack_id, slugs),
     }
+
+
+def _on_by_default(session: Any, pack_id: str, slugs: list[str]) -> bool:
+    """Whether the enforcer applies this library's policies to one of these agents as
+    the fallback for an agent nothing is bound for."""
+    from sqlalchemy import select
+
+    from agentfox.core.models import Agent
+    from agentfox.platform.policy import (
+        fallback_policies,
+        policies_in_force,
+        runtime_environment,
+    )
+
+    if pack_id == BASIC_ID:
+        return False
+    keys = {doc.key for doc in (_library_docs(pack_id) or ("", []))[1]}
+    for slug in slugs:
+        tier = session.scalar(select(Agent.risk_tier).where(Agent.slug == slug))
+        if not keys & {doc.key for doc in fallback_policies(tier)}:
+            continue
+        skipped: list[Any] = []
+        environment = runtime_environment(session, slug)
+        if not policies_in_force(session, slug, environment, skipped=skipped) and not skipped:
+            return True
+    return False
 
 
 #: Runs recorded within this long of the newest one count as the same "Simulate".

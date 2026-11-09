@@ -13,9 +13,11 @@ Two invariants live here:
 from __future__ import annotations
 
 import datetime as dt
+import functools
 import logging
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import yaml
 from sqlalchemy import select
@@ -810,3 +812,74 @@ def history(session: Session, policy_key: str) -> list[dict]:
         }
         for v in versions
     ]
+
+
+# Which shipped policies apply to a deployment that has configured nothing is pack
+# data: a built-in capability pack's `fallback` block names the agent risk tiers its
+# policies protect when nothing is bound (`platform/packs:fallback_policy_packs`).
+# The enforcer evaluates these when nothing is bound for a call; the Policies page
+# lists them for the same agents. See `runtime/enforcement/rules.py` for why only
+# baseline applies at the default tier.
+
+
+@functools.lru_cache(maxsize=8)
+def fallback_policies(risk_tier: str | None = None) -> tuple:
+    """The shipped packs for a deployment with nothing bound, forced to observe.
+
+    Cached per tier: this reads YAML off disk and the answer cannot change
+    within a process. Cleared by `fallback_policies.cache_clear()` in tests
+    that swap the policies directory.
+    """
+    # Shipped packs only, deliberately — not `load_available()`. This is the
+    # path for a deployment that has bound nothing, so the guarantee it makes
+    # has to be the same everywhere; reading a project directory here would
+    # make "what protects an unconfigured deployment" depend on the working
+    # directory of whatever process happened to start, and this result is
+    # cached per tier and would not notice it changing.
+    from agentfox.platform.packs import fallback_policy_packs
+
+    by_key = {}
+    wanted: tuple[str, ...] = ()
+    try:
+        # The keys of the policies each fallback pack ships, in fallback order.
+        wanted = tuple(
+            PolicyDocument.from_yaml(path.read_text()).key
+            for pack in fallback_policy_packs(risk_tier)
+            for path in pack.files("policies")
+        )
+        for doc in load_from_dir():
+            if doc.key not in wanted:
+                continue
+            # Every pack ships in observe except tool-containment, which is not
+            # a candidate here. Forcing it makes the guarantee independent of
+            # anyone editing those files.
+            doc.mode = "observe"
+            by_key[doc.key] = doc
+    except Exception as exc:  # pragma: no cover - a broken install, not a code path
+        log.warning("agentfox: could not load the fallback policy: %s", exc)
+    # Ordered by `wanted`, so the set in force is deterministic rather than
+    # whatever order the directory listing happened to produce.
+    return tuple(by_key[k] for k in wanted if k in by_key)
+
+
+def containment_mode(evaluated: list[Any]) -> str:
+    """The mode the Tool containment library is in for one call: ``enforce`` when a
+    pack in force that rules on missing grants (``when: {capability: denied}``: the
+    ``tool-containment`` pack, and an agent's copy of it) blocks, else ``observe``.
+
+    ``evaluated`` is the packs in force, each a tuple whose first item is the
+    document (`policies_in_force`, or the enforcer's evaluated list).
+
+    The containment facts the enforcer adds itself (a tool the agent was not
+    granted, an argument whose provenance its grant does not accept, a read tool's
+    output carried into a higher-impact tool) are that library's rules, so they
+    follow its watch/block mode: while it watches they are recorded as would-block
+    and the call goes through. With no such pack in force nothing has asked for
+    containment to block, so it watches. What a person set on a grant themselves
+    (a limit, "Ask first") is not covered: that applies the moment it is set."""
+    modes = [
+        doc.mode
+        for doc, *_rest in evaluated
+        if any(rule.when.capability == "denied" for rule in getattr(doc, "rules", []))
+    ]
+    return "enforce" if "enforce" in modes else "observe"

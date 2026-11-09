@@ -209,7 +209,7 @@ def test_init_loads_controls_and_policies_watching(isolated_db, tmp_path):
     assert "controls" in output
     assert "baseline observe recorded, nothing blocked" in output
     assert "tool-containment observe recorded, nothing blocked" in output
-    assert "destructive commands" in output
+    assert "destructive commands" in output.lower()
     assert "violations are blocked now" not in output
 
 

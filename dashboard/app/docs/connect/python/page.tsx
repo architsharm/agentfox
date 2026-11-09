@@ -34,10 +34,14 @@ export default function Page() {
           <p>Put it at startup, before any code that calls a model.</p>
           <Code lang="python" title="main.py">{`import agentfox
 
-agentfox.auto(agent="support-triage", mode="observe")`}</Code>
+agentfox.auto(agent="support-triage", intent="answer customer questions about orders")`}</Code>
           <p>
             <code>agent</code> is the name everything is recorded under. Set it, so renaming a file
-            does not make a new agent.
+            does not make a new agent. <span id="intent" /><code>intent</code> is the agent&apos;s task
+            in a sentence. Tool containment judges an irreversible tool call against it: with no task
+            declared, such a call is held for a person once Tool containment blocks, and recorded as
+            would-hold while it watches (<code>intent.undeclared_irreversible</code>), since nothing
+            says it is part of the job.
           </p>
         </Step>
 
@@ -53,9 +57,15 @@ agentfox.auto(agent="support-triage", mode="observe")`}</Code>
 
         <Step title="Look at the issues, then block">
           <p>
-            In watch mode nothing is stopped. When the <strong>Issues</strong> page shows only what you
-            want stopped, remove <code>mode=&quot;observe&quot;</code>. The default mode lets your
-            rules decide: a rule in Block stops the call.
+            Every library starts in Watch, so nothing is stopped. When the <strong>Issues</strong> page
+            shows only what you want stopped, switch that library to Block (Policies → Libraries, or{" "}
+            <code>agentfox policy enforce tool-containment</code>). <code>auto()</code> follows the
+            change with no code change: in its default mode the libraries decide.
+          </p>
+          <p>
+            A line with <code>mode=&quot;observe&quot;</code> (earlier versions of{" "}
+            <code>agentfox up</code> wrote one) never blocks, whatever the libraries say: remove it.{" "}
+            <code>agentfox policy enforce</code> names any such line it finds.
           </p>
         </Step>
       </Steps>

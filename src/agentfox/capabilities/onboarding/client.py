@@ -226,6 +226,7 @@ def report(api: Any, console: Console, root: Path, server: str, key: str) -> dic
             "[yellow]●[/yellow] Connected, but no agents were found, so there is nothing "
             "to set up yet. Fix that (see below), then run this again."
         )
+    _say_project_policies(console, root, server)
     if structure["agents"] and structure["tools"]:
         # Found what it was looking for: the full list of shapes would bury the result.
         console.print(
@@ -235,6 +236,30 @@ def report(api: Any, console: Console, root: Path, server: str, key: str) -> dic
     else:
         _print_missing_help(console)
     return mapped
+
+
+def _say_project_policies(console: Console, root: Path, server: str = "$AGENTFOX_URL") -> None:
+    """Policy files kept in the repo are not sent: a setup key maps the agent and
+    cannot change what is in force. Without a word they were silently ignored, a
+    policy that does nothing while the docs say `init` loads it."""
+    from agentfox.platform.policy import project_policy_dir
+
+    directory = project_policy_dir(root)
+    files = sorted(directory.glob("*.y*ml")) if directory.is_dir() else []
+    if not files:
+        return
+    names = ", ".join(f.name for f in files[:3]) + (" …" if len(files) > 3 else "")
+    console.print(
+        f"[yellow]●[/yellow] {len(files)} policy file(s) in .agentfox/policies ({names}) "
+        "were not loaded into your account: a setup key only maps the agent. Load each "
+        "one with your account key; it starts watching:"
+    )
+    console.print(
+        f"    [cyan]jq -Rs '{{body: .}}' .agentfox/policies/{files[0].name} | curl -s -X POST "
+        f'{server.rstrip("/")}/api/policies -H "Authorization: Bearer $AGENTFOX_API_KEY" '
+        '-H "Content-Type: application/json" -d @-[/cyan]',
+        soft_wrap=True,
+    )
 
 
 def _poll_forever(

@@ -209,7 +209,7 @@
     "path": "init",
     "name": "init",
     "summary": "Set everything up.",
-    "help": "Set everything up. Idempotent, offline, and safe to run twice.\n\nCreates the database, applies migrations, loads the control catalog and the\nshipped policy packs, every one watching (observe) until you switch it to blocking\nwith `agentfox policy enforce <key>`; coding-agent only for agents this repo's\ncoding-harness hooks govern. Missing grants, destructive commands and tampering\nwith AgentFox are refused from the start. It writes an\nagentfox.toml carrying the real runtime defaults so they are visible rather than\nimplicit. AGENTFOX_* environment variables override that file.",
+    "help": "Set everything up. Idempotent, offline, and safe to run twice.\n\nCreates the database, applies migrations, loads the control catalog and the\nshipped policy packs, every one watching (observe) until you switch it to blocking\nwith `agentfox policy enforce <key>`; coding-agent only for agents this repo's\ncoding-harness hooks govern. Destructive commands and tampering with AgentFox\nare refused from the start; a tool an agent was not granted is refused once\ntool-containment blocks. It writes an\nagentfox.toml carrying the real runtime defaults so they are visible rather than\nimplicit. AGENTFOX_* environment variables override that file.",
     "panel": "Start",
     "params": [
      {
@@ -2705,7 +2705,7 @@
       "path": "policy enforce",
       "name": "enforce",
       "summary": "Promote a policy from observe to enforce.",
-      "help": "Promote a policy from observe to enforce.",
+      "help": "Promote a policy from observe to enforce.\n\nKEY is a policy key (`agentfox policy list`) or a library applied per agent\n(`basic`, `tool-containment`): every agent's copy of it is switched.",
       "panel": null,
       "params": [
        {

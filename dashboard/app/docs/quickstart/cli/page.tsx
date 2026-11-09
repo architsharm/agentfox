@@ -66,6 +66,17 @@ agentfox scan`}</Code>
           </p>
         </Step>
 
+        <Step title="Start blocking, one library at a time">
+          <Code>{`agentfox policy enforce tool-containment   # tool calls
+agentfox policy enforce baseline           # prompt attacks, personal data, secrets`}</Code>
+          <p>
+            When what it would have stopped is what you want stopped, turn that library to blocking.
+            Your app picks it up on its next call, with no code change. Running <code>up</code> again
+            never turns it back. <code>agentfox policy observe &lt;library&gt;</code> goes back to
+            watching.
+          </p>
+        </Step>
+
         <Step title="Attack-test it">
           <Code>{`agentfox test redteam <agent>`}</Code>
           <p>

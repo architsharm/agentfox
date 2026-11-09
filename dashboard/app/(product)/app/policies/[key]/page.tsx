@@ -217,8 +217,9 @@ export default async function PolicyDetail({
         <>
           <h2>Rules in this policy</h2>
           <p className="sub">
-            Each one is checked on every request this policy covers. The first
-            whose conditions match decides the outcome.
+            Each one is checked on every request this policy covers. Every rule
+            whose conditions match fires, and the strongest action among them
+            decides the outcome (block over ask a person over hide).
           </p>
           <div className="panel scroll-x">
             <table>

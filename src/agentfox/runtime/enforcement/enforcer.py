@@ -67,6 +67,7 @@ from agentfox.platform.policy import (
     PolicyInput,
     UnloadablePolicyVersion,
     combine,
+    containment_mode,
     get_engine,
     policies_in_force,
 )
@@ -914,9 +915,9 @@ class Enforcer(
         #   - `baseline` alone because it is the general content pack.
         #     eu-ai-act-high-risk is jurisdiction- and risk-tier specific, and
         #     applying it to everyone by default would be overclaiming on
-        #     somebody else's behalf. tool-containment needs no help: capability
-        #     default-deny does not depend on a policy binding and already
-        #     refuses an ungranted call with zero policies present.
+        #     somebody else's behalf. With no tool-containment pack in force,
+        #     the containment facts (a missing grant, a composed escalation)
+        #     are still recorded, as would-block (`containment_mode`).
         #
         # In memory, never written: the moment an operator runs `agentfox init`
         # or binds their own, this stops applying and their policies decide. A
@@ -970,9 +971,17 @@ class Enforcer(
         # synthetic rule is only added when no policy already said the same thing,
         # so a customer who wrote the rule explicitly does not see it twice.
         call.fired_ids = fired_ids = {r.get("rule_id") for r in rules_fired}
+        # A missing grant and an argument provenance the grant does not accept are
+        # Tool containment's rules (`capability.denied`, `capability.approval_required`),
+        # so they block only while that library blocks; a limit a person put on the
+        # grant applies whatever its mode. See `containment_mode`.
+        contained = containment_mode(call.evaluated)
         if not capability.get("granted", True):
-            call.verdict = "block"
+            limit = bool(capability.get("constraint_violations"))
+            mode = "enforce" if limit else contained
             call.effective = "block"
+            if mode == "enforce":
+                call.verdict = "block"
             if not (fired_ids & _CAPABILITY_REFUSAL_RULE_IDS):
                 # Two different refusals, and saying the wrong one is a defect a
                 # reader can catch: "no grant exists" versus "the grant you hold
@@ -994,14 +1003,21 @@ class Enforcer(
                         synthetic_reason,
                         severity="high",
                         controls=["NOM-IAM-02"],
+                        mode=mode,
                     )
                 )
         elif capability.get("requires_approval") and call.effective != "block":
-            # The grant itself asks for a person, so like a missing grant it holds the
-            # call whatever mode the packs are bound in. Gating it on the decision's
+            # A grant set to "Ask first" holds the call whatever mode the packs are
+            # bound in: a person asked for exactly that. Gating it on the decision's
             # mode let an "Ask a person" tool run, and still file an approval, while
-            # the content policies only watched.
-            call.verdict = call.effective = "escalate"
+            # the content policies only watched. An approval asked for only because
+            # an argument came from untrusted content is Tool containment's, and
+            # follows its mode.
+            mode = "enforce" if not capability.get("taint_violation") else contained
+            if call.effective not in ("block", "escalate"):
+                call.effective = "escalate"
+            if mode == "enforce" and call.verdict != "block":
+                call.verdict = "escalate"
             if "capability.approval_required" not in fired_ids:
                 rules_fired.append(
                     _fired_rule(
@@ -1010,6 +1026,7 @@ class Enforcer(
                         "; ".join(capability.get("reasons") or ["approval required"]),
                         severity="medium",
                         controls=["NOM-IAM-03"],
+                        mode=mode,
                     )
                 )
 
@@ -1099,9 +1116,11 @@ class Enforcer(
     def _apply_standing_refusals(self, call: _Evaluation) -> None:
         """Facts that refuse a call on their own, whatever the packs say.
 
-        An entitlement disclosure, a critical action risk and a composed escalation
-        are facts about this call, not policy opinions, so each stands alone. A rule
-        a pack already fired under the same id is not added twice.
+        An entitlement disclosure and a critical action risk are facts about this
+        call, not policy opinions, so each stands alone. A composed escalation is
+        recorded whatever the packs say and blocks while Tool containment blocks
+        (`containment_mode`). A rule a pack already fired under the same id is not
+        added twice.
         """
         rules_fired, fired_ids = call.rules_fired, call.fired_ids
         # An answer quoting a chunk the asking human is not entitled to see is
@@ -1193,12 +1212,16 @@ class Enforcer(
             else []
         )
         call.taint_summary["composition"] = [f.to_json() for f in composition_findings]
+        # Tool containment's rule, in its mode (`containment_mode`): while the library
+        # watches, the escalation is recorded as would-block and the call goes through.
+        contained = containment_mode(call.evaluated) if composition_findings else "observe"
         for finding in composition_findings:
             rule_id = f"composition.escalation.{finding.argument_path}"
             if rule_id in fired_ids:
                 continue
-            call.verdict = "block"
             call.effective = "block"
+            if contained == "enforce":
+                call.verdict = "block"
             fired_ids.add(rule_id)
             rules_fired.append(
                 _fired_rule(
@@ -1208,6 +1231,7 @@ class Enforcer(
                     severity="critical",
                     controls=["NOM-RTG-09"],
                     evidence=finding.to_json(),
+                    mode=contained,
                 )
             )
 
