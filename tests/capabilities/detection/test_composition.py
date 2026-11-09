@@ -190,3 +190,27 @@ def test_a_write_call_with_independently_supplied_arguments_is_not_blocked_for_c
     )
     rule_ids = {r.get("rule_id") for r in write.pre_decision.rules_fired}
     assert "composition.escalation" not in rule_ids
+
+
+def test_a_composed_escalation_only_watches_while_tool_containment_watches(seeded):
+    """`composition.escalation` is Tool containment's rule and follows its mode: with
+    the library watching, the same read → write chain is recorded as would-block and
+    the call goes through, as every other watching rule does."""
+    from agentfox.platform.policy import set_mode
+
+    set_mode(seeded, "tool-containment", "observe")
+    gov = _governor(seeded)
+    gov.call(
+        "search_patients",
+        {"name": "Jane Doe"},
+        transport=lambda tool, args: {"patient_internal_id": "PT-9182734-INTERNAL"},
+    )
+    write = gov.call(
+        "transfer_records",
+        {"patient_id": "PT-9182734-INTERNAL", "destination": "external-clinic"},
+        transport=lambda tool, args: {"status": "transferred"},
+    )
+    assert write.allowed
+    fired = {r["rule_id"]: r for r in write.pre_decision.rules_fired}
+    assert fired["composition.escalation"]["mode"] == "observe"
+    assert write.pre_decision.effective_verdict == "block"

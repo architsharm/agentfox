@@ -974,6 +974,6 @@ def containment_hint(
     return (
         f"Contain it: `agentfox permit grant {who} {channel} --max-taint user`{where} "
         f"(anything derived from untrusted content needs an approval before it reaches "
-        f'{channel}), or run with `agentfox.auto(mode="observe")` to watch it happen '
-        "without blocking anything."
+        f"{channel}). Under `agentfox.auto()` it is recorded while Tool containment "
+        "watches, and stopped once `agentfox policy enforce tool-containment` makes it block."
     )
