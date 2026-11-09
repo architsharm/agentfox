@@ -166,6 +166,11 @@ class _Run:
     #: live: ``waitingFor`` "grant" (default deny waits for the agent's first tool
     #: grant) or "blocking" (the rule only watches).
     unapplied: list[dict[str, Any]] = field(default_factory=list)
+    #: The message the agent got (after any rewrite), and what each tool it called
+    #: returned to it: sent with each later call's check, so its arguments carry the
+    #: taint live traffic sees (`redteam.check_agent_call`).
+    message: str | None = None
+    reads: list[dict[str, Any]] = field(default_factory=list)
 
     def wait_for_blocking(self, surface: str, v: Verdict, *, tool: str | None = None) -> None:
         """A verdict live traffic doesn't apply yet because its rules only watch: noted
@@ -233,7 +238,15 @@ def _record(tool: str, args: dict[str, Any]) -> Any:
     call: dict[str, Any] = {"tool": tool, "args": args, "executed": True, "held": None}
     if run.guard is not None:
         try:
-            v = run.guard("tool_call", {"tool": tool, "arguments": args})
+            v = run.guard(
+                "tool_call",
+                {
+                    "tool": tool,
+                    "arguments": args,
+                    "message": run.message,
+                    "reads": list(run.reads),
+                },
+            )
         except Exception as exc:  # noqa: BLE001 - unchecked means not run
             run.guard_error = error_text(exc)
             call.update(executed=False, held="AgentFox couldn't check this call")
@@ -274,12 +287,31 @@ def _record(tool: str, args: dict[str, Any]) -> Any:
         run.wait_for_blocking("tool_result", v, tool=tool)
         if v.rewrites:
             run.intervene("tool_result", v, tool=tool, removed=text)
+            run.reads.append({"tool": tool, "result": v.content})
             return v.content
+    run.reads.append({"tool": tool, "result": result})
     return result
 
 
 def _as_text(value: Any) -> str:
     return value if isinstance(value, str) else json.dumps(value, default=str)
+
+
+def _shaped(original: Callable[..., Any], value: Any) -> Any:
+    """A faked result in the type the real function returns, so the loop hands it on
+    as it would the real one. A function-calling loop puts a tool's return value in
+    ``messages[].content``, which a model API takes only as text: a faked dict there
+    was a 400 from OpenAI on every attack ("Unsafe tool use: Errored"). So text (JSON
+    for a record), unless the function says it returns a dict or a list."""
+    try:
+        hint = inspect.signature(original).return_annotation
+    except (TypeError, ValueError):
+        hint = inspect.Signature.empty
+    name = hint if isinstance(hint, str) else getattr(hint, "__name__", "") or str(hint)
+    name = name.lower().removeprefix("typing.")
+    if isinstance(value, (dict, list)) and name.startswith(("dict", "list", "mapping")):
+        return value
+    return _as_text(value)
 
 
 # --- Interception, at the framework ---------------------------------------------------
@@ -754,6 +786,67 @@ def _sdk_unfakeable(agent: Any) -> list[str]:
     return bad
 
 
+#: Hosted tools a stand-in can play: they read (search the web, search files), so the
+#: attack test fakes what they return, as it fakes a local read tool. Code interpreter,
+#: computer use, shell and image generation act: they stay unfaked, and not run.
+_HOSTED_READS = {"WebSearchTool": "query", "FileSearchTool": "query"}
+
+
+def _sdk_stand_ins(agent: Any, mapped: list[dict[str, Any]]) -> Any:
+    """The agent (and every agent it hands off to directly) with each hosted read tool
+    replaced by a function tool of the same name that the recorder answers: OpenAI runs
+    a hosted tool on its side, so its result can't be faked, but a function tool's
+    can. Named as the map names it (``WebSearchTool``) so the attack's faked results
+    (an injection planted in a search result) reach it. The agent is cloned; the
+    user's object is not changed."""
+    module = sys.modules.get("agents.tool")
+    tool_cls = getattr(module, "FunctionTool", None)
+    if tool_cls is None or not callable(getattr(agent, "clone", None)):
+        return agent
+    by_name = {str(t.get("name")): t for t in mapped}
+    done: dict[int, Any] = {}
+
+    def stand_in(t: Any) -> Any:
+        kind = type(t).__name__
+        arg = _HOSTED_READS.get(kind)
+        if arg is None:
+            return t
+        runtime = str(getattr(t, "name", kind))
+        spec = by_name.get(kind) or by_name.get(runtime) or {}
+        name = str(spec.get("name") or runtime)
+
+        async def unreachable(_ctx: Any, _raw: str) -> str:  # replaced by the recorder
+            raise ToolRefused(f"AgentFox's attack test refused to run {name} outside a test.")
+
+        return tool_cls(
+            name=name,
+            description=str(spec.get("whatItDoes") or f"{runtime.replace('_', ' ')}."),
+            params_json_schema={
+                "type": "object",
+                "properties": {arg: {"type": "string"}},
+                "required": [arg],
+                "additionalProperties": False,
+            },
+            on_invoke_tool=unreachable,
+        )
+
+    def swap(a: Any) -> Any:
+        if id(a) in done:
+            return done[id(a)]
+        sdk_agent = _sdk_agent_class()
+        if sdk_agent is None or not isinstance(a, sdk_agent):
+            return a
+        tools = [stand_in(t) for t in getattr(a, "tools", None) or []]
+        clone = a.clone(tools=tools)
+        done[id(a)] = clone
+        handoffs = [swap(h) for h in getattr(a, "handoffs", None) or []]
+        if handoffs:
+            clone.handoffs = handoffs
+        return clone
+
+    return swap(agent)
+
+
 def _sdk_context_type(agent: Any, modules: list[Any]) -> type | None:
     """The run-context type an Agents SDK agent expects, if its code names one: the
     ``Agent[SomeContext](...)`` it was built as (on it or on an agent it hands off
@@ -913,12 +1006,15 @@ def make_driver(
             return Driver(name, refuse=f"Not run: couldn't build {name}: {error_text(exc)}")
     sdk_agent = _sdk_agent_class()
     if sdk_agent is not None and isinstance(obj, sdk_agent):
+        obj = _sdk_stand_ins(obj, tools or [])
         bad = _sdk_unfakeable(obj)
         if bad:
+            one = len(bad) == 1
             return Driver(
                 name,
-                refuse=f"Not run: {name} uses {', '.join(bad)}, which run outside this "
-                "machine, so AgentFox can't fake them safely.",
+                refuse=f"Not run: {name} uses {', '.join(bad)}, which "
+                f"{'runs' if one else 'run'} outside this machine, so AgentFox can't fake "
+                f"{'it' if one else 'them'} safely.",
             )
         from agents import Runner
 
@@ -1024,7 +1120,7 @@ def _function_driver(
                     bound = {**{f"arg{i}": a for i, a in enumerate(args)}, **kwargs}
                 if not _suite_active():
                     return __f(*args, **kwargs)
-                return _record(__n, dict(bound))
+                return _shaped(__f, _record(__n, dict(bound)))
 
             replacement[id(original)] = recorder
     saved: list[tuple[Any, Any, Any]] = []
@@ -1109,7 +1205,7 @@ def run_attack(driver: Driver, attack: Attack, run: _Run) -> dict[str, Any]:
     reply, raw_reply, error = "", "", None
     stopped_input = False
     try:
-        message = attack.message
+        message = run.message = attack.message
         v = _checked(run, "input", message)
         if v is not None:
             run.wait_for_blocking("input", v)
@@ -1119,7 +1215,7 @@ def run_attack(driver: Driver, attack: Attack, run: _Run) -> dict[str, Any]:
                 reply = "[Stopped by AgentFox before it reached the agent]"
             elif v.rewrites:
                 run.intervene("input", v, removed=message)
-                message = str(v.content)
+                message = run.message = str(v.content)
         if not stopped_input:
             try:
                 reply = raw_reply = driver.call(message) if driver.call else ""
