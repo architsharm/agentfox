@@ -671,16 +671,19 @@ class ScanReport:
                     "we don't recognise, govern it explicitly with the SDK."
                 )
             return (
-                f"No model calls found in {self.code_files_scanned} source file(s). "
+                f"No model calls found in {self.code_files_scanned} source "
+                f"file{'' if self.code_files_scanned == 1 else 's'}. "
                 f"This scan reads {SUPPORTED_LANGUAGES}; anything else in the repository "
                 "was not examined. If this repo calls a model through a wrapper we don't "
                 "recognise, govern it explicitly with the SDK."
             )
+        n = len(self.ungoverned)
+        ungoverned = "1 model call is ungoverned." if n == 1 else f"{n} model calls are ungoverned."
         if self.ungoverned and not suggest_auto:
-            return f"{len(self.ungoverned)} model call(s) are ungoverned."
+            return ungoverned
         if self.ungoverned:
             return (
-                f"{len(self.ungoverned)} model call(s) are ungoverned. Add "
+                f"{ungoverned} Add "
                 "`import agentfox; agentfox.auto()` to your entry point — nothing else "
                 "in the codebase has to change."
             )

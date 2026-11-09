@@ -26,7 +26,7 @@ from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 
-from agentfox.apps.cli._style import SEVERITY_COLOUR, short_id
+from agentfox.apps.cli._style import SEVERITY_COLOUR, display_path, short_id
 
 console = Console()
 
@@ -310,7 +310,7 @@ def setup_workspace(
             )
             live, _ = current_binding(session, policy.id)
             modes[document.key] = live.mode if live is not None else "observe"
-        say(f"  [green]✓[/] {len(documents)} policy pack(s) loaded")
+        say(f"  [green]✓[/] {plural(len(documents), 'policy pack')} loaded")
         for document in sorted(documents, key=lambda d: d.key):
             mode = modes[document.key]
             colour = "red" if mode == "enforce" else "yellow"
@@ -410,7 +410,11 @@ def check(
     # rather than an inventory line, and the reader who stops after one screen should
     # stop after reading it.
     print_trifectas(console, report)
-    console.print(f"[bold]Scanned[/] {report.files_scanned} files in [dim]{report.root}[/]")
+    console.print(
+        f"[bold]Scanned[/] {plural(report.files_scanned, 'file')} in "
+        f"[dim]{display_path(report.root)}[/]",
+        soft_wrap=True,
+    )
     if report.excluded_files:
         console.print(
             f"  [dim]left out {plural(report.excluded_files, 'test, docs or benchmark file')}"
@@ -502,7 +506,11 @@ def check(
         # A budget for the path column, so the paths can be shortened deliberately
         # (from the left, filename last) instead of being cut by the renderer at
         # whatever column happened to be left over.
-        where_width = max(28, min(52, console.width // 2))
+        # Only as wide as the longest path needs: a fixed half of an 80-column terminal
+        # left `app.py:3` padded to 40 columns and folded the call site mid-token.
+        budget = max(28, min(52, console.width // 2))
+        needed = max(len(f"{site.file}:{site.line}") for site in ranked)
+        where_width = max(8, min(needed, budget))
         table = Table(box=None, padding=(0, 1), header_style="dim")
         table.add_column("severity", no_wrap=True)
         table.add_column("where", no_wrap=True, width=where_width)
@@ -538,13 +546,13 @@ def check(
             # Naming the unit reconciles them without changing either number.
             hidden = len(listed) - len(ranked)
             console.print(
-                f"  [dim]{hidden} more finding(s) not shown, across every kind above. "
+                f"  [dim]{plural(hidden, 'more finding')} not shown, across every kind above. "
                 f"See all of them:[/] [cyan]agentfox scan{target} "
                 f"--limit {len(listed)}[/]"
             )
 
     if report.errors:
-        console.print(f"\n  [yellow]{len(report.errors)} file(s) could not be parsed[/]")
+        console.print(f"\n  [yellow]{plural(len(report.errors), 'file')} could not be parsed[/]")
         for error in report.errors[:3]:
             console.print(f"    [dim]{error}[/]")
 
@@ -684,7 +692,7 @@ def doctor(
             enforcing = (
                 session.query(Decision).filter_by(mode="enforce").count() if decisions else 0
             )
-        add("ok", "database", f"reachable — {agents} agent(s), {traces} trace(s)")
+        add("ok", "database", f"reachable — {plural(agents, 'agent')}, {plural(traces, 'trace')}")
     except Exception as exc:
         add("bad", "database", f"unreachable: {database_error_hint(exc, settings.database_url)}")
         agents = traces = decisions = findings = boundaries = enforcing = 0
@@ -701,7 +709,7 @@ def doctor(
         add(
             "warn",
             "enforcement",
-            f"{decisions} decision(s), all in observe mode — recorded, nothing blocked. "
+            f"{plural(decisions, 'decision')}, all in observe mode — recorded, nothing blocked. "
             "That is the safe default, not a finished configuration.",
         )
     else:
@@ -799,15 +807,15 @@ def doctor(
         add(
             "warn",
             "containment",
-            f"{tools_declared} tool(s) declared, none of them write/high-impact/irreversible "
-            "— if this agent can act, its impact tiers are understated and containment "
-            "rules cannot fire.",
+            f"{plural(tools_declared, 'tool')} declared, none of them "
+            "write/high-impact/irreversible — if this agent can act, its impact tiers are "
+            "understated and containment rules cannot fire.",
         )
     elif grants == 0:
         add(
             "warn",
             "containment",
-            f"{tools_acting} acting tool(s) declared but no capability grants — least "
+            f"{plural(tools_acting, 'acting tool')} declared but no capability grants — least "
             "privilege is unconfigured, so policy is the only thing standing in the way. "
             "Grant them with `agentfox permit grant <agent> <tool> --limit ...`.",
         )
@@ -815,14 +823,15 @@ def doctor(
         add(
             "ok",
             "containment",
-            f"{tools_acting} of {tools_declared} tool(s) can act, {grants} capability "
-            "grant(s) — an action outside these is refused whether or not a detector fires",
+            f"{tools_acting} of {plural(tools_declared, 'tool')} can act, "
+            f"{plural(grants, 'capability grant')} — an action outside these is refused "
+            "whether or not a detector fires",
         )
 
     add(
         "ok" if scoped_tables else default_state,
         "data scope",
-        f"{scoped_tables} table(s) declared row-scoped"
+        f"{plural(scoped_tables, 'table')} declared row-scoped"
         if scoped_tables
         else "no table row-scoping declared — a query across every customer's rows reads "
         "as ordinary. Declare with `agentfox declare scope <table> --column ...`.",
@@ -1048,7 +1057,7 @@ def findings_cmd(
     repeats = sum((row["occurrences"] or 1) for row in rows)
     shown = f"{len(rows)} of {total}" if total and total > len(rows) else str(len(rows))
     console.print(
-        f"\n  [dim]{shown} open finding(s)"
+        f"\n  [dim]{plural(shown, 'open finding')}"
         + (f", {repeats} occurrences in total" if repeats > len(rows) else "")
         + ".[/]"
     )

@@ -16,6 +16,7 @@ from typing import Any
 import httpx
 from rich.console import Console
 
+from agentfox.apps.cli._style import plural
 from agentfox.capabilities.discovery.repo import ScanReport
 from agentfox.core.config import env
 
@@ -113,7 +114,7 @@ def maybe_submit_report(
     summary = result.get("summary", {})
     console.print(
         f"[green]Submitted.[/] scan [bold]{result.get('scan_run_id')}[/] — "
-        f"{len(summary.get('agents_proposed', []))} draft agent(s), "
+        f"{plural(len(summary.get('agents_proposed', [])), 'draft agent')}, "
         f"{len(summary.get('policies_proposed', []))} proposed polic(ies) — "
         "review them in the dashboard."
     )

@@ -23,7 +23,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from agentfox.apps.cli._style import match_id, print_unknown_agent, short_id
+from agentfox.apps.cli._style import match_id, plural, print_unknown_agent, short_id
 
 console = Console()
 
@@ -398,7 +398,7 @@ def capability_list(
 
     expired = [r for r in rows if r["expired"]]
     console.print(
-        f"\n  [dim]{len(rows)} grant(s)"
+        f"\n  [dim]{plural(len(rows), 'grant')}"
         + (f", {len(expired)} past their expiry and no longer matched" if expired else "")
         + ". Anything not listed is refused by default.[/]"
     )

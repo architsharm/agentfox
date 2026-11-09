@@ -22,7 +22,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from agentfox.apps.cli._style import print_unknown_agent
+from agentfox.apps.cli._style import plural, print_unknown_agent
 
 console = Console()
 
@@ -264,7 +264,7 @@ def sources_import(
                 deprecated=item.get("deprecated", False),
             )
             written += 1
-    console.print(f"[green]✓[/] registered {written} source(s) from {file.name}")
+    console.print(f"[green]✓[/] registered {plural(written, 'source')} from {file.name}")
 
 
 def sources_list(as_json: bool = typer.Option(False, "--json")) -> None:
@@ -420,7 +420,7 @@ def escalation_scan(
             f"qualified at turn {record['first_qualifying_turn']} · {triggers}"
         )
     if apply and result.get("sla_breached"):
-        console.print(f"  [red]{len(result['sla_breached'])} hand-off(s) past their SLA[/]")
+        console.print(f"  [red]{plural(len(result['sla_breached']), 'hand-off')} past their SLA[/]")
     if result["missed"] and not apply:
         console.print(
             "\n  [dim]Read-only. Re-run with --apply to raise findings and retroactive "
@@ -520,7 +520,7 @@ def entitlement_report(days: int = typer.Option(7, "--days")) -> None:
     console.print(
         f"[bold]{report['requests']}[/] request(s) checked · "
         f"{report.get('requests_withholding', 0)} withheld something · "
-        f"{report['principals']} principal(s) · "
+        f"{plural(report['principals'], 'principal')} · "
         f"[{colour}]{ratio:.1%}[/] of retrieved content was withheld"
     )
     for reason, count in report["reasons"].items():

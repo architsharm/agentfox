@@ -388,7 +388,7 @@ agentfox policy lint`}</Code>
   controls: []
   compiles to 73 lines of Rego
 …
-  ✓ 4 policy pack(s) loaded
+  ✓ 4 policy packs loaded
       baseline                 observe  recorded, nothing blocked
       eu-ai-act-high-risk      observe  recorded, nothing blocked
       support-desk             enforce  violations are blocked now

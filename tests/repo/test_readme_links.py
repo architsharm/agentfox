@@ -42,7 +42,9 @@ def test_absolute_repo_links_point_at_real_files() -> None:
 
 
 def test_images_use_raw_urls() -> None:
-    images = re.findall(r'<img[^>]*src="([^"]+)"', README) + re.findall(r"!\[[^\]]*\]\(([^)]+)\)", README)
+    images = re.findall(r'<img[^>]*src="([^"]+)"', README) + re.findall(
+        r"!\[[^\]]*\]\(([^)]+)\)", README
+    )
     wrong = [u for u in images if u.startswith(BLOB)]
     assert not wrong, f"Images through github.com/blob do not render on PyPI; use {RAW}: {wrong}"
 

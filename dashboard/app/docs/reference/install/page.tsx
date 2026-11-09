@@ -202,7 +202,7 @@ agentfox init`}</Code>
       <Output>{`Setting up AgentFox
   ✓ database ready  sqlite:////…/agentfox.db
   ✓ 44 controls across 7 frameworks  v0.1.0-draft (draft)
-  ✓ 4 policy pack(s) loaded
+  ✓ 4 policy packs loaded
       agent-integrity          observe  recorded, nothing blocked
       baseline                 observe  recorded, nothing blocked
       eu-ai-act-high-risk      observe  recorded, nothing blocked

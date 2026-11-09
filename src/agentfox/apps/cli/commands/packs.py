@@ -13,6 +13,7 @@ from pathlib import Path
 import typer
 from rich.table import Table
 
+from agentfox.apps.cli._style import plural
 from agentfox.apps.cli.commands._shared import console
 from agentfox.apps.cli.layout import default_group
 
@@ -195,7 +196,9 @@ def packs_test(
     else:
         _print_cases(results)
         colour = "red" if failed else "green"
-        console.print(f"\n[{colour}]{len(results) - len(failed)}/{len(results)} case(s) passed[/]")
+        console.print(
+            f"\n[{colour}]{len(results) - len(failed)}/{plural(len(results), 'case')} passed[/]"
+        )
     if failed:
         raise typer.Exit(1)
 

@@ -60,3 +60,29 @@ def print_unknown_agent(console: Any, session: Any, slug: str) -> None:
         console.print(f"  known agents: {', '.join(known)}")
     else:
         console.print("  no agents registered yet — run `agentfox admin seed` or register one.")
+
+
+def plural(n: int, word: str) -> str:
+    """`1 file`, `2 files`, `3 policies`: never `1 file(s)`."""
+    if n == 1:
+        return f"{n} {word}"
+    if word.endswith("y") and word[-2:-1] not in "aeiou":
+        return f"{n} {word[:-1]}ies"
+    return f"{n} {word}s"
+
+
+def display_path(path: object) -> str:
+    """A path as short as it can be said: relative to where the command was run, with
+    the home directory as `~`, or absolute, whichever is shortest. An absolute scratch
+    path wrapped mid-name at 80 columns, and a wrapped path cannot be copied."""
+    from pathlib import Path
+
+    resolved = Path(str(path)).expanduser().resolve()
+    forms = [str(resolved)]
+    for base, prefix in ((Path.cwd(), "."), (Path.home(), "~")):
+        try:
+            rel = resolved.relative_to(base.resolve())
+        except ValueError:
+            continue
+        forms.append(prefix if str(rel) == "." else f"{prefix}/{rel}")
+    return min(forms, key=len)

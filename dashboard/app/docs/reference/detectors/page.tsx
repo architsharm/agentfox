@@ -513,7 +513,7 @@ agentfox findings --json --limit 1`}</Code>
  …xwc4v44j  medium       containment          support-triage tried an irreversible action (email.send) with no stated
                                               task (held for approval)
 
-  16 open finding(s), 34 occurrences in total.`}</Output>
+  16 open findings, 34 occurrences in total.`}</Output>
       <Output title="--json">{`[
   {
     "id": "fnd_01m469wtf1vnr8bbqq",

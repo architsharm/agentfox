@@ -148,7 +148,7 @@ print(state.calls_governed, state.calls_blocked, state.would_have_blocked)`}</Co
   Observe mode: decisions are recorded, nothing is blocked in-process — not even a tool call, an enforce-mode policy or the kill switch.
 Your ticket T-1042 is open and assigned.
 2 0 1
-agentfox: governed 2 model call(s). Run \`agentfox findings\` to see what it found.`}</Output>
+agentfox: governed 2 model calls. Run \`agentfox findings\` to see what it found.`}</Output>
       <p>
         The banner goes to stderr. Both calls returned. The second one would have been
         blocked had the policy been enforcing, so it is counted in{" "}
@@ -159,7 +159,7 @@ agentfox: governed 2 model call(s). Run \`agentfox findings\` to see what it fou
  …h7wv6tcz  high      guardrail_detection  Would have been blocked on input: INJECTION.INSTRUCTION_OVERRIDE,
                                            INJECTION.SYSTEM_PROMPT_LEAK
 
-  1 open finding(s).`}</Output>
+  1 open finding.`}</Output>
 
       <h2 id="auto">agentfox.auto()</h2>
       <Code lang="python">{`auto(agent: str | None = None, *, mode: str = "policy", environment: str | None = None,

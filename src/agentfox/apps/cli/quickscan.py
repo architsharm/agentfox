@@ -31,6 +31,8 @@ import typer
 from rich.console import Console
 from rich.panel import Panel
 
+from agentfox.apps.cli._style import display_path, plural
+
 console = Console()
 
 #: A small, known-adversarial set — not the full red-team corpus (that lives in
@@ -138,7 +140,11 @@ def quickscan(
 
     # -- 1. Committed --------------------------------------------------------
     console.print("\n[bold]Committed[/]  [dim]what's in this directory[/]")
-    console.print(f"  Scanned {repo_report.files_scanned} files in [dim]{repo_report.root}[/]")
+    console.print(
+        f"  Scanned {plural(repo_report.files_scanned, 'file')} in "
+        f"[dim]{display_path(repo_report.root)}[/]",
+        soft_wrap=True,
+    )
     if repo_report.frameworks:
         console.print(f"  [dim]built on:[/] {', '.join(repo_report.frameworks)}")
     from rich.markup import escape
@@ -157,21 +163,24 @@ def quickscan(
     console.print(f"  [dim]can reach:[/] {surface_line(repo_report)}")
     if repo_report.trifectas:
         console.print(
-            f"  [red]{len(repo_report.trifectas)} lethal trifecta(s)[/] [dim](shown above)[/]"
+            f"  [red]{plural(len(repo_report.trifectas), 'lethal trifecta')}[/] "
+            "[dim](shown above)[/]"
         )
     counts = repo_report.by_kind()
     secrets = counts.get("secret", 0)
     if secrets:
-        console.print(f"  [red]{secrets} likely hardcoded secret(s)[/] in agent-adjacent code")
+        console.print(
+            f"  [red]{plural(secrets, 'likely hardcoded secret')}[/] in agent-adjacent code"
+        )
     flagged_skills = [r for r in repo_skills if r["issues"]]
     if flagged_skills:
         console.print(
-            f"  [red]{len(flagged_skills)} of {len(repo_skills)} skill(s) have issues[/] "
+            f"  [red]{len(flagged_skills)} of {plural(len(repo_skills), 'skill')} have issues[/] "
             f"[dim]({', '.join(r['skill'] for r in flagged_skills[:5])})[/] — "
             f"[cyan]agentfox scan skills {path}[/]"
         )
     elif repo_skills:
-        console.print(f"  [dim]{len(repo_skills)} skill(s), no issues[/]")
+        console.print(f"  [dim]{plural(len(repo_skills), 'skill')}, no issues[/]")
 
     # -- On this machine ----------------------------------------------------
     if machine is not None:
@@ -182,12 +191,13 @@ def quickscan(
             clients = sorted({c["client"] for c in machine.configs})
             issues = sum(1 for e in machine.servers for i in e["issues"] if i["severity"] != "info")
             console.print(
-                f"  {len(machine.servers)} MCP server(s) across {', '.join(clients)}"
-                + (f" · [yellow]{issues} config issue(s)[/]" if issues else "")
+                f"  {plural(len(machine.servers), 'MCP server')} across {', '.join(clients)}"
+                + (f" · [yellow]{plural(issues, 'config issue')}[/]" if issues else "")
             )
             if machine.trifectas:
                 console.print(
-                    f"  [red]{len(machine.trifectas)} lethal trifecta(s)[/] [dim](shown above)[/]"
+                    f"  [red]{plural(len(machine.trifectas), 'lethal trifecta')}[/] "
+                    "[dim](shown above)[/]"
                 )
         else:
             console.print("  [dim]no user-level MCP configs found[/]")
@@ -195,7 +205,7 @@ def quickscan(
             flagged = [r for r in machine.skills if r["issues"]]
             tone = "red" if flagged else "dim"
             console.print(
-                f"  [{tone}]{len(flagged)} of {len(machine.skills)} installed skill(s) "
+                f"  [{tone}]{len(flagged)} of {plural(len(machine.skills), 'installed skill')} "
                 "have issues[/]"
             )
         if machine.configs or machine.skills:
@@ -211,8 +221,8 @@ def quickscan(
                 continue
             any_found = True
             console.print(
-                f"  {report.tool_name}: {report.sessions_found} session(s) across "
-                f"{len(report.projects)} project(s)"
+                f"  {report.tool_name}: {plural(report.sessions_found, 'session')} across "
+                f"{plural(len(report.projects), 'project')}"
             )
             if report.mcp_servers:
                 console.print(

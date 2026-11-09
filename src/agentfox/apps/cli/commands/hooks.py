@@ -7,6 +7,7 @@ from pathlib import Path
 
 import typer
 
+from agentfox.apps.cli._style import plural
 from agentfox.apps.cli.commands._shared import _session, console
 
 #: The harness `hooks install` assumes when --harness is not given.
@@ -194,7 +195,8 @@ def hooks_install(
         console.print(f"  [green]environment[/] {baseline.agent} → {baseline.environment}")
     if baseline.tools_declared:
         console.print(
-            f"  [green]declared[/] {len(baseline.tools_declared)} {harness} tool(s) in the registry"
+            f"  [green]declared[/] {plural(len(baseline.tools_declared), f'{harness} tool')} "
+            "in the registry"
         )
     if baseline.tools_granted:
         console.print(

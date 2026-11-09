@@ -125,7 +125,7 @@ agentfox init
 Setting up AgentFox
   ✓ database ready  sqlite:///…/agentfox.db
   ✓ 44 controls across 7 frameworks  v0.1.0-draft (draft)
-  ✓ 4 policy pack(s) loaded
+  ✓ 4 policy packs loaded
       agent-integrity          observe  recorded, nothing blocked
       baseline                 observe  recorded, nothing blocked
       eu-ai-act-high-risk      observe  recorded, nothing blocked
@@ -498,7 +498,7 @@ For the one-page version to forward to whoever signs off, run `agentfox report` 
 `doctor` is the more interesting one, because it grades the configuration rather than the traffic:
 
 ```
-  ✓    database            reachable — 5 agent(s), 11 trace(s)
+  ✓    database            reachable — 5 agents, 11 traces
   ✓    enforcement         17 of 22 decisions enforced
   i    authentication      DEVELOPMENT auth is active (environment=development, auth_mode=auto):
                            an /api request with no token acts as the user named in
@@ -507,7 +507,7 @@ For the one-page version to forward to whoever signs off, run `agentfox report` 
                            unacceptable anywhere else.
   ✓    secrets             development: the published default secrets are allowed here, and
                            refused (the gateway will not start) in any other environment
-  ✓    containment         11 of 16 tool(s) can act, 16 capability grant(s) — an action outside
+  ✓    containment         11 of 16 tools can act, 16 capability grants — an action outside
                            these is refused whether or not a detector fires
   ✓    detectors           5 running: injection.heuristic, pii.native, safety.lexicon,
                            schema.json, secrets.native

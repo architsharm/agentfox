@@ -146,6 +146,39 @@ def test_a_declared_tool_is_never_overwritten_by_a_guess(project):
         assert tool.impact == "write"
 
 
+@pytest.mark.parametrize("answer", ["no", "ctrl-c"])
+def test_stopping_at_the_plan_writes_nothing(project, monkeypatch, answer):
+    """Answering no to "Set this up?", or pressing Ctrl-C there, used to leave
+    agentfox.toml and the database behind: the workspace was set up before the plan."""
+    import types
+
+    from agentfox.apps.cli.wizard import command
+
+    class AtThePlan(Interactive):
+        def _ask(self, prompt: str, *, secret: bool = False) -> str:
+            return ""  # every question takes its recommended answer
+
+        def confirm(self, question: str, default: bool = True) -> bool:
+            if question != "Set this up?":
+                return default
+            if answer == "ctrl-c":
+                raise KeyboardInterrupt
+            return False
+
+    monkeypatch.setattr(command, "Interactive", AtThePlan)
+    monkeypatch.setattr(
+        command, "sys", types.SimpleNamespace(stdin=types.SimpleNamespace(isatty=lambda: True))
+    )
+    result = runner.invoke(
+        app, ["up", str(project), "--no-start", "--target", "local", "--skip-machine"]
+    )
+    assert result.exit_code in (0, 1, 130), result.output
+    assert "Plan" in result.output
+    assert not (project / "agentfox.toml").exists()
+    assert not (project / ".agentfox").exists()
+    assert "agentfox.auto" not in (project / "main.py").read_text()
+
+
 def test_dry_run_changes_nothing(project):
     result = _up(str(project), "--yes", "--dry-run")
     assert result.exit_code == 0, result.output
@@ -847,3 +880,33 @@ def test_up_adds_auto_to_a_framework_agent_with_no_direct_model_call(tmp_path):
     result = _up(str(root), "--yes")
     assert result.exit_code == 0, result.output
     assert "agentfox.auto(" in (root / "main.py").read_text()
+
+
+def test_next_steps_keep_each_command_on_one_line_at_80_columns():
+    """A long `command  why` row used to wrap inside the command, so copy-paste broke."""
+    from rich.console import Console
+    from rich.panel import Panel
+
+    from agentfox.apps.cli.wizard.command import next_step_lines
+
+    steps = [
+        ("agentfox doctor", "is everything configured the way you think?"),
+        (
+            "agentfox policy enforce tool-containment",
+            "start blocking the tool calls an agent was not given",
+        ),
+        ("agentfox up", "again any time — answers are in .agentfox/up.json"),
+    ]
+    console = Console(width=80, record=True, file=open("/dev/null", "w"))  # noqa: SIM115
+    console.print(Panel("\n".join(next_step_lines(steps))))
+    text = console.export_text()
+    for cmd, _why in steps:
+        assert any(cmd in line for line in text.splitlines()), (cmd, text)
+
+
+def test_the_summary_names_what_was_set_up(project):
+    result = _up(str(project), "--yes", "--target", "local", "--skip-machine")
+    assert result.exit_code == 0, result.output
+    flat = " ".join(result.output.split())
+    assert "set up:" in flat
+    assert "Your Python agent" in flat
