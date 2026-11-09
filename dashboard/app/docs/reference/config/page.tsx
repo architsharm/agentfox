@@ -1192,7 +1192,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
           <tr><td><code>X-AgentFox-Intent</code></td><td>The declared task.</td></tr>
           <tr><td><code>X-AgentFox-Trust</code></td><td>JSON map of message index to source, e.g. <code>{`{"1":"retrieved"}`}</code>.</td></tr>
           <tr><td><code>X-AgentFox-Environment</code></td><td>Default <code>production</code>.</td></tr>
-          <tr><td><code>X-AgentFox-Provider</code></td><td>Which configured provider to forward to (default <code>default_provider</code>).</td></tr>
+          <tr><td><code>X-AgentFox-Provider</code></td><td>Which configured provider to forward to (default <code>default_provider</code>). Outside development, naming a provider other than the default needs an agent key or API token.</td></tr>
           <tr><td><code>X-AgentFox-Stream-Mode</code></td><td><code>buffered</code> or <code>windowed</code> for this request (below).</td></tr>
           <tr><td><code>X-AgentFox-Priority</code></td><td>Admission priority when shedding load (default <code>normal</code>).</td></tr>
           <tr><td><code>X-AgentFox-Approval</code></td><td>An approved <code>apr_…</code> id: the held request runs once.</td></tr>

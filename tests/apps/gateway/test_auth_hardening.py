@@ -365,6 +365,28 @@ def test_repeated_bad_credentials_are_throttled_but_a_good_one_still_works(ready
     assert int(throttled.headers["Retry-After"]) >= 1
 
 
+@pytest.mark.parametrize("path", ["/v1/chat/completions", "/v1/messages"])
+def test_an_anonymous_caller_cannot_pick_a_paid_provider(ready, production, path):
+    """X-AgentFox-Provider spends the deployment's API key; anonymous callers get the default."""
+    client = _app()
+    body = {"model": "gpt-4o", "max_tokens": 16, "messages": [{"role": "user", "content": "hi"}]}
+    chosen = client.post(path, json=body, headers={"X-AgentFox-Provider": "openai"})
+    assert chosen.status_code == 401, chosen.text
+    assert "X-AgentFox-Provider" in chosen.json()["detail"]
+    # No header, or naming the default, is still served as shadow traffic.
+    default = get_settings().default_provider
+    assert client.post(path, json=body).status_code == 200
+    assert client.post(path, json=body, headers={"X-AgentFox-Provider": default}).status_code == 200
+    # With an agent key the choice is the caller's (the provider itself may then fail).
+    raw, _ = _agent_key()
+    keyed = client.post(
+        path,
+        json=body,
+        headers={"X-AgentFox-Provider": "openai", "Authorization": f"Bearer {raw}"},
+    )
+    assert keyed.status_code != 401
+
+
 def test_an_oversized_body_is_refused_before_it_is_read(ready, production, monkeypatch):
     monkeypatch.setattr(get_settings(), "max_request_bytes", 1000)
     client = _app()
