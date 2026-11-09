@@ -364,22 +364,35 @@ function Ci() {
   const { url: gateway, isLoopback } = remoteApiBase();
   return (
     <>
-      <Card title="Block a release when quality drops">
+      <Card
+        title="Block a release when quality drops"
+        hint="Save a run as the baseline, then gate each build on it: the gate fails when a score drops or a case errors."
+      >
         <div className="k-form">
           <CodeSnippet label="Save the current run as the baseline" code="agentfox test baseline RUN_ID --label main" />
-          <CodeSnippet label="In CI: fail on regression" code="agentfox test gate SUITE --baseline RUN_ID" />
           <CodeSnippet
             label={
               isLoopback
-                ? "Or over HTTP (set AGENTFOX_URL in CI to an address of your gateway the runner can reach)"
-                : "Or over HTTP"
+                ? "In CI, with an API key (set AGENTFOX_URL to an address of your gateway the runner can reach). A failed gate answers 412, so --fail-with-body fails the step and still saves the result."
+                : "In CI, with an API key. A failed gate answers 412, so --fail-with-body fails the step and still saves the result."
             }
-            code={`curl -s -X POST "${gateway}/api/eval/gate" \\\n  -H "Authorization: Bearer $AGENTFOX_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"suite": "SUITE", "min_pass_rate": 0.9}'`} />
+            code={`curl --fail-with-body -sS -X POST "${gateway}/api/eval/gate" \\\n  -H "Authorization: Bearer $AGENTFOX_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"suite": "SUITE", "baseline_run_id": "RUN_ID", "min_pass_rate": 0.9}' \\\n  -o gate.json\njq -r .junit gate.json > junit.xml`}
+          />
+          <CodeSnippet
+            label="Or with the CLI, where CI can reach your AgentFox database (AGENTFOX_DATABASE_URL as a secret)"
+            code={`pip install "agentfox[postgres]"\nagentfox test gate SUITE --baseline RUN_ID --junit reports/junit.xml --sarif reports/agentfox.sarif`}
+          />
         </div>
       </Card>
-      <Card title="Attack test in CI">
+      <Card title="Attack test in CI" hint="Exits 1 when an attack gets through. Checked against the agent's rules, with no model.">
         <CodeSnippet code="agentfox test redteam AGENT --adaptive" />
       </Card>
+      <Card title="Scan each pull request" hint="Comments on risky tool combinations, poisoned skills and model calls without guardrails. Static: nothing is run or sent.">
+        <CodeSnippet code={`- uses: actions/checkout@v4\n- uses: architsharm/agentfox@main\n  with:\n    fail-on: trifecta,skills`} />
+      </Card>
+      <p className="k-muted small">
+        <Link href="/docs/test/ci">In CI and in production</Link> walks through each.
+      </p>
     </>
   );
 }

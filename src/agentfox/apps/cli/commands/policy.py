@@ -6,6 +6,7 @@ import datetime as dt
 from pathlib import Path
 
 import typer
+from rich.markup import escape
 from rich.table import Table
 
 from agentfox.apps.cli._style import SEVERITY_COLOUR
@@ -240,7 +241,18 @@ def policy_simulate(
     """
     from agentfox.platform.policy import PolicyDocument, record_simulation, simulate
 
-    candidate = PolicyDocument.from_yaml(file.read_text())
+    # One line, not a traceback, for a path that isn't there or a file that isn't a
+    # policy.
+    if not file.is_file():
+        console.print(f"[red]No policy file at {escape(str(file))}.[/] Pass the YAML to simulate.")
+        raise typer.Exit(2)
+    try:
+        candidate = PolicyDocument.from_yaml(file.read_text())
+    except Exception as exc:  # noqa: BLE001 - any parse or schema error, said in one line
+        console.print(
+            f"[red]{escape(str(file))} isn't a policy AgentFox can read:[/] {escape(str(exc))[:200]}"
+        )
+        raise typer.Exit(2) from None
     with _session() as session:
         diff = simulate(
             session,
