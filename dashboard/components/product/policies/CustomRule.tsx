@@ -130,7 +130,7 @@ export function CustomRule({
   const [tried, setTried] = useState<null | { matched: boolean; matches: any[]; observed?: unknown[] }>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [saved, setSaved] = useState<null | { ruleId: string; mode: string }>(null);
+  const [saved, setSaved] = useState<null | { ruleId: string; mode: string; packMode: string }>(null);
 
   const isTopic = kind === "topic" || kind === "allow";
   const spec = (): Record<string, unknown> => {
@@ -206,7 +206,7 @@ export function CustomRule({
         message: ["block", "escalate"].includes(effect) ? message.trim() : "",
         on_block: effect === "block" && reask ? "reask" : "refuse",
       });
-      setSaved({ ruleId: out.rule.rule_id, mode: out.policy.mode });
+      setSaved({ ruleId: out.rule.rule_id, mode: out.mode || out.policy.mode, packMode: out.policy.mode });
       router.refresh();
     });
 
@@ -217,12 +217,18 @@ export function CustomRule({
           <span className="k-pill k-pill-ok">
             {editing ? "Saved" : "Added"} · {saved.mode === "enforce" ? "enforcing" : "watching"}
           </span>
-          {saved.mode !== "enforce" && (
-            // New rules join the Your rules library, watching; it is switched on there.
-            <Link className="k-btn-primary" href="/app/policies?tab=libraries&open=custom">
-              Start blocking in Your rules
-            </Link>
-          )}
+          {saved.mode !== "enforce" &&
+            (saved.packMode === "enforce" ? (
+              // Your rules already blocks: this one rule is started from its own page.
+              <Link className="k-btn-primary" href={`/app/policies/rules/${encodeURIComponent(saved.ruleId)}?tab=tune`}>
+                Start blocking this rule
+              </Link>
+            ) : (
+              // New rules join the Your rules library, watching; it is switched on there.
+              <Link className="k-btn-primary" href="/app/policies?tab=libraries&open=custom">
+                Start blocking in Your rules
+              </Link>
+            ))}
           <Link className="k-btn" href={`/app/policies/rules/${encodeURIComponent(saved.ruleId)}`}>
             Open rule
           </Link>
@@ -270,7 +276,7 @@ export function CustomRule({
 
       {!editing && (
         <p className="k-help">
-          A saved rule starts by watching: it records what it would do and stops nothing until you start blocking with Your rules.
+          A saved rule starts by watching: it records what it would do and stops nothing until you start blocking it.
         </p>
       )}
 

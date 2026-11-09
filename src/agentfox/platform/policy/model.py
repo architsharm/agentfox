@@ -112,6 +112,12 @@ class Rule(BaseModel):
     #: the correction for the caller to use. Never applies to tool calls, where a
     #: second attempt at a refused action is exactly what a policy must not invite.
     on_block: Literal["refuse", "reask"] = "refuse"
+    #: This one rule only watches, even while its pack enforces: it is recorded as
+    #: would-have (mode observe) and never sets the verdict. A rule added to an
+    #: enforcing pack of the workspace's own rules starts this way, as the form
+    #: promises, until someone starts blocking it after seeing what it would do.
+    #: None rather than False when off, so packs that never use it keep their YAML.
+    watch: bool | None = None
 
 
 #: Rules a pack may not ship without, by pack key.

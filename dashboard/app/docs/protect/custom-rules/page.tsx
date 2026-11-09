@@ -43,7 +43,9 @@ export default function Page() {
           <p>
             Every rule you write is saved watching, in the <strong>Your rules</strong> library. Open it from{" "}
             <strong>Policies → Libraries</strong> to see what each rule would have done, then press{" "}
-            <strong>Start blocking</strong>.
+            <strong>Start blocking</strong>. If Your rules is already blocking, a rule you add later still
+            starts watching on its own: open it and press <strong>Start blocking this rule</strong> on its{" "}
+            <strong>Tune</strong> tab, which replays the last 7 days first.
           </p>
           <Screenshot {...SCREENS.yourRules} />
         </Step>

@@ -155,6 +155,9 @@ def simulate(
     decisions = list(session.scalars(query))
 
     own_rules = _OwnRules(session, candidate.key)
+    # A rule that only watches (`Rule.watch`) is replayed as watching: it would
+    # still not stop anything, so it is not credited with doing so.
+    watching = {r.id for r in doc.rules if r.watch}
     diff = SimulationDiff()
     for decision in decisions:
         diff.replayed += 1
@@ -172,7 +175,15 @@ def simulate(
         old_effective = _effective_of(decision)
         replaced = own_rules.rule_ids(decision)
         kept = [r for r in (decision.rules_fired_json or []) if r.get("rule_id") not in replaced]
-        new_effective = effective_verdict_of(new.effective_verdict, kept)
+        candidate_effect = (
+            new.effective_verdict
+            if not watching
+            else effective_verdict_of(
+                doc.default_effect,
+                [f.to_json() for f in new.rules_fired if f.rule_id not in watching],
+            )
+        )
+        new_effective = effective_verdict_of(candidate_effect, kept)
         fired_before = {
             str(r.get("rule_id"))
             for r in (decision.rules_fired_json or [])
@@ -193,7 +204,7 @@ def simulate(
             "no_longer_fires": sorted(fired_before - set(fired_now)),
             # What the candidate's own rules asked for, without the other packs: a
             # pack is only credited with stopping what its own rules stop.
-            "own": new.effective_verdict,
+            "own": candidate_effect,
         }
 
         applied = (decision.verdict or "allow").lower()
@@ -289,7 +300,11 @@ def rules_fingerprint(doc: PolicyDocument) -> str:
         {
             "default_effect": doc.default_effect,
             "scope": doc.scope,
-            "rules": [rule.model_dump() for rule in doc.rules],
+            # `watch` only when set, so versions simulated before it existed still match.
+            "rules": [
+                {k: v for k, v in rule.model_dump().items() if k != "watch" or v}
+                for rule in doc.rules
+            ],
         },
         sort_keys=True,
         default=str,

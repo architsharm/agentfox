@@ -513,6 +513,8 @@ class RulePatchIn(BaseModel):
     #: Let narrower levels (one agent, say) loosen this rule. A grant, so it needs a
     #: role that may bind policies to enforce.
     overridable: bool | None = None
+    #: False starts blocking a rule that only watches inside an enforcing pack.
+    watch: bool | None = None
     notes: str = ""
 
 
@@ -578,6 +580,8 @@ def patch_rule(
                     r["when"]["detection"]["min_score"] = payload.min_score
                 if payload.overridable is not None:
                     r["overridable"] = payload.overridable
+                if payload.watch is not None:
+                    r["watch"] = payload.watch or None
         patched = PolicyDocument.model_validate(data)
     except HTTPException:
         raise
@@ -593,6 +597,7 @@ def patch_rule(
             "on_block": payload.on_block,
             "min_score": payload.min_score,
             "overridable": payload.overridable,
+            "watch": payload.watch,
         }.items()
         if v is not None
     }
@@ -604,6 +609,7 @@ def patch_rule(
         "on_block": rule.on_block,
         "min_score": rule.when.detection.min_score if rule.when.detection else None,
         "overridable": rule.overridable,
+        "watch": bool(rule.watch),
     }
     was = {k: old[k] for k in changes if old.get(k) is not None}
     _policy, version = save_policy(

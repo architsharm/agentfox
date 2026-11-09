@@ -227,14 +227,20 @@ class OpaPolicyEngine:
                     reason=reason,
                     severity=f.get("severity", "medium"),
                     controls=list(f.get("controls", [])),
-                    mode=policy.mode,
+                    mode="observe" if source is not None and source.watch else policy.mode,
                     message=source.message if source else "",
                     on_block=source.on_block if source else "refuse",
                 )
             )
         effective = result.get("verdict", policy.default_effect)
+        from agentfox.platform.policy.engine import applied_effect
+
         return PolicyDecision(
-            verdict=effective if policy.mode == "enforce" else "allow",
+            verdict=(
+                (applied_effect(policy, fired) if any(f.mode != "enforce" for f in fired) else effective)
+                if policy.mode == "enforce"
+                else "allow"
+            ),
             effective_verdict=effective,
             rules_fired=fired,
             policy_key=policy.key,

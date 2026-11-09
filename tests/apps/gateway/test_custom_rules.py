@@ -164,7 +164,37 @@ def test_adding_a_rule_to_an_enforcing_pack_is_simulated_first(client):
     )
     assert r.json()["policy"]["mode"] == "enforce"
     assert r.json()["policy"]["simulation"] is not None
+    # The form promises a new rule starts by watching, even with Your rules blocking.
+    assert r.json()["mode"] == "observe"
+    watched = _guard(client, "beta")
+    assert watched["verdict"] == "allow" and watched["effective_verdict"] == "block"
+    fired = {f["rule_id"]: f for f in watched["rules_fired"]}
+    assert fired["custom.two"]["mode"] == "observe"
+    # The rule that was already there still blocks.
+    assert _guard(client, "alpha")["verdict"] == "block"
+
+    # Start blocking just this rule: a new version, simulated, then made live.
+    v = client.post("/api/policies/custom/rules/custom.two", json={"watch": False}, headers=ADMIN)
+    assert v.status_code == 201, v.text
+    sim = client.post(
+        "/api/policies/simulate", json={"body": v.json()["body"], "persist": True}, headers=ADMIN
+    )
+    assert sim.status_code == 200, sim.text
+    r = client.post(
+        "/api/policies/custom/mode",
+        json={"mode": "enforce", "version": v.json()["version"]},
+        headers=ADMIN,
+    )
+    assert r.status_code == 200, r.text
     assert _guard(client, "beta")["verdict"] == "block"
+
+    # Editing its words later does not send it back to watching.
+    client.post(
+        "/api/custom-rules",
+        json={"key": "two", "name": "Two", "kind": "terms", "entries": ["beta", "gamma"]},
+        headers=ADMIN,
+    )
+    assert _guard(client, "gamma")["verdict"] == "block"
 
 
 def test_detectors_switch_per_workspace_but_the_safety_net_stays(client):

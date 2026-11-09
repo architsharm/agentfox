@@ -37,6 +37,8 @@ class Published:
     #: Present when the pack enforces: what the new version would have changed.
     simulation: dict[str, Any] | None = None
     rules: list[str] = field(default_factory=list)
+    #: Rules that only watch while the pack enforces (`Rule.watch`).
+    watching: list[str] = field(default_factory=list)
 
 
 def current_mode(session: Session, key: str) -> str | None:
@@ -77,7 +79,12 @@ def publish_in_current_mode(
         compose=binding.compose if binding else compose,
         rebind=False,
     )
-    result = Published(version=version.version, mode=mode, rules=[r.id for r in doc.rules])
+    result = Published(
+        version=version.version,
+        mode=mode,
+        rules=[r.id for r in doc.rules],
+        watching=[r.id for r in doc.rules if r.watch],
+    )
     if binding is None:
         return result  # a new pack is bound in observe by `save_policy`
     if mode == "enforce":

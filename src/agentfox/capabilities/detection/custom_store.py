@@ -242,7 +242,9 @@ def _row_json(row: CustomRule) -> dict[str, Any]:
     }
 
 
-def _policy_rule(row: CustomRule, previous: Rule | None, seed: dict[str, Any]) -> Rule:
+def _policy_rule(
+    row: CustomRule, previous: Rule | None, seed: dict[str, Any], *, enforcing: bool = False
+) -> Rule:
     spec = spec_of(row)
     rid = rule_id_for(row.key)
     if spec.kind == "sequence":
@@ -268,6 +270,10 @@ def _policy_rule(row: CustomRule, previous: Rule | None, seed: dict[str, Any]) -
         message=kept.message,
         on_block=kept.on_block,
         redaction=kept.redaction,
+        # A new rule starts by watching, as the form promises, even when Your rules
+        # already blocks: it records what it would do until someone starts blocking
+        # it (the rule's Tune tab). An existing rule keeps what it had.
+        watch=kept.watch if previous is not None else (True if enforcing else None),
     )
 
 
@@ -308,6 +314,8 @@ def sync_policy(
         previous = {r.id: r for r in load_version_document(live).rules}
 
     rows = list_rules(session)
+    binding = current_binding(session, policy.id)[0] if policy else None
+    enforcing = binding is not None and binding.mode == "enforce"
     doc = PolicyDocument(
         key=POLICY_KEY,
         name=POLICY_NAME,
@@ -316,7 +324,12 @@ def sync_policy(
             "sequences of actions, limits on values, and your own models."
         ),
         rules=[
-            _policy_rule(r, previous.get(rule_id_for(r.key)), seed.get(rule_id_for(r.key), {}))
+            _policy_rule(
+                r,
+                previous.get(rule_id_for(r.key)),
+                seed.get(rule_id_for(r.key), {}),
+                enforcing=enforcing,
+            )
             for r in rows
         ]
         + [

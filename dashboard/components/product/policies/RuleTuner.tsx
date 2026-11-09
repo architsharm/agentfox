@@ -6,7 +6,7 @@ import { callJson } from "@/components/kit/Act";
 import type { RulePack } from "@/lib/product/rules";
 import { ACTION_CHOICES, SENSITIVITY, sensitivityOf } from "@/lib/product/vocab";
 
-type Change = { effect?: string; enabled?: boolean; message?: string; on_block?: string; min_score?: number; overridable?: boolean };
+type Change = { effect?: string; enabled?: boolean; message?: string; on_block?: string; min_score?: number; overridable?: boolean; watch?: boolean };
 
 /** One agent's own copy of this rule, when it has one. */
 type OwnCopy = { effect: string; enabled: boolean; min_score: number | null; message: string; on_block: string };
@@ -21,7 +21,7 @@ export type RuleScope = {
 
 type Sim = {
   replayed: number;
-  counts: { newly_blocked: number; newly_allowed: number; newly_escalated: number };
+  counts: { newly_blocked: number; newly_allowed: number; newly_escalated: number; would_stop?: number; own_would_stop?: number };
 };
 
 type Preview = {
@@ -96,8 +96,10 @@ export function RuleTuner({
     ? { ...base, effect: own.effect, enabled: own.enabled, minScore: own.min_score, message: own.message, onBlock: own.on_block }
     : base;
   const packChoices = some ? workspace : packs;
+  // A rule added while its library blocks watches on its own until started here.
+  const ownWatch = base.mode === "enforce" && Boolean(base.watch) && !some;
   // A chosen Block or Ask in a library that only watches is not live yet: say so.
-  const notLive = current.enabled && current.effect !== "allow" && base.mode !== "enforce";
+  const notLive = current.enabled && current.effect !== "allow" && (base.mode !== "enforce" || ownWatch);
 
   const reset = () => {
     setPreview(null);
@@ -247,7 +249,14 @@ export function RuleTuner({
             );
           })}
         </div>
-        {notLive ? (
+        {notLive && ownWatch ? (
+          <div className="k-pills gm-watch-note" style={{ gap: 8 }}>
+            <span className="k-muted">Watching: {base.name} blocks, but this new rule only records what it would do until you start blocking it.</span>
+            <button className="k-btn-primary" disabled={busy} onClick={() => propose({ watch: false }, "Start blocking this rule")}>
+              Start blocking this rule
+            </button>
+          </div>
+        ) : notLive ? (
           <span className="k-muted gm-watch-note">
             Watching: {base.name} only records what this rule would do and stops nothing. Start blocking from its library.
           </span>
@@ -345,6 +354,7 @@ export function RuleTuner({
             <span className="k-muted"> · replayed {s?.replayed ?? 0} requests from the last 7 days</span>
           </div>
           <div className="k-preview-nums">
+            {preview.change.watch === false && <span><strong>{s?.counts.own_would_stop ?? s?.counts.would_stop ?? 0}</strong> would have been stopped</span>}
             <span><strong>{s?.counts.newly_blocked ?? 0}</strong> newly blocked</span>
             <span><strong>{s?.counts.newly_escalated ?? 0}</strong> newly held</span>
             <span><strong>{s?.counts.newly_allowed ?? 0}</strong> newly allowed</span>

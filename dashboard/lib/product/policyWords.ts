@@ -134,6 +134,8 @@ function changeWords(field: string, after: unknown, before: unknown): string {
       return after === "reask" ? "On a blocked answer: ask the model to fix it" : "On a blocked answer: refuse";
     case "overridable":
       return after ? "Agents may now loosen this rule" : "Agents may no longer loosen this rule";
+    case "watch":
+      return after ? "Back to watching" : "Started blocking";
     default:
       return `${field.replace(/_/g, " ")} changed`;
   }

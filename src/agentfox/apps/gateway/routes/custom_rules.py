@@ -92,9 +92,12 @@ def post_custom_rule(
         on_block=payload.on_block,
         severity=payload.severity,
     )
+    rule_id = rule_id_for(row.key)
     return {
         "rule": _json(row),
         "policy": {"version": sync.version, "mode": sync.mode, "simulation": sync.simulation},
+        # What this rule does now: a new rule watches even while Your rules blocks.
+        "mode": "observe" if sync.mode != "enforce" or rule_id in sync.watching else "enforce",
     }
 
 

@@ -15,7 +15,7 @@ import { LadderEditor } from "@/components/product/policies/LadderEditor";
 import { checksFor, type CheckInfo } from "@/lib/product/checks";
 import { versionNote } from "@/lib/product/policyWords";
 import { RANGE_DAYS, metricsQs, runsHref } from "@/lib/product/observe";
-import { BUSINESS_LIBRARY, businessRule, loadRules, ruleMode, type RuleInfo } from "@/lib/product/rules";
+import { BUSINESS_LIBRARY, businessRule, loadRules, packRuleMode, ruleMode, type RuleInfo } from "@/lib/product/rules";
 import { ensureRange } from "@/lib/product/range";
 import { RangeProvider } from "@/components/kit/RangeContext";
 import { WOULD, categoryLabel, rangeOf, ruleCategory, ruleTitle } from "@/lib/product/vocab";
@@ -74,9 +74,13 @@ export default async function RulePage({ params, searchParams }: { params: Promi
         }
         actions={
           <>
-            {/* A rule you wrote is switched on with its library, Your rules. */}
+            {/* A rule you wrote is switched on with its library, Your rules, or on its own
+                when Your rules already blocks and it was added since (it watches until then). */}
             {mode !== "enforce" && rule?.packs.some((p) => p.key === "custom") && (
-              <Link className="k-btn-primary" href="/app/policies?tab=libraries&open=custom">
+              <Link
+                className="k-btn-primary"
+                href={rule.packs.some((p) => p.key === "custom" && p.mode === "enforce") ? tabHref("tune") : "/app/policies?tab=libraries&open=custom"}
+              >
                 Start blocking
               </Link>
             )}
@@ -113,7 +117,7 @@ export default async function RulePage({ params, searchParams }: { params: Promi
                     <tr key={p.key}>
                       <td><Link className="k-name" href={`/app/policies/${encodeURIComponent(p.key)}`}>{p.name}</Link></td>
                       <td className="tight"><ActionPill effect={p.effect} /></td>
-                      <td className="tight">{p.enabled ? <ModePill mode={p.mode} /> : <Pill tone="outline">Off</Pill>}</td>
+                      <td className="tight">{p.enabled ? <ModePill mode={packRuleMode(p)} /> : <Pill tone="outline">Off</Pill>}</td>
                     </tr>
                   ))}
                 </tbody>
