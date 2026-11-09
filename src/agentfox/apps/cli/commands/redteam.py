@@ -189,13 +189,18 @@ def redteam_run(
                 "  [dim]No attacks were written through this agent's own tools: "
                 f"{escape(why_generic)}. These are the built-in generic probes.[/]"
             )
-    watching = [
+    caught = [
         r
         for r in rows
         if r["expect_blocked"]
         and not r["succeeded"]
-        and (r["applied"] not in _STOPS or r["waiting_for"])
+        and (r["applied"] not in _STOPS or r["waiting_for"] == "grant")
     ]
+    # Two reasons a caught attack still gets through, with two different fixes: the
+    # rule only watches (enforce its policy), or the call waits for the agent's first
+    # tool grant (default deny starts there; enforcing a policy doesn't change it).
+    grant = [r for r in caught if r["waiting_for"] == "grant"]
+    watching = [r for r in caught if r["waiting_for"] != "grant"]
     # One meaning of "got through" for this line, the verdict and the exit code: what
     # live traffic doesn't stop today. A watching rule's catch is not a stop.
     attacks, through, _ = _live(stats)
@@ -204,26 +209,23 @@ def redteam_run(
         f"  recall (attacks stopped) [bold]{stopped / attacks if attacks else 1.0:.0%}[/] — "
         f"[green]{stopped} blocked[/], "
         + (f"[red]{through} got through[/]" if through else "[green]0 got through[/]")
-        + (
-            f" [yellow]({len(watching)} of them caught by rules that only watch)[/]"
-            if watching
-            else ""
-        )
     )
     if watching:
+        rules = ", ".join(stats.get("watching_rules") or []) or "their rules"
         console.print(
-            f"  [yellow]{len(watching)} caught only by rules that watch:[/] live traffic is "
-            "not stopped yet. They stop it once their policy blocks "
+            f"  [yellow]{len(watching)} caught only by rules that watch[/] ({escape(rules)}): "
+            "live traffic is not stopped yet. They stop once those rules block "
             + (
-                "(Policies → Libraries in the dashboard, or `agentfox policy enforce <policy>`)"
+                "(Policies → Libraries in the dashboard, or `agentfox policy enforce <policy>`)."
                 if dashboard_url()
-                else "(`agentfox policy enforce <policy>`; `agentfox policy list` names them)"
+                else "(`agentfox policy enforce <policy>`; `agentfox policy list` names them)."
             )
-            + (
-                " or, for a tool call, once the agent is granted its first tool."
-                if any(r["waiting_for"] == "grant" for r in watching)
-                else "."
-            )
+        )
+    if grant:
+        console.print(
+            f"  [yellow]{len(grant)} refused only by default deny[/], which live traffic "
+            f"applies from {agent}'s first tool grant: `agentfox permit grant {agent} "
+            "<tool>` for the tools it should use."
         )
     if stats.get("benign_probes_run"):
         console.print(
@@ -261,15 +263,17 @@ def redteam_run(
     if written and not show_all:
         console.print(_by_set(rows))
         console.print(
-            "  [dim]Checked as live traffic would check them, with no model: an attack "
-            "not blocked here reaches the agent, and its model may still resist it. "
-            "`agentfox init` runs the same attacks against the real agent. --all lists "
-            "every probe.[/]"
+            "  [dim]Checked as live traffic checks them, with no model: each message (or "
+            "planted record), then the tool call the attack is after, as if the model "
+            "obeyed. An attack not blocked here reaches the agent, whose model may still "
+            "resist it. To send them to the real agent, connect it to a dashboard "
+            "(`agentfox init --key ...`) and run its attack test. --all lists every "
+            "probe.[/]"
         )
     else:
         _probe_table(rows, written=bool(written), show_all=show_all)
 
-    console.print(f"\n{_verdict(stats, previous)}")
+    console.print(f"\n{_verdict(stats, previous, agent)}")
 
     if through and not allow_escapes:
         console.print(
@@ -279,6 +283,7 @@ def redteam_run(
                 if watching
                 else ""
             )
+            + (f" {len(grant)} stop once you allow {agent} its first tool." if grant else "")
             + " [dim]Pass --allow-escapes to report without failing.[/]"
         )
         raise typer.Exit(1)
@@ -348,15 +353,10 @@ def _by_set(rows: list[dict[str, Any]]) -> Table:
         else:
             n["blocked"] += 1
     table = Table(box=None, pad_edge=False)
-    for column in (
-        "set",
-        "attacks",
-        "blocked",
-        "got through",
-        "of those, watched",
-        "normal requests",
-    ):
-        table.add_column(column, justify="left" if column == "set" else "right")
+    # Short headers: at 80 columns a long one ("of those, watched") wrapped onto two
+    # lines and no longer sat over its numbers.
+    for column in ("set", "attacks", "blocked", "through", "would stop", "normal requests"):
+        table.add_column(column, justify="left" if column == "set" else "right", no_wrap=True)
     for kind, n in sets.items():
         table.add_row(
             ATTACK_TYPES.get(kind, kind.replace("_", " ")),
@@ -397,10 +397,11 @@ def _live(stats: dict[str, Any]) -> tuple[int, int, int]:
     return attacks, int(through), int(stats.get("attacks_watching") or 0)
 
 
-def _verdict(stats: dict[str, Any], previous: dict[str, Any] | None) -> str:
+def _verdict(stats: dict[str, Any], previous: dict[str, Any] | None, agent: str = "") -> str:
     """One line, like the dashboard's before → after: how many attacks get through live
-    traffic today, how many more stop once the watching rules block, and how normal
-    requests fared."""
+    traffic today, how many would once every rule that only watches blocks (named by
+    the lines above), how many wait for the agent's first tool grant instead (enforcing
+    a policy doesn't stop those), and how normal requests fared."""
     attacks, through, watching = _live(stats)
     if not attacks:
         return "[bold]Verdict:[/] no attack ran, so this says nothing about the agent yet."
@@ -413,8 +414,12 @@ def _verdict(stats: dict[str, Any], previous: dict[str, Any] | None) -> str:
     )
     if comparable and previous is not None:
         line += f" (last run: {_live(previous)[1]} → now {through})"
-    if watching:
-        line += f"; {through - watching} once the watching rules block"
+    grant = min(int(stats.get("attacks_waiting_grant") or 0), watching)
+    rules = watching - grant
+    if rules:
+        line += f"; {through - rules} once the watching rules block"
+    if grant:
+        line += f"; {grant} stop once you allow {agent or 'the agent'} its first tool"
     controls = int(stats.get("benign_probes_run") or 0)
     if controls:
         blocked = int(

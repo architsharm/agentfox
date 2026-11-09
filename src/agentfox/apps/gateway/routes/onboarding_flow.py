@@ -585,6 +585,8 @@ def runner_guard(
             content=body.content,
             tool_key=body.tool,
             arguments=body.arguments,
+            message=body.message,
+            reads=body.reads,
         )
 
     if session.get_bind().dialect.name == "sqlite":
