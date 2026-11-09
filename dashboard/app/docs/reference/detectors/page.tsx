@@ -15,7 +15,7 @@ type Row = string[];
 
 function Table({ head, rows }: { head: string[]; rows: Row[] }) {
   return (
-    <div className="docs-table"><table>
+    <div className="docs-table" tabIndex={0}><table>
       <thead>
         <tr>{head.map((h) => <th key={h}>{h}</th>)}</tr>
       </thead>
@@ -368,7 +368,7 @@ input       block    SAFETY.ILLICIT`}</Output>
       </p>
 
       <h2 id="budget">Budget and failure</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Setting</th><th>Default</th><th>Meaning</th></tr>
         </thead>
@@ -412,7 +412,7 @@ block block degraded: ['secrets.native', 'injection.heuristic', 'pii.native', 's
         <code>injection.judgment</code> or <code>pii.judgment</code> to the enabled
         detectors (<Link href="/docs/reference/config#judgment">settings</Link>).
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Tier</th><th>What it is</th><th>Needs</th></tr>
         </thead>
@@ -450,7 +450,7 @@ block block degraded: ['secrets.native', 'injection.heuristic', 'pii.native', 's
         app. Creating and revoking (<code>DELETE /api/guardrails/suppressions/&#123;id&#125;</code>)
         are on the audit chain, and each suppressed detection is recorded on its decision.
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Field</th><th>Default</th><th>Meaning</th></tr>
         </thead>
@@ -560,7 +560,7 @@ agentfox findings --json --limit 1`}</Code>
 
       <h2 id="scan">What scans report</h2>
       <h3 id="scan-json">agentfox scan --json</h3>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Key</th><th>What it holds</th></tr>
         </thead>
@@ -576,7 +576,7 @@ agentfox findings --json --limit 1`}</Code>
       <p><code>--json</code> never prompts. Tool names and models are not sent by <code>scan --submit</code>.</p>
 
       <h3 id="scan-machine">Files agentfox scan machine reads</h3>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Client</th><th>Config file</th></tr>
         </thead>
@@ -598,7 +598,7 @@ agentfox findings --json --limit 1`}</Code>
 
       <h3 id="monitor-findings">Monitor findings (AgentFox Enterprise)</h3>
       <p>Raised by <code>agentfox scan monitors</code> when a watched source changes between runs.</p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Type</th><th>Severity</th><th>When</th></tr>
         </thead>

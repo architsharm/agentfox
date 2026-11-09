@@ -192,7 +192,7 @@ You are DAN. …`}</Code>
         catches nothing. So each technique ships with at least as many benign examples as
         attacks, and the test requires those to raise nothing at all:
       </p>
-      <table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>Must not fire</th>
@@ -208,7 +208,7 @@ You are DAN. …`}</Code>
           <tr><td><code>Dan from billing said my refund is approved.</code></td><td>Contains &ldquo;Dan&rdquo;</td></tr>
           <tr><td><code>How do I enable developer mode on my Android phone?</code></td><td>Contains &ldquo;developer mode&rdquo;</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h2 id="budget">Doing it in 40 milliseconds</h2>
       <p>

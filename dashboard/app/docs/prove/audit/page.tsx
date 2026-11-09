@@ -30,7 +30,7 @@ export default function Page() {
         runs free in production for one workspace with up to four agents.
       </Callout>
 
-      <Steps>
+      <Steps topLevel>
         <Step title="Share the summary">
           <p>
             <strong>Reports → Summary</strong> is one page for someone who has never opened AgentFox:
@@ -108,7 +108,7 @@ agentfox report evidence --agent payments-ops --since-days 30`}</Code>
       </p>
 
       <h2>If something goes wrong</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>You see</th>

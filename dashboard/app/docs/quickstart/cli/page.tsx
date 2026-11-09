@@ -21,7 +21,7 @@ export default function Page() {
         found. Nothing leaves your machine. You need Python 3.11 or newer.
       </p>
 
-      <Steps>
+      <Steps topLevel>
         <Step title="Scan the repository">
           <Code>{`pip install agentfox
 agentfox scan`}</Code>
@@ -86,7 +86,7 @@ agentfox scan`}</Code>
       </p>
 
       <h2>If something goes wrong</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>You see</th>

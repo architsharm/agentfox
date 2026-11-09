@@ -74,7 +74,7 @@ agentfox policy proposals from-traffic --agent claude-dev`}</Code>
 
       <h2>What is refused from the start</h2>
       <p>The shell rules block from day one, whatever the grants say:</p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>Command</th>
@@ -138,7 +138,7 @@ claude plugin install agentfox@agentfox`}</Code>
       </p>
 
       <h2>If something goes wrong</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>You see</th>

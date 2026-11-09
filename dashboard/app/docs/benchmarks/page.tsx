@@ -29,7 +29,7 @@ export default function Page() {
       </Callout>
 
       <h2>Containment, with every detector off</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>Benchmark</th>
@@ -61,7 +61,7 @@ export default function Page() {
         exactly like an attack, and it is escalated to a person. The whole trade, from{" "}
         <code>benchmarks/agentdojo/README.md</code>:
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>Provenance</th>
@@ -137,7 +137,7 @@ export default function Page() {
       </p>
 
       <h2>Detection, the layer we trust least</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>Benchmark</th>

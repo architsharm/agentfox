@@ -76,7 +76,7 @@ export default function Page() {
       </Steps>
 
       <h2>Headers worth sending</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>Header</th>
@@ -111,7 +111,7 @@ export default function Page() {
       </p>
 
       <h2>If something goes wrong</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>You see</th>

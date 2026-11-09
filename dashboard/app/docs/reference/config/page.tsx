@@ -1069,7 +1069,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
       {GROUPS.map((group) => (
         <section key={group.id}>
           <h2 id={group.id}>{group.title}</h2>
-          <div className="docs-table"><table>
+          <div className="docs-table" tabIndex={0}><table>
             <thead>
               <tr>
                 <th>Key and variable</th>
@@ -1101,7 +1101,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
         With <code>webhook_url</code> set and <code>allow_egress</code> on, AgentFox POSTs a
         JSON body for each finding at or above <code>webhook_min_severity</code>:
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Part</th><th>What it is</th></tr>
         </thead>
@@ -1139,7 +1139,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
         <code>GET /api/export/siem</code> returns recent decisions and findings, oldest
         first, as <code>text/plain</code>. It needs a token when token auth is on.
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Parameter</th><th>Default</th><th>Values</th></tr>
         </thead>
@@ -1176,7 +1176,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
         Headers the proxy routes (<code>/v1/chat/completions</code>, <code>/v1/messages</code>)
         read and return. Routes and bodies are in the <Link href="/docs/reference/api">HTTP API reference</Link>.
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Request header</th><th>What it does</th></tr>
         </thead>
@@ -1193,7 +1193,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
           <tr><td><code>Authorization: Bearer nom_agt_…</code></td><td>Optional agent key.</td></tr>
         </tbody>
       </table></div>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Response header</th><th>Meaning</th></tr>
         </thead>
@@ -1207,7 +1207,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
           <tr><td><code>x-agentfox-degraded</code></td><td>A dependency was unavailable while serving the request.</td></tr>
         </tbody>
       </table></div>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Status</th><th>Meaning</th></tr>
         </thead>
@@ -1224,7 +1224,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
         decision; 429 and 503 apply to every <code>/v1</code> route.
       </p>
       <h3 id="streaming">Streaming modes</h3>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th><code>streaming_mode</code></th><th>Behaviour</th></tr>
         </thead>
@@ -1243,7 +1243,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
       </p>
 
       <h2 id="compose">What deploy/docker-compose.yml sets</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Variable</th><th>Compose value</th><th>Why it differs from the default</th></tr>
         </thead>
@@ -1292,7 +1292,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
         settings come from or are used by a separate program. None of them can go in{" "}
         <code>agentfox.toml</code>.
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>Variable</th>
@@ -1318,7 +1318,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
         (for example <code>AGENTFOX_API_URL</code>) when unset. They are read at request time,
         so one image can point at any gateway.
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>Variable</th>

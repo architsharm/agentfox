@@ -32,7 +32,7 @@ export default function Page() {
       </p>
 
       <h2 id="which">Which surface to use</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>Surface</th>
@@ -173,7 +173,7 @@ agentfox: governed 2 model call(s). Run \`agentfox findings\` to see what it fou
         text), and each tool call the response asks for is authorised before your code
         sees the response. Every decision is written to the audit log.
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr>
         </thead>
@@ -207,7 +207,7 @@ agentfox: governed 2 model call(s). Run \`agentfox findings\` to see what it fou
         conversation window.
       </p>
 
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Library</th><th>Entry points patched</th></tr>
         </thead>
@@ -220,7 +220,7 @@ agentfox: governed 2 model call(s). Run \`agentfox findings\` to see what it fou
       </table></div>
 
       <h3 id="modes">Modes</h3>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th><code>mode</code></th><th>Raises <code>agentfox.Blocked</code> when</th><th>Use it for</th></tr>
         </thead>
@@ -420,7 +420,7 @@ None`}</Output>
         database; otherwise the SDK opens and commits its own per call, which deadlocks
         against an open SQLite write transaction.
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Method</th><th>Signature</th><th>Returns / raises</th></tr>
         </thead>
@@ -442,7 +442,7 @@ None`}</Output>
       </p>
 
       <h3 id="session">AgentSession</h3>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Method</th><th>Signature</th><th>What it does</th></tr>
         </thead>
@@ -623,7 +623,7 @@ PolicyViolation: capability.denied`}</Output>
       </p>
 
       <h2 id="exceptions">Exceptions and the decision object</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Exception</th><th>Raised by</th><th>Attributes</th></tr>
         </thead>
@@ -953,7 +953,7 @@ govern(fox, triage_agent, tool_prefix="support")`}</Code>
       default_on: true
       api_base: os.environ/AGENTFOX_URL
       api_key: os.environ/AGENTFOX_API_KEY`}</Code>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Item</th><th>Behaviour</th></tr>
         </thead>

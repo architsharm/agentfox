@@ -44,7 +44,7 @@ export default function Page() {
       <Code>{`agentfox doctor`}</Code>
 
       <h2>Common problems</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>You see</th>

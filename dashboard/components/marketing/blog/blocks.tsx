@@ -46,8 +46,8 @@ export function Figure({
 /** A drawn figure: inline SVG or HTML, framed like a screenshot. */
 export function Diagram({ caption, children, label }: { caption: ReactNode; children: ReactNode; label: string }) {
   return (
-    <figure className="blog-figure blog-diagram" role="group" aria-label={label}>
-      <div className="blog-diagram-frame">{children}</div>
+    <figure className="blog-figure blog-diagram" aria-label={label}>
+      <div className="blog-diagram-frame" tabIndex={0}>{children}</div>
       <figcaption>{caption}</figcaption>
     </figure>
   );

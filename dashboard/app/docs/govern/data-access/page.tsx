@@ -27,7 +27,7 @@ export default function Page() {
         signed-in user&apos;s email.
       </p>
 
-      <Steps>
+      <Steps topLevel>
         <Step title="Add the people and teams">
           <p>
             Go to <strong>Settings → Data access</strong> and press <strong>+ Add a person or group</strong>.
@@ -100,7 +100,7 @@ agentfox permit user "kb/support/*" support`}</Code>
       </p>
 
       <h2>If something goes wrong</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>You see</th>
