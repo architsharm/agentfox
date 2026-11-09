@@ -21,7 +21,7 @@ export default function Page() {
         Add a rule of your own, watch what it would do, then start blocking with it.
       </p>
 
-      <Steps>
+      <Steps topLevel>
         <Step title="Pick what you want to do">
           <p>
             On <strong>Policies</strong>, press <strong>New rule</strong>. Pick a card: block words or a

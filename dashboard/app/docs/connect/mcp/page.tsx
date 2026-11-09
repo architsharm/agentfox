@@ -20,7 +20,7 @@ export default function Page() {
         each agent call only the MCP tools you grant it.
       </p>
 
-      <Steps>
+      <Steps topLevel>
         <Step title="Scan the servers in your repository">
           <p>
             Run this where your MCP config lives (<code>.mcp.json</code>, <code>.cursor/mcp.json</code>,{" "}
@@ -113,7 +113,7 @@ export default function Page() {
       </p>
 
       <h2>If something goes wrong</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>You see</th>

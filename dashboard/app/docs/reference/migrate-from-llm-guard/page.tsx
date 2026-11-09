@@ -298,7 +298,7 @@ Refused: Prompt-injection or jailbreak attempt detected in user input.; System-p
         <code>validator.</code> in front takes settings, so it runs as a rule (
         <Link href="#rules">next section</Link>).
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>LLM Guard scanner</th><th>Side</th><th>AgentFox</th><th>Notes</th></tr>
         </thead>
@@ -435,9 +435,9 @@ CHAIN INTACT — 44 entries verified (seq 1..44)`}</Output>
         injection through tool output: 10 attacks and 10 benign documents using the same
         trigger words.
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
-          <tr><th></th><th>Precision</th><th>Attacks caught</th><th>False positives</th></tr>
+          <tr><th><span className="sr-only">Guard</span></th><th>Precision</th><th>Attacks caught</th><th>False positives</th></tr>
         </thead>
         <tbody>
           <tr><td>llm-guard</td><td>81.8%</td><td>9 of 10</td><td>2</td></tr>

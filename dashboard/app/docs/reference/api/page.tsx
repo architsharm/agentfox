@@ -65,7 +65,7 @@ export default function Page() {
       </p>
 
       <h3 id="guard-tool-call">/v1/guard/tool_call</h3>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Field</th><th>What it does</th></tr>
         </thead>

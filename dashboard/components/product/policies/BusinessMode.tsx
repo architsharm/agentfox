@@ -68,7 +68,7 @@ export function BusinessMode({ ruleKey, mode, name }: { ruleKey: string; mode: s
           </button>
         </span>
       )}
-      {error && <span className="k-act-error">{error}</span>}
+      {error && <span className="k-act-error" role="alert">{error}</span>}
     </span>
   );
 }

@@ -45,7 +45,7 @@ export default function Page() {
         AgentFox needs Python 3.11 or newer. The core install has no model weights and nothing
         that downloads them.
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>How</th>
@@ -88,7 +88,7 @@ export default function Page() {
         makes a detector <em>available</em>; it runs only once it is also listed in{" "}
         <code>enabled_detectors</code> (<Link href="/docs/reference/config#detectors">Configuration</Link>).
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>Extra</th>
@@ -141,7 +141,7 @@ python -m spacy download en_core_web_lg   # for pii.presidio, about 400MB`}</Cod
       </Callout>
 
       <h2 id="state">Where state lives</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>Situation</th>
@@ -293,7 +293,7 @@ rm agentfox.toml          # in each project where you ran agentfox init`}</Code>
       </p>
 
       <h2 id="troubleshooting">Troubleshooting</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>You see</th>

@@ -115,7 +115,7 @@ agentfox report drift support-triage --scorer groundedness`}</Code>
       </Callout>
 
       <h2>If something goes wrong</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>You see</th>

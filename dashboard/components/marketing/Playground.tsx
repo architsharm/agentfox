@@ -40,6 +40,7 @@ import { Verdict } from "@/components/ui";
 import {
   ApiError,
   explainVerdict,
+  failureMessage,
   playgroundCall,
   retryPhrase,
   SANDBOX_TIMEOUT_MS,
@@ -485,7 +486,7 @@ export function Playground({ apiBase }: { apiBase: string }) {
       setError(null);
       return;
     }
-    setError(String(e?.message || e));
+    setError(failureMessage(e));
   }
 
   async function refreshChain(sid: string) {
@@ -585,7 +586,7 @@ export function Playground({ apiBase }: { apiBase: string }) {
         setSandboxLost(true);
         return;
       }
-      settle({ error: String(e?.message || e) });
+      settle({ error: failureMessage(e) });
     } finally {
       setBusy(false);
     }
@@ -705,7 +706,7 @@ export function Playground({ apiBase }: { apiBase: string }) {
             </div>
           ) : (
             (sandboxLost || bootstrapError) && (
-              <div className="pg-lost">
+              <div className="pg-lost" role="alert">
                 <p>{sandboxLost ? "That sandbox expired. Nothing was saved." : bootstrapError}</p>
                 <button
                   type="button"
@@ -719,7 +720,11 @@ export function Playground({ apiBase }: { apiBase: string }) {
             )
           )}
 
-          {error && <div className="error">{error}</div>}
+          {error && (
+            <div className="error" role="alert">
+              {error}
+            </div>
+          )}
 
           {world && (
             <div className="pg-main">
@@ -772,6 +777,7 @@ export function Playground({ apiBase }: { apiBase: string }) {
                     <textarea
                       className="input-text"
                       rows={3}
+                      aria-label="Retrieved document text"
                       value={documentText}
                       onChange={(e) => setDocumentText(e.target.value)}
                     />
@@ -809,6 +815,7 @@ export function Playground({ apiBase }: { apiBase: string }) {
                   <textarea
                     className="input-text"
                     rows={1}
+                    aria-label={`Message ${agentName}`}
                     placeholder={`Message ${agentName}…`}
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}

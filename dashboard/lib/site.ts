@@ -52,6 +52,13 @@ export const REPO_URL = "https://github.com/architsharm/agentfox";
 /** Verified in components/marketing/editions.tsx and components/marketing/Playground.tsx. */
 export const SUPPORT_EMAIL = "support@nometria.com";
 
+/** Alt text for the site-wide social card (app/og.tsx draws it). */
+export const SOCIAL_IMAGE_ALT =
+  "AgentFox: your agent believes what it reads, so limit what it is allowed to do. Open source, Apache-2.0.";
+
+/** The card's size and alt text, for the `images` entries in publicPageMetadata. */
+const SOCIAL_IMAGE = { width: 1200, height: 630, alt: SOCIAL_IMAGE_ALT, type: "image/png" };
+
 /** Absolute URL for a path, for canonicals and structured data. */
 export function absolute(path: string): string {
   return `${SITE_URL}${path === "/" ? "/" : path}`;
@@ -67,12 +74,14 @@ export function absolute(path: string): string {
  * restate its own title and description inside `openGraph` and `twitter`, and
  * doing that by hand six times is six chances for the three copies to disagree.
  *
- * No `images` key anywhere. app/opengraph-image.tsx and app/twitter-image.tsx sit
- * at the root of app/, and the file convention applies them to every route
- * underneath automatically, with the content hash in the URL that busts a social
- * network's image cache when the card changes. Naming an image here as well is
- * how a page ends up serving two different `og:image` tags and letting the
- * unfurler pick.
+ * The card is named here explicitly. app/opengraph-image.tsx and
+ * app/twitter-image.tsx at the root of app/ only reach a route that says nothing
+ * about `openGraph`: a page that sets its own `openGraph` block (which every page
+ * using this helper does, for the reason above) replaces the inherited one, image
+ * included. Without `images` here every public page except "/" unfurled with no
+ * picture at all. An explicit entry also beats an image file in the page's own
+ * segment, so a route that has one ("/" and the blog posts) passes `ownImage` and
+ * keeps its file, with the content hash that busts an unfurler's cache.
  */
 export function publicPageMetadata(opts: {
   title: string;
@@ -80,8 +89,10 @@ export function publicPageMetadata(opts: {
   path: string;
   /** True for a page that should be crawled but not indexed, i.e. /login. */
   noIndex?: boolean;
+  /** The route has its own opengraph-image/twitter-image file in its segment. */
+  ownImage?: boolean;
 }) {
-  const { title, description, path, noIndex } = opts;
+  const { title, description, path, noIndex, ownImage } = opts;
   return {
     title,
     description,
@@ -93,11 +104,13 @@ export function publicPageMetadata(opts: {
       title,
       description,
       locale: "en_GB",
+      ...(ownImage ? {} : { images: [{ url: "/opengraph-image", ...SOCIAL_IMAGE }] }),
     },
     twitter: {
       card: "summary_large_image" as const,
       title,
       description,
+      ...(ownImage ? {} : { images: [{ url: "/twitter-image", ...SOCIAL_IMAGE }] }),
     },
     ...(noIndex ? { robots: { index: false, follow: true } } : {}),
   };

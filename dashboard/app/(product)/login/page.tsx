@@ -123,12 +123,12 @@ export default async function Login({
             </p>
           )}
           {expired && (
-            <div className="error small" style={{ margin: "18px 0 0" }}>
+            <div className="error small" role="status" style={{ margin: "18px 0 0" }}>
               Your session expired. Sign in again to pick up where you left off.
             </div>
           )}
           {error && (
-            <div className="error small" style={{ margin: "18px 0 0" }}>
+            <div className="error small" role="alert" id="login-error" style={{ margin: "18px 0 0" }}>
               {error}
             </div>
           )}
@@ -171,6 +171,7 @@ export default async function Login({
                 autoComplete="off"
                 placeholder="nom_api_…"
                 aria-label="API token"
+                aria-describedby={error ? "login-error" : undefined}
                 required
               />
               <button type="submit" className="btn-primary auth-submit">

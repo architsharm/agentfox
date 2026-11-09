@@ -125,7 +125,7 @@ export function RegisterAgent({ agents, current }: { agents: string[]; current: 
           )}
         </form>
       )}
-      {error && <div className="k-act-error">{error}</div>}
+      {error && <div className="k-act-error" role="alert">{error}</div>}
     </div>
   );
 }
@@ -185,7 +185,7 @@ export function CreateKey({ done }: { done: boolean }) {
           Manage keys
         </Link>
       </div>
-      {error && <div className="k-act-error">{error}</div>}
+      {error && <div className="k-act-error" role="alert">{error}</div>}
     </div>
   );
 }

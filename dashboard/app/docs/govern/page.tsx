@@ -22,7 +22,7 @@ export default function Page() {
         something still cannot do it.
       </p>
 
-      <Steps>
+      <Steps topLevel>
         <Step title="See what an agent may call">
           <p>
             Open an agent and choose <strong>Access</strong>. Each row is a tool it may call, with its
@@ -89,7 +89,7 @@ export default function Page() {
         Each tool has an impact, guessed from its name and description. Check it in the{" "}
         <strong>Risk</strong> column: a tool that moves money but is marked Read only is not protected.
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>Risk</th>
@@ -116,7 +116,7 @@ export default function Page() {
         list than the setting allows sends the call for approval. See{" "}
         <Link href="/docs/concepts#provenance">Core concepts</Link>.
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>Setting</th>

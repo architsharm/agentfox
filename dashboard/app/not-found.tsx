@@ -23,7 +23,7 @@ export default function NotFound() {
   return (
     <div className="lp" style={{ display: "flex", flexDirection: "column" }}>
       <LpNav />
-      <main className="lp-page" style={{ flex: 1 }}>
+      <main id="main" className="lp-page" style={{ flex: 1 }}>
         <div className="lp-wrap">
           <span className="lp-pill">404</span>
           <h1 style={{ marginTop: 20 }}>This page doesn&apos;t exist</h1>

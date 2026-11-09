@@ -62,7 +62,7 @@ export AGENTFOX_API_KEY=nom_api_…`}</Code>
       </Steps>
 
       <h2>What is checked</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>When</th>

@@ -21,7 +21,7 @@ export default function Page() {
         minutes. You need Python 3.11 or newer.
       </p>
 
-      <Steps>
+      <Steps topLevel>
         <Step title="Create a key">
           <p>
             <Link href="/login">Sign in</Link>; signing in creates your workspace. On the Agents page,
@@ -79,7 +79,7 @@ agentfox init --key nom_api_… --server https://…`}</Code>
       </ul>
 
       <h2>If something goes wrong</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>You see</th>

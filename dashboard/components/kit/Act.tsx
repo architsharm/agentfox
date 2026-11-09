@@ -9,17 +9,26 @@ import { useState, type ReactNode } from "react";
  * Errors show inline next to the button; nothing navigates away.
  */
 export async function callJson(url: string, method: string, body?: unknown): Promise<any> {
-  const res = await fetch(url, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch {
+    // The browser's own words ("Failed to fetch", "Load failed") say nothing useful.
+    throw new Error(NETWORK_ERROR);
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(detailText(data.detail) || res.statusText);
+    // statusText is empty over HTTP/2, which left forms showing an empty error.
+    throw new Error(detailText(data.detail) || res.statusText || `Request failed (${res.status}). Try again.`);
   }
   return data;
 }
+
+export const NETWORK_ERROR = "Could not reach the server. Check your connection and try again.";
 
 export function Act({
   url,

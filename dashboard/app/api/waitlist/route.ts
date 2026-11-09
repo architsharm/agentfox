@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { proxyPublicFormPost } from "@/lib/product/proxy";
+import { waitlistResult } from "@/lib/marketing/waitlist";
 
 /**
  * "Join the hosted-cloud waitlist" — posted by a plain HTML form on the pricing
@@ -44,24 +45,7 @@ export async function POST(req: NextRequest) {
     typeof returnTo === "string" ? returnTo : null,
     "/pricing",
     body,
-    (res, resBody) => {
-      if (res.ok) {
-        // The gateway distinguishes a new signup from a repeat one and phrases both;
-        // pass its wording through rather than second-guessing it here.
-        return { notice: resBody?.message || "You're on the list." };
-      }
-      // Fixed messages by status rather than the gateway's `detail`: a 422 body is
-      // Pydantic's error list, which renders as "[object Object]" in a query string,
-      // and this page is public — whatever lands in the URL is something a stranger
-      // can put there via a link.
-      if (res.status === 422 || res.status === 400) {
-        return { error: "That doesn't look like an email address — please check it." };
-      }
-      if (res.status === 429) {
-        return { error: "Too many signups from your network just now — try again later." };
-      }
-      return { error: "Something went wrong — please try again." };
-    },
+    (res, resBody) => waitlistResult(res.status, resBody),
     { noticeParam: "waitlist_notice", errorParam: "waitlist_error" },
   );
 }

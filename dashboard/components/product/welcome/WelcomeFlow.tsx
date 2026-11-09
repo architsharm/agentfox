@@ -316,7 +316,7 @@ function ConnectLive({ gateway, siteUrl, counts }: { gateway: string; siteUrl: s
           <span className="k-muted">Creates an API key for it.</span>
         </div>
       )}
-      {error && <div className="k-act-error">{error}</div>}
+      {error && <div className="k-act-error" role="alert">{error}</div>}
       <FirstRequestWatcher
         initial={counts}
         waitingHint="Run the command, then use your agent: its first request through this gateway appears here."

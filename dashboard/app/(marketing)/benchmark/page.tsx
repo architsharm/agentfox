@@ -36,7 +36,7 @@ export default function Benchmark() {
     <div className="lp">
       <Reveal />
       <LpNav />
-      <main>
+      <main id="main">
         <section className="lp-hero lp-hero-short">
           <FlowArt mode="ribbon" />
           <div className="lp-hero-copy">
@@ -55,6 +55,8 @@ export default function Benchmark() {
 
         <section className="lp-section lp-section-tight">
           <div className="lp-wrap">
+            {/* For screen readers: the cards below are h3s, and need an h2 above them. */}
+            <h2 className="sr-only">Headline results</h2>
             <div className="lp-pairs lp-pairs-wide" data-reveal>
               <BarCard
                 title="Attacks that got through"

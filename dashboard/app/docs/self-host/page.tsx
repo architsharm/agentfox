@@ -106,7 +106,7 @@ agentfox serve --host 0.0.0.0 --port 8080`}</Code>
       </p>
 
       <h2>If something goes wrong</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>You see</th>

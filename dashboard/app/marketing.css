@@ -445,7 +445,7 @@
 .mk .mk-btn-outline:hover { border-color: var(--mk-accent); background: var(--mk-accent-soft); }
 .mk .mk-btn-ghost { color: var(--mk-muted); padding-inline: 12px; }
 .mk .mk-btn-ghost:hover { color: var(--mk-text); }
-.mk a:focus-visible, .mk button:focus-visible {
+.mk a:focus-visible, .mk button:focus-visible, .mk summary:focus-visible, .mk [tabindex="0"]:focus-visible {
   outline: 2px solid var(--mk-accent);
   outline-offset: 3px;
   border-radius: var(--mk-r-sm);
@@ -548,7 +548,9 @@
 
 .mk-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .mk-grid { display: grid; gap: var(--gap-grid); }
-.mk-grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+/* min(), so a column never asks for more than the screen has (a 320px phone leaves
+   224px inside the legal pages' padding). */
+.mk-grid-2 { grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); }
 .mk-grid-pair { grid-template-columns: 1fr; }
 @media (min-width: 760px) { .mk-grid-pair { grid-template-columns: 1fr 1fr; } }
 .mk-grid-3 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
@@ -1460,6 +1462,7 @@
 /* The pricing-announcement capture, under the editions grid rather than inside a
    card: it is about all three editions, not one of them. */
 .mk-notify {
+  scroll-margin-top: 96px; /* a submit lands on #waitlist, under the sticky header */
   margin-top: 22px;
   display: flex;
   flex-wrap: wrap;
@@ -3674,6 +3677,10 @@
 .docs-doc p { margin: 12px 0 0; }
 .docs-doc ul { margin: 12px 0 0; padding-left: 1.2em; }
 .docs-doc a { color: var(--mk-accent); }
+/* A link inside a sentence needs more than colour: in dark the rose is only 2.6:1
+   against the body grey, under WCAG's 3:1 for telling a link from its text. */
+.docs-doc :is(p, li, td, dd, .docs-callout > div) a:not([class]),
+.blog-figure figcaption a:not([class]) { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
 .docs-doc pre {
   margin: 14px 0 0;
   padding: 14px 16px;
@@ -3699,7 +3706,9 @@
 }
 @media (max-width: 800px) {
   .docs-shell {
-    grid-template-columns: 1fr;
+    /* minmax, not 1fr: a wide table or code block must scroll inside the article,
+       not stretch the column past a 320px screen. */
+    grid-template-columns: minmax(0, 1fr);
     gap: 28px;
     padding-top: 28px;
   }
@@ -3902,7 +3911,7 @@
 /* In-text blocks */
 .blog-figure { margin: 28px 0 0; }
 .blog-figure .shot-frame img { width: 100%; height: auto; }
-.blog-diagram { margin: 28px 0 0; display: grid; gap: 12px; }
+.blog-diagram { margin: 28px 0 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .blog-diagram-frame {
   border: 1px solid var(--mk-border);
   border-radius: 14px;

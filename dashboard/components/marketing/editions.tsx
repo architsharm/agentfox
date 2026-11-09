@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
-import { WaitlistForm } from "@/components/marketing/waitlist";
+import { WAITLIST_ANCHOR, WAITLIST_ERROR_ID, WaitlistForm } from "@/components/marketing/waitlist";
 
 /*
  * The editions story for the public pages: what is free, what is paid, and what
@@ -99,6 +99,8 @@ export function Editions({
   return (
     <section id="editions" className="mk-section">
       <div className="mk-wrap">
+        {/* For screen readers: the route titles below are h3s, under the page's h1. */}
+        <h2 className="sr-only">Editions</h2>
         {/* Two routes, not three tiers.
             Three equally-weighted bordered cards look like a paid SaaS ladder,
             which is exactly wrong for a page where nothing is priced. There are
@@ -162,7 +164,7 @@ export function Editions({
             unknown. Nobody needs to queue for the product — they can sign in — but
             "tell me before you start charging" is a real request, and it is the one
             this form now collects. */}
-        <div className="mk-notify mk-up mk-d4">
+        <div id={WAITLIST_ANCHOR} className="mk-notify mk-up mk-d4">
           {notice ? (
             <p className="wl-done" role="status">
               {notice}
@@ -173,12 +175,12 @@ export function Editions({
                 <h3 className="mk-h3">Tell me when pricing is announced</h3>
                 <p className="mk-body">One email, before any paid plan exists.</p>
                 {error ? (
-                  <p className="wl-error" role="alert">
+                  <p className="wl-error" role="alert" id={WAITLIST_ERROR_ID}>
                     {error}
                   </p>
                 ) : null}
               </div>
-              <WaitlistForm />
+              <WaitlistForm invalid={Boolean(error)} />
             </>
           )}
         </div>

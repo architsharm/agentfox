@@ -28,6 +28,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     title: post.seoTitle ?? post.title,
     description: post.description,
     path: blogPath(post.slug),
+    ownImage: true,
   });
   return {
     ...base,

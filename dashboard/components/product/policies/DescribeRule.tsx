@@ -112,7 +112,7 @@ export function DescribeRule({ agent, tools = [], agents = [] }: { agent?: strin
           </button>
         )}
       </div>
-      {error && <div className="error">{error}</div>}
+      {error && <div className="error" role="alert">{error}</div>}
 
       {result && (
         <div className="k-form">
