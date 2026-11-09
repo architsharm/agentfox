@@ -162,7 +162,7 @@ def test_up_counts_the_apps_its_agent_systems_are_in(tmp_path):
     assert result.exit_code == 0, result.output
     out = " ".join(result.output.split())
     assert "2 separate agent systems here, in 2 apps" in out
-    assert "steps done" in out or "step done" in out
+    assert "set up:" in out
 
 
 ADK_TEAM = """

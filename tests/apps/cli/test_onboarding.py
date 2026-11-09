@@ -510,4 +510,4 @@ def test_submit_says_what_the_drafts_are_when_they_are_not_the_agents_found(
     monkeypatch.setattr("agentfox.apps.cli.submit.httpx.post", lambda *a, **k: _FakeResponse())
     result = runner.invoke(app, ["scan", "repo", str(project), "--submit"])
     out = flat(result.output)
-    assert "3 draft agent(s) (of the" in out and "Agents → Proposed" in out
+    assert "3 draft agents (of the" in out and "Agents → Proposed" in out
