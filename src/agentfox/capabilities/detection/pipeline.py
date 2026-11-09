@@ -171,6 +171,64 @@ class PipelineResult:
             out[key] = why
         return out
 
+    def explain(self, key: str) -> dict[str, str]:
+        """Why ``key`` did not check this content, and what fixes it, in words for the
+        issue a degraded detector raises. "timeout" alone sent people looking for a
+        slow network when the detector's libraries were missing, and offered no fix."""
+        run = next((r for r in self.results if r.detector_key == key), None)
+        status = run.status if run is not None else "degraded"
+        raw = (run.raw or {}) if run is not None else {}
+        from agentfox.capabilities.detection.base import get_detector
+        from agentfox.capabilities.detection.models import models_for, pull_hint
+
+        detector = get_detector(key)
+        model = bool(detector is not None and models_for(detector))
+        lists = "`agentfox admin detectors list` shows what runs here."
+        if detector is not None and not _safe_available(detector):
+            reason = getattr(detector, "unavailable_reason", "") or ""
+            reason = reason() if callable(reason) else reason
+            return {
+                "cause": f"it cannot run here: {reason}" if reason else "it cannot run here",
+                "fix": _install_fix(str(reason), detector) or lists,
+            }
+        if status == "timeout":
+            allowance = f"{run.duration_ms:.0f} ms" if run is not None and run.duration_ms else ""
+            return {
+                "cause": f"it did not answer within its {allowance or 'time'} allowance, so "
+                "the check was answered without it",
+                "fix": (
+                    "A model detector misses its allowance when the CPU that runs checks is "
+                    "busy: give that process more CPU or fewer requests at once, or switch "
+                    "the detector off (Policies → Checks) if you don't need it."
+                )
+                if model
+                else "Find what slows it, or raise AGENTFOX_ENFORCEMENT_BUDGET_MS.",
+            }
+        if status == "skipped_budget":
+            return {
+                "cause": "the check's time budget ran out before it started",
+                "fix": "Raise AGENTFOX_ENFORCEMENT_BUDGET_MS, or switch off a slower "
+                "detector ahead of it (Policies → Checks).",
+            }
+        if status == "error":
+            error = str(raw.get("error") or "").strip().splitlines()
+            first = error[0][:200] if error else "it raised an error"
+            return {
+                "cause": f"it failed: {first}",
+                "fix": _install_fix(first, detector) or lists,
+            }
+        if raw.get("cause") == OUTAGE:
+            return {
+                "cause": "the judge it asks did not answer",
+                "fix": "Check the judge's endpoint and key; `agentfox doctor` tests them.",
+            }
+        if raw.get("cause") == MALFORMED:
+            return {
+                "cause": "the judge answered in a form it could not read",
+                "fix": "Check the judge model; `agentfox doctor` tests it.",
+            }
+        return {"cause": status, "fix": lists if not model else (pull_hint(detector) or lists)}
+
     def summary(self) -> dict:
         return {
             "duration_ms": round(self.duration_ms, 2),
@@ -184,6 +242,30 @@ class PipelineResult:
             "entities": sorted(self.by_entity()),
             "max_score": round(self.max_score, 3),
         }
+
+
+def _safe_available(detector: Detector) -> bool:
+    try:
+        return bool(detector.available())
+    except Exception:  # noqa: BLE001 - explaining must never raise
+        return True
+
+
+def _install_fix(reason: str, detector: Detector | None) -> str:
+    """The command that fixes a missing library or model, when ``reason`` names one."""
+    text = reason.lower()
+    if "pip install" in text or "no module named" in text or "importerror" in text:
+        return (
+            "Install its libraries where checks run: `pip install 'agentfox[classifiers]'`, "
+            "then restart."
+        )
+    if "not downloaded" in text or "detectors pull" in text:
+        return (
+            f"Download its model: `agentfox admin detectors pull {detector.key}`, then restart."
+            if detector is not None
+            else ""
+        )
+    return ""
 
 
 def _applies(detector: Detector, context: DetectionContext) -> bool:

@@ -81,7 +81,10 @@ class _TransformersClassifier(BaseDetector):
         # import attempt for a library that is not installed walks the whole import
         # path each time (see `module_present`). The weights check stays live, so a
         # `detectors pull` takes effect without a restart.
-        if not module_present("transformers"):
+        # Both halves of the `[classifiers]` extra: transformers alone (another
+        # package's dependency, say) cannot run a model, and a detector that looked
+        # available without torch timed out and errored instead of saying so.
+        if not module_present("transformers") or not module_present("torch"):
             return False
         return self._weights_present()
 
@@ -92,7 +95,7 @@ class _TransformersClassifier(BaseDetector):
         other adapters (`/api/detectors` reads it as a value)."""
         if self.restricted and not get_settings().restricted_models_allowed:
             return "restricted licence not accepted (AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES=1)"
-        if not module_present("transformers"):
+        if not module_present("transformers") or not module_present("torch"):
             return "needs `pip install 'agentfox[classifiers]'`"
         if not self._weights_present():
             return f"model not downloaded: run `agentfox admin detectors pull {self.key}`"

@@ -88,7 +88,7 @@ const FINDINGS: Row[] = [
   ["trajectory_drift, context_integrity, source_conflict, source_authority, fabricated_citation, integrity_error", "Answer-integrity problems found on output against the evidence supplied with the call.", "Open the trace's evidence."],
   ["ai_disclosure_missing, binding_commitment, adverse_action, register_breach, entitlement_disclosure, inference_disclosure, aggregation_disclosure", "Commitment, disclosure and access problems in what the agent said.", "Open the trace; check the rule or boundary concerned."],
   ["boundary_breach", "The agent answered outside its declared knowledge boundary.", "Tighten or extend the boundary."],
-  ["budget_breach", "A detector was skipped or timed out against its latency budget (\"Detector 'pii.native' degraded on input: skipped_budget\").", "Raise the budget or find the slow detector."],
+  ["budget_breach", "A detector did not check some content: it timed out, was skipped for budget, failed, or cannot run here. The title says which and why (\"Detector 'injection.classifier' degraded on input: error (it failed: No module named 'torch')\").", "The issue's fix says what to do: install a missing library, download a model, or give a slow model more CPU."],
   ["budget_exhausted", "An agent hit its cost or call limit.", "Look for a runaway loop."],
   ["agent_loop_stopped", "The proxy stopped a looping tool-calling run.", "Find the repeating call."],
   ["agent_stopped", "The kill switch or quarantine was used.", "Confirm it was intended; resume when cleared."],
