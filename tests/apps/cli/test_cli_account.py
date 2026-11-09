@@ -249,3 +249,49 @@ def test_the_project_env_file_is_an_account_too(account, monkeypatch, tmp_path):
     result = runner.invoke(app, ["agents", "list"])
     assert result.exit_code == 0, result.output
     assert "Account: http://testserver" in result.output
+
+
+def test_doctor_checks_the_account_server_and_key(account):
+    result = runner.invoke(app, ["doctor", "--json"])
+    checks = {c["check"]: c for c in json.loads(result.stdout)}
+    assert checks["account"]["state"] == "ok"
+    assert "workspace" in checks["account"]["detail"]
+    assert ("GET", "/api/me") in account
+
+
+def test_doctor_fails_loudly_on_a_bad_key(account, monkeypatch):
+    monkeypatch.setenv("AGENTFOX_API_KEY", "nom_api_wrong")
+    result = runner.invoke(app, ["doctor", "--json"])
+    assert result.exit_code == 1
+    checks = {c["check"]: c for c in json.loads(result.stdout)}
+    assert checks["account"]["state"] == "bad"
+    assert "rejected your AgentFox key" in checks["account"]["detail"]
+
+
+def test_login_checks_the_key_and_saves_it_where_init_does(account, tmp_path):
+    result = runner.invoke(app, ["login", "--path", str(tmp_path)])
+    assert result.exit_code == 0, result.output
+    assert "workspace" in result.output
+    assert ("GET", "/api/me") in account
+    env = (tmp_path / ".agentfox" / "agentfox.env").read_text()
+    assert env.startswith("# Written by `agentfox login`.")
+    assert "AGENTFOX_URL=http://testserver" in env
+    assert oct((tmp_path / ".agentfox" / "agentfox.env").stat().st_mode & 0o777) == "0o600"
+
+
+def test_login_with_a_wrong_key_saves_nothing(account, monkeypatch, tmp_path):
+    monkeypatch.setenv("AGENTFOX_API_KEY", "nom_api_wrong")
+    result = runner.invoke(app, ["login", "--path", str(tmp_path)])
+    assert result.exit_code == 1
+    assert "rejected your AgentFox key (401)" in result.output
+    assert not (tmp_path / ".agentfox" / "agentfox.env").exists()
+
+
+def test_login_without_a_key_says_where_to_make_one(monkeypatch, tmp_path):
+    monkeypatch.delenv("AGENTFOX_API_KEY", raising=False)
+    monkeypatch.delenv("AGENTFOX_API_TOKEN", raising=False)
+    result = runner.invoke(
+        app, ["login", "--server", "https://gw.example", "--path", str(tmp_path)]
+    )
+    assert result.exit_code == 2
+    assert "Get started → Create a key" in result.output

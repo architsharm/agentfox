@@ -174,7 +174,7 @@ def init(
     key: str = typer.Option(
         "",
         "--key",
-        help="Your onboarding key from the dashboard's Connect screen; with --server and "
+        help="Your workspace key (dashboard: Get started → Create a key); with --server and "
         "no --key, AGENTFOX_API_KEY is used, which keeps the key out of `ps` and your "
         "shell history. Maps the agent in "
         "this repo (reading the code, never running it), reports its names and shapes, and "
@@ -663,6 +663,10 @@ def doctor(
     def add(state: str, what: str, detail: str) -> None:
         checks.append((state, what, detail))
 
+    # The account first: with a key configured, `auto()` and the CLI use it, so a
+    # wrong key or an unreachable server is the failure that matters most.
+    account_findings = _check_account(add)
+
     try:
         from agentfox.core.db import init_db
 
@@ -895,6 +899,8 @@ def doctor(
     else:
         add("ok", "answerability", f"{boundaries} boundary/boundaries declared")
 
+    if account_findings is not None:
+        findings = account_findings
     if findings:
         add("warn", "findings", f"{findings} open — run `agentfox findings`")
     else:
@@ -921,6 +927,52 @@ def doctor(
 
     if failed:
         raise typer.Exit(1)
+
+
+def _check_account(add: Any) -> int | None:
+    """The account check `doctor` leads with: which server and key the CLI and
+    `agentfox.auto()` use, whether the server answers, whether the key is accepted, and
+    which workspace it belongs to. Returns the account's open findings, or None when
+    there is no usable account (the local count stands)."""
+    import os
+
+    from agentfox.apps.cli.account import AccountError, configured, local_label
+
+    account = configured()
+    if account is None:
+        url = os.environ.get("AGENTFOX_URL") or os.environ.get("AGENTFOX_API_URL")
+        if os.environ.get("AGENTFOX_DATABASE_URL"):
+            add("info", "account", f"none: AGENTFOX_DATABASE_URL is set, so {local_label()}")
+        elif url:
+            add(
+                "warn",
+                "account",
+                f"AGENTFOX_URL is {url} but no AGENTFOX_API_KEY is set: the CLI and "
+                "auto() use this machine's database. `agentfox login` connects the key.",
+            )
+        else:
+            add(
+                "info",
+                "account",
+                f"none — the CLI and auto() use this machine ({local_label()}). "
+                "`agentfox login` connects your AgentFox account.",
+            )
+        return None
+    try:
+        me = account.me()
+        open_findings = len(
+            account.get("/api/findings", status="open", limit=10_000).get("findings") or []
+        )
+    except AccountError as exc:
+        add("bad", "account", f"{exc} (key from {account.origin})")
+        return None
+    add(
+        "ok",
+        "account",
+        f"{account.url} accepts the key — workspace {me.get('workspace') or me.get('org_id')}, "
+        f"{me.get('email') or me.get('id')} ({me.get('role')}); key from {account.origin}",
+    )
+    return open_findings
 
 
 #: Worst first. `agentfox scan` advertises this list as ranked by severity, and for
@@ -1123,8 +1175,88 @@ def _print_findings(
     _print_next_steps(steps)
 
 
+def login(
+    server: str = typer.Option(
+        "",
+        "--server",
+        help="Your AgentFox gateway address, shown beside the key on Get started. "
+        "Default: AGENTFOX_URL.",
+    ),
+    key: str = typer.Option(
+        "",
+        "--key",
+        help="A workspace key (Get started → Create a key). Default: AGENTFOX_API_KEY, "
+        "else asked for without echoing it, which keeps it out of `ps` and your history.",
+    ),
+    path: Path = typer.Option(
+        Path("."), "--path", "-p", help="The project to connect. Default: here."
+    ),
+) -> None:
+    """Connect this project to your AgentFox account with one key, from the terminal.
+
+    Checks the key against the server, then saves it in `.agentfox/agentfox.env`
+    (owner-only, git-ignored) exactly as `agentfox init --key` does. From then on
+    `agentfox.auto()` reports to the account and `findings`, `agents`, `permit`,
+    `declare`, `policy`, `report` and `test suites` read and write it.
+    """
+    import os
+    import sys
+
+    from agentfox.apps.cli.account import Account, AccountError, keys_page
+    from agentfox.capabilities.onboarding.project_files import read_env, write_env
+    from agentfox.core.config import api_key_from_env, api_url_from_env
+
+    saved = read_env(path)
+    server = (server or api_url_from_env(os.environ, saved) or "").strip()
+    key = (key or api_key_from_env(os.environ) or "").strip()
+    interactive = sys.stdin.isatty()
+    if not server:
+        if not interactive:
+            console.print(
+                "[red]No server given.[/] Pass --server with the gateway address shown "
+                "on Get started in the AgentFox dashboard, or set AGENTFOX_URL."
+            )
+            raise typer.Exit(2)
+        server = console.input("Gateway address (shown on Get started): ").strip()
+    if not key:
+        where = keys_page(server)
+        if not interactive:
+            console.print(
+                f"[red]No key given.[/] Make one on {escape(where)}, then "
+                "`export AGENTFOX_API_KEY=...` and run `agentfox login` again."
+            )
+            raise typer.Exit(2)
+        console.print(f"Make a key on {escape(where)} and paste it here.")
+        key = console.input("Key: ", password=True).strip()
+
+    account = Account(url=server, key=key)
+    try:
+        me = account.me()
+    except AccountError as exc:
+        console.print(f"[red]{escape(str(exc))}[/] Nothing was saved.")
+        raise typer.Exit(1) from None
+    env = write_env(
+        path, {"AGENTFOX_URL": account.url, "AGENTFOX_API_KEY": key}, by="agentfox login"
+    )
+    workspace = me.get("workspace") or me.get("org_id")
+    console.print(
+        f"[green]✓[/] Connected to [bold]{escape(account.url)}[/] as "
+        f"{escape(str(me.get('email') or me.get('id')))} ({me.get('role')}), "
+        f"workspace [bold]{escape(str(workspace))}[/]."
+    )
+    console.print(f"  [dim]Key saved in {escape(str(env))} (owner-only, git-ignored).[/]")
+    _print_next_steps(
+        [
+            ("agentfox doctor", "check the key, the server and the runtime"),
+            ("agentfox findings", "what your account has found"),
+            ("agentfox up", "add agentfox.auto() to your app so its calls reach the account"),
+        ]
+    )
+
+
 def register(app: typer.Typer) -> None:
     """Attach the onboarding commands as top-level verbs."""
+    app.command(name="login")(login)
     app.command(name="init")(init)
     app.command(name="check")(check)
     app.command(name="doctor")(doctor)

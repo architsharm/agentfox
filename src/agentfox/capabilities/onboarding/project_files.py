@@ -189,15 +189,16 @@ def read_env(root: Path) -> dict[str, str]:
     return values
 
 
-def write_env(root: Path, values: dict[str, str]) -> Path:
+def write_env(root: Path, values: dict[str, str], *, by: str = "agentfox up") -> Path:
     """Merge ``values`` into the env file, readable by this user only, and keep it out
-    of git when this is a repository."""
+    of git when this is a repository. ``by`` names the command writing it, for its
+    header: `agentfox init`, `agentfox up` and `agentfox login` all do."""
     directory = root / STATE_DIR
     directory.mkdir(exist_ok=True)
     path = directory / ENV_FILE
     merged = {**read_env(root), **{k: v for k, v in values.items() if v}}
     body = [
-        "# Written by `agentfox up`. Holds credentials: never commit it.",
+        f"# Written by `{by}`. Holds credentials: never commit it.",
         "# Load it with:  set -a; . .agentfox/agentfox.env; set +a",
         *(f"{key}={value}" for key, value in sorted(merged.items())),
     ]

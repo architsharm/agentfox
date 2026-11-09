@@ -169,3 +169,54 @@ def test_inside_inits_attack_test_auto_stands_down(fake_openai, monkeypatch):
     monkeypatch.setenv(ATTACK_TEST_ENV, "1")
     governed = auto(agent="support-bot", quiet=True)
     assert not governed.active and governed.environment == "test"
+
+
+def _refusing_account(monkeypatch, status: int = 401) -> list[str]:
+    """An account that refuses the key on every route. Returns the paths asked."""
+    import httpx
+
+    asked: list[str] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        asked.append(request.url.path)
+        return httpx.Response(status, json={"detail": "invalid token"})
+
+    def wire(self):
+        self.url = self.url.rstrip("/")
+        self._client = httpx.Client(transport=httpx.MockTransport(answer))
+        self._told = False
+
+    monkeypatch.setattr(remote.Remote, "__post_init__", wire)
+    monkeypatch.setenv("AGENTFOX_URL", "https://api.example.test")
+    monkeypatch.setenv("AGENTFOX_API_KEY", "nom_api_wrong")
+    return asked
+
+
+def test_a_rejected_key_is_said_at_start_and_never_claimed_as_reporting(monkeypatch, capsys):
+    """A wrong key used to print "reporting to your AgentFox account" and then let
+    every call through unchecked, with a raw 401 and an MDN link per call."""
+    asked = _refusing_account(monkeypatch)
+
+    governed = auto(agent="support-bot")
+
+    err = capsys.readouterr().err
+    assert "/api/me" in asked
+    assert "reporting to your AgentFox account" not in err
+    assert "rejected your AgentFox key (401)" in err
+    assert "Create a key" in err
+    assert "developer.mozilla.org" not in err
+    # Governed here instead of not at all.
+    assert governed.remote is None
+    assert governed.remote_rejected == "https://api.example.test"
+
+
+def test_a_key_revoked_mid_run_is_one_clear_line(monkeypatch, capsys):
+    _refusing_account(monkeypatch)
+    account = remote.Remote(url="https://api.example.test", key="nom_api_wrong")
+
+    for _ in range(3):
+        with pytest.raises(remote.KeyRejected) as excinfo:
+            account.post("/v1/guard/input", {"content": "hi"})
+    err = capsys.readouterr().err
+    assert err.count("rejected your AgentFox key") == 1
+    assert "developer.mozilla.org" not in str(excinfo.value)

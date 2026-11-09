@@ -290,6 +290,11 @@ class AutoState:
     #: The account this process reports to (`remote.Remote`), or None when it enforces
     #: against the local database. See `agentfox.frameworks.autoguard.remote`.
     remote: Any = None
+    #: What is wrong with the account, said in the banner: a rejected key or an
+    #: unreachable server. None when it answered (or there is none).
+    remote_problem: str | None = None
+    #: The account whose key was refused, when this process fell back to local.
+    remote_rejected: str | None = None
 
     @property
     def active(self) -> bool:
@@ -323,8 +328,10 @@ class AutoState:
         (``AGENTFOX_VERBOSE=1`` prints it instead)."""
         patched = [p.library for p in self.patches if p.patched]
         head = f"AgentFox is governing '{self.agent}' in {self.mode} mode ({self.environment})"
-        if self.remote is not None:
+        if self.remote is not None and not self.remote_problem:
             head += f", reporting to your AgentFox account at {self.remote.url}"
+        elif self.remote_rejected:
+            head += ", locally: NOT reporting to your account"
         # Line two: what is covered, and anything that is not, said plainly.
         gaps = [
             f"{framework} calls are NOT governed (none of "
@@ -346,7 +353,10 @@ class AutoState:
         if self.policies_bound == 0:
             what += " No policy bound: the baseline applies, in observe (`agentfox init`)."
         what += " `agentfox findings` shows what it saw; AGENTFOX_VERBOSE=1 for details."
-        return "\n".join([head + ".", "  " + "; ".join([covered, *gaps]), "  " + what])
+        lines = [head + ".", "  " + "; ".join([covered, *gaps]), "  " + what]
+        if self.remote_problem:
+            lines.append(self.remote_problem)
+        return "\n".join(lines)
 
     def summary(self) -> str:
         """One paragraph a developer reads once and never again."""
@@ -358,7 +368,9 @@ class AutoState:
         lines = [
             f"AgentFox is governing '{self.agent}' in {self.mode} mode ({self.environment}).",
         ]
-        if self.remote is not None:
+        if self.remote_problem:
+            lines.append(self.remote_problem)
+        elif self.remote is not None:
             lines.append(
                 f"Every check goes to your AgentFox account at {self.remote.url}; "
                 "the calls show up on its dashboard."
@@ -2915,6 +2927,15 @@ def auto(
     from agentfox.frameworks.autoguard import remote as _remote
 
     state.remote = _remote.configured(server, key)
+    if state.remote is not None:
+        # Asked once, before the banner says where checks go: a rejected key used to
+        # print "reporting to your AgentFox account" and then let every call through
+        # unchecked. Refused, the process governs itself with the local database
+        # instead and says so; unreachable, it keeps trying the account.
+        state.remote_problem = state.remote.check()
+        if state.remote_problem and "rejected your AgentFox key" in state.remote_problem:
+            state.remote_rejected = state.remote.url
+            state.remote = None
 
     try:
         if state.remote is not None:
