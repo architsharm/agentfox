@@ -690,20 +690,24 @@ def register_structure(
         upsert_tool,
     )
 
-    def owned(agent: Any) -> bool:
+    def owned(agent: Any, app: str | None) -> bool:
         # Another repository's draft or disconnected agent is still that repository's:
         # proposing over it would hand this one its name, its edges and its snapshot.
-        if project and agent.project == project:
+        # This repository's is its app's (a monorepo's `apps/trip`) or, as registered
+        # before agents were grouped per app, the repository's.
+        mine = {p for p in (app, project) if p}
+        if mine and agent.project in mine:
             return True
-        return agent.status in PROPOSABLE and agent.project in (None, project)
+        return agent.status in PROPOSABLE and (agent.project is None or agent.project in mine)
 
-    def place(name: str) -> tuple[str, Any] | None:
+    def place(name: str, app: str | None) -> tuple[str, Any] | None:
         known = find_agent(session, name)
-        if known is not None and owned(known):
+        if known is not None and owned(known, app):
             return known.slug, known
-        for candidate in [slugify(name), *([slugify(f"{project}-{name}")] if project else [])]:
+        prefix = app or project
+        for candidate in [slugify(name), *([slugify(f"{prefix}-{name}")] if prefix else [])]:
             existing = session.scalar(select(Agent).where(Agent.slug == candidate))
-            if existing is None or owned(existing):
+            if existing is None or owned(existing, app):
                 return candidate, existing
         return None
 
@@ -724,7 +728,10 @@ def register_structure(
             # over it in the review step does.
             and m != f"{agent.get('framework')} default"
         ]
-        placed = place(agent["name"])
+        # The app the agent's code is in (its nearest pyproject), so a monorepo's apps
+        # are grouped apart; the repository's name when the map gives none.
+        app = agent.get("project") or project
+        placed = place(agent["name"], app)
         if placed is None:
             report["skipped"].append(agent["name"])
             agents.append({**agent, "slug": None, "registry": "skipped"})
@@ -745,7 +752,7 @@ def register_structure(
                 declared_models=models,
                 declared_tools=tool_names,
                 framework=agent.get("framework") or "langchain",
-                project=project,
+                project=app,
                 # A draft keeps what a reviewer may already have set on it.
                 risk_tier=existing.risk_tier if existing is not None else "limited",
                 # Read from a checkout: development until a person says it runs in

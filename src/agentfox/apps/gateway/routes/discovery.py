@@ -48,6 +48,8 @@ class SubmittedAgent(BaseModel):
     framework: str | None = None
     kind: str = "agent"
     top_dir: str = "root"
+    #: The app it belongs to in a monorepo, by its project name (never a path).
+    app: str | None = None
 
 
 class SubmittedAgentEdge(BaseModel):

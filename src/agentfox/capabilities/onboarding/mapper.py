@@ -299,6 +299,9 @@ def structure_from_scan(report: ScanReport, root: Path) -> dict[str, Any]:
                 or (f"{spec.framework} default" if spec.default_model else "unknown model"),
                 "models": [spec.model] if spec.model else [],
                 "framework": spec.framework,
+                # The app it belongs to (nearest pyproject or package.json): one project
+                # per app in a monorepo, the same grouping `up` and a submitted scan use.
+                "project": project_name_for(root, spec.file),
                 "kind": spec.kind,
                 # A container of other agents: the system, shown as that, not as an
                 # agent with an unknown model.

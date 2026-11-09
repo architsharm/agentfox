@@ -323,7 +323,8 @@ def test_airline_demo_layout(tmp_path):
     dumped = repr(payload["agents"]) + repr(payload["agent_edges"])
     for leaked in ("update_seat", "gpt-5.2", "airline.agents", "agents.py", "baggage_tool"):
         assert leaked not in dumped
-    assert set(payload["agents"][0]) == {"key", "name", "framework", "kind", "top_dir"}
+    # `app` is the app's project name (its pyproject's, else the folder's), not a path.
+    assert set(payload["agents"][0]) == {"key", "name", "framework", "kind", "top_dir", "app"}
 
 
 _REAL_AIRLINE = os.environ.get("AGENTFOX_AIRLINE_DEMO", "")

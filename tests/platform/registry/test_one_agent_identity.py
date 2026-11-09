@@ -109,3 +109,52 @@ def test_code_read_from_a_checkout_is_development_until_someone_says(session):
     register_structure(session, STRUCTURE, project="mono", actor="dev@example.com")
     _scan(session, "scn_1")
     assert {a.environment for a in session.scalars(select(Agent))} == {"development"}
+
+
+def test_a_monorepos_apps_are_grouped_apart_and_still_one_row_each(session, tmp_path):
+    """One flat "mono" project of three unrelated apps (init) or a project per agent
+    (scan --submit): both paths now name each agent's app, its nearest pyproject."""
+    import textwrap
+
+    from agentfox.capabilities.discovery.repo import scan
+    from agentfox.capabilities.onboarding.mapper import structure_from_scan
+
+    root = tmp_path / "mono"
+    files = {
+        "apps/trip/pyproject.toml": '[project]\nname = "trip-planner"\n',
+        "apps/trip/crew.py": """
+            from crewai import Agent, Crew
+            scout = Agent(role="venue_scout", goal="g", backstory="b")
+            crew = Crew(agents=[scout], tasks=[])
+        """,
+        "apps/fx/pyproject.toml": '[project]\nname = "fx-agent"\n',
+        "apps/fx/agent.py": """
+            from agents import Agent
+            rates = Agent(name="RatesAgent", instructions="rates", model="gpt-4o")
+        """,
+    }
+    for rel, text in files.items():
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        (root / rel).write_text(textwrap.dedent(text).lstrip())
+    report = scan(root)
+    mapped = structure_from_scan(report, root)
+    register_structure(session, mapped["structure"], project=mapped["project"], actor="dev")
+    run = ScanRun(source_kind="cli", repo_full_name="mono", status="completed")
+    session.add(run)
+    session.flush()
+    payload = report.to_submission_payload(source="check")
+    propose_from_scan(
+        session,
+        run_id=run.id,
+        repo_slug_base="mono",
+        repo_display_name="mono",
+        frameworks=payload["frameworks"],
+        sites=payload["sites"],
+        author="dev",
+        agents=payload["agents"],
+        agent_edges=payload["agent_edges"],
+    )
+    rows = {a.slug: a.project for a in session.scalars(select(Agent))}
+    assert rows["rates-agent"] == "fx-agent"
+    assert rows["venue-scout"] == "trip-planner"
+    assert len(rows) == len(report.agents), rows

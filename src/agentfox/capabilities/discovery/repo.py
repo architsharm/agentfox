@@ -603,10 +603,15 @@ class ScanReport:
             "agents": [
                 {
                     "key": a.key,
-                    "name": a.name,
+                    # A container named only by its variable (`crew = Crew(...)`) takes
+                    # its app's name, as `init` and `up` name it: one agent, one name.
+                    "name": (_app_of(self.root, a.file) if _unnamed(a) else None) or a.name,
                     "framework": a.framework,
                     "kind": a.kind,
                     "top_dir": a.top_dir,
+                    # The app it belongs to, by name (its nearest pyproject or
+                    # package.json), never its path: how a monorepo's agents group.
+                    "app": _app_of(self.root, a.file),
                     **({"tools": list(a.tools)} if tool_names else {}),
                 }
                 for a in self.agents
@@ -1978,6 +1983,22 @@ def _llm_apps(report: ScanReport) -> list[AgentSpec]:
             )
         )
     return out
+
+
+def _unnamed(spec: AgentSpec) -> bool:
+    from agentfox.capabilities.onboarding.mapper import unnamed_container
+
+    return unnamed_container(spec)
+
+
+def _app_of(root: str, file: str) -> str | None:
+    """The project name of the app ``file`` is in (see `mapper.project_name_for`)."""
+    from agentfox.capabilities.onboarding.mapper import project_name_for
+
+    try:
+        return project_name_for(Path(root), file) or None
+    except (OSError, ValueError):
+        return None
 
 
 def _string_arg(node: ast.Call) -> str | None:

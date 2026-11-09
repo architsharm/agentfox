@@ -240,22 +240,30 @@ def approve_drafts(session: Session, agents: list[Agent], *, actor: str) -> list
     return approved
 
 
-def _same_code(agent: Agent, name: str, repo_short: str, repo_display_name: str) -> bool:
+def _same_code(
+    agent: Agent, name: str, repo_short: str, repo_display_name: str, app: str | None = None
+) -> bool:
     """Whether ``agent`` is the agent a scan of this repository names ``name``
     (``<repo>/<Agent>``): registered under that name (`agentfox up`, an earlier scan),
-    or by `agentfox init` for this repository's project under the agent's own name."""
+    or by `agentfox init` for this repository's project (or the agent's app in it)
+    under the agent's own name."""
     if agent.name == name:
         return True
     own = name.split("/", 1)[-1]
     return (
         bool(agent.project)
-        and agent.project in (repo_display_name, repo_short)
+        and agent.project in {p for p in (repo_display_name, repo_short, app) if p}
         and (agent.name in (own, name) or slugify(agent.name or "") == slugify(own))
     )
 
 
 def _spec_slug(
-    session: Session, key: str, repo_short: str, name: str, repo_display_name: str = ""
+    session: Session,
+    key: str,
+    repo_short: str,
+    name: str,
+    repo_display_name: str = "",
+    app: str | None = None,
 ) -> str:
     """One agent's slug: its own name, unless that belongs to another repository.
 
@@ -265,7 +273,7 @@ def _spec_slug(
     up` or `agentfox init` registered for it instead of proposing it a second time."""
     prefixed = repo_short if key == repo_short else slugify(f"{repo_short}-{key}")
     existing = find_agent(session, key)
-    if existing is not None and _same_code(existing, name, repo_short, repo_display_name):
+    if existing is not None and _same_code(existing, name, repo_short, repo_display_name, app):
         return existing.slug
     if session.scalar(select(Agent.id).where(Agent.slug == prefixed)) is not None:
         return prefixed  # scanned before: keep landing on the same row
@@ -426,6 +434,7 @@ def _propose_agent_specs(
             repo_short,
             f"{repo_display_name}/{spec.get('name') or key}",
             repo_display_name,
+            spec.get("app"),
         )
         slug_of[str(spec.get("key"))] = slugify(slug)
         tools = [str(t) for t in spec.get("tools") or [] if t]
@@ -440,12 +449,15 @@ def _propose_agent_specs(
             declared_tools=tools or None,
             source_scan_run_id=run_id,
             environment=environment,
+            project=spec.get("app"),
         )
         if agent is not None:
             created.append(agent.slug)
             continue
         live = find_agent(session, slug)
-        if live is not None and _same_code(live, name, repo_short, repo_display_name):
+        if live is not None and _same_code(
+            live, name, repo_short, repo_display_name, spec.get("app")
+        ):
             # The agent `agentfox up` registered for this same code: it takes what the
             # scan read rather than a second, draft copy of itself.
             adopt_proposal(

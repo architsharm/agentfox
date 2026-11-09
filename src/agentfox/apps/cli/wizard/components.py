@@ -265,7 +265,7 @@ def _register(run: Run) -> None:
     agent instead of beside it, see ``registry.service.propose_from_scan``), its
     framework, the tools it is handed (what `agentfox test redteam` attacks through),
     and the repository `agentfox init` maps it from. Development: it runs here."""
-    from agentfox.capabilities.onboarding.mapper import _project_name
+    from agentfox.capabilities.onboarding.mapper import _project_name, project_name_for
     from agentfox.platform.registry.service import slugify
 
     spec = next((a for a in run.ctx.report.agents if slugify(a.name or a.key) == run.agent), None)
@@ -279,7 +279,12 @@ def _register(run: Run) -> None:
         framework=spec.framework if spec is not None else None,
         name=(f"{_scan_label(run)}/{spec.name or slugify(spec.key)}" if spec is not None else None),
         declared_tools=list(dict.fromkeys(tools)) or None,
-        project=_project_name(run.ctx.root),
+        # Its app's name (nearest pyproject), as `init` and a submitted scan group it.
+        project=(
+            project_name_for(run.ctx.root, spec.file)
+            if spec is not None
+            else _project_name(run.ctx.root)
+        ),
     )
 
 
