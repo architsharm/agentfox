@@ -275,7 +275,7 @@ def known_tenants(session: Session) -> list[str]:
     """Every tenant with users, agents, policies, schedules or monitors — the ones a cron
     run should create default schedules for and enqueue due work in."""
     orgs: set[str] = set()
-    with system_scope("scheduler: enumerating tenants to enqueue recurring work"):
+    with system_scope("scheduler: enumerating tenants to enqueue recurring work", routine=True):
         for model in (User, Agent, Policy, JobSchedule, Monitor):
             orgs.update(o for o in session.scalars(select(model.org_id).distinct()) if o)
     return sorted(orgs)

@@ -354,6 +354,12 @@ def coverage(
     catalogue_data = load_threats(directory)
     since = utcnow() - dt.timedelta(days=window_days)
 
+    # Rules reach a threat through the control catalog's mappings. Only Enterprise
+    # loaded that catalog on demand, so an open-core workspace whose rules were firing
+    # read every threat as "Gap — nothing watching". The catalog is open core: load it.
+    from agentfox.capabilities.compliance.catalog import ensure_catalog_current
+
+    ensure_catalog_current(session)
     controls_by_threat, control_titles = _control_index(session)
     detectors_by_threat = _detector_index()
     unloadable: list[Any] = []

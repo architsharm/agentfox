@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { appPageMetadata } from "@/lib/site";
 import { ApiError, api, apiErrorProps } from "@/lib/product/api";
-import { ApiDown, NotFound } from "@/components/ui";
+import { ApiDown, NotFound, removedByRetention } from "@/components/ui";
 import {
   ActionPill,
   Card,
@@ -17,7 +17,8 @@ import {
   money,
   when,
 } from "@/components/kit";
-import { SURFACES, TRUST, WOULD, detectorName, outcomeOf, ruleTitle } from "@/lib/product/vocab";
+import { SURFACES, TRUST, WOULD, detectorName, outcomeOf, ruleTitle, sentence } from "@/lib/product/vocab";
+import type { ReactNode } from "react";
 import { NoticeToast } from "@/components/product/NoticeToast";
 import { approvalOutcome } from "@/lib/product/approvals";
 
@@ -78,7 +79,12 @@ export default async function RunDetail({
       <>
         <Header title="Run" back={{ href: "/app/traces", label: "Activity" }} />
         {e instanceof ApiError && e.status === 404 ? (
-          <NotFound what="run" detail={id} back={{ href: "/app/traces", label: "Activity" }} />
+          <NotFound
+            what="run"
+            detail={id}
+            back={{ href: "/app/traces", label: "Activity" }}
+            removedOn={removedByRetention(e.message)}
+          />
         ) : (
           <ApiDown {...apiErrorProps(e)} />
         )}
@@ -145,6 +151,22 @@ export default async function RunDetail({
           ["Checks", `${Math.round(duration)} ms`],
           ...(t.model ? ([["Model", t.model]] as [string, string][]) : []),
           ...(t.cost_usd ? ([["Cost", money(t.cost_usd)]] as [string, string][]) : []),
+          // The issue(s) this run raised, linked: the run page used to stop at the verdict.
+          ...((d.findings || []).length
+            ? ([
+                [
+                  (d.findings || []).length === 1 ? "Issue" : "Issues",
+                  <span key="issues">
+                    {(d.findings || []).map((f: any, i: number) => (
+                      <span key={f.id}>
+                        {i > 0 && ", "}
+                        <Link href={`/app/findings/${encodeURIComponent(f.id)}`}>{sentence(f.title)}</Link>
+                      </span>
+                    ))}
+                  </span>,
+                ],
+              ] as [string, ReactNode][])
+            : []),
         ]}
       />
       <div style={{ height: 14 }} />

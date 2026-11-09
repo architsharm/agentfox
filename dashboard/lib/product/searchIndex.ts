@@ -1,8 +1,10 @@
 /**
- * What Cmd-K searches besides page names: agents, tools, rules and open issues.
+ * What Cmd-K searches besides page names: agents, tools, rules, open issues, test
+ * suites, compliance controls and evidence packs.
  *
  * Built once per open of the palette from list endpoints the app already calls
- * (`/api/agents`, `/api/tools`, `/api/policies?full=1`, `/api/findings?status=open`),
+ * (`/api/agents`, `/api/tools`, `/api/policies?full=1`, `/api/findings?status=open`,
+ * `/api/eval/suites`, and on Enterprise `/api/controls` and `/api/evidence`),
  * through `app/api/search/route.ts`, and matched in the browser, so typing stays
  * instant. It used to find page names only, so "refund" or a tool's name found
  * nothing.
@@ -17,6 +19,9 @@ export function buildIndex(data: {
   tools?: any[];
   policies?: any[];
   findings?: any[];
+  suites?: any[];
+  controls?: any[];
+  evidence?: any[];
 }): SearchItem[] {
   const out: SearchItem[] = [];
   for (const a of data.agents || []) {
@@ -48,6 +53,25 @@ export function buildIndex(data: {
       sub: [f.severity, f.agent_slug || f.agent].filter(Boolean).join(" · ") || undefined,
       href: `/app/findings/${encodeURIComponent(f.id)}`,
       group: "Issue",
+    });
+  }
+  for (const t of data.suites || []) {
+    if (!t?.key) continue;
+    out.push({ label: t.name || t.key, sub: t.key, href: `/app/evals/${encodeURIComponent(t.key)}`, group: "Test suite" });
+  }
+  for (const c of data.controls || []) {
+    if (!c?.key) continue;
+    out.push({ label: c.title || c.key, sub: c.key, href: `/app/compliance/controls/${encodeURIComponent(c.key)}`, group: "Control" });
+  }
+  for (const p of data.evidence || []) {
+    if (!p?.id) continue;
+    const agents = (p.scope?.agents || []).filter((a: string) => a && a !== "*");
+    const period = p.scope?.period_from ? `${String(p.scope.period_from).slice(0, 10)} – ${String(p.scope.period_to || "").slice(0, 10)}` : "";
+    out.push({
+      label: `Evidence pack: ${agents.length ? agents.join(", ") : "all agents"}`,
+      sub: [period, p.id].filter(Boolean).join(" · "),
+      href: "/app/reports?tab=evidence",
+      group: "Evidence pack",
     });
   }
   return out.slice(0, LIMIT * 4);

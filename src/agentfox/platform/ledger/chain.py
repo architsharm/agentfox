@@ -4,7 +4,17 @@
 not survive an auditor. This is a genuine hash chain:
 
     payload_digest = SHA-256(canonical_json(payload))
-    digest         = SHA-256(seq | occurred_at | action | payload_digest | prev_digest)
+    subject_digest = SHA-256(subject_id or "")
+    digest (v2)    = SHA-256(canonical_json(["agentfox.audit.v2", seq, occurred_at,
+                             actor_type, actor_id, action, subject_type, subject_digest,
+                             payload_digest, prev_digest]))
+
+Every column an entry stores is covered, except its row id and ``org_id`` (the chain is
+per tenant, so moving an entry to another chain already breaks both). Entries written
+before v2 used ``SHA-256(seq | occurred_at | action | payload_digest | prev_digest)``
+(v1), which left who acted and on what outside the digest. They still verify under v1,
+but once a chain has a v2 entry no later entry may be v1, so a forger cannot relabel a
+new entry as v1 to escape the attribution check.
 
 with periodic checkpoints signed by a key held **outside** the application database,
 and a verifier that detects insertion, deletion, reordering and mutation.
@@ -55,15 +65,62 @@ def compute_payload_digest(payload: dict[str, Any]) -> str:
     return sha256(canonical_json(payload))
 
 
-def compute_digest(
-    seq: int, occurred_at: dt.datetime, action: str, payload_digest: str, prev_digest: str
-) -> str:
-    ts = (
+#: The digest scheme new entries are written under. See the module docstring.
+DIGEST_VERSION = 2
+_V2_TAG = "agentfox.audit.v2"
+
+
+def _iso_utc(occurred_at: dt.datetime) -> str:
+    return (
         occurred_at.astimezone(dt.UTC).isoformat()
         if occurred_at.tzinfo
         else occurred_at.isoformat()
     )
+
+
+def compute_subject_digest(subject_id: str | None) -> str:
+    """Stands in for ``subject_id`` in the v2 digest, so a scoped evidence package can
+    withhold the id of an out-of-scope subject and the chain still verifies."""
+    return sha256(subject_id or "")
+
+
+def compute_digest(
+    seq: int, occurred_at: dt.datetime, action: str, payload_digest: str, prev_digest: str
+) -> str:
+    """The v1 entry digest. Kept so entries written before v2 still verify."""
+    ts = _iso_utc(occurred_at)
     return sha256(f"{seq}|{ts}|{action}|{payload_digest}|{prev_digest}")
+
+
+def compute_digest_v2(
+    seq: int,
+    occurred_at: dt.datetime,
+    *,
+    actor_type: str | None,
+    actor_id: str | None,
+    action: str,
+    subject_type: str | None,
+    subject_digest: str,
+    payload_digest: str,
+    prev_digest: str,
+) -> str:
+    """The v2 entry digest: v1 plus who acted and on what."""
+    return sha256(
+        canonical_json(
+            [
+                _V2_TAG,
+                int(seq),
+                _iso_utc(occurred_at),
+                actor_type or "",
+                actor_id or "",
+                action,
+                subject_type or "",
+                subject_digest,
+                payload_digest,
+                prev_digest,
+            ]
+        )
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -198,7 +255,17 @@ def append(
             payload_json=payload,
             payload_digest=payload_digest,
             prev_digest=prev_digest,
-            digest=compute_digest(seq, ts, action, payload_digest, prev_digest),
+            digest=compute_digest_v2(
+                seq,
+                ts,
+                actor_type=actor_type,
+                actor_id=actor_id,
+                action=action,
+                subject_type=subject_type,
+                subject_digest=compute_subject_digest(subject_id),
+                payload_digest=payload_digest,
+                prev_digest=prev_digest,
+            ),
         )
         try:
             with session.begin_nested():
@@ -309,7 +376,9 @@ def checkpoint_now(session: Session) -> AuditCheckpoint | None:
 @dataclass
 class ChainBreak:
     seq: int
-    kind: str  # gap | prev_mismatch | digest_mismatch | payload_mismatch | order
+    # gap | prev_mismatch | digest_mismatch | payload_mismatch | subject_mismatch |
+    # version_downgrade
+    kind: str
     detail: str
 
     def to_json(self) -> dict[str, Any]:
@@ -343,12 +412,36 @@ class VerificationResult:
         }
 
 
+def _row_digest(row: dict[str, Any], version: int) -> str:
+    occurred = dt.datetime.fromisoformat(row["occurred_at"])
+    if version >= 2:
+        return compute_digest_v2(
+            int(row["seq"]),
+            occurred,
+            actor_type=row.get("actor_type"),
+            actor_id=row.get("actor_id"),
+            action=row["action"],
+            subject_type=row.get("subject_type"),
+            subject_digest=str(row.get("subject_digest") or ""),
+            payload_digest=row["payload_digest"],
+            prev_digest=row["prev_digest"],
+        )
+    return compute_digest(
+        int(row["seq"]), occurred, row["action"], row["payload_digest"], row["prev_digest"]
+    )
+
+
 def entry_to_row(entry: AuditEntry) -> dict[str, Any]:
-    """Serialise an entry to the exact shape :func:`verify` consumes."""
+    """Serialise an entry to the exact shape :func:`verify` consumes.
+
+    ``digest_version`` is read off the stored digest (the scheme is not a column):
+    whichever scheme reproduces it. A row that matches neither is exported as v2, so
+    it fails verification rather than being excused as a legacy entry.
+    """
     occurred = entry.occurred_at
     if occurred.tzinfo is None:
         occurred = occurred.replace(tzinfo=dt.UTC)
-    return {
+    row: dict[str, Any] = {
         "seq": entry.seq,
         "occurred_at": occurred.isoformat(),
         "actor_type": entry.actor_type,
@@ -356,11 +449,15 @@ def entry_to_row(entry: AuditEntry) -> dict[str, Any]:
         "action": entry.action,
         "subject_type": entry.subject_type,
         "subject_id": entry.subject_id,
+        "subject_digest": compute_subject_digest(entry.subject_id),
         "payload": entry.payload_json,
         "payload_digest": entry.payload_digest,
         "prev_digest": entry.prev_digest,
         "digest": entry.digest,
     }
+    legacy = _row_digest(row, 1) == entry.digest
+    row["digest_version"] = 1 if legacy else DIGEST_VERSION
+    return row
 
 
 def verify(
@@ -376,7 +473,9 @@ def verify(
     ``None`` means the configured keys (current, then previous).
 
     Detects:
-      * **mutation**  — recomputed payload/entry digest differs
+      * **mutation**  — recomputed payload/entry digest differs (v2 entries: including
+        actor and subject)
+      * **downgrade** — a v1 entry after a v2 one
       * **deletion**  — a gap in ``seq``
       * **insertion** — ``prev_digest`` does not match the preceding entry
       * **reordering** — sequence numbers out of order
@@ -391,6 +490,7 @@ def verify(
     result.last_seq = int(ordered[-1]["seq"])
     prev_digest = GENESIS if (expect_genesis and result.first_seq == 1) else None
     expected_seq = result.first_seq
+    seen_v2 = False
 
     for row in ordered:
         seq = int(row["seq"])
@@ -418,11 +518,32 @@ def verify(
                 ChainBreak(seq, "payload_mismatch", "payload does not match its recorded digest")
             )
 
-        occurred = dt.datetime.fromisoformat(row["occurred_at"])
-        recomputed = compute_digest(
-            seq, occurred, row["action"], row["payload_digest"], row["prev_digest"]
-        )
-        if recomputed != row["digest"]:
+        # v2 covers who acted and on what. A withheld subject ships only its digest;
+        # otherwise the digest is re-derived from the id, so editing the id is caught.
+        version = int(row.get("digest_version") or 1)
+        if version >= 2:
+            if row.get("subject_id") is None and row.get("payload_withheld"):
+                subject_digest = str(row.get("subject_digest") or "")
+            else:
+                subject_digest = compute_subject_digest(row.get("subject_id"))
+                if row.get("subject_digest") not in (None, subject_digest):
+                    result.breaks.append(
+                        ChainBreak(
+                            seq, "subject_mismatch", "subject does not match its recorded digest"
+                        )
+                    )
+            row = {**row, "subject_digest": subject_digest}
+            seen_v2 = True
+        elif seen_v2:
+            result.breaks.append(
+                ChainBreak(
+                    seq,
+                    "version_downgrade",
+                    "a v1 entry after a v2 entry — an entry relabelled to skip the actor check",
+                )
+            )
+
+        if _row_digest(row, version) != row["digest"]:
             result.breaks.append(
                 ChainBreak(seq, "digest_mismatch", "entry digest does not match its contents")
             )
@@ -448,7 +569,14 @@ def verify(
             )
             continue
         anchored = by_seq.get(seq)
-        if anchored and anchored["digest"] != checkpoint["digest"]:
+        if anchored is None and result.last_seq is not None and seq > result.last_seq:
+            result.checkpoint_failures.append(
+                {
+                    "seq": seq,
+                    "reason": "a signed checkpoint names an entry past the end — entries removed",
+                }
+            )
+        elif anchored and anchored["digest"] != checkpoint["digest"]:
             result.checkpoint_failures.append(
                 {
                     "seq": seq,

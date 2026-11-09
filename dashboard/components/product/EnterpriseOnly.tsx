@@ -29,8 +29,8 @@ export function EnterpriseOnly({ feature }: { feature: Feature }) {
         <h3 style={{ marginTop: 0 }}>{w.title}</h3>
         <p className="muted">{w.text}</p>
         <p className="muted small">
-          It is included on AgentFox Cloud. To self-host it, install the enterprise package (`ee/` in the repository,
-          source-available) alongside the open core.
+          It is included on AgentFox Cloud. To self-host it, install the enterprise package from a clone of the
+          repository (it is not on PyPI): <code>pip install agentfox ./ee</code>.
         </p>
         <div className="k-pills" style={{ gap: 8 }}>
           <a className="k-btn" href="https://github.com/architsharm/agentfox/tree/main/ee" target="_blank" rel="noreferrer">

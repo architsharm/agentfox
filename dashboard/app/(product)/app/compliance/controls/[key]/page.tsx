@@ -7,7 +7,7 @@ import { api, apiErrorProps } from "@/lib/product/api";
 import { Card, Empty, Header, Meta, ModePill, Pill, SeverityPill, ago } from "@/components/kit";
 import { ApiDown, NotFound } from "@/components/ui";
 import { OUTCOMES, ReviewBy, ReviewPill, StatusPill, type Review } from "@/ee/compliance";
-import { ruleTitle } from "@/lib/product/vocab";
+import { ruleTitle, withDetectorNames } from "@/lib/product/vocab";
 import { NoticeToast } from "@/components/product/NoticeToast";
 
 export const metadata: Metadata = appPageMetadata("Control");
@@ -83,7 +83,7 @@ export default async function ControlPage({
             ["Last fired", ev.last_fired ? ago(ev.last_fired) : "—"],
           ]}
         />
-        <p className="small muted" style={{ marginTop: 10 }}>{ev.rationale || "No status computed yet."}</p>
+        <p className="small muted" style={{ marginTop: 10 }}>{withDetectorNames(ev.rationale) || "No status computed yet."}</p>
         {FIX[c.key] && ev.status !== "effective" && (
           <p style={{ marginTop: 8 }}>
             <Link href={FIX[c.key].href} className="k-btn">
@@ -147,7 +147,14 @@ export default async function ControlPage({
                 <tr key={r.trace_id}>
                   <td className="tight muted">{ago(r.at)}</td>
                   <td>
-                    <Link className="k-mono" href={`/app/traces/${r.trace_id}`}>{r.trace_id}</Link>
+                    {r.removed_on ? (
+                      <>
+                        <span className="k-mono muted">{r.trace_id}</span>{" "}
+                        <span className="muted small">removed by retention on {r.removed_on}</span>
+                      </>
+                    ) : (
+                      <Link className="k-mono" href={`/app/traces/${r.trace_id}`}>{r.trace_id}</Link>
+                    )}
                   </td>
                   <td className="muted">{ruleTitle(r.rule_id)}</td>
                   <td className="tight">

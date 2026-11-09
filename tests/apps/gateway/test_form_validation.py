@@ -23,9 +23,21 @@ def test_a_hold_can_be_released_once(client):
     hold = client.post(
         "/api/legal-holds", json={"scope": {}, "reason": "case 4471"}, headers=ADMIN
     ).json()
-    r = client.post(f"/api/legal-holds/{hold['id']}/release", json={}, headers=ADMIN)
+    # Releasing lets the purge delete what the hold kept, so it needs a reason too.
+    for body in ({}, {"reason": "  "}):
+        r = client.post(f"/api/legal-holds/{hold['id']}/release", json=body, headers=ADMIN)
+        assert r.status_code == 400, r.text
+    r = client.post(
+        f"/api/legal-holds/{hold['id']}/release", json={"reason": "case closed"}, headers=ADMIN
+    )
     assert r.status_code == 200, r.text and r.json()["released_at"]
     assert client.post(f"/api/legal-holds/{hold['id']}/release", headers=ADMIN).status_code == 409
+    entries = client.get(
+        "/api/audit/entries", params={"action": "legal_hold.released"}, headers=ADMIN
+    ).json()["entries"]
+    assert entries[0]["payload"]["reason"] == "case closed"
+    # The same actor type as a retention change: the audit log names one kind of person.
+    assert entries[0]["actor_type"] == "operator"
     assert client.post("/api/legal-holds/nope/release", headers=ADMIN).status_code == 404
 
 

@@ -302,6 +302,14 @@ export function detectorName(key: string): string {
   return DETECTORS[key] || key;
 }
 
+/**
+ * A sentence from the backend with its detector keys said as names: a control's
+ * rationale read "injection.heuristic, pii.native ran on 98% of …".
+ */
+export function withDetectorNames(text?: string | null): string {
+  return (text || "").replace(/\b[a-z_]+\.[a-z_]+\b/g, (key) => DETECTORS[key] || key);
+}
+
 /** A dimension value the backend could not attribute. */
 export function dimLabel(key: string): string {
   return key === "(unknown)" ? "Not recorded" : key;
@@ -368,4 +376,15 @@ export const SCORERS: Record<string, string> = {
 
 export function scorerName(key: string): string {
   return SCORERS[key] || key.replace(/_/g, " ");
+}
+
+/**
+ * Who an audit entry names, for a reader: the improvement loop's own identity
+ * (`agentfox-improver`, actor type `automation`) reads as AgentFox acting on its own,
+ * and an entry with no actor as AgentFox itself.
+ */
+export function actorWords(type?: string | null, id?: string | null): string {
+  if (type === "automation") return "AgentFox (automatic)";
+  if (!id) return !type || type === "system" ? "AgentFox" : type;
+  return id;
 }
