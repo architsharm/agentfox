@@ -114,3 +114,36 @@ def test_findings_show_an_unknown_id_says_where_to_look():
     result = runner.invoke(app, ["findings", "show", "nothing"])
     assert result.exit_code == 2
     assert "agentfox findings" in result.output
+
+
+def test_policy_effective_shows_whole_ids_and_modes_at_80_columns(monkeypatch, tmp_path):
+    """At 80 columns the table cut modes to "observ", ids to "…unconfirme" and titles
+    to "A query …"; every column but the title is whole, and the title gives way."""
+    monkeypatch.setenv("COLUMNS", "80")
+    monkeypatch.chdir(tmp_path)
+    assert runner.invoke(app, ["init"]).exit_code == 0
+    result = runner.invoke(app, ["policy", "effective"])
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert all(len(line) <= 80 for line in lines), max(lines, key=len)
+    rows = [line.split() for line in lines if line.startswith(("access.", "capability."))]
+    assert rows, result.output
+    assert all(row[-2] in ("observe", "enforce") for row in rows), rows
+
+
+def test_effective_columns_drop_the_title_before_cutting_anything_else():
+    from agentfox.apps.cli.commands.policy import _effective_columns
+
+    row = {
+        "rule": "completion.irreversible_unconfirmed",
+        "title": "A run that ends without confirming an irreversible act",
+        "effect": "escalate",
+        "mode": "observe",
+        "from": "org:*",
+        "overrides": "—",
+    }
+    narrow = _effective_columns([row], 80)
+    assert "title" not in narrow and "overrides" not in narrow
+    assert narrow["rule"] == len(row["rule"]) and narrow["mode"] == len("observe")
+    wide = _effective_columns([row], 140)
+    assert 16 <= wide["title"] <= 48
