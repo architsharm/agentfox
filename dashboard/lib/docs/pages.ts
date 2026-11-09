@@ -66,7 +66,7 @@ export const DOC_NAV: DocSection[] = [
   {
     heading: "Prove",
     items: [
-      { href: "/docs/prove", label: "Traces and issues", description: "Every call, every check, and what needs a person." },
+      { href: "/docs/prove", label: "Activity and issues", description: "Every call, every check, and what needs a person." },
       { href: "/docs/prove/audit", label: "Audit evidence", description: "Reports and compliance mappings." },
       { href: "/docs/prove/integrations", label: "Send traces elsewhere", description: "OpenTelemetry, Langfuse, SIEM, webhooks." },
     ],

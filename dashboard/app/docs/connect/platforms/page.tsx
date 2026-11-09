@@ -99,10 +99,10 @@ export default function Page() {
           </ul>
         </Step>
 
-        <Step title="Make a call and look at Traces">
+        <Step title="Make a call and look at Activity">
           <p>
-            Each tool call shows on the agent&apos;s <strong>Activity</strong> tab and on{" "}
-            <strong>Traces</strong>. A finished call is recorded as one run with its turns, personal data
+            Each tool call shows on the agent&apos;s <strong>Activity</strong> tab and on the
+            workspace&apos;s <strong>Activity</strong> page. A finished call is recorded as one run with its turns, personal data
             and secrets masked.
           </p>
         </Step>

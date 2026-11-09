@@ -111,9 +111,10 @@ export default function Page() {
         row. The CLI lists them with <code>agentfox findings</code>.
       </p>
 
-      <h2 id="traces">Traces</h2>
+      <h2 id="traces">Runs (traces)</h2>
       <p>
-        One run end to end: the user&apos;s message, each model call, each tool call, and every check
+        One run end to end, listed on <strong>Activity</strong> (the API and SDK call a run a
+        trace): the user&apos;s message, each model call, each tool call, and every check
         each one went through, with the reason for any block. Every decision is also written to a
         tamper-evident log, which is what <Link href="/docs/prove/audit">audit evidence</Link> is built
         from.

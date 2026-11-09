@@ -15,9 +15,9 @@ export const metadata: Metadata = publicPageMetadata({
 const PROBLEMS: [ReactNode, ReactNode][] = [
   ["init says no agent found", <>Run <code>agentfox init</code> in the repository where the agent is defined.</>],
   ["No such option: --key", <>Upgrade: <code>pip install -U agentfox</code>.</>],
-  ["Nothing appears on Activity or Traces", <>Start the app from the folder where <code>init</code> ran, or set <Link href="/docs/connect/python#key">the two environment variables</Link>.</>],
+  ["Nothing appears on Activity", <>Start the app from the folder where <code>init</code> ran, or set <Link href="/docs/connect/python#key">the two environment variables</Link>.</>],
   ["The attack test never starts", <>Keep <code>agentfox init</code> running. It runs the attacks on your machine.</>],
-  ["A real user gets blocked", <>Open the run on <strong>Traces</strong>, press <strong>Wrong</strong> on the check, then follow <Link href="/docs/protect/tuning">Fix false positives</Link>.</>],
+  ["A real user gets blocked", <>Open the run on <strong>Activity</strong>, press <strong>Wrong</strong> on the check, then follow <Link href="/docs/protect/tuning">Fix false positives</Link>.</>],
   ["An attack is flagged but not stopped", <>The guardrail is in Watch. <Link href="/docs/protect">Switch it to Block</Link>.</>],
   ["A tool call is refused for no clear reason", <>The agent was not given that tool. Check its <strong>Access</strong> tab, or <code>agentfox permit list</code>.</>],
   ["A detector you turned on never fires", <>Its extra or model weights are missing. <code>agentfox admin detectors list</code> says what it needs.</>],
@@ -72,7 +72,7 @@ export default function Page() {
         <li>
           See what it can reach: <code>agentfox agents lineage support-triage</code>.
         </li>
-        <li>Read its recent runs on <strong>Traces</strong>.</li>
+        <li>Read its recent runs on <strong>Activity</strong>.</li>
         <li>
           Withdraw the tool that was misused on its <strong>Access</strong> tab, or with{" "}
           <code>agentfox permit revoke</code> and the grant id from <code>agentfox permit list</code>.

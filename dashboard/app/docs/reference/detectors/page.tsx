@@ -236,12 +236,13 @@ print([(d["key"], d["status"], d["matched"]) for d in r["explanation"]["detector
 
       <h2 id="checks">Choosing checks in the app</h2>
       <p>
-        <strong>Policies → Checks</strong> is the one place to choose what runs. Every
+        The checks list is the one place to choose what runs: open it from{" "}
+        <strong>Settings → Detection</strong> (the <strong>Checks on</strong> count) or from an
+        agent&apos;s guardrail map. Every
         detector is grouped by what it catches (prompt attacks, personal data and
         secrets, harmful content, grounding and wrong answers, your own), with where it
         runs, its average time, and where it comes from: built-in, an open-source model
-        (with its licence), an LLM judge, or yours. Settings and the guardrail map link
-        there too.
+        (with its licence), an LLM judge, or yours.
       </p>
       <ul>
         <li>
@@ -686,7 +687,7 @@ agentfox findings --json --limit 1`}</Code>
         items={[
           { href: "/docs/reference/policies", label: "Policy language", why: "write rules on these entities" },
           { href: "/docs/protect/tuning", label: "Fix false positives", why: "labels and suppressions from the app" },
-          { href: "/docs/prove", label: "Traces and issues", why: "triage findings with the full evidence" },
+          { href: "/docs/prove", label: "Activity and issues", why: "triage findings with the full evidence" },
           { href: "/docs/benchmarks", label: "Benchmarks", why: "what was measured, and where each result stops" },
         ]}
       />

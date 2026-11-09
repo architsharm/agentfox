@@ -995,7 +995,7 @@ agentfox_detector_duration_ms_max{detector="injection.heuristic"} 0.208791
         <code>agentfox_traces_total</code>, <code>agentfox_knowledge_boundaries</code>.
         Linking traces to LangSmith or Langfuse (<code>link_trace</code>,{" "}
         <code>links_for</code>, <code>resolve_external</code>) is covered in{" "}
-        <Link href="/docs/prove/integrations">Traces and integrations</Link>.
+        <Link href="/docs/prove/integrations">Send traces elsewhere</Link>.
       </p>
 
       <h2 id="testing">Testing</h2>

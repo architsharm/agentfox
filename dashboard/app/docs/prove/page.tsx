@@ -6,7 +6,7 @@ import { SCREENS } from "@/lib/docs/screens";
 import { publicPageMetadata } from "@/lib/site";
 
 export const metadata: Metadata = publicPageMetadata({
-  title: "Traces and issues",
+  title: "Activity and issues",
   description:
     "Find a run, see every check it went through and why it was blocked, mark a check right or wrong, and work the Issues queue.",
   path: "/docs/prove",
@@ -15,7 +15,7 @@ export const metadata: Metadata = publicPageMetadata({
 export default function Page() {
   return (
     <article className="docs-doc">
-      <h1>Traces and issues</h1>
+      <h1>Activity and issues</h1>
       <p className="docs-lede">
         Find out why a call was blocked, tell AgentFox when a check was wrong, and clear the issues
         that need a person.
@@ -24,7 +24,7 @@ export default function Page() {
       <Steps topLevel>
         <Step title="Find the run">
           <p>
-            Open <strong>Traces</strong>. The <strong>Runs</strong> tab lists recent runs with their
+            Open <strong>Activity</strong>. The <strong>Runs</strong> tab lists recent runs with their
             agent and outcome. Filter by <strong>Blocked</strong>, <strong>Held</strong>,{" "}
             <strong>Masked</strong> or <strong>Errors</strong>, or by agent. To jump to one, press ⌘K
             and paste its id (<code>trc_…</code>).
@@ -92,8 +92,8 @@ export default function Page() {
       <Code>{`agentfox findings --severity high`}</Code>
       <p>
         Resolving and accepting are in the app, or <code>PATCH /api/findings/&#123;id&#125;</code>.
-        Traces are listed in the app or with <code>GET /api/traces</code>; there is no CLI command for
-        them. Every issue type is in <Link href="/docs/reference/detectors#finding-types">Detectors
+        Runs (the API calls them traces) are listed on <strong>Activity</strong> or with{" "}
+        <code>GET /api/traces</code>; there is no CLI command for them. Every issue type is in <Link href="/docs/reference/detectors#finding-types">Detectors
         and findings</Link>.
       </p>
 

@@ -69,8 +69,8 @@ export default function Page() {
 
         <Step title="See it in the app">
           <p>
-            Each request appears on the agent&apos;s <strong>Activity</strong> tab and on{" "}
-            <strong>Traces</strong>, with the rule that decided it.
+            Each request appears on the agent&apos;s <strong>Activity</strong> tab and on the
+            workspace&apos;s <strong>Activity</strong> page, with the rule that decided it.
           </p>
         </Step>
       </Steps>

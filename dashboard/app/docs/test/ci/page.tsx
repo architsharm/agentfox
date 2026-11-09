@@ -152,7 +152,7 @@ agentfox report drift support-triage --scorer groundedness`}</Code>
       <NextSteps
         items={[
           { href: cli("test"), label: "test in the CLI reference", why: "every option of redteam, run, gate and online" },
-          { href: "/docs/prove", label: "Traces and issues", why: "where escapes and regressions land" },
+          { href: "/docs/prove", label: "Activity and issues", why: "where escapes and regressions land" },
         ]}
       />
     </article>
