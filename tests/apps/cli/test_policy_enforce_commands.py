@@ -67,3 +67,15 @@ def test_enforce_names_an_auto_line_that_never_blocks(session, tmp_path, monkeyp
     out = " ".join(result.output.split())
     assert 'app.py:3 calls agentfox.auto with mode="observe"' in out
     assert 'agentfox.auto("support-bot") # added by `agentfox up`' in out
+
+
+def test_a_mention_in_a_comment_or_docstring_is_not_a_call(session, tmp_path, monkeypatch):
+    (tmp_path / "notes.py").write_text(
+        '"""Earlier versions wrote agentfox.auto(..., mode="observe")."""\n'
+        '# agentfox.auto("x", mode="observe")\n'
+        'import agentfox\nagentfox.auto("x")\n'
+    )
+    monkeypatch.chdir(tmp_path)
+    result = CliRunner().invoke(app, ["policy", "enforce", "baseline"])
+    assert result.exit_code == 0, result.output
+    assert "never blocks" not in result.output

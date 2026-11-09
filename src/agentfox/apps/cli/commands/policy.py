@@ -296,7 +296,6 @@ def policy_enforce(key: str) -> None:
 
 #: Directories never searched for `agentfox.auto(...)` lines: installs and VCS.
 _SKIP_DIRS = {".git", ".venv", "venv", "env", "node_modules", "site-packages", "__pycache__"}
-_OBSERVE_LINE = re.compile(r"""agentfox\.auto\([^)]*mode\s*=\s*["']observe["']""")
 
 
 def observe_lines(root: Path, limit: int = 5000) -> list[tuple[Path, int, str]]:
@@ -321,10 +320,34 @@ def observe_lines(root: Path, limit: int = 5000) -> list[tuple[Path, int, str]]:
                 continue
             if "agentfox.auto(" not in text:
                 continue
-            for number, line in enumerate(text.splitlines(), start=1):
-                if _OBSERVE_LINE.search(line):
-                    found.append((path, number, line.strip()))
+            lines = text.splitlines()
+            # Calls in the code, not mentions in a comment or a docstring.
+            for number in _observe_calls(text):
+                found.append((path, number, lines[number - 1].strip()))
     return found
+
+
+def _observe_calls(text: str) -> list[int]:
+    """Line numbers of `agentfox.auto(..., mode="observe")` calls in this source."""
+    import ast
+
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        return []
+    return sorted(
+        node.lineno
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "auto"
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "agentfox"
+        and any(
+            k.arg == "mode" and isinstance(k.value, ast.Constant) and k.value.value == "observe"
+            for k in node.keywords
+        )
+    )
 
 
 def _warn_observe_lines(root: Path) -> None:
