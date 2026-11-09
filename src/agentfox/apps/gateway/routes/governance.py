@@ -26,6 +26,7 @@ from agentfox.capabilities.detection.tuning import explain_recorded
 from agentfox.core.models import (
     AuditEntry,
     Decision,
+    Finding,
     LegalHold,
     RetentionPolicy,
     Trace,
@@ -154,7 +155,28 @@ def get_trace(
         }
         for link in links_for(session, trace_id)
     ]
+    detail["findings"] = _findings_for_trace(session, trace_id, detail)
     return detail
+
+
+def _findings_for_trace(
+    session: Session, trace_id: str, detail: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """The issues this run raised, so the run page can link them.
+
+    An issue names its run in ``evidence.trace_id`` (or is about the run itself). Only
+    issues raised since the run began can have come from it, which bounds the scan.
+    """
+    started = (detail.get("trace") or {}).get("started_at")
+    query = select(Finding).order_by(Finding.created_at.desc()).limit(500)
+    if started:
+        query = query.where(Finding.created_at >= dt.datetime.fromisoformat(str(started)))
+    return [
+        {"id": f.id, "title": f.title, "type": f.type, "severity": f.severity, "status": f.status}
+        for f in session.scalars(query)
+        if (f.subject_type == "trace" and f.subject_id == trace_id)
+        or (f.evidence_json or {}).get("trace_id") == trace_id
+    ][:10]
 
 
 # ---------------------------------------------------------------------------
