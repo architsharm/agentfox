@@ -639,6 +639,14 @@ class ScanReport:
                 f"{first} Every model call here is already governed, and that does not "
                 "remove a trifecta: what the tools can reach does."
             )
+        if self.inconclusive and not self.skipped_suffixes:
+            # Nothing here at all: an empty folder, not a repository in a language the
+            # scan cannot read. Said plainly instead of "Seen and skipped: no other
+            # files were present" under a claim to say nothing about this repository.
+            return (
+                "There are no files here to scan. Run `agentfox scan <path>` on the "
+                "repository that holds your agent."
+            )
         if self.inconclusive:
             # Never reachable by the "no model calls found" branch below: a scan that
             # read nothing has no basis for saying anything was absent.
