@@ -113,6 +113,8 @@ def test_the_cli_says_the_runtime_numbers_and_the_finding_says_the_same(seeded):
     assert "24 stop once you allow mailer its first tool" in text
     # No claim that offline init runs anything.
     assert "agentfox init runs the same attacks" not in text
+    # Normal requests counted live, as the verdict counts them.
+    assert "normal requests: none of 2 wrongly blocked" in text and "2 of 2 normal" in text
     # The per-set table's header fits 80 columns, one line.
     header = next(line for line in out.output.splitlines() if line.lstrip().startswith("set"))
     assert len(header) <= 80 and "would stop" in header

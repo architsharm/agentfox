@@ -1643,11 +1643,14 @@ def run_campaign(
     for outcome in outcomes:
         if outcome.blocked and outcome.detail.get("applied_verdict") not in LIVE_STOPS:
             outcome.detail.setdefault("waiting_for", "blocking")
+            # A rule's own mode, else the decision's (a content check's rules carry
+            # none); any effect that would stop or rewrite it once applied.
             outcome.detail["watching_rules"] = sorted(
                 {
                     str(r.get("rule_id") or r.get("id"))
                     for r in outcome.detail.get("rules_fired") or []
-                    if r.get("mode") == "observe" and r.get("effect") in ("block", "escalate")
+                    if (r.get("mode") or outcome.detail.get("mode")) == "observe"
+                    and r.get("effect") in ("block", "escalate", "redact", "mask", "tokenize")
                 }
             )
 

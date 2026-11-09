@@ -228,13 +228,19 @@ def redteam_run(
             "<tool>` for the tools it should use."
         )
     if stats.get("benign_probes_run"):
-        console.print(
-            f"  precision [bold]{stats.get('precision', 1.0):.0%}[/] — "
-            f"[red]{stats['benign_false_positives']} legitimate call(s) wrongly blocked[/]"
-            if stats["benign_false_positives"]
-            else f"  precision [bold]{stats.get('precision', 1.0):.0%}[/] — "
-            "[green]no benign controls wrongly blocked[/]"
+        # Normal requests counted as the verdict counts them, live: "1 wrongly blocked"
+        # sat above "8 of 8 normal requests answered" when the block only watched.
+        controls = int(stats["benign_probes_run"])
+        live_fp = int(stats.get("benign_over_blocked_live", stats["benign_false_positives"]) or 0)
+        would = int(stats["benign_false_positives"] or 0) - live_fp
+        line = (
+            f"  normal requests: [red]{live_fp} of {controls} wrongly blocked[/]"
+            if live_fp
+            else f"  normal requests: [green]none of {controls} wrongly blocked[/]"
         )
+        if would > 0:
+            line += f" [yellow]({would} more would be, once the watching rules block)[/]"
+        console.print(line)
     # Adaptive mode answers a different question from the static suite, so it leads with
     # a different line: not "what share did we catch" but "did this deployment get weaker".
     if stats.get("headline"):
