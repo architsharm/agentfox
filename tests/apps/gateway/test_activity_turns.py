@@ -100,7 +100,10 @@ def test_a_question_with_a_document_is_its_own_turn(client, session):
     from agentfox.runtime.enforcement.summary import record_input
 
     agent = "doc-bot"
-    for text, source in (("How long do refunds take?", "user"), ("Summarise this doc.", "tool_result")):
+    for text, source in (
+        ("How long do refunds take?", "user"),
+        ("Summarise this doc.", "tool_result"),
+    ):
         trace = start_trace(session, agent_id=None, agent_slug=agent)
         trace.summary = text
         record_input(session, trace, text)

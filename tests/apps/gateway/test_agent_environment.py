@@ -14,9 +14,7 @@ SLUG = "env-bot"
 
 
 def test_agent_carries_the_environment_its_latest_traffic_came_from(client):
-    r = client.post(
-        "/api/agents", json={"slug": SLUG, "environment": "development"}, headers=ADMIN
-    )
+    r = client.post("/api/agents", json={"slug": SLUG, "environment": "development"}, headers=ADMIN)
     assert r.status_code == 201, r.text
     before = client.get(f"/api/agents/{SLUG}", headers=ADMIN).json()
     assert before["environment"] == "development"
