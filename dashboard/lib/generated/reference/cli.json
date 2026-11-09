@@ -264,7 +264,7 @@
       "required": false,
       "multiple": false,
       "default": "",
-      "help": "Your onboarding key from the dashboard's Connect screen; with --server and no --key, AGENTFOX_API_KEY is used, which keeps the key out of `ps` and your shell history. Maps the agent in this repo (reading the code, never running it), reports its names and shapes, and stays connected to run the attack tests on this machine: those do run your agent, with every tool faked."
+      "help": "Your workspace key (dashboard: Get started → Create a key); with --server and no --key, AGENTFOX_API_KEY is used, which keeps the key out of `ps` and your shell history. Maps the agent in this repo (reading the code, never running it), reports its names and shapes, and stays connected to run the attack tests on this machine: those do run your agent, with every tool faked."
      },
      {
       "kind": "option",
@@ -2627,10 +2627,23 @@
      {
       "path": "policy simulate",
       "name": "simulate",
-      "summary": "Replay recorded traffic against a candidate policy.",
-      "help": "Replay recorded traffic against a candidate policy.\n\nExits non-zero when the change would newly block production traffic, so it can\ngate a policy PR the same way `eval gate` gates a code PR.",
+      "summary": "Replay recorded traffic against a candidate policy, or a loaded one by key.",
+      "help": "Replay recorded traffic against a candidate policy, or a loaded one by key.\n\nExits non-zero when the change would newly block production traffic, so it can\ngate a policy PR the same way `test gate` gates a code PR.",
       "panel": null,
       "params": [
+       {
+        "kind": "argument",
+        "name": "key",
+        "opts": [
+         "key"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "A policy already loaded (`agentfox policy list`): replay its live version, the simulation `policy enforce` needs before it blocks. Or give --file."
+       },
        {
         "kind": "option",
         "name": "file",
@@ -2640,7 +2653,7 @@
         ],
         "type": "path",
         "choices": [],
-        "required": true,
+        "required": false,
         "multiple": false,
         "default": null,
         "help": "Candidate policy YAML."

@@ -34,10 +34,16 @@ agentfox scan --help`}</Code>
 
       <Callout kind="note" title="Where state lives">
         <p>
-          Commands that read or write state use the database in{" "}
-          <code>AGENTFOX_STATE_DIR</code> (or <code>AGENTFOX_DATABASE_URL</code>). In a
-          source checkout the default is the repository itself; set the variable to keep
-          experiments out of it. See <Link href="/docs/reference/config">Configuration</Link>.
+          With an account key configured (<code>agentfox login</code>, or{" "}
+          <code>AGENTFOX_URL</code> and <code>AGENTFOX_API_KEY</code>), <code>findings</code>,{" "}
+          <code>agents list</code>, <code>permit</code>, <code>declare</code>,{" "}
+          <code>policy</code>, <code>report</code> and <code>test suites</code> read and write
+          your account through its API, and each prints which it uses. Otherwise commands use
+          the database in <code>AGENTFOX_STATE_DIR</code> (or{" "}
+          <code>AGENTFOX_DATABASE_URL</code>, which also wins over a key;{" "}
+          <code>AGENTFOX_LOCAL=1</code> does too). In a source checkout the default is the
+          repository itself; set the variable to keep experiments out of it. See{" "}
+          <Link href="/docs/reference/config">Configuration</Link>.
         </p>
       </Callout>
 

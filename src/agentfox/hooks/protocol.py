@@ -33,6 +33,7 @@ enforcement off, so the narrower door is the right one.
 from __future__ import annotations
 
 import json
+import os
 import socket
 import struct
 from pathlib import Path
@@ -61,19 +62,51 @@ class ProtocolError(RuntimeError):
     """The frame on the wire was not one we can act on."""
 
 
+#: Names the daemon's socket outright. Only the socket moves: the database and
+#: everything else stay under the state root.
+SOCKET_ENV_VAR = "AGENTFOX_SOCKET"
+
+
 def socket_path(state_root: Path | None = None) -> Path:
     """Where the daemon listens.
 
-    Under the state root rather than `/tmp`: the state root is already the
-    place this installation writes things only it should read, and a
-    predictable path in a world-writable directory is how a socket gets
-    pre-created by somebody else.
+    ``AGENTFOX_SOCKET`` when it is set. Otherwise under the state root rather
+    than `/tmp`: the state root is already the place this installation writes
+    things only it should read, and a predictable path in a world-writable
+    directory is how a socket gets pre-created by somebody else.
+
+    When that path is too long for a Unix socket (a deep home or state
+    directory), a short one in this user's own directory under the system temp
+    directory, named for the state root so two installations never share one.
+    The docs used to say to set ``AGENTFOX_STATE_DIR`` for this, which also
+    moved the database out from under the hooks; nobody has to now.
     """
+    override = os.environ.get(SOCKET_ENV_VAR)
+    if override:
+        return Path(override).expanduser()
     if state_root is None:
         from agentfox.core.config import STATE_ROOT
 
         state_root = STATE_ROOT
-    return state_root / "run" / "agentfoxd.sock"
+    default = state_root / "run" / "agentfoxd.sock"
+    if len(str(default).encode()) <= MAX_SOCKET_PATH:
+        return default
+    return short_socket_path(state_root)
+
+
+def short_socket_path(state_root: Path) -> Path:
+    """The fallback: ``<tmp>/agentfox-<uid>/<hash of the state root>.sock``. The
+    directory is created 0700 and must be this user's (`daemon.ensure_run_dir`)."""
+    import hashlib
+    import tempfile
+
+    tag = hashlib.sha256(str(state_root).encode()).hexdigest()[:12]
+    user = os.getuid() if hasattr(os, "getuid") else "user"
+    base = Path(tempfile.gettempdir())
+    path = base / f"agentfox-{user}" / f"{tag}.sock"
+    if len(str(path).encode()) > MAX_SOCKET_PATH:
+        path = Path("/tmp") / f"agentfox-{user}" / f"{tag}.sock"
+    return path
 
 
 def check_socket_path(path: Path) -> None:
@@ -83,7 +116,7 @@ def check_socket_path(path: Path) -> None:
         raise ProtocolError(
             f"the socket path is {encoded} bytes, over the ~{MAX_SOCKET_PATH} a Unix "
             f"socket allows:\n  {path}\n"
-            "Set AGENTFOX_STATE_DIR to somewhere shorter, or pass --socket."
+            f"Set {SOCKET_ENV_VAR} to a shorter path (only the socket moves), or pass --socket."
         )
 
 

@@ -59,7 +59,7 @@ def test_business_rules_are_listed_and_counted_like_other_rules(session, monkeyp
     )
     session.commit()
 
-    out = CliRunner().invoke(app, ["policy", "effective"]).output
+    out = CliRunner().invoke(app, ["policy", "effective"]).stdout
     assert out.splitlines()[0].startswith("effective policy in production")
     line = next(x for x in out.splitlines() if x.startswith("business.custom-payments-transfer"))
     assert "Transfers over $100 need finance." in line

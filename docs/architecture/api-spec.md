@@ -138,7 +138,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-337 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+338 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -541,6 +541,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/proposals/{proposal_id}/decide` | Approve or reject; an org-level loosening needs two different approvers. |
 | `POST` | `/api/proposals/{proposal_id}/rollback` | Undo an applied or canaried proposal through its applier. |
 | `POST` | `/api/proposals/{proposal_id}/verify` | Record whether an applied change worked; ``verified: false`` rolls it back. |
+| `GET` | `/api/report/summary` | The one-page summary `agentfox report` prints, for this workspace: what ran, |
 | `GET` | `/api/rules/{rule_id}/examples` | Get Examples |
 | `POST` | `/api/rules/{rule_id}/examples` | Post Example |
 | `POST` | `/api/rules/{rule_id}/examples/check` | Check Examples |

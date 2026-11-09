@@ -27,6 +27,16 @@ export default function Page() {
         </li>
       </ul>
 
+      <Callout kind="note" title="Hooks record on this machine">
+        <p>
+          The hooks check calls against this machine&apos;s database and record there, not in your
+          AgentFox account, so the sessions do not appear in the dashboard. In a project connected
+          to an account (<code>.agentfox/agentfox.env</code>), the CLI reads the account; put{" "}
+          <code>AGENTFOX_LOCAL=1</code> in front of a command to read and change what the hooks use,
+          as in the steps below.
+        </p>
+      </Callout>
+
       <Steps>
         <Step title="Install the hooks">
           <p>
@@ -59,16 +69,17 @@ agentfox admin hooks status`}</Code>
             MCP tools arrive as <code>mcp__server__tool</code> and have no grant, so they are refused.
             Grant one, or let a few sessions run and have grants proposed from what the agent called.
           </p>
-          <Code>{`agentfox permit grant claude-dev mcp__github__create_issue
-agentfox policy proposals from-traffic --agent claude-dev`}</Code>
+          <Code>{`AGENTFOX_LOCAL=1 agentfox permit grant claude-dev mcp__github__create_issue
+AGENTFOX_LOCAL=1 agentfox policy proposals from-traffic --agent claude-dev`}</Code>
         </Step>
 
         <Step title="Switch to Block">
           <p>
-            After a few days, read what the <code>coding-agent</code> rules would have stopped on the{" "}
-            <strong>Issues</strong> page, then turn them on.
+            After a few days, read what the <code>coding-agent</code> rules would have stopped, then
+            turn them on.
           </p>
-          <Code>{`agentfox policy enforce coding-agent`}</Code>
+          <Code>{`AGENTFOX_LOCAL=1 agentfox findings
+AGENTFOX_LOCAL=1 agentfox policy enforce coding-agent`}</Code>
         </Step>
       </Steps>
 
@@ -152,7 +163,12 @@ claude plugin install agentfox@agentfox`}</Code>
           </tr>
           <tr>
             <td>AF_UNIX path too long</td>
-            <td>Set <code>AGENTFOX_STATE_DIR</code> to a shorter folder, for the daemon and the coding agent.</td>
+            <td>
+              The daemon picks a short private socket by itself when its usual one would be too long.
+              To choose one, set <code>AGENTFOX_SOCKET</code> to a short path, for the daemon and the
+              coding agent. It moves only the socket; do not move <code>AGENTFOX_STATE_DIR</code> for
+              this, which moves the database the hooks read too.
+            </td>
           </tr>
           <tr>
             <td>coding-agent not enabled, from init</td>

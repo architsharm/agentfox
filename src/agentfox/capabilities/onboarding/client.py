@@ -186,8 +186,22 @@ def report(api: Any, console: Console, root: Path, server: str, key: str) -> dic
         connected = api.post(
             "/runner/connect", {"structure": structure, "project": mapped.get("project")}
         )
+    except ApiError as exc:
+        if exc.status in (401, 403):
+            # Reached, and refused: "couldn't reach" sent people to check the network.
+            console.print(
+                f"[red]{server} rejected this key ({exc.status}).[/red] It is wrong, revoked "
+                "or expired, or its owner may not add agents. Make a new one in the "
+                "dashboard: Get started → Create a key, then run this again."
+            )
+        else:
+            console.print(f"[red]AgentFox at {server} refused the connection:[/red] {exc}")
+        raise SystemExit(1) from exc
     except (httpx.HTTPError, RuntimeError) as exc:
-        console.print(f"[red]Couldn't reach AgentFox at {server}:[/red] {exc}")
+        console.print(
+            f"[red]Couldn't reach AgentFox at {server}[/red] ({type(exc).__name__}). "
+            "Check the address (--server) and your network."
+        )
         raise SystemExit(1) from exc
     if structure["agents"]:
         console.print(
@@ -282,7 +296,9 @@ def connect_live_traffic(
 
     if not key.startswith(API_KEY_PREFIX):
         return None  # an older setup key cannot send traffic
-    write_env(root, {"AGENTFOX_URL": server.rstrip("/"), "AGENTFOX_API_KEY": key})
+    write_env(
+        root, {"AGENTFOX_URL": server.rstrip("/"), "AGENTFOX_API_KEY": key}, by="agentfox init"
+    )
 
     entry = _entry_file(root, registered)
     if entry is None:

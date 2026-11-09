@@ -410,7 +410,8 @@ def runner_session(
     raw = (authorization or "").removeprefix("Bearer ").removeprefix("bearer ").strip()
     if not raw.startswith(keys.KEY_PREFIXES):
         raise HTTPException(
-            401, "Send the key from the Connect screen: Authorization: Bearer nom_api_…"
+            401,
+            "Send a workspace key (Get started → Create a key): Authorization: Bearer nom_api_…",
         )
     try:
         _token, user, row = keys.resolve(session, raw, allowed_roles=WRITE_ROLES["registry"])
@@ -418,7 +419,7 @@ def runner_session(
         raise HTTPException(
             401,
             "That setup key isn't valid: it may have expired or been replaced. Copy a new "
-            "one from the Connect screen.",
+            "one on Get started → Create a key.",
         ) from None
     except keys.SetupKeyRefused as exc:
         raise HTTPException(403, str(exc)) from None

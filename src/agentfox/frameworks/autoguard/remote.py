@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -40,6 +41,22 @@ log = logging.getLogger(__name__)
 
 ENV_FILE = Path(".agentfox") / "agentfox.env"
 
+#: How long `auto()` waits at start to learn whether the account accepts the key.
+CHECK_TIMEOUT = 3.0
+
+
+class KeyRejected(RuntimeError):
+    """The account refused the key. The message is the one line a person needs: what
+    happened and how to fix it, never the HTTP library's text."""
+
+
+def rejected_message(url: str, status: int) -> str:
+    return (
+        f"agentfox: {url} rejected your AgentFox key ({status}): it is wrong, revoked "
+        "or expired. Make a new one in the dashboard (Get started → Create a key) and "
+        "put it in AGENTFOX_API_KEY or .agentfox/agentfox.env (`agentfox login`)."
+    )
+
 
 @dataclass
 class Remote:
@@ -50,6 +67,7 @@ class Remote:
     def __post_init__(self) -> None:
         self.url = self.url.rstrip("/")
         self._client = httpx.Client(timeout=self.timeout)
+        self._told = False
 
     def post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
         # Tool arguments and the conversation carry the framework's own objects (a
@@ -59,8 +77,39 @@ class Remote:
             json=jsonable(body),
             headers={"Authorization": f"Bearer {self.key}"},
         )
+        if response.status_code in (401, 403):
+            message = rejected_message(self.url, response.status_code)
+            if not getattr(self, "_told", False):
+                # Once, in plain words: the failure handler that catches this logs
+                # it per call, and a raw 401 with a documentation URL helped nobody.
+                self._told = True
+                print(message, file=sys.stderr)  # noqa: T201 - the point is to be seen
+            raise KeyRejected(message)
         response.raise_for_status()
         return response.json()
+
+    def check(self) -> str | None:
+        """Whether the account will take this key, asked once at start: None when it
+        does (or cannot be told), else the problem in one line. An agent key
+        (``nom_agt_``) only reaches the guard routes, so it is not asked about."""
+        if self.key.startswith("nom_agt_"):
+            return None
+        try:
+            response = self._client.get(
+                f"{self.url}/api/me",
+                headers={"Authorization": f"Bearer {self.key}"},
+                timeout=CHECK_TIMEOUT,
+            )
+        except httpx.TransportError as exc:
+            return (
+                f"agentfox: could not reach your AgentFox account at {self.url} "
+                f"({type(exc).__name__}); calls follow fail_mode until it answers."
+            )
+        except Exception:  # noqa: BLE001 - a check, never a reason to stop the app
+            return None
+        if response.status_code in (401, 403):
+            return rejected_message(self.url, response.status_code)
+        return None
 
 
 def _env_file(root: Path | None = None) -> dict[str, str]:

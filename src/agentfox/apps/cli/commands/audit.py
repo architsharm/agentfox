@@ -15,26 +15,43 @@ audit_app = typer.Typer(
 @audit_app.command("verify")
 def audit_verify(start: int | None = None, end: int | None = None) -> None:
     """Verify the tamper-evident audit chain. Exits 1 if broken."""
+    from agentfox.apps.cli import account as _account
     from agentfox.platform.ledger import chain
 
-    with _session() as session:
-        stats = chain.chain_stats(session)
-        result = chain.verify_range(session, start, end)
+    remote = _account.use(console)
+    if remote is not None:
+        # The account's chain, verified where it is kept (`POST /api/audit/verify`).
+        try:
+            result = remote.request(
+                "POST",
+                "/api/audit/verify",
+                params={k: v for k, v in (("start_seq", start), ("end_seq", end)) if v is not None},
+            )
+        except _account.AccountError as exc:
+            _account.fail(console, exc)
+        stats = result.get("stats") or {}
+    else:
+        with _session() as session:
+            stats = chain.chain_stats(session)
+            result = chain.verify_range(session, start, end).to_json()
 
     console.print(
-        f"chain: [bold]{stats['entries']}[/] entries, head seq "
-        f"{stats['head_seq']}, {stats['checkpoints']} checkpoints"
+        f"chain: [bold]{stats.get('entries')}[/] entries, head seq "
+        f"{stats.get('head_seq')}, {stats.get('checkpoints')} checkpoints"
     )
-    if result.valid:
+    if result.get("valid"):
         console.print(
-            f"[bold green]CHAIN INTACT[/] — {result.entries_checked} entries "
-            f"verified (seq {result.first_seq}..{result.last_seq})"
+            f"[bold green]CHAIN INTACT[/] — {result.get('entries_checked')} entries "
+            f"verified (seq {result.get('first_seq')}..{result.get('last_seq')})"
         )
         return
-    console.print(f"[bold red]CHAIN TAMPERED[/] — {len(result.breaks)} break(s)")
-    for issue in result.breaks[:10]:
-        console.print(f"  [red]seq {issue.seq}[/] {issue.kind}: {issue.detail}")
-    for failure in result.checkpoint_failures[:5]:
+    breaks = result.get("breaks") or []
+    console.print(f"[bold red]CHAIN TAMPERED[/] — {len(breaks)} break(s)")
+    for issue in breaks[:10]:
+        console.print(
+            f"  [red]seq {issue.get('seq')}[/] {issue.get('kind')}: {issue.get('detail')}"
+        )
+    for failure in (result.get("checkpoint_failures") or [])[:5]:
         console.print(f"  [red]checkpoint seq {failure['seq']}[/] {failure['reason']}")
     raise typer.Exit(1)
 

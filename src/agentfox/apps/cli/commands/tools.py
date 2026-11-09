@@ -67,6 +67,30 @@ def tools_declare(
         console.print(f"[red]output trust must be one of: {', '.join(OUTPUT_TRUST_LEVELS)}[/]")
         raise typer.Exit(2)
 
+    from agentfox.apps.cli import account as _account
+
+    declared_triggers: list[str]
+    remote = _account.use(console)
+    if remote is not None:
+        body: dict = {
+            "key": key,
+            "name": name,
+            "impact": impact,
+            "description": description,
+            "output_trust": output_trust,
+            "effect_class": effect,
+        }
+        if triggers:
+            body["triggers"] = [t.strip() for t in triggers.split(",") if t.strip()]
+        try:
+            saved = remote.post("/api/tools", body)
+        except _account.AccountError as exc:
+            _account.fail(console, exc)
+        declared_triggers = list(saved.get("triggers") or [])
+        declared_trust = saved.get("output_trust") or "untrusted"
+        _say_declared(key, impact, declared_trust, declared_triggers)
+        return
+
     with _session() as session:
         tool = upsert_tool(
             session,
@@ -81,7 +105,10 @@ def tools_declare(
             tool.triggers_json = [t.strip() for t in triggers.split(",") if t.strip()]
         declared_triggers = list(tool.triggers_json or [])
         declared_trust = tool.output_trust
+    _say_declared(key, impact, declared_trust, declared_triggers)
 
+
+def _say_declared(key: str, impact: str, declared_trust: str, declared_triggers: list[str]) -> None:
     console.print(f"[bold]{key}[/] declared — impact [bold]{impact}[/], output {declared_trust}")
     if declared_triggers:
         console.print(f"  triggers: {', '.join(declared_triggers)}")
@@ -102,8 +129,31 @@ def tools_list(as_json: bool = typer.Option(False, "--json")) -> None:
     """Every declared tool and what it is allowed to do."""
     from sqlalchemy import select
 
+    from agentfox.apps.cli import account as _account
     from agentfox.core.models import Tool
     from agentfox.platform.registry.service import impact_source_of
+
+    remote = _account.use(console, quiet=as_json)
+    if remote is not None:
+        try:
+            tools = remote.get("/api/tools").get("tools") or []
+        except _account.AccountError as exc:
+            _account.fail(console, exc)
+        _print_tools(
+            [
+                {
+                    "key": t["key"],
+                    "impact": t.get("impact"),
+                    "impact_source": t.get("impact_source"),
+                    "triggers": list(t.get("triggers") or []),
+                    "output_trust": t.get("output_trust") or "untrusted",
+                    "description": t.get("description"),
+                }
+                for t in tools
+            ],
+            as_json,
+        )
+        return
 
     with _session() as session:
         tools = list(session.scalars(select(Tool).order_by(Tool.key)))
@@ -118,7 +168,10 @@ def tools_list(as_json: bool = typer.Option(False, "--json")) -> None:
             }
             for t in tools
         ]
+    _print_tools(rows, as_json)
 
+
+def _print_tools(rows: list[dict], as_json: bool) -> None:
     if as_json:
         _emit(rows, True)
         return

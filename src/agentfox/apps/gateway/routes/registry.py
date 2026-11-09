@@ -505,6 +505,10 @@ class ToolIn(BaseModel):
     json_schema: dict[str, Any] = Field(default_factory=dict)
     #: ``untrusted`` | ``trusted``. Omitted leaves an existing tool's declaration as it is.
     output_trust: str | None = None
+    #: ``communication`` (`agentfox declare tool --effect`); "" clears it, omitted keeps it.
+    effect_class: str | None = None
+    #: What a call sets off downstream (`--triggers`). Omitted keeps what is declared.
+    triggers: list[str] | None = None
 
 
 @router.get("/tools")
@@ -520,6 +524,7 @@ def list_tools(
                 "impact": t.impact,
                 "impact_source": impact_source_of(t),
                 "output_trust": t.output_trust or "untrusted",
+                "triggers": list(t.triggers_json or []),
                 "description": t.description,
                 "mcp_server_id": t.mcp_server_id,
             }
@@ -532,10 +537,12 @@ def list_tools(
 def create_tool(
     payload: ToolIn, session: Session = Depends(db), user: User = Depends(require("registry"))
 ) -> dict[str, Any]:
-    from agentfox.core.models import OUTPUT_TRUST_LEVELS
+    from agentfox.core.models import OUTPUT_TRUST_LEVELS, TOOL_EFFECT_CLASSES
 
     if payload.output_trust is not None and payload.output_trust not in OUTPUT_TRUST_LEVELS:
         raise HTTPException(400, f"output_trust must be one of {OUTPUT_TRUST_LEVELS}")
+    if payload.effect_class and payload.effect_class not in TOOL_EFFECT_CLASSES:
+        raise HTTPException(400, f"effect_class must be one of {TOOL_EFFECT_CLASSES}")
     tool = upsert_tool(
         session,
         payload.key,
@@ -545,9 +552,17 @@ def create_tool(
         schema=payload.json_schema,
         description=payload.description,
         output_trust=payload.output_trust,
+        effect_class=payload.effect_class,
         actor=user.email or user.id,
     )
-    return {"key": tool.key, "impact": tool.impact, "output_trust": tool.output_trust}
+    if payload.triggers is not None:
+        tool.triggers_json = payload.triggers
+    return {
+        "key": tool.key,
+        "impact": tool.impact,
+        "output_trust": tool.output_trust,
+        "triggers": list(tool.triggers_json or []),
+    }
 
 
 class McpIn(BaseModel):

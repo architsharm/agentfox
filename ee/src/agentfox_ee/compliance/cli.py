@@ -58,6 +58,7 @@ def compliance_status(framework: str | None = None, verbose: bool = False) -> No
     """Show control posture, optionally for one framework."""
     from sqlalchemy import select
 
+    from agentfox.apps.cli import account as _account
     from agentfox.core.models import Control
     from agentfox_ee.compliance import (
         controls_for_framework,
@@ -65,6 +66,22 @@ def compliance_status(framework: str | None = None, verbose: bool = False) -> No
         latest_statuses,
         posture,
     )
+
+    remote = _account.use(console)
+    if remote is not None:
+        try:
+            overall = remote.get("/api/compliance/status", framework=framework)
+        except _account.AccountError as exc:
+            _account.fail(console, exc)
+        _print_posture(framework, overall)
+        if verbose:
+            for label, colour, keys in (
+                ("failing", "red", overall.get("failing_controls") or []),
+                ("degraded", "yellow", overall.get("degraded_controls") or []),
+            ):
+                for key in keys:
+                    console.print(f"  [{colour}]{label}[/] {key}")
+        return
 
     with _session() as session:
         overall = posture(session, framework)
@@ -75,17 +92,7 @@ def compliance_status(framework: str | None = None, verbose: bool = False) -> No
             {c["key"] for c in controls_for_framework(session, framework)} if framework else None
         )
 
-    title = framework or "all frameworks"
-    counts = overall["counts"]
-    console.print(f"[bold]{title}[/] — {overall['controls']} controls")
-    console.print(
-        f"  [green]{counts['effective']} effective[/] · "
-        f"[yellow]{counts['degraded']} degraded[/] · "
-        f"[red]{counts['failing']} failing[/] · "
-        f"[dim]{counts['not_implemented']} not implemented[/]"
-    )
-    if overall["effectiveness"] is not None:
-        console.print(f"  effectiveness {overall['effectiveness']:.0%}")
+    _print_posture(framework, overall)
 
     if verbose:
         table = Table(box=None, pad_edge=False)
@@ -117,6 +124,20 @@ def compliance_status(framework: str | None = None, verbose: bool = False) -> No
             for gap in coverage["declared_gaps"]:
                 console.print(f"    [dim]· {gap}[/]")
         console.print(f"\n  [yellow]{coverage['caveat']}[/]")
+
+
+def _print_posture(framework: str | None, overall: dict[str, Any]) -> None:
+    title = framework or "all frameworks"
+    counts = overall["counts"]
+    console.print(f"[bold]{title}[/] — {overall['controls']} controls")
+    console.print(
+        f"  [green]{counts['effective']} effective[/] · "
+        f"[yellow]{counts['degraded']} degraded[/] · "
+        f"[red]{counts['failing']} failing[/] · "
+        f"[dim]{counts['not_implemented']} not implemented[/]"
+    )
+    if overall["effectiveness"] is not None:
+        console.print(f"  effectiveness {overall['effectiveness']:.0%}")
 
 
 @compliance_app.command("validate")

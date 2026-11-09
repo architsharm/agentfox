@@ -141,7 +141,7 @@ def test_cli_report_md_and_html(tmp_path):
         seed(session)
     result = runner.invoke(app, ["report", "--since", "7d"])
     assert result.exit_code == 0, result.output
-    assert result.output.startswith("# AgentFox summary")
+    assert result.stdout.startswith("# AgentFox summary")
 
     out = tmp_path / "summary.html"
     result = runner.invoke(app, ["report", "--format", "html", "--out", str(out)])

@@ -59,12 +59,14 @@ VISIBLE: list[tuple[str, str]] = [
 
 # Top-level commands that still work but are not listed. `demo` is listed again: the
 # README's "look around first" names it, and a command the README sends people to has
-# to be findable in `--help`.
-HIDDEN_TOP_LEVEL: frozenset[str] = frozenset()
+# to be findable in `--help`. `login` is unlisted to keep the panels at fourteen; the
+# root epilog names it, and every "key rejected" message points at it.
+HIDDEN_TOP_LEVEL: frozenset[str] = frozenset({"login"})
 
 #: The root `--help` epilog: where the coding-agent hooks live. `hooks run` is a hidden
 #: protocol endpoint, and someone who finds it in `.claude/settings.json` looks here.
 ROOT_EPILOG = (
+    "Connect your AgentFox account with one key: `agentfox login`. "
     "Coding-agent hooks (Claude Code, Codex): `agentfox up --with coding-agents`, or "
     "`agentfox admin hooks install | status | daemon`. Installed hooks call "
     "`agentfox hooks run` by absolute path."

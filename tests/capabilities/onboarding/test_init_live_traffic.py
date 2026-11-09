@@ -114,3 +114,32 @@ def test_with_two_agents_in_one_file_the_line_names_the_one_the_script_runs(tmp_
     console = Console(record=True)
     connect_live_traffic(console, tmp_path, "https://gw", "nom_api_abc", registered, ask=False)
     assert 'agentfox.auto("support-triage")' in console.export_text()
+
+
+def test_a_rejected_key_says_rejected_not_unreachable(tmp_path):
+    """`init --key <wrong>` reached the server and was refused; it used to say
+    "Couldn't reach AgentFox", which sent people to check their network."""
+    import pytest
+
+    from agentfox.capabilities.onboarding import client as init_client
+
+    class Refusing:
+        def post(self, path, body):
+            raise init_client.ApiError(401, "That setup key isn't valid")
+
+    console = Console(record=True, width=200)
+    with pytest.raises(SystemExit):
+        init_client.report(Refusing(), console, _repo(tmp_path), "https://gw.example", "k")
+    out = console.export_text()
+    assert "rejected this key (401)" in out
+    assert "Get started → Create a key" in out
+    assert "Couldn't reach" not in out
+
+
+def test_the_env_file_names_the_command_that_wrote_it(tmp_path):
+    root = _repo(tmp_path)
+    connect_live_traffic(
+        Console(record=True), root, "https://gw", "nom_api_abc", REGISTERED, ask=False
+    )
+    head = (root / ".agentfox" / "agentfox.env").read_text().splitlines()[0]
+    assert head == "# Written by `agentfox init`. Holds credentials: never commit it."
