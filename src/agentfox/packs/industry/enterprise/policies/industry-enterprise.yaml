@@ -30,7 +30,7 @@ rules:
     tool: execute_code
   effect: block
   severity: high
-  reason: Code execution is blocked
+  reason: 'Code execution requested; blocking it keeps the agent from running arbitrary code'
 - id: industry-enterprise.ssh-not-permitted
   description: SSH is not permitted
   when:

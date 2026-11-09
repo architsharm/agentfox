@@ -20,16 +20,14 @@ rules:
     action_risk: nigeria-ndpa.block-transfer-non-permitted-region
   effect: block
   severity: high
-  reason: 'NDPA s.25: Cross-border transfer to <value> blocked - region not in NDPC adequacy-approved
-    list'
+  reason: 'NDPA s.25: Cross-border transfer to <value> - region not in NDPC adequacy-approved list, so it may not go ahead'
 - id: nigeria-ndpa.block-transfer-non-nigerian-country-code
   description: 'NDPA s.25: Block transfer to non-Nigerian country code (structured check)'
   when:
     action_risk: nigeria-ndpa.block-transfer-non-nigerian-country-code
   effect: block
   severity: high
-  reason: 'NDPA s.25: Transfer to country <value> blocked - no documented consent or adequacy basis on
-    file'
+  reason: 'NDPA s.25: Transfer to country <value> with no documented consent or adequacy basis on file - needs one before it goes ahead'
 - id: nigeria-ndpa.block-bulk-data-exports
   description: 'NDPA s.24: Block bulk data exports (data minimisation)'
   when:

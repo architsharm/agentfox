@@ -35,24 +35,21 @@ rules:
     action_risk: uganda-dppa.block-transfer-non-permitted-region
   effect: block
   severity: high
-  reason: 'Uganda DPPA s.19: Cross-border transfer to <value> blocked - region not in PDPO adequacy-approved
-    list'
+  reason: 'Uganda DPPA s.19: Cross-border transfer to <value> - region not in PDPO adequacy-approved list, so it may not go ahead'
 - id: uganda-dppa.block-transfer-non-ug-country-without
   description: 'DPPA s.19: Block transfer to non-UG country without consent'
   when:
     action_risk: uganda-dppa.block-transfer-non-ug-country-without
   effect: block
   severity: high
-  reason: 'Uganda DPPA s.19: Transfer to country <value> blocked - no documented consent or adequacy basis
-    on file'
+  reason: 'Uganda DPPA s.19: Transfer to country <value> with no documented consent or adequacy basis on file - needs one before it goes ahead'
 - id: uganda-dppa.block-national-id-output
   description: 'DPPA: Block National ID (NIRA) in output'
   when:
     action_risk: uganda-dppa.block-national-id-output
   effect: block
   severity: high
-  reason: 'Uganda DPPA: National ID number (NIRA) detected in agent output - blocked to prevent identity
-    exposure'
+  reason: 'Uganda DPPA: National ID number (NIRA) detected in agent output; blocking keeps it out of the reply to prevent identity exposure'
 - id: uganda-dppa.block-large-record-exports
   description: 'DPPA s.4: Block large record exports (>1000 records)'
   when:

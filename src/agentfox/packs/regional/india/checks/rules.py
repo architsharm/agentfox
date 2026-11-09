@@ -30,13 +30,13 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "india-aadhaar.unmasked-12-digit-run-near-uid",
             "deny",
-            "Aadhaar Regulations 2021: unmasked 12-digit Aadhaar number detected near UID context - must be masked (last 4 only)",
+            "Aadhaar Regulations 2021: unmasked 12-digit Aadhaar number detected near UID context - only the last 4 digits may be shown",
             (("text", "(?i)(uid|uidai|unique\\s+id).{0,15}\\d{12}\\b"),),
         ),
         R(
             "india-aadhaar.1234-5678-9012-or-1234-5678",
             "deny",
-            "Aadhaar Regulations 2021: a grouped 12-digit sequence (4-4-4) resembling an Aadhaar number must be masked; only the last 4 digits may be shown",
+            "Aadhaar Regulations 2021: a grouped 12-digit sequence (4-4-4) resembling an Aadhaar number detected - only the last 4 digits may be shown",
             (("text", "\\b\\d{4}[ -]\\d{4}[ -]\\d{4}\\b"),),
         ),
         R(

@@ -39,7 +39,7 @@ rules:
     tool: execute_code
   effect: block
   severity: high
-  reason: Arbitrary code execution is blocked
+  reason: 'Arbitrary code execution requested; blocking it keeps the agent from running code nobody reviewed'
 - id: industry-minimal.direct-ssh-access-not-permitted
   description: Direct SSH access is not permitted
   when:

@@ -318,7 +318,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "uk-gdpr.nhs-number-output",
             "deny",
-            "UK GDPR: NHS number detected in agent output — blocked to prevent health identity exposure",
+            "UK GDPR: NHS number detected in agent output; blocking keeps it out of the reply to prevent health identity exposure",
             (
                 (
                     "text",
@@ -329,7 +329,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "uk-gdpr.national-insurance-number-output",
             "deny",
-            "UK GDPR: National Insurance number detected in agent output — blocked to prevent identity exposure",
+            "UK GDPR: National Insurance number detected in agent output; blocking keeps it out of the reply to prevent identity exposure",
             (
                 (
                     "text",
@@ -340,7 +340,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "uk-gdpr.block-transfer-without-adequacy-platform-set",
             "deny",
-            "UK GDPR Art. 44–46: transfer to <value> blocked — requires adequacy, IDTA/UK Addendum safeguards, and data protection test (DUAA 'not materially lower' standard)",
+            "UK GDPR Art. 44–46: transfer to <value> - requires adequacy, IDTA/UK Addendum safeguards, and data protection test (DUAA 'not materially lower' standard) before it goes ahead",
             (
                 (
                     "action_in",

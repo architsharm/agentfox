@@ -49,8 +49,7 @@ rules:
     action_risk: mauritius-dpa.mauritius-national-id-card-format-z
   effect: block
   severity: high
-  reason: 'Mauritius DPA 2017 (Breach Notification / Security): Mauritius National ID Card (NIC) detected
-    in agent output — blocked; triggers Commissioner breach notification within 72 hours'
+  reason: 'Mauritius DPA 2017 (Breach Notification / Security): Mauritius National ID Card (NIC) detected in agent output; blocking keeps it out of the reply, and a disclosure triggers Commissioner breach notification within 72 hours'
 - id: mauritius-dpa.cross-border-non-permitted-region-requires
   description: 'DPA 2017 (Transfer): Cross-border to non-permitted region requires proof of safeguards.
     Commissioner may prohibit, suspend or condition transfers.'
@@ -58,17 +57,14 @@ rules:
     action_risk: mauritius-dpa.cross-border-non-permitted-region-requires
   effect: block
   severity: high
-  reason: 'Mauritius DPA 2017 (Transfer): Cross-border transfer to region <value> blocked - proof of appropriate
-    safeguards must be filed with the Commissioner or a valid derogation (consent, contract, public interest,
-    legal claims) established'
+  reason: 'Mauritius DPA 2017 (Transfer): Cross-border transfer to region <value> - needs proof of appropriate safeguards filed with the Commissioner or a valid derogation (consent, contract, public interest, legal claims) before it goes ahead'
 - id: mauritius-dpa.transfer-non-mu-country-without-documented
   description: 'DPA 2017 (Transfer): Transfer to non-MU country without documented consent/derogation.'
   when:
     action_risk: mauritius-dpa.transfer-non-mu-country-without-documented
   effect: block
   severity: high
-  reason: 'Mauritius DPA 2017 (Transfer): Transfer to <value> blocked - no documented consent or derogation
-    (contract, vital interest, public interest, legal claims) filed with Commissioner'
+  reason: 'Mauritius DPA 2017 (Transfer): Transfer to <value> with no documented consent or derogation (contract, vital interest, public interest, legal claims) filed with Commissioner - needs one before it goes ahead'
 - id: mauritius-dpa.large-record-exports-without-documented-safeguards
   description: 'DPA 2017 (Transfer / Security): Large record exports without documented safeguards.'
   when:
