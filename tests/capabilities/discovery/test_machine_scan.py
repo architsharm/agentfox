@@ -229,3 +229,25 @@ def test_cli_ends_with_the_summary_and_the_next_command(tmp_path, monkeypatch):
     assert tail.rstrip().endswith("agentfox up --with coding-agents")
     # A skill whose only issue is shipping scripts is named once, not listed in full.
     assert "Ship scripts nothing here has read (low): tool." in result.output
+
+
+def test_an_unpinned_npx_server_wrapped_in_a_shell_is_reported():
+    """`/bin/sh -c "npx -y @scope/server"` floats as much as `npx -y @scope/server`."""
+    from agentfox.capabilities.discovery.exposure import McpServerDecl, server_hygiene
+
+    wrapped = McpServerDecl(
+        name="helper",
+        config="~/.claude.json",
+        command="/bin/sh",
+        args=["-c", "exec npx -y @acme/helper-mcp --stdio"],
+    )
+    assert wrapped.package == "@acme/helper-mcp"
+    assert any(i["type"] == "unpinned_server" for i in server_hygiene(wrapped))
+    pinned = McpServerDecl(
+        name="helper",
+        config="~/.claude.json",
+        command="bash",
+        args=["-lc", "npx -y @acme/helper-mcp@1.4.2"],
+    )
+    assert pinned.pinned_version == "1.4.2"
+    assert not any(i["type"] == "unpinned_server" for i in server_hygiene(pinned))
