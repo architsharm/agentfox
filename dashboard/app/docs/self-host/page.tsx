@@ -44,6 +44,15 @@ export AGENTFOX_AUDIT_SIGNING_KEY="$(openssl rand -hex 32)"`}</Code>
           <Code>{`docker compose -f deploy/docker-compose.yml up -d`}</Code>
         </Step>
 
+        <Step title="Load the policies and controls">
+          <p>
+            The gateway creates its tables when it starts. <code>init</code> also loads the control
+            catalog and the shipped policy packs, every one watching, so they show on Policies. It is
+            safe to run again.
+          </p>
+          <Code>{`docker compose -f deploy/docker-compose.yml exec gateway agentfox init --path /tmp`}</Code>
+        </Step>
+
         <Step title="Create the first owner">
           <p>No demo data is loaded. This creates you as owner and prints a token, once.</p>
           <Code>{`docker compose -f deploy/docker-compose.yml exec gateway \\

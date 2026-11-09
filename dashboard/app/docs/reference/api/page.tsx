@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Callout, Code, Output } from "@/components/docs/blocks";
+import { Callout, Code, NextSteps, Output } from "@/components/docs/blocks";
 import { API_COUNT, ApiReference } from "@/components/docs/reference";
 import { publicPageMetadata } from "@/lib/site";
 
@@ -158,6 +158,14 @@ export default function Page() {
       <h2 id="unauthenticated">Public, unauthenticated</h2>
       <p>The playground, the waitlist and the live showcase feed. Sandboxed or read-only, rate-limited, and separate from your data.</p>
       <ApiReference audience="public-unauthenticated" />
+
+      <NextSteps
+        items={[
+          { href: "/docs/connect/http", label: "Any language (HTTP)", why: "the proxy and the guard calls, worked through" },
+          { href: "/docs/connect/typescript", label: "TypeScript SDK", why: "the same routes from TypeScript" },
+          { href: "/docs/reference/config#gateway", label: "Gateway requests", why: "headers, status codes and streaming" },
+        ]}
+      />
     </article>
   );
 }

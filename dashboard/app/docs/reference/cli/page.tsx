@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Callout, Code } from "@/components/docs/blocks";
+import { Callout, Code, NextSteps } from "@/components/docs/blocks";
 import { CliIndex, CliReference } from "@/components/docs/reference";
 import { publicPageMetadata } from "@/lib/site";
 
@@ -46,6 +46,14 @@ agentfox scan --help`}</Code>
       </Callout>
 
       <CliReference />
+
+      <NextSteps
+        items={[
+          { href: "/docs/quickstart/cli", label: "Quickstart without an account", why: "these commands in the order you need them" },
+          { href: "/docs/reference/config", label: "Configuration", why: "every setting the commands read" },
+          { href: "/docs/support", label: "Troubleshooting", why: "when a command does not do what you expect" },
+        ]}
+      />
     </article>
   );
 }

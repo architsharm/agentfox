@@ -267,6 +267,14 @@ def test_scan_sessions_routes_to_the_quickscan(isolated_db, tmp_path):
     assert {"repo", "sessions", "live_demo"} <= set(body)
 
 
+def test_serve_help_says_where_it_listens_and_how_to_change_it():
+    """`serve --help` is the group's help, so the default command's --host and --port
+    did not show; it names them and the default address."""
+    out = " ".join(runner.invoke(app, ["serve", "--help"]).output.split())
+    assert "127.0.0.1:8080" in out
+    assert "--host" in out and "--port" in out
+
+
 def test_serve_keeps_its_options_and_gains_mcp():
     assert "--port" in runner.invoke(app, ["serve", "api", "--help"]).output
     assert runner.invoke(app, ["serve", "mcp", "--help"]).exit_code == 0

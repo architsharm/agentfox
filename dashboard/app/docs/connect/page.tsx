@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Cards } from "@/components/docs/blocks";
+import { Cards, NextSteps } from "@/components/docs/blocks";
 import { publicPageMetadata } from "@/lib/site";
 
 export const metadata: Metadata = publicPageMetadata({
@@ -78,6 +78,14 @@ export default function Page() {
             title: "Any language (HTTP)",
             text: "Point your model calls at the AgentFox proxy, or ask the guard API.",
           },
+        ]}
+      />
+
+      <NextSteps
+        items={[
+          { href: "/docs/connect/python", label: "Python apps", why: "the one line most agents need" },
+          { href: "/docs/govern", label: "Tool access", why: "once connected, limit what it may call" },
+          { href: "/docs/protect", label: "Guardrails", why: "turn on checks for what it reads and says" },
         ]}
       />
     </article>

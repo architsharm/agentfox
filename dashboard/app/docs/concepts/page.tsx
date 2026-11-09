@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Screenshot } from "@/components/docs/blocks";
+import { NextSteps, Screenshot } from "@/components/docs/blocks";
 import { SCREENS } from "@/lib/docs/screens";
 import { publicPageMetadata } from "@/lib/site";
 
@@ -203,6 +203,14 @@ export default function Page() {
           </tr>
         </tbody>
       </table></div>
+
+      <NextSteps
+        items={[
+          { href: "/docs/quickstart", label: "Quickstart", why: "see these on your own agent" },
+          { href: "/docs/govern", label: "Tool access", why: "decide what each agent may call" },
+          { href: "/docs/protect", label: "Guardrails", why: "turn on checks, watch first, then block" },
+        ]}
+      />
     </article>
   );
 }

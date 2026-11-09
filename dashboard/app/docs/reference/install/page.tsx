@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Callout, Code, Output } from "@/components/docs/blocks";
+import { Callout, Code, NextSteps, Output } from "@/components/docs/blocks";
 import { publicPageMetadata } from "@/lib/site";
 
 export const metadata: Metadata = publicPageMetadata({
@@ -383,6 +383,14 @@ rm -rf ~/.agentfox              # or $AGENTFOX_STATE_DIR / $XDG_DATA_HOME/agentf
           </tr>
         </tbody>
       </table></div>
+
+      <NextSteps
+        items={[
+          { href: "/docs/quickstart", label: "Quickstart", why: "connect your first agent" },
+          { href: "/docs/reference/config", label: "Configuration", why: "every setting, with its default" },
+          { href: "/docs/self-host", label: "Self-host", why: "run the gateway and dashboard yourself" },
+        ]}
+      />
     </article>
   );
 }

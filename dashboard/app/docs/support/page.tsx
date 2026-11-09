@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { Callout, Code } from "@/components/docs/blocks";
+import { Callout, Code, NextSteps } from "@/components/docs/blocks";
 import { REPO_URL, publicPageMetadata } from "@/lib/site";
 
 export const metadata: Metadata = publicPageMetadata({
@@ -148,6 +148,14 @@ export default function Page() {
         the audit log or an evidence package. Replace names and emails with placeholders such as{" "}
         <code>ada@example.com</code>.
       </Callout>
+
+      <NextSteps
+        items={[
+          { href: "/docs/protect/tuning", label: "Fix false positives", why: "when a guardrail blocks a real user" },
+          { href: "/docs/reference/install#uninstall", label: "Uninstall", why: "every file AgentFox writes" },
+          { href: "/docs/concepts#glossary", label: "Glossary", why: "the app's names and the CLI's" },
+        ]}
+      />
     </article>
   );
 }

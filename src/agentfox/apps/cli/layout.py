@@ -306,7 +306,9 @@ def apply_layout(app: typer.Typer) -> None:
     serve_app = _new_group(
         "Run the gateway and control-plane API, the MCP server for AI clients, or the "
         "model server.\n\n"
-        "`agentfox serve [--host] [--port] [--reload]` starts the API (the default); "
+        "`agentfox serve` starts the API (the default) on 127.0.0.1:8080. "
+        "`--host 0.0.0.0` and `--port 9000` change where it listens; `--reload` restarts "
+        "it when the code changes; `agentfox serve api --help` lists every option.\n\n"
         "`agentfox serve mcp` speaks MCP over stdio; `agentfox serve models` runs the "
         "model-backed detectors for gateways that should not hold weights.",
         cls=default_group("api"),
