@@ -26,7 +26,13 @@ from agentfox.capabilities.detection.custom import (
 )
 from agentfox.capabilities.detection.custom_conditions import observed_values
 from agentfox.capabilities.detection.custom_models import get_model
-from agentfox.capabilities.detection.custom_store import delete_rule, list_rules, save_rule, spec_of
+from agentfox.capabilities.detection.custom_store import (
+    delete_rule,
+    get_rule,
+    list_rules,
+    save_rule,
+    spec_of,
+)
 from agentfox.capabilities.detection.detector_settings import set_enabled
 from agentfox.core.models import User
 
@@ -109,6 +115,38 @@ def remove_custom_rule(
     if sync is None:
         raise HTTPException(404, f"no custom rule '{key}'")
     return {"deleted": key, "policy": {"version": sync.version, "mode": sync.mode}}
+
+
+@router.get("/custom-rules/{key}/history")
+def custom_rule_history(
+    key: str, session: Session = Depends(db), _user: User = Depends(current_user)
+) -> dict[str, Any]:
+    """Every saved version of a rule's words, patterns or condition, with what changed."""
+    from agentfox.capabilities.detection.custom_store import history
+
+    if get_rule(session, key) is None:
+        raise HTTPException(404, f"no custom rule '{key}'")
+    return {"key": key, "versions": history(session, key)}
+
+
+@router.post("/custom-rules/{key}/versions/{version}/restore", status_code=201)
+def restore_custom_rule(
+    key: str,
+    version: int,
+    session: Session = Depends(db),
+    user: User = Depends(require("policy")),
+) -> dict[str, Any]:
+    """Put an earlier version of a rule's definition back, as a new version."""
+    from agentfox.capabilities.detection.custom_store import restore_version
+
+    try:
+        row, sync = restore_version(session, key, version, actor=user.email or user.id)
+    except ValueError as exc:
+        raise HTTPException(404 if "no " in str(exc) else 409, str(exc)) from exc
+    return {
+        "rule": _json(row),
+        "policy": {"version": sync.version, "mode": sync.mode, "simulation": sync.simulation},
+    }
 
 
 class TryIn(BaseModel):

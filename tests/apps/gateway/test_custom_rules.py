@@ -293,3 +293,29 @@ def test_a_check_that_cannot_run_here_is_not_saved_and_degrades_if_already_saved
 
     out = _guard(client, "Is Globex cheaper?")
     assert "custom.validators" in out["degraded"], out
+
+
+def test_a_rules_history_says_what_changed_and_restoring_puts_the_words_back(client):
+    def save(entries):
+        r = client.post(
+            "/api/custom-rules",
+            json={"key": "rivals", "name": "Rivals", "kind": "terms", "entries": entries},
+            headers=ADMIN,
+        )
+        assert r.status_code == 201, r.text
+
+    save(["Globex", "Initech"])
+    save(["Globex", "Hooli"])
+    versions = client.get("/api/custom-rules/rivals/history", headers=ADMIN).json()["versions"]
+    assert [v["version"] for v in versions] == [2, 1]
+    assert versions[0]["live"] and not versions[1]["live"]
+    assert versions[0]["change"] == "Added “Hooli”; removed “Initech”"
+    assert versions[1]["change"] == "Created"
+
+    r = client.post("/api/custom-rules/rivals/versions/1/restore", headers=ADMIN)
+    assert r.status_code == 201, r.text
+    assert r.json()["rule"]["entries"] == ["Globex", "Initech"]
+    assert _guard(client, "Ask Initech")["effective_verdict"] == "block"
+    assert _guard(client, "Ask Hooli")["effective_verdict"] == "allow"
+    again = client.post("/api/custom-rules/rivals/versions/3/restore", headers=ADMIN)
+    assert again.status_code == 409

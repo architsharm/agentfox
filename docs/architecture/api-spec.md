@@ -138,7 +138,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-337 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+339 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -520,6 +520,8 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/custom-rules/fields` | The arguments a tool is known to take, to suggest as a condition's field. |
 | `POST` | `/api/custom-rules/try` | Match one text against a rule that has not been saved. Records nothing. |
 | `DELETE` | `/api/custom-rules/{key}` | Remove Custom Rule |
+| `GET` | `/api/custom-rules/{key}/history` | Every saved version of a rule's words, patterns or condition, with what changed. |
+| `POST` | `/api/custom-rules/{key}/versions/{version}/restore` | Put an earlier version of a rule's definition back, as a new version. |
 | `GET` | `/api/features` | Get Features |
 | `POST` | `/api/features/checks/{key}` | Switch a check on or off for every project, or for one. Switching on one that |
 | `POST` | `/api/features/protections/{key}` | Set Protection |
