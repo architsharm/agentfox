@@ -61,10 +61,12 @@ Modes — who decides whether a call is refused in-process:
   exactly when the *enforced* verdict stops the call, i.e. when the gateway would have
   refused it. The shipped ``baseline`` pack is in observe mode, so adding the import
   blocks nothing; ``agentfox policy enforce baseline`` is the one step that starts
-  blocking, with no second knob to find here. Tool calls follow the same rule, with
-  one carve-out: capability default-deny raises only once the agent holds at least
-  one capability grant (see `_govern_tool_calls`), because before that it would
-  refuse every tool an existing app has.
+  blocking, with no second knob to find here. Tool calls follow the same rule:
+  Tool containment's checks, capability default-deny included, block only while the
+  tool-containment pack does (``agentfox policy enforce tool-containment``), with one
+  carve-out: default-deny raises only once the agent holds at least one capability
+  grant (see `_govern_tool_calls`), because before that it would refuse every tool an
+  existing app has.
 * ``"observe"`` — never raise. A library-level safety valve: every decision is still
   recorded, and what *would* have been blocked is logged and counted.
 * ``"enforce"`` — strict: raise whenever the *effective* verdict (what the policies
@@ -454,7 +456,8 @@ class AutoState:
                 "(baseline ships in observe) record what they would have blocked; "
                 "enforce-mode policies, the kill switch and budget caps raise "
                 "agentfox.Blocked — for a tool call too. A tool outside the agent's "
-                "capability grants raises once it has at least one grant. "
+                "capability grants raises once it has at least one grant and "
+                "tool-containment blocks (`agentfox policy enforce tool-containment`). "
                 "`agentfox policy enforce baseline` is the one step that starts "
                 "blocking content."
             )
