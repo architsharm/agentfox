@@ -331,7 +331,11 @@ function GuardEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, tar
           >
             {on ? <Mark size={15} /> : <span className="gm-mark-plus" aria-hidden>+</span>}
             <span className="gm-rail-name">{data.title}</span>
-            {on && n ? <span className="gm-rail-count">{n}</span> : null}
+            {on && n ? (
+              <span className="gm-rail-count" title={`${n} ${n === 1 ? "rule" : "rules"} on this step`}>
+                {n}
+              </span>
+            ) : null}
           </button>
         </EdgeLabelRenderer>
       )}
@@ -1451,7 +1455,7 @@ function Legend() {
       ))}
       <span className="gm-legend-sep" aria-hidden />
       <span className="gm-legend-kind">
-        <Mark size={16} /> Rail with guardrails
+        <Mark size={16} /> Rail with guardrails (the number is how many rules, not traffic)
       </span>
       <span className="gm-legend-kind">
         <span className="gm-legend-plus" aria-hidden>+</span> Rail, none yet

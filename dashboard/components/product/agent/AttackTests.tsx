@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { projectHref, projectInPath } from "@/lib/product/project";
 import { Play, Plus, Search, X } from "lucide-react";
 import {
   cell,
@@ -13,6 +15,7 @@ import {
   worseRows,
   plainError,
   pollDelay,
+  readyForApp,
   runNote,
   runState,
   shown as shownRuns,
@@ -146,6 +149,8 @@ function Library({ items, onAdd, onClose }: { items: LibrarySet[]; onAdd: (key: 
 /** `paused`: why the test can't run now (an agent in the project is paused or stopped), shown on the Run button. */
 export function AttackTests({ project, paused }: { project: string; paused?: string | null }) {
   const router = useRouter();
+  // The agent whose page this is: the one the next step's Activity link opens.
+  const agent = projectInPath(usePathname() || "") ?? undefined;
   const [tests, setTests] = useState<Tests | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -359,14 +364,27 @@ export function AttackTests({ project, paused }: { project: string; paused?: str
           <div>
             <strong>Turn on basic guardrails</strong>
             <p>
-              The run above had nothing blocking: AgentFox was only watching, which is why the rails on the map already
-              count catches. Basic guardrails block attacks in what users send and in what the agent reads, and hide
-              personal data and secrets in replies.
+              The run above had nothing blocking: AgentFox was only watching. Basic guardrails block attacks in what users
+              send and in what the agent reads, and hide personal data and secrets in replies.
             </p>
           </div>
           <button type="button" className="at-btn" onClick={addBasic} disabled={busy || !here || Boolean(paused)} title={paused || undefined}>
             Turn on basic guardrails and test again
           </button>
+        </div>
+      ) : null}
+      {readyForApp({ beforeRan, afterRan, basicOn: Boolean(basicOn), live: Boolean(live) }) ? (
+        <div className="at-next">
+          <div>
+            <strong>Next: run your app</strong>
+            <p>
+              Add the one line <code>agentfox init</code> printed (<code>agentfox.auto(&quot;{agent ?? "<agent>"}&quot;)</code>) where your app
+              starts, and run it as you always do. Each model and tool call then shows on Activity, with every check it went through.
+            </p>
+          </div>
+          <Link className="at-btn" href={agent ? projectHref(agent, "activity") : "/app/traces"}>
+            Open Activity
+          </Link>
         </div>
       ) : null}
       {error ? <p className="at-error">{error}</p> : null}

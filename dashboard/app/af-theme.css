@@ -573,6 +573,7 @@ nav.side .project-switch-menu .project-switch-danger { color: var(--af-err); }
 .at-next p { margin: 2px 0 0; font-size: 12.5px; color: var(--af-fg-2); line-height: 1.45; }
 .at-btn { align-self: flex-start; height: 30px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--af-brand); color: #fff; font-family: var(--af-sans); font-size: 12.5px; font-weight: 500; cursor: pointer; }
 .at-btn:disabled { opacity: .55; cursor: default; }
+a.at-btn { display: inline-flex; align-items: center; text-decoration: none; }
 .at-error { margin: 0; font-size: 12.5px; color: var(--af-err); }
 .at-lib { position: absolute; top: 32px; right: 0; z-index: 20; width: min(320px, 100%); display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--af-line-2); border-radius: 10px; background: var(--af-surface); box-shadow: var(--af-shadow-2); }
 .at-lib-search { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; border: 1px solid var(--af-line); border-radius: 7px; color: var(--af-muted); }
