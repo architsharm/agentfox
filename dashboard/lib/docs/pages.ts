@@ -31,6 +31,7 @@ export const DOC_NAV: DocSection[] = [
       { href: "/docs/connect/mcp", label: "MCP servers", description: "Scan, pin and govern MCP tools." },
       { href: "/docs/connect/coding-agents", label: "Claude Code and Codex", description: "Hooks for coding agents." },
       { href: "/docs/connect/platforms", label: "Voice and hosted platforms", description: "Vapi, Retell, Copilot Studio, AgentCore." },
+      { href: "/docs/connect/typescript", label: "TypeScript SDK", description: "@agentfox/sdk: guard messages and tool calls." },
       { href: "/docs/connect/http", label: "Any language (HTTP)", description: "The proxy and the guard API." },
     ],
   },

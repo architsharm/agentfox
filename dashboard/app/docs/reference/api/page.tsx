@@ -31,6 +31,7 @@ export default function Page() {
         evidence. It takes a bearer token from <code>agentfox admin auth issue</code>.
       </p>
       <Code title="Check a tool call before running it">{`curl -s http://localhost:8080/v1/guard/tool_call \\
+  -H "Authorization: Bearer $AGENTFOX_API_KEY" \\
   -H "Content-Type: application/json" \\
   -H "X-AgentFox-Agent: support-triage" \\
   -d '{"agent": "support-triage", "tool": "tickets.close",
@@ -48,7 +49,11 @@ export default function Page() {
       <p>
         A verdict is a 200 with a body, not an error status: your code reads{" "}
         <code>verdict</code> and decides. Nothing is granted on a fresh install, so the
-        first call is refused by default-deny, and the reason says how to fix it.
+        first call is refused by default-deny, and the reason says how to fix it: grant the
+        tool on the agent&apos;s <strong>Access</strong> tab, or{" "}
+        <code>agentfox permit grant support-triage tickets.close --yes</code>. The key is an
+        agent key (<code>nom_agt_…</code>) or a workspace key (<code>nom_api_…</code>); a
+        local gateway with authentication off accepts the call without one.
       </p>
       <p>
         Worked examples for each endpoint are in the guides:{" "}

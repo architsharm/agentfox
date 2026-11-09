@@ -144,7 +144,7 @@ export AGENTFOX_API_KEY=nom_api_…`}</Code>
         the refusal as the tool&apos;s result instead, and the run carries on.
       </p>
 
-      <h2>What it covers</h2>
+      <h2 id="frameworks">What it covers</h2>
       <ul>
         <li>
           <strong>Patched:</strong> <code>openai</code> chat completions and the Responses API,{" "}
@@ -166,6 +166,7 @@ export AGENTFOX_API_KEY=nom_api_…`}</Code>
         </li>
       </ul>
 
+      <div id="openai-agents" />
       <Callout kind="note" title="OpenAI Agents SDK">
         <p>
           The Agents SDK calls the model through the Responses API, which <code>auto()</code>{" "}
