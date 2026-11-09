@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Callout, Code, NextSteps, Screenshot, Step, Steps } from "@/components/docs/blocks";
 import { Tab, Tabs } from "@/components/docs/tabs";
 import { SCREENS } from "@/lib/docs/screens";
-import { publicPageMetadata } from "@/lib/site";
+import { SUPPORT_EMAIL, publicPageMetadata } from "@/lib/site";
 
 export const metadata: Metadata = publicPageMetadata({
   title: "Audit evidence",
@@ -28,6 +28,10 @@ export default function Page() {
         Compliance (control status, frameworks, sign-off, risk register) and evidence packages are
         AgentFox Enterprise. The summary, the audit log and retention are in the open core. Enterprise
         runs free in production for one workspace with up to four agents.
+        <br />
+        It is included on AgentFox Cloud. To self-host it, install it from a clone of the repository
+        (it is not on PyPI): <code>pip install agentfox ./ee</code>. For more agents or workspaces, write
+        to <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> for a commercial licence.
       </Callout>
 
       <Steps topLevel>
@@ -71,17 +75,54 @@ export default function Page() {
               </p>
             </Tab>
             <Tab label="CLI">
-              <Code>{`agentfox admin checkpoint
-agentfox report evidence --agent payments-ops --since-days 30`}</Code>
+              <Code>{`agentfox report evidence --agent payments-ops --since-days 30`}</Code>
             </Tab>
           </Tabs>
           <p>
             The zip holds the audit log, decisions, approvals, issues, control status and a summary.
-            The auditor unzips it and runs <code>python3 verify_chain.py</code> with any Python 3: no
-            AgentFox, no call to your server. Building a package is itself written to the audit log.
+            Building it signs a checkpoint over its newest audit entry, so you do not need to run{" "}
+            <code>agentfox admin checkpoint</code> first. Building a package is itself written to the
+            audit log.
           </p>
         </Step>
       </Steps>
+
+      <h2>What verify_chain.py checks</h2>
+      <p>
+        The auditor unzips the package and runs <code>python3 verify_chain.py</code> with any Python 3:
+        no AgentFox, no call to your server. Without a key it checks that:
+      </p>
+      <ul>
+        <li>
+          every file listed in <code>manifest.json</code> is there and matches its SHA-256, and no
+          unlisted file was added;
+        </li>
+        <li>
+          every audit entry re-derives from its contents: the time, action and payload, and, for
+          entries marked <code>&quot;digest_version&quot;: 2</code>, who acted and on what (actor and
+          subject). Older entries keep verifying under the first scheme, which did not cover actor and
+          subject;
+        </li>
+        <li>the entries form one unbroken chain: nothing deleted, inserted or reordered.</li>
+      </ul>
+      <p>
+        That proves the package is consistent, not that nobody changed it: whoever edits a file can
+        recompute the manifest and the chain too, and the script says so. With{" "}
+        <code>AGENTFOX_AUDIT_SIGNING_KEY</code> set to your audit signing key, it also checks{" "}
+        <code>manifest.sig</code> (a signature over the manifest, so over every file) and every signed
+        checkpoint. Only that run shows the package is the one you built. The key is an HMAC key: whoever
+        holds it can also sign, so hand it to the auditor, not to the people whose work is being
+        audited.
+      </p>
+
+      <Code>{`unzip evidence.zip -d evidence && cd evidence
+python3 verify_chain.py              # consistency only
+export AGENTFOX_AUDIT_SIGNING_KEY    # set from your secret store, then:
+python3 verify_chain.py              # manifest signature and checkpoints too`}</Code>
+      <p>
+        It exits 0 when everything it checked passed and 1 on any break, and names each one. An auditor
+        who does not trust the copy inside the package can use their own copy of the script.
+      </p>
 
       <h2>Framework mappings are drafts</h2>
       <p>
@@ -134,7 +175,20 @@ agentfox report evidence --agent payments-ops --since-days 30`}</Code>
             <td>
               <code>checkpoint_signature</code> from <code>verify_chain.py</code>
             </td>
-            <td>The key is not the one the checkpoints were signed with.</td>
+            <td>
+              The key is not the one the checkpoints were signed with. After a key rotation, give every
+              key, comma-separated.
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <code>file_mismatch</code> or <code>manifest_signature</code> from{" "}
+              <code>verify_chain.py</code>
+            </td>
+            <td>
+              A file in the package was changed after it was built (or the key is wrong). Build a new
+              package; do not hand over this one.
+            </td>
           </tr>
         </tbody>
       </table></div>

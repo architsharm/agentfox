@@ -121,11 +121,12 @@ when an encrypted column is added without being listed there.
 
 ## Evidence packages
 
-Packages exported before a rotation carry signatures from the old key. To verify
-one, give the bundled verifier every key involved, comma-separated:
+Packages exported before a rotation carry signatures (checkpoints and `manifest.sig`)
+from the old key. To verify one, give the bundled verifier every key involved,
+comma-separated (`AGENTFOX_AUDIT_KEY` is accepted as well):
 
 ```bash
-AGENTFOX_AUDIT_KEY="<new>,<old>" python3 verify_chain.py
+AGENTFOX_AUDIT_SIGNING_KEY="<new>,<old>" python3 verify_chain.py
 ```
 
 ## The red-team demo
