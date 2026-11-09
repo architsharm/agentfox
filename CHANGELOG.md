@@ -12,6 +12,20 @@ the file it came from.
 ## [Unreleased]
 
 ### Added
+- **`agentfox login`**, and one key for the whole CLI. With an account key configured
+  (`login`, `init --key`, or `AGENTFOX_URL` + `AGENTFOX_API_KEY`), `findings`,
+  `agents list`, `permit`, `declare`, `policy`, `report` and `test suites` read and write
+  the account through its API and say which store they use; `AGENTFOX_LOCAL=1` keeps them
+  local. `doctor` checks the server and key.
+- **`agentfox findings show <id>`**, with the whole id or the tail the list prints.
+- **Members** (Settings → Members): add a teammate, change a role. **Rename or remove an
+  agent** from its Settings tab. **Proposed** has search, grouping by repository and
+  Dismiss all.
+- **`AGENTFOX_DISABLED=1`** turns `agentfox.auto()` off without editing code.
+- **Docs:** an app ↔ CLI glossary, a TypeScript SDK page, connect cards for the OpenAI
+  Agents SDK, CrewAI and AutoGen, what `auto()` sends to an account, turning AgentFox off,
+  a full uninstall, an FAQ, health checks for self-hosting, and an importable
+  `governance.toolkit/v1` example.
 - **Delete my account.** A workspace's owner can delete their account and the whole
   workspace from Settings → Retention, after typing their email
   (`POST /api/account/delete`). It is refused while a legal hold is active, while another
@@ -29,6 +43,40 @@ the file it came from.
   page says who is told and links to where to set it up.
 
 ### Changed
+- **Watch means watch.** A missing grant, an approval asked for only because of where an
+  argument came from, and `composition.escalation` belong to Tool containment and follow
+  its mode: while it watches they record "would block" and the call goes through;
+  `agentfox policy enforce tool-containment` makes them block. Destructive commands,
+  tampering with AgentFox, the kill switch and limits set on a grant still apply from the
+  start. Policies → Applied rules and Libraries show exactly what acts on the agent.
+- **`up` writes `agentfox.auto("<agent>")`**, whose blocking follows the policies, and a
+  re-run never switches a blocking library back to watching. `policy enforce` warns about
+  an old `auto(mode="observe")` line and prints the edit. `policy enforce baseline` and
+  `basic` switch every agent's copy of the library.
+- **One agent, one name, one entry.** `scan`, `up`, `init`, `scan --submit` and `auto()`
+  use one slug (`FinancialPlannerAgent` is `financial-planner-agent`) and update the same
+  registry entry instead of adding copies; agents from `init`, `up` and scans start as
+  development; a monorepo's apps are grouped apart, and `up --agent` edits that agent's
+  own app.
+- **The first run in the app.** Every sign-in lands on Agents; the "Add N agents" step
+  stays until the agents are added or dismissed; every page counts the same agents and
+  points to Proposed. Signing out ends the browser session without revoking the pasted
+  key, and the workspace key `init` writes no longer expires. Settings has its own URL.
+- **One attack test.** Testing → Attack tests lists and runs the agent panel's test.
+  `test redteam` checks each attack's tool call the way `auto()` does, so its numbers
+  match the runtime. Agents with only hosted search tools and agents with no tools are
+  tested; faked tool results are text, as model APIs expect.
+- **Evidence and reports.** Compliance and `report status` show one figure (working
+  controls out of those that apply). Runs removed by retention say so instead of linking
+  nowhere; releasing a legal hold needs a reason.
+- **Policy rules.** A new rule starts watching even when its library blocks; regex
+  patterns keep their commas; "Approve above an amount" compiles every band and binds the
+  agent's own tool (with a tool picker); a rule's history says what changed and Restore
+  works for word rules; imported policies keep their surfaces and can be simulated,
+  started and removed; a denied call stays denied on retry for 30 minutes.
+- **CLI output** fits 80 columns without breaking commands or paths; help groups follow
+  Discover / Govern / Protect / Test / Prove; plurals read as words; Enterprise-only
+  commands say so in one line on the open-source package and are badged in the reference.
 - **Sign-in page:** the side panel shows the product instead of benchmark figures: the agent map in a window, with example decisions (blocked, sent to a person, allowed) arriving one at a time. Still for visitors who prefer reduced motion.
 - **Privacy policy and terms, rewritten against the deployment.** The privacy page now
   names the controller (Nometria Inc.), every cookie, Google and Microsoft sign-in, the
@@ -167,6 +215,26 @@ the file it came from.
   uses `$AGENTFOX_URL` and says so.
 
 ### Fixed
+- **The injection heuristic no longer reads an ordinary "send an email to …" request as
+  exfiltration**: taking data out needs something taken (the agent's context, secrets,
+  other people's data in bulk). Held-out results are unchanged.
+- **With `[classifiers]`, short scripts exit at once**: a check never waits for a model
+  that is still loading, a load cut short by exit logs nothing, and loading output is
+  quiet. A degraded-detector issue names the real cause and its fix.
+- A wrong or expired key at `auto()` start says so in one line instead of claiming to
+  report to the account; `init --key` says a key was rejected, not unreachable.
+- Coding-agent hooks fall back to a short socket path; `AGENTFOX_STATE_DIR` is no longer
+  needed for "AF_UNIX path too long" (`AGENTFOX_SOCKET` sets it).
+- Guardrail re-runs on SQLite wait for the write lock instead of failing with "database
+  is locked"; a failed check names its cause.
+- The HTTP test gate returns 412 when it fails; the CI example creates its reports folder;
+  `policy simulate` with a missing or invalid file prints one line.
+- Discovery finds LangGraph agents built in a class, `clone(tools=[x.as_tool()])`, a
+  hierarchical crew's manager, `Tool` subclasses and `FastMCP` servers, and labels an
+  Anthropic agent as one; a tool only ever blocked is not drawn as the agent's.
+- `up` says when `auto()` cannot see a framework's model calls (Google ADK, smolagents).
+- Promoting a run with no recorded input is refused instead of creating an empty case.
+- README links work on PyPI; 20 docs screenshots show the current app.
 - **Public pages render without JavaScript.** A loading boundary at the root of the
   site wrapped every public page, so each was served as a dashboard skeleton with the
   page itself hidden until scripts ran: visitors and crawlers without JavaScript saw
@@ -214,6 +282,9 @@ the file it came from.
   half-configured.
 
 ### Security
+- **Audit chain v2.** Each entry's digest covers its actor and subject (older entries
+  still verify); a downgrade to v1 after v2 is a break. Evidence packages check every
+  file in the manifest, carry `manifest.sig`, and always include a signed checkpoint.
 - `docs/screens/setup-key.png` showed a complete API key; it is re-captured with the
   key masked.
 - **Cmd-K searches agents, tools, rules and open issues**, not only page names, from one
