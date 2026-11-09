@@ -98,6 +98,24 @@ def remove_project(session: Session, project: str, *, actor: str) -> dict[str, A
     Re-running init then proposes the agents again with no guardrails and no grants;
     each offers its snapshot back (:func:`restore_guardrails`).
     """
+    agents = disconnect_set(session, project)
+    if not agents:
+        return {"project": project, "removed": []}
+    return remove_agents(session, agents, subject=project, actor=actor, whole_project=True)
+
+
+def remove_agents(
+    session: Session,
+    agents: list[Agent],
+    *,
+    subject: str,
+    actor: str,
+    whole_project: bool = False,
+) -> dict[str, Any]:
+    """Take ``agents`` off the dashboard, as :func:`remove_project` describes. With
+    ``whole_project`` (disconnecting it), the setup card's memory of the connection
+    and the project's attack tests go too; removing single agents leaves those, and
+    the rest of the project, as they are."""
     from agentfox.core.models import Identity, OnboardingSession, Policy
     from agentfox.platform.identity.service import revoke_capability
     from agentfox.platform.ledger import chain
@@ -105,10 +123,8 @@ def remove_project(session: Session, project: str, *, actor: str) -> dict[str, A
     from agentfox.platform.policy.publish import publish_in_current_mode
     from agentfox.platform.policy.store import set_mode
 
-    agents = disconnect_set(session, project)
+    project = subject
     slugs = [a.slug for a in agents]
-    if not agents:
-        return {"project": project, "removed": []}
     repos = sorted({a.project for a in agents if a.project})
 
     snapshots: dict[str, dict[str, Any]] = {}
@@ -124,7 +140,11 @@ def remove_project(session: Session, project: str, *, actor: str) -> dict[str, A
                     session,
                     PolicyDocument(key=key, name=f"{agent.slug} protection", rules=[]),
                     actor=actor,
-                    notes=f"project '{project}' disconnected",
+                    notes=(
+                        f"project '{project}' disconnected"
+                        if whole_project
+                        else f"agent '{agent.slug}' removed"
+                    ),
                     level="agent",
                     scope_id=agent.slug,
                     agent_slug=agent.slug,
@@ -164,6 +184,19 @@ def remove_project(session: Session, project: str, *, actor: str) -> dict[str, A
             edge.declared = False  # seen in traffic: keep the observation, drop the claim
         else:
             session.delete(edge)
+
+    if not whole_project:
+        chain.append(
+            session,
+            "agent.removed",
+            actor_type="user",
+            actor_id=actor,
+            subject_type="agent",
+            subject_id=agents[0].id if len(agents) == 1 else subject,
+            payload={"agents": slugs, "snapshots": snapshots},
+        )
+        session.flush()
+        return {"removed": slugs, "restorable": sorted(snapshots)}
 
     # The setup card's memory of the connection, and the project's attack tests: the
     # next init is a new one, tested afresh.

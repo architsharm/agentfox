@@ -1214,6 +1214,38 @@ def approve_agent_system(
     return {"id": root.id, "approved": [a.slug for a in drafts]}
 
 
+class DraftIds(BaseModel):
+    ids: list[str]
+
+
+@router.post("/api/agents/reject")
+def reject_agents(
+    body: DraftIds, session: Session = Depends(db), user: User = Depends(require("registry"))
+) -> dict[str, Any]:
+    """Dismiss several proposed agents at once ("Dismiss all" on a long Proposed list):
+    the same state change and ledger entry as dismissing each. Ids that are not drafts
+    are skipped."""
+    from agentfox.core.models import Agent
+
+    rejected = []
+    for agent in session.scalars(
+        select(Agent).where(Agent.id.in_(body.ids[:1000]), Agent.status == "draft")
+    ):
+        agent.status = "rejected"
+        session.flush()
+        chain.append(
+            session,
+            "agent.draft.rejected",
+            actor_type="user",
+            actor_id=user.email or user.id,
+            subject_type="agent",
+            subject_id=agent.id,
+        )
+        rejected.append(agent.slug)
+    session.commit()
+    return {"rejected": sorted(rejected)}
+
+
 @router.post("/api/agents/{agent_id}/reject")
 def reject_agent(
     agent_id: str, session: Session = Depends(db), user: User = Depends(require("registry"))

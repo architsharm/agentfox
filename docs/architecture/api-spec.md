@@ -138,7 +138,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-337 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+339 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -213,6 +213,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/agents` | Every agent. An agent whose project was disconnected (status ``removed``) is |
 | `POST` | `/api/agents` | Create Agent |
 | `POST` | `/api/agents/{agent_id}/approve-system` | Approve a proposed agent and every proposed agent it hands work to, in one step. |
+| `DELETE` | `/api/agents/{slug}` | Remove one agent from the dashboard (a duplicate, or one that is gone), the way |
 | `GET` | `/api/agents/{slug}` | Get Agent |
 | `PATCH` | `/api/agents/{slug}` | Update Agent |
 | `GET` | `/api/agents/{slug}/access` | Get Access |
@@ -439,6 +440,7 @@ from the code. Regenerate after changing any route:
 
 | Method | Path | Purpose |
 |---|---|---|
+| `POST` | `/api/agents/reject` | Dismiss several proposed agents at once ("Dismiss all" on a long Proposed list): |
 | `POST` | `/api/agents/{agent_id}/approve` | Approve Agent |
 | `POST` | `/api/agents/{agent_id}/reject` | Reject Agent |
 | `DELETE` | `/api/alerts/slack` | Stop sending this tenant's alerts to its own Slack channel. |
