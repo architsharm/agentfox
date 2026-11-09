@@ -650,9 +650,9 @@ def resolve_approval(
         "resolver_user_id": resolver_user_id,
         "resolution_rationale": rationale,
     }
-    if approved:
-        # From here `expires_at` is how long the approval may be redeemed.
-        values["expires_at"] = utcnow() + dt.timedelta(minutes=REDEEM_WINDOW_MINUTES)
+    # From here `expires_at` is how long the decision holds: an approval may be
+    # redeemed, and a denial refuses the same call again (`find_denied`), until then.
+    values["expires_at"] = utcnow() + dt.timedelta(minutes=REDEEM_WINDOW_MINUTES)
     # Conditional on the status still reading `pending`, like `redeem_approval`: two
     # people deciding at once (or one approving while another denies) must not both
     # be told their decision stood, nor both be recorded as having made it.
@@ -774,6 +774,45 @@ def denial_of(
     if _binding(request.tool_key, request.arguments_json) != _binding(tool_key, arguments):
         return None
     return request
+
+
+def find_denied(
+    session: Session,
+    *,
+    agent_id: str | None,
+    tool_key: str | None,
+    arguments: dict[str, Any] | None,
+) -> str | None:
+    """The id of a denial a person made of exactly this call, still in its window, or
+    None.
+
+    The other half of :func:`find_approved`, for callers that cannot carry the
+    approval id back (`auto()`, a gateway retry): without it a denied call that the
+    agent simply tried again opened a fresh approval, and the reviewer was asked the
+    question they had just answered. The same agent, tool and arguments within the
+    denial's window (``expires_at``, set when it was denied) is refused instead.
+    """
+    if not agent_id or not tool_key:
+        return None
+    candidates = session.scalars(
+        select(ApprovalRequest)
+        .where(
+            ApprovalRequest.status == "denied",
+            ApprovalRequest.agent_id == agent_id,
+            ApprovalRequest.tool_key == tool_key,
+        )
+        .order_by(ApprovalRequest.requested_at.desc())
+        .limit(50)
+    ).all()
+    wanted = _binding(tool_key, arguments)
+    now = utcnow()
+    for request in candidates:
+        expires = as_aware(request.expires_at)
+        if expires is None or expires < now:
+            continue
+        if _binding(request.tool_key, request.arguments_json) == wanted:
+            return request.id
+    return None
 
 
 def find_approved(

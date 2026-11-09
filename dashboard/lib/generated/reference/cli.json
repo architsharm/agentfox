@@ -1801,7 +1801,7 @@
           "required": false,
           "multiple": false,
           "default": null,
-          "help": "Who is deciding (an email), for the audit record."
+          "help": "Who is deciding (an email), for the audit record. Default: your git email."
          }
         ],
         "default_subcommand": null,
@@ -1811,7 +1811,7 @@
         "path": "permit approvals deny",
         "name": "deny",
         "summary": "Refuse the held call.",
-        "help": "Refuse the held call. A retry of it presenting this approval is blocked, with your reason.",
+        "help": "Refuse the held call. The same call retried within 30 minutes is blocked, with your reason.",
         "panel": null,
         "params": [
          {
@@ -1852,7 +1852,7 @@
           "required": false,
           "multiple": false,
           "default": null,
-          "help": "Who is deciding (an email), for the audit record."
+          "help": "Who is deciding (an email), for the audit record. Default: your git email."
          }
         ],
         "default_subcommand": null,

@@ -49,6 +49,7 @@ from agentfox.platform import checks as check_registry
 from agentfox.platform.identity import (
     check_capability,
     denial_of,
+    find_denied,
     redeem_approval,
     request_approval,
     verify_credential,
@@ -1386,6 +1387,19 @@ class Enforcer(
             else (call.tool_key, call.arguments or {})
         )
         approval_id = call.approval_id
+        if not approval_id and call.verdict == "escalate" and call.persist:
+            # A caller that cannot present the approval id (`auto()`) retrying a call
+            # a person just denied: the denial stands for its window, instead of a new
+            # approval asking the same question again.
+            denied = find_denied(
+                self.session,
+                agent_id=call.agent.id if call.agent else None,
+                tool_key=call.held[0],
+                arguments=call.held[1],
+            )
+            if denied is not None:
+                self._refuse_denied_retry(call, denied)
+                return
         if approval_id and call.effective == "escalate" and call.persist:
             if self._refuse_denied_retry(call, approval_id):
                 return

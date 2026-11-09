@@ -63,6 +63,18 @@ def test_list_show_approve_and_deny(session):
     assert "already approved" in again.output
 
 
+def test_a_decision_without_as_records_who_is_at_the_terminal(session, monkeypatch):
+    from agentfox.apps.cli import approvals_cli
+
+    monkeypatch.setattr(approvals_cli, "_local_actor", lambda: "dev@acme.test")
+    held = _file(session)
+    assert runner.invoke(app, ["permit", "approvals", "deny", held]).exit_code == 0
+    rows = json.loads(
+        runner.invoke(app, ["permit", "approvals", "list", "--status", "all", "--json"]).output
+    )
+    assert {r["id"]: r["resolver"] for r in rows}[held] == "dev@acme.test"
+
+
 def test_an_unknown_approval_is_named(session):
     result = runner.invoke(app, ["permit", "approvals", "approve", "apr_nope"])
     assert result.exit_code == 1
