@@ -12,6 +12,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export default function Error({
   error,
@@ -20,6 +21,9 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // "/" is the public landing page, so a failure inside the app goes back to the
+  // app's own Overview and a failure on a public page goes home.
+  const inApp = (usePathname() ?? "").startsWith("/app");
   useEffect(() => {
     // Server-side digests are all a reader gets in production; logging the real
     // error client-side is what makes a bug report reproducible.
@@ -43,8 +47,8 @@ export default function Error({
           <button type="button" className="btn-primary" onClick={() => reset()}>
             Try again
           </button>
-          <Link href="/" className="cta" style={{ marginTop: 0 }}>
-            Back to Overview
+          <Link href={inApp ? "/app" : "/"} className="cta" style={{ marginTop: 0 }}>
+            {inApp ? "Back to Overview" : "Back to home"}
           </Link>
         </div>
         {(error?.message || error?.digest) && (
