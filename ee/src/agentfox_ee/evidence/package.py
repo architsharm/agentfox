@@ -710,6 +710,12 @@ def build(
     return record
 
 
+def _scope_words(values: list[str], everything: str) -> str:
+    """A scope list for a reader: the wildcard "*" reads as "all agents"."""
+    named = [v for v in values if v and v != "*"]
+    return ", ".join(named) if named else everything
+
+
 def _readme(
     scope: dict[str, Any],
     verification: chain.VerificationResult,
@@ -728,9 +734,9 @@ below is the machine-readable record that page is built from.
 
 Scope
 -----
-Agents   : {", ".join(scope["agents"])}
+Agents   : {_scope_words(scope["agents"], "all agents")}
 Period   : {scope["period_from"]} .. {scope["period_to"]}
-Controls : {", ".join(scope["controls"])}
+Controls : {_scope_words(scope["controls"], "all controls")}
 
 Contents
 --------

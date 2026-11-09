@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MODES, modeKey, modeLabel, modeWord, ruleTitle, sentence, wouldDo } from "./vocab";
+import { MODES, actorWords, modeKey, modeLabel, modeWord, ruleTitle, sentence, wouldDo } from "./vocab";
 
 describe("sentence", () => {
   it("capitalises a title that opens with a plain word", () => {
@@ -57,5 +57,13 @@ describe("mode words", () => {
     expect(modeKey("enforced")).toBe("enforce");
     expect(modeKey("watching")).toBe("observe");
     expect(modeKey("mixed")).toBeNull();
+  });
+});
+
+describe("actorWords", () => {
+  it("names the improvement loop as AgentFox, not agentfox-improver", () => {
+    expect(actorWords("automation", "agentfox-improver")).toBe("AgentFox (automatic)");
+    expect(actorWords("system", null)).toBe("AgentFox");
+    expect(actorWords("operator", "dana@example.com")).toBe("dana@example.com");
   });
 });

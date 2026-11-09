@@ -367,3 +367,14 @@ export const SCORERS: Record<string, string> = {
 export function scorerName(key: string): string {
   return SCORERS[key] || key.replace(/_/g, " ");
 }
+
+/**
+ * Who an audit entry names, for a reader: the improvement loop's own identity
+ * (`agentfox-improver`, actor type `automation`) reads as AgentFox acting on its own,
+ * and an entry with no actor as AgentFox itself.
+ */
+export function actorWords(type?: string | null, id?: string | null): string {
+  if (type === "automation") return "AgentFox (automatic)";
+  if (!id) return !type || type === "system" ? "AgentFox" : type;
+  return id;
+}
