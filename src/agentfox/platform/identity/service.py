@@ -299,7 +299,7 @@ def _describe_violation(path: str, spec: Any, value: Any) -> str:
     return f"{path} {allowed}, but this call passed {value!r}"
 
 
-def default_deny_hint(principal: str | None, tool_key: str) -> str:
+def default_deny_hint(principal: str | None, tool_key: str, name: str | None = None) -> str:
     """What to do about a default-deny refusal, in commands rather than concepts.
 
     Default deny is enforced from the first call — there is no observe grace — so the
@@ -308,7 +308,10 @@ def default_deny_hint(principal: str | None, tool_key: str) -> str:
     learns from.
     """
     slug = principal.split(":", 1)[1] if principal and principal.startswith("agent:") else None
-    where = f"Agents → {slug} → Access" if slug else "the agent's Access tab"
+    # The dashboard lists the agent by its name (the code's own, without the
+    # repository in front), the command takes its key.
+    shown = (name or "").rsplit("/", 1)[-1] or slug
+    where = f"Agents → {shown} → Access" if shown else "the agent's Access tab"
     command = f"agentfox permit grant {slug or '<agent>'} {tool_key}"
     return f"Allow it in the dashboard ({where}), or run `{command}`."
 
@@ -373,7 +376,10 @@ def check_capability(
     if not matches:
         decision.reasons.append(
             f"'{tool_key}' has not been granted to {identity.principal.split(':', 1)[-1]} "
-            f"(default deny). {default_deny_hint(identity.principal, tool_key)}"
+            f"(default deny). "
+            + default_deny_hint(
+                identity.principal, tool_key, identity.agent.name if identity.agent else None
+            )
         )
         return decision
 

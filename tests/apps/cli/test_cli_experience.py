@@ -648,3 +648,25 @@ def test_scan_names_each_agent_it_found_even_when_there_is_one(tmp_path):
     assert "support" in output and "LangGraph" in output
     assert "Start watching these 1 agent" not in output  # the count reads naturally
     assert "agentfox up" in output
+
+
+def test_permit_grant_defaults_to_what_the_dashboard_grants():
+    """The dashboard's "Add" allows a read tool whatever its arguments came from and
+    anything else for what the user typed; `permit grant` defaulted to "user" for all."""
+    from agentfox.core.db import session_scope
+    from agentfox.platform.registry.service import upsert_tool
+
+    _seed()
+    with session_scope() as session:
+        upsert_tool(session, "kb.search", impact="read")
+        upsert_tool(session, "payments.refund", impact="irreversible")
+    for tool in ("kb.search", "payments.refund"):
+        result = runner.invoke(app, ["permit", "grant", "support-triage", tool, "--yes"])
+        assert result.exit_code == 0, result.output
+    listed = {
+        r["tool_key"]: r for r in _json(runner.invoke(app, ["permit", "list", "--json"]).output)
+    }
+    assert listed["kb.search"]["max_taint"] == "memory"
+    assert listed["payments.refund"]["max_taint"] == "user"
+    table = runner.invoke(app, ["permit", "list", "support-triage"], terminal_width=200)
+    assert listed["kb.search"]["id"] in table.output  # the whole id, as revoke takes it
