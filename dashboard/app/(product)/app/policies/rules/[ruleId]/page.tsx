@@ -13,7 +13,7 @@ import { Act } from "@/components/kit/Act";
 import { BusinessMode } from "@/components/product/policies/BusinessMode";
 import { LadderEditor } from "@/components/product/policies/LadderEditor";
 import { checksFor, type CheckInfo } from "@/lib/product/checks";
-import { versionNote } from "@/lib/product/policyWords";
+import { businessRuleName, versionNote } from "@/lib/product/policyWords";
 import { RANGE_DAYS, metricsQs, runsHref } from "@/lib/product/observe";
 import { BUSINESS_LIBRARY, businessRule, loadRules, packRuleMode, ruleMode, type RuleInfo } from "@/lib/product/rules";
 import { ensureRange } from "@/lib/product/range";
@@ -342,7 +342,8 @@ async function BusinessRule({ ruleKey, sp }: { ruleKey: string; sp: SP }) {
   const mode = ruleMode(rule);
   const s = (stats.rules || []).find((r: any) => r.rule_id === ruleId);
   const tabHref = (k: string) => href(path, { tab: k === "overview" ? undefined : k, range: sp.range });
-  const name = b.name && b.name !== b.key ? b.name : ruleTitle(ruleId);
+  // The same name Your rules and the drawer show (businessRuleName), not one per screen.
+  const name = businessRuleName(b);
   return (
     <RangeProvider range={sp.range}>
       <>

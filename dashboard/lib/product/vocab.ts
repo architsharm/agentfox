@@ -226,6 +226,12 @@ export function ruleTitle(ruleId: string, description?: string): string {
   // A fired custom rule carries its name in its reason: "<name>: your rule"
   // (older saves: "<name> — your rule").
   if (ruleId.startsWith("custom.") && description) return description.split(/:\s*your rule| — your rule/)[0];
+  // An approval limit is named as Your rules names it: the name it was given, else
+  // "Approval limit" (never its key, "Custom pay vendor", which no other screen says).
+  if (ruleId.startsWith("business.")) {
+    const given = (description || "").trim();
+    return given && !/^[a-z0-9]+(?:[-_.][a-z0-9]+)+$/.test(given) && given.length <= 80 ? given : "Approval limit";
+  }
   // The protection wizard's own rules, named by what they are rather than by id.
   const own = /^custom\.[a-z0-9-]+-(words|avoid|allowed)$/.exec(ruleId);
   if (own) return { words: "Blocked words", avoid: "Topics to avoid", allowed: "Off-topic question" }[own[1]]!;

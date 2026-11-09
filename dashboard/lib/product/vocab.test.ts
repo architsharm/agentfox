@@ -59,3 +59,11 @@ describe("mode words", () => {
     expect(modeKey("mixed")).toBeNull();
   });
 });
+
+describe("ruleTitle for an approval limit", () => {
+  it("says the name it was given, else 'Approval limit', never its key", () => {
+    expect(ruleTitle("business.custom-pay_vendor", "Approval above $1,000 on pay_vendor")).toBe("Approval above $1,000 on pay_vendor");
+    expect(ruleTitle("business.custom-pay_vendor", "custom-pay_vendor")).toBe("Approval limit");
+    expect(ruleTitle("business.custom-pay_vendor")).toBe("Approval limit");
+  });
+});
