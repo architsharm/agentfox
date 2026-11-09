@@ -503,6 +503,34 @@ def agent_tool_map(session: Session, agent_slug: str) -> list[dict[str, Any]]:
     return out
 
 
+def reached_tool_map(session: Session, agent_slug: str) -> list[tuple[str, list[dict[str, Any]]]]:
+    """The agents ``agent_slug`` hands work to, directly or through another, each with
+    its tools (`agent_tool_map`), nearest first: from the hand-offs `agentfox init`
+    mapped for its project, then the registry's ``delegates_to`` lineage. A message to
+    the agent reaches these tools once it hands off, so its attacks aim at them too."""
+    from agentfox.capabilities.onboarding.attacks import reachable
+    from agentfox.capabilities.protection.scope import delegates
+    from agentfox.core.models import OnboardingProject
+
+    order: list[str] = []
+    for row in session.scalars(select(OnboardingProject)):
+        structure = row.structure or {}
+        for agent in structure.get("agents") or []:
+            if agent.get("slug") == agent_slug and agent.get("id"):
+                order += [
+                    str(a["slug"]) for a in reachable(structure, str(agent["id"])) if a.get("slug")
+                ]
+    order += delegates(session, agent_slug)
+    out: list[tuple[str, list[dict[str, Any]]]] = []
+    for slug in dict.fromkeys(order):
+        if slug == agent_slug:
+            continue
+        tools = agent_tool_map(session, slug)
+        if tools:
+            out.append((slug, tools))
+    return out
+
+
 def _named(keys: list[str] | None) -> list[str]:
     """Tool keys that name one tool: a wildcard grant (``mcp__github__*``) names none."""
     return list(dict.fromkeys(k for k in keys or [] if k and "*" not in k))
@@ -567,12 +595,22 @@ def agent_tool_probes(
     from agentfox.capabilities.onboarding.attacks import OWASP, build_suite, skipped
 
     tools = agent_tool_map(session, agent_slug)
-    if not tools:
+    # The tools it reaches through its hand-offs: a triage agent with only a lookup
+    # is attacked through the refund its refunds agent holds, and the call is checked
+    # as that agent's call (`then_call["agent"]`), as live traffic checks it.
+    reached = reached_tool_map(session, agent_slug)
+    if not tools and not reached:
         return [], []
     for t in tools:
         t["agentId"] = "agent"
-    structure = {"agents": [{"id": "agent", "name": agent_slug}], "tools": tools}
-    suite = build_suite(structure, sets)
+    agents: list[dict[str, Any]] = [
+        {"id": "agent", "name": agent_slug, "handsOffTo": [f"to:{s}" for s, _ in reached]}
+    ]
+    for slug, theirs in reached:
+        agents.append({"id": f"to:{slug}", "name": slug})
+        tools += [{**t, "agentId": f"to:{slug}"} for t in theirs]
+    structure = {"agents": agents, "tools": tools}
+    suite = build_suite(structure, sets, only="agent")
     probes: list[Probe] = []
     for a in suite:
         if a.skip:
@@ -601,16 +639,19 @@ def agent_tool_probes(
             "provision": False,
         }
         if a.forbidden:
-            # What the attack is after is a call to one of the agent's own tools: if the
-            # message (or the planted record) gets past the content checks, the model
-            # obeying makes that call, checked as live traffic checks it.
+            # What the attack is after is a call to one of the agent's tools, or one it
+            # reaches through a hand-off: if the message (or the planted record) gets
+            # past the content checks, the model obeying makes that call, checked as
+            # live traffic checks it, under the agent that makes it.
             tool = next(t for t in tools if t["name"] == a.forbidden[0])
+            holder = a.via.get(tool["name"])
             common["then_call"] = {
                 "tool": tool["name"],
                 "arguments": _call_args(tool, a, planted),
                 "message": a.message,
                 "reads": [{"tool": planted_tool, "result": planted}] if planted else [],
                 "description": tool.get("whatItDoes") or "",
+                **({"agent": holder["name"]} if holder else {}),
             }
         if planted is not None:
             probes.append(
@@ -888,10 +929,11 @@ class NativeRedTeamRunner:
             call: dict[str, Any] | None = None
             if probe.then_call:
                 # The content reached the agent and its model obeyed: the call it was
-                # after, checked as live traffic checks it.
+                # after, checked as live traffic checks it: under the agent that makes
+                # it, which is the one it handed off to for a tool it reaches that way.
                 call = check_agent_call(
                     enforcer,
-                    agent_slug,
+                    str(probe.then_call.get("agent") or agent_slug),
                     tool_key=str(probe.then_call["tool"]),
                     arguments=dict(probe.then_call.get("arguments") or {}),
                     message=probe.then_call.get("message"),
@@ -920,6 +962,11 @@ class NativeRedTeamRunner:
                             {
                                 "call": {
                                     "tool": probe.then_call["tool"],  # type: ignore[index]
+                                    **(
+                                        {"agent": probe.then_call["agent"]}  # type: ignore[index]
+                                        if probe.then_call.get("agent")  # type: ignore[union-attr]
+                                        else {}
+                                    ),
                                     "verdict": call.get("effective_verdict"),
                                     "applied": call.get("verdict"),
                                     "rules_fired": call.get("rules_fired") or [],
