@@ -84,7 +84,7 @@ export function CommandSearch({ nav }: { nav: NavItem[] }) {
 
   if (!open) {
     return (
-      <button ref={triggerRef} type="button" className="cmdk-trigger" onClick={() => setOpen(true)} aria-keyshortcuts="Meta+K Control+K">
+      <button ref={triggerRef} type="button" className="cmdk-trigger" onClick={() => setOpen(true)} aria-label="Search ⌘K" aria-keyshortcuts="Meta+K Control+K">
         <SearchIcon />
         <span>Search</span>
         <span className="cmdk-kbd">⌘K</span>

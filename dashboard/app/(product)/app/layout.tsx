@@ -130,8 +130,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               word, and at 11px in a 224px rail it read as a stray caption.
               The parent brand belongs where there is room for it: the public
               footer and the sign-in page both carry it. */}
-          <Link href="/app" className="brand" aria-label="Overview">
-            <Logo size={26} />
+          <Link href="/app" className="brand">
+            {/* Named, so the link still has a name on a phone, where the text is hidden. */}
+            <Logo size={26} title="AgentFox" />
             <span className="brand-text">
               <span className="brand-name">
                 <span className="brand-path">~/</span> agentfox
@@ -152,7 +153,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       }
       topbar={
         signedIn && (
-          <div className="topbar">
+          <header className="topbar">
             {/* Crumbs reads the query (Get started vs. the Settings tabs on /app/start). */}
             <Suspense fallback={<nav className="crumbs" aria-label="Breadcrumb" />}>
               <Crumbs />
@@ -160,7 +161,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Suspense fallback={<CommandSearch nav={NAV_FLAT} />}>
               <TopbarData />
             </Suspense>
-          </div>
+          </header>
         )
       }
     >

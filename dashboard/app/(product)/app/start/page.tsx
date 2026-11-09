@@ -262,6 +262,8 @@ async function ConnectTab({
       {scan && <ScanResult title={`Scan of ${scan.repo_full_name}`} scan={scan} />}
       {hostedScan && <ScanResult title={`Scan of ${hostedScan.summary?.endpoint_url || "your API"}`} scan={hostedScan} />}
 
+      {/* The cards' titles are h3s; screen readers need an h2 above them. */}
+      <h2 className="sr-only">Connections</h2>
       <div className="conn-grid">
         <ConnCard
           title="Gateway"

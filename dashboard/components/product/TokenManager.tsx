@@ -149,7 +149,7 @@ export function TokenManager() {
               <th>created</th>
               <th>expires</th>
               <th>status</th>
-              <th></th>
+              <th><span className="sr-only">actions</span></th>
             </tr>
           </thead>
           <tbody>

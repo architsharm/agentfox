@@ -41,11 +41,13 @@
   --af-link: #c8285a;     /*  5.2:1, the brand rose, same as the site */
   --af-on-brand: #ffffff;
 
+  /* Status colours are also badge text on a 12% tint of themselves at 11px
+     (.k-pill); each is the lightest shade that keeps 4.5:1 there. */
   --af-ok: #18794e;
-  --af-warn: #a35f00;
-  --af-err: #c8321e;
-  --af-info: #1f7fb8;
-  --af-tool: #7c5ce0;
+  --af-warn: #9b5a00;
+  --af-err: #c2301d;
+  --af-info: #1b6ea0;
+  --af-tool: #7154cc;
 
   /* Eight data series, ordered for the most separation between neighbours. */
   --af-s1: #4338ca; --af-s2: #4b4fd6; --af-s3: #c98a00; --af-s4: #c8285a;
@@ -147,6 +149,9 @@
 .shell { background: var(--af-bg); color: var(--af-fg); font-family: var(--af-sans); font-size: 14px; line-height: 20px; }
 .shell code, .shell pre, .shell kbd, .shell .mono { font-family: var(--af-mono); }
 .shell a { color: inherit; }
+/* A primary button that is a link keeps its own ink: `.shell a` above outranks
+   `.k-btn-primary`, which left dark text on the rose (3.3:1). */
+.shell a.k-btn-primary { color: var(--cta-ink); }
 .shell main a:not([class]), .shell .link { color: var(--af-link); }
 /* Links inside sentences carry an underline, as on the site, so the colour is not the only cue. */
 .shell main :is(p, li, dd) a:not([class]) { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }

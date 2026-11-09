@@ -76,29 +76,33 @@ export default async function Welcome({ searchParams }: { searchParams: Promise<
  */
 function NoGithub({ hasAccount }: { hasAccount: boolean }) {
   return (
-    <Card title={hasAccount ? "No repositories on this GitHub account" : "Scan from your machine"}>
-      <div className="gs-action">
-        <p className="gs-detail">
-          {hasAccount
-            ? "Scan a repository from your machine instead. "
-            : "This workspace has no GitHub account connected. "}
-          Connect from your machine instead: create a key, then run the one command it shows in the
-          repository. It finds your agents and attack-tests them, and they show up here.
-        </p>
-        <div className="gs-row">
-          <Link href="/app" className="k-btn-primary">
-            Create a key and connect
-          </Link>
-          {!hasAccount && (
-            <a href="/api/auth/github/login" className="k-btn">
-              Connect GitHub instead
-            </a>
-          )}
-          <Link href="/app/start" className="k-btn-ghost">
-            Full checklist
-          </Link>
+    <>
+      {/* The card's title is an h3, straight under the page's h1. */}
+      <h2 className="sr-only">Get started</h2>
+      <Card title={hasAccount ? "No repositories on this GitHub account" : "Scan from your machine"}>
+        <div className="gs-action">
+          <p className="gs-detail">
+            {hasAccount
+              ? "Scan a repository from your machine instead. "
+              : "This workspace has no GitHub account connected. "}
+            Connect from your machine instead: create a key, then run the one command it shows in the
+            repository. It finds your agents and attack-tests them, and they show up here.
+          </p>
+          <div className="gs-row">
+            <Link href="/app" className="k-btn-primary">
+              Create a key and connect
+            </Link>
+            {!hasAccount && (
+              <a href="/api/auth/github/login" className="k-btn">
+                Connect GitHub instead
+              </a>
+            )}
+            <Link href="/app/start" className="k-btn-ghost">
+              Full checklist
+            </Link>
+          </div>
         </div>
-      </div>
-    </Card>
+      </Card>
+    </>
   );
 }
