@@ -511,7 +511,7 @@ def _record_turn(
         log.debug("agentfox: turn capture skipped: %s", exc)
 
 
-from agentfox.core.vocab import ATTACK_TEST_ENV  # noqa: E402 - re-exported
+from agentfox.core.vocab import ATTACK_TEST_ENV, DISABLED_ENV  # noqa: E402 - re-exported
 
 
 class _SkipLocalSetup(Exception):
@@ -2901,6 +2901,15 @@ def auto(
         return AutoState(agent=agent or default_agent_slug(), mode=mode, environment="test")
     if tool_refusals not in ("message", "raise"):
         raise ValueError("tool_refusals must be 'message' (default) or 'raise'")
+    if os.environ.get(DISABLED_ENV, "").strip().lower() in ("1", "true", "yes"):
+        # The off switch: nothing patched, checked, stored or sent. One line, so a
+        # switch left on by mistake is visible rather than silent.
+        if not quiet:
+            print(  # noqa: T201 - the point is to be seen
+                f"agentfox: off ({DISABLED_ENV} is set); calls are not checked or recorded.",
+                file=sys.stderr,
+            )
+        return AutoState(agent=agent or default_agent_slug(), mode=mode, environment="off")
 
     settings = get_settings()
     state = AutoState(
@@ -2984,7 +2993,8 @@ def auto(
 def _report_at_exit() -> None:  # pragma: no cover - process teardown
     if _STATE and _STATE.calls_governed:
         print(
-            f"agentfox: governed {_STATE.calls_governed} model call(s). "
+            f"agentfox: governed {_STATE.calls_governed} model "
+            f"call{'' if _STATE.calls_governed == 1 else 's'}. "
             f"Run `agentfox findings` to see what it found.",
             file=sys.stderr,
         )
