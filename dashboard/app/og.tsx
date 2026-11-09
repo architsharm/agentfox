@@ -21,6 +21,8 @@
 
 import { ImageResponse } from "next/og";
 
+import { SOCIAL_IMAGE_ALT } from "@/lib/site";
+
 import { OG_MARK_DATA_URI } from "./og-mark";
 
 /**
@@ -43,9 +45,8 @@ const MK = {
 export const OG_SIZE = { width: 1200, height: 630 };
 export const OG_CONTENT_TYPE = "image/png";
 
-/** Alt text, reused by the `images` entries in app/layout.tsx. */
-export const OG_ALT =
-  "AgentFox: your agent believes what it reads, so limit what it is allowed to do. Open source, Apache-2.0.";
+/** Alt text, shared with the `images` entries in lib/site.ts's publicPageMetadata. */
+export const OG_ALT = SOCIAL_IMAGE_ALT;
 
 /**
  * The brand mark, drawn from the supplied artwork rather than redrawn in paths.

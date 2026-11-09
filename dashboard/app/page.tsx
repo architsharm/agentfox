@@ -21,6 +21,7 @@ export const metadata: Metadata = {
     title: HOME_TITLE,
     description: HOME_DESCRIPTION,
     path: "/",
+    ownImage: true,
   }),
   // `absolute` opts this one page out of layout.tsx's "%s | AgentFox" template.
   title: { absolute: HOME_TITLE },
