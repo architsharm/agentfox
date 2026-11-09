@@ -1092,7 +1092,7 @@ def findings_cmd(
     repeats = sum((row["occurrences"] or 1) for row in rows)
     shown = f"{len(rows)} of {total}" if total and total > len(rows) else str(len(rows))
     console.print(
-        f"\n  [dim]{plural(shown, 'open finding')}"
+        f"\n  [dim]{shown} open finding{'' if max(total or 0, len(rows)) == 1 else 's'}"
         + (f", {repeats} occurrences in total" if repeats > len(rows) else "")
         + ".[/]"
     )
@@ -1103,6 +1103,7 @@ def findings_cmd(
     worst = min(rows, key=lambda r: SEVERITY_RANK.get(r["severity"], 9))["severity"]
     if not severity and worst in ("critical", "high"):
         steps.append((f"agentfox findings --severity {worst}", f"just the {worst} ones"))
+    steps.append((f"agentfox findings show {rows[0]['id'][-8:]}", "one finding in full, by id"))
     steps.append(("agentfox findings --json", "whole ids, fingerprints and subjects"))
     steps.append(("agentfox doctor", "check the runtime configuration that produced these"))
     steps.append(
@@ -1112,6 +1113,76 @@ def findings_cmd(
         )
     )
     _print_next_steps(steps)
+
+
+def findings_show(
+    finding_id: str = typer.Argument(
+        ..., help="The finding's id: whole, or the tail `agentfox findings` prints."
+    ),
+    as_json: bool = typer.Option(False, "--json", help="The whole record, for scripts."),
+) -> None:
+    """One finding in full: its whole id, what it is about, when, and the evidence."""
+    from sqlalchemy import select
+
+    from agentfox.apps.cli._style import match_id
+    from agentfox.core.models import Finding
+
+    with _session() as session:
+        matches = [f for f in session.scalars(select(Finding)) if match_id(finding_id, f.id)]
+        if not matches:
+            console.print(
+                f"[red]no finding '{escape(finding_id)}'[/] — `agentfox findings` lists them"
+            )
+            raise typer.Exit(2)
+        if len(matches) > 1:
+            console.print(
+                f"[yellow]'{escape(finding_id)}' matches {len(matches)} findings[/]; give more "
+                "of the id: " + ", ".join(f.id for f in matches[:5])
+            )
+            raise typer.Exit(2)
+        f = matches[0]
+        record = {
+            "id": f.id,
+            "type": f.type,
+            "severity": f.severity,
+            "status": f.status,
+            "title": f.title,
+            "subject": f"{f.subject_type}:{f.subject_id}",
+            "occurrences": f.occurrences or 1,
+            "created_at": f.created_at.isoformat() if f.created_at else None,
+            "last_seen_at": f.last_seen_at.isoformat() if f.last_seen_at else None,
+            "controls": list(f.control_keys or []),
+            "evidence": f.evidence_json or {},
+            "fingerprint": f.fingerprint,
+        }
+
+    if as_json:
+        console.print_json(json.dumps(record, default=str))
+        return
+    colour = SEVERITY_COLOUR.get(record["severity"], "dim")
+    console.print(f"[bold]{escape(record['title'])}[/]")
+    # The id on a line of its own, whole and unstyled, so it copies cleanly.
+    console.print(record["id"], soft_wrap=True, highlight=False)
+    rows = [
+        ("severity", f"[{colour}]{record['severity']}[/]"),
+        ("type", record["type"]),
+        ("status", record["status"]),
+        ("about", escape(record["subject"])),
+        ("seen", f"{plural(record['occurrences'], 'time')}, first {record['created_at']}"),
+    ]
+    if record["last_seen_at"]:
+        rows.append(("last seen", record["last_seen_at"]))
+    if record["controls"]:
+        rows.append(("controls", ", ".join(record["controls"])))
+    table = Table(box=None, padding=(0, 2), show_header=False)
+    table.add_column(style="dim", no_wrap=True)
+    table.add_column(overflow="fold")
+    for name, value in rows:
+        table.add_row(name, value)
+    console.print(table)
+    if record["evidence"]:
+        console.print("\n[dim]evidence[/]")
+        console.print_json(json.dumps(record["evidence"], default=str))
 
 
 def register(app: typer.Typer) -> None:

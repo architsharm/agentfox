@@ -67,3 +67,50 @@ def test_scan_of_a_folder_elsewhere_names_it_without_wrapping(tmp_path, monkeypa
     assert result.exit_code == 0, result.output
     shown = display_path(Path(deep))
     assert any(shown in line for line in result.output.splitlines()), result.output
+
+
+def _finding() -> str:
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Finding
+
+    with session_scope() as session:
+        finding = Finding(
+            type="containment",
+            severity="high",
+            title="support-triage tried tickets.close without permission",
+            subject_type="agent",
+            subject_id="support-triage",
+            evidence_json={"tool": "tickets.close", "rule": "capability.denied"},
+        )
+        session.add(finding)
+        session.flush()
+        return finding.id
+
+
+def test_findings_show_opens_one_by_the_tail_the_list_prints():
+    fid = _finding()
+    listed = runner.invoke(app, ["findings"])
+    assert listed.exit_code == 0, listed.output
+    assert f"agentfox findings show {fid[-8:]}" in listed.output
+
+    for typed in (fid, fid[-8:], f"…{fid[-8:]}"):
+        shown = runner.invoke(app, ["findings", "show", typed])
+        assert shown.exit_code == 0, shown.output
+        assert fid in shown.output.splitlines()  # whole, on a line of its own
+        assert "capability.denied" in shown.output
+
+    as_json = runner.invoke(app, ["findings", "show", fid[-8:], "--json"])
+    assert '"evidence"' in as_json.output
+
+
+def test_findings_list_keeps_its_options():
+    _finding()
+    assert runner.invoke(app, ["findings", "--severity", "high"]).exit_code == 0
+    assert runner.invoke(app, ["findings", "--json"]).exit_code == 0
+    assert runner.invoke(app, ["findings", "--types"]).exit_code == 0
+
+
+def test_findings_show_an_unknown_id_says_where_to_look():
+    result = runner.invoke(app, ["findings", "show", "nothing"])
+    assert result.exit_code == 2
+    assert "agentfox findings" in result.output

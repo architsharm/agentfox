@@ -324,6 +324,24 @@ def apply_layout(app: typer.Typer) -> None:
         _alias(serve_app, models_info, "models")
     app.add_typer(serve_app, name="serve")
 
+    # -- Protect: findings ---------------------------------------------------------
+    # Bare `findings [--severity] [--limit] [--json]` is the list, as it always was;
+    # `findings show <id>` opens one in full (the list only has room for an id's tail).
+    findings_info = find("findings")
+    app.registered_commands.remove(findings_info)
+    findings_app = _new_group(
+        "What the platform found: the list `agentfox.auto()` tells you to read.\n\n"
+        "`agentfox findings [--severity high] [--limit 50] [--json]` lists the open ones, "
+        "worst first (the default); `agentfox findings show <id>` shows one in full; "
+        "`agentfox findings --types` lists the kinds there are.",
+        cls=default_group("list"),
+    )
+    _alias(findings_app, findings_info, "list")
+    from agentfox.apps.cli.onboarding import findings_show
+
+    findings_app.command("show")(findings_show)
+    app.add_typer(findings_app, name="findings")
+
     # -- Contain: permit -----------------------------------------------------------
     permit_app = _new_group(
         "Grant, list and withdraw what an agent — or an end user — may do, and decide "

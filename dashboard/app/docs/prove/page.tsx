@@ -89,7 +89,8 @@ export default function Page() {
       <p>
         The CLI calls issues findings. The same queue, worst first:
       </p>
-      <Code>{`agentfox findings --severity high`}</Code>
+      <Code>{`agentfox findings --severity high
+agentfox findings show <id>     # one in full: the whole id, the subject, the evidence`}</Code>
       <p>
         Resolving and accepting are in the app, or <code>PATCH /api/findings/&#123;id&#125;</code>.
         Runs (the API calls them traces) are listed on <strong>Activity</strong> or with{" "}
