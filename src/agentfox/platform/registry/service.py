@@ -29,6 +29,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from agentfox.core import naming
 from agentfox.core.models import (
     TOOL_EFFECT_CLASSES,
     Agent,
@@ -45,11 +46,31 @@ from agentfox.core.models import (
 from agentfox.platform.ledger.findings import auto_resolve, raise_finding, resolve_finding
 from agentfox.platform.policy import PolicyDocument, save_policy
 
-_SLUG = re.compile(r"[^a-z0-9-]+")
-
 
 def slugify(value: str) -> str:
-    return _SLUG.sub("-", (value or "unknown").strip().lower()).strip("-") or "unknown"
+    """The registry key for a name: :func:`agentfox.core.naming.slug`, the one every
+    path (scan, up, init, a submitted scan, `auto()`) uses."""
+    return naming.slug(value or "unknown", default="unknown")
+
+
+def find_agent(session: Session, value: str) -> Agent | None:
+    """The agent ``value`` names: under its key, or under the key an earlier release
+    gave the same name (``financialplanneragent``), so an agent registered before the
+    keys were unified keeps its grants, traces and policies."""
+    key = slugify(value)
+    agent = session.scalar(select(Agent).where(Agent.slug == key))
+    if agent is None:
+        legacy = naming.legacy_slug(value or "unknown", default="unknown")
+        if legacy != key:
+            agent = session.scalar(select(Agent).where(Agent.slug == legacy))
+    return agent
+
+
+def agent_slug(session: Session, value: str) -> str:
+    """The key ``value`` resolves to: an existing agent's (see :func:`find_agent`), else
+    the canonical one."""
+    agent = find_agent(session, value)
+    return agent.slug if agent is not None else slugify(value)
 
 
 def _get_or_create(session: Session, model: type, **lookup: Any) -> Any:
@@ -96,7 +117,7 @@ def register_agent(
     as live until a human approves it. Approval just flips those two fields, it does
     not re-run this function.
     """
-    slug = slugify(slug)
+    slug = agent_slug(session, slug)
     agent = _get_or_create(session, Agent, slug=slug)
 
     agent.name = name or agent.name or slug
@@ -138,7 +159,7 @@ def propose_draft(session: Session, *, slug: str, **fields: Any) -> Agent | None
     scan turning a live agent back into a proposal would silently undo the approval.
     Returns None for such an agent, since this scan did not propose it.
     """
-    existing = session.scalar(select(Agent).where(Agent.slug == slugify(slug)))
+    existing = find_agent(session, slug)
     if existing is not None and existing.status not in PROPOSABLE:
         return None
     return register_agent(session, slug=slug, draft=True, **fields)
@@ -219,16 +240,41 @@ def approve_drafts(session: Session, agents: list[Agent], *, actor: str) -> list
     return approved
 
 
-def _spec_slug(session: Session, key: str, repo_short: str, name: str) -> str:
+def _same_code(
+    agent: Agent, name: str, repo_short: str, repo_display_name: str, app: str | None = None
+) -> bool:
+    """Whether ``agent`` is the agent a scan of this repository names ``name``
+    (``<repo>/<Agent>``): registered under that name (`agentfox up`, an earlier scan),
+    or by `agentfox init` for this repository's project (or the agent's app in it)
+    under the agent's own name."""
+    if agent.name == name:
+        return True
+    own = name.split("/", 1)[-1]
+    return (
+        bool(agent.project)
+        and agent.project in {p for p in (repo_display_name, repo_short, app) if p}
+        and (agent.name in (own, name) or slugify(agent.name or "") == slugify(own))
+    )
+
+
+def _spec_slug(
+    session: Session,
+    key: str,
+    repo_short: str,
+    name: str,
+    repo_display_name: str = "",
+    app: str | None = None,
+) -> str:
     """One agent's slug: its own name, unless that belongs to another repository.
 
     The agent of that name for the same code (same repository, same definition: the
-    same ``name``) wins over everything, live or not, so a scan lands on the agent
-    `agentfox up` registered for it instead of proposing it a second time."""
+    same ``name``, or the agent `agentfox init` registered for this repository's
+    project) wins over everything, live or not, so a scan lands on the agent `agentfox
+    up` or `agentfox init` registered for it instead of proposing it a second time."""
     prefixed = repo_short if key == repo_short else slugify(f"{repo_short}-{key}")
-    existing = session.scalar(select(Agent).where(Agent.slug == key))
-    if existing is not None and existing.name == name:
-        return key
+    existing = find_agent(session, key)
+    if existing is not None and _same_code(existing, name, repo_short, repo_display_name, app):
+        return existing.slug
     if session.scalar(select(Agent.id).where(Agent.slug == prefixed)) is not None:
         return prefixed  # scanned before: keep landing on the same row
     if existing is None:
@@ -366,7 +412,7 @@ def _propose_agent_specs(
     edges: list[dict[str, Any]],
     trifecta_dirs: set[str],
     author: str = "scan",
-    environment: str = "production",
+    environment: str = "development",
 ) -> list[str]:
     """One draft per agent a multi-agent scan found, and its declared delegations.
 
@@ -383,7 +429,12 @@ def _propose_agent_specs(
     for spec in specs:
         key = slugify(str(spec.get("name") or spec.get("key") or ""))
         slug = _spec_slug(
-            session, key, repo_short, f"{repo_display_name}/{spec.get('name') or key}"
+            session,
+            key,
+            repo_short,
+            f"{repo_display_name}/{spec.get('name') or key}",
+            repo_display_name,
+            spec.get("app"),
         )
         slug_of[str(spec.get("key"))] = slugify(slug)
         tools = [str(t) for t in spec.get("tools") or [] if t]
@@ -398,12 +449,15 @@ def _propose_agent_specs(
             declared_tools=tools or None,
             source_scan_run_id=run_id,
             environment=environment,
+            project=spec.get("app"),
         )
         if agent is not None:
             created.append(agent.slug)
             continue
-        live = session.scalar(select(Agent).where(Agent.slug == slugify(slug)))
-        if live is not None and live.name == name:
+        live = find_agent(session, slug)
+        if live is not None and _same_code(
+            live, name, repo_short, repo_display_name, spec.get("app")
+        ):
             # The agent `agentfox up` registered for this same code: it takes what the
             # scan read rather than a second, draft copy of itself.
             adopt_proposal(
@@ -453,7 +507,7 @@ def propose_from_scan(
     author: str,
     agents: list[dict[str, Any]] | None = None,
     agent_edges: list[dict[str, Any]] | None = None,
-    environment: str = "production",
+    environment: str = "development",
 ) -> tuple[list[str], list[str]]:
     """Propose one draft agent per top-level directory and one observe-mode policy
     per detected framework, from a discovery scan's governable sites.
@@ -480,7 +534,8 @@ def propose_from_scan(
     (`agentfox up` registers its agent so) is not proposed again: it takes what the
     scan read (``adopt_proposal``), and a draft an earlier scan left beside it is folded
     in (``fold_duplicate_drafts``). ``environment`` is where the drafts would run:
-    production, unless a local `agentfox up` records the scan (development).
+    development: code read from a checkout is not yet known to run in production, and a
+    person says so when it does.
     """
     repo_short = slugify(repo_slug_base)
     groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -551,10 +606,19 @@ def propose_from_scan(
         if agent is not None:
             created_agents.append(agent.slug)
 
+    from agentfox.core.models import Policy
+
     created_policies: list[str] = []
     for framework in frameworks:
+        if framework == "AgentFox":
+            continue  # `agentfox.auto()` in the code: AgentFox itself, nothing to propose
+        # One proposal per repository and framework, not per scan: re-running `up` or
+        # `scan --submit` must not pile up copies of the same empty proposal.
+        key = f"scan-{repo_short}-{slugify(framework)}"
+        if session.scalar(select(Policy.id).where(Policy.key == key)) is not None:
+            continue
         doc = PolicyDocument(
-            key=f"scan-{run_id}-{slugify(framework)}",
+            key=key,
             name=f"{framework} guardrails",
             description=(
                 f"Detects {framework} usage in {repo_display_name} — prompt "
@@ -591,8 +655,8 @@ def observe_agent(
     Called on every gateway request and every ingested OTel batch, which is what
     makes shadow-agent discovery work without asking anyone to cooperate.
     """
-    slug = slugify(slug)
-    agent = session.scalar(select(Agent).where(Agent.slug == slug))
+    agent = find_agent(session, slug)
+    slug = agent.slug if agent is not None else slugify(slug)
     is_new_shadow = False
 
     if agent is None:

@@ -49,6 +49,13 @@ agentfox scan`}</Code>
             hooks, no GitHub workflow, no background processes. Add them with{" "}
             <code>--with coding-agents</code>, <code>--with ci</code> or <code>--with view</code>.
           </p>
+          <p>
+            Besides the repository, <code>up</code> reads (never changes) the MCP and skill
+            settings of the AI tools on this machine, such as <code>~/.claude</code> and{" "}
+            <code>~/.cursor</code>, and says so. <code>--skip-machine</code> leaves them out.{" "}
+            <code>agentfox.auto()</code> does not see the model calls of Google ADK or smolagents;
+            for those, <code>up</code> says so and offers the gateway instead.
+          </p>
         </Step>
 
         <Step title="Run your app">

@@ -111,9 +111,19 @@ def maybe_submit_report(
         return
 
     summary = result.get("summary", {})
+    proposed = len(summary.get("agents_proposed", []))
+    found = len(getattr(report, "agents", []) or [])
+    # "Found 41 agents" above and "43 draft agents" here read as a miscount: say what
+    # the drafts are when the two differ.
+    why = (
+        f" [dim](of the {found} agents found, those not already added, plus one per "
+        "folder with model calls outside any agent)[/]"
+        if proposed != found
+        else ""
+    )
     console.print(
         f"[green]Submitted.[/] scan [bold]{result.get('scan_run_id')}[/] — "
-        f"{len(summary.get('agents_proposed', []))} draft agent(s), "
+        f"{proposed} draft agent(s){why}, "
         f"{len(summary.get('policies_proposed', []))} proposed polic(ies) — "
-        "review them in the dashboard."
+        "review them in the dashboard under Agents → Proposed."
     )

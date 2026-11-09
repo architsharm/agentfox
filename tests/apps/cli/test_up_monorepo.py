@@ -1,0 +1,230 @@
+"""One agent, one name, one registry row, in a repository holding several apps.
+
+The third launch audit ran `up`, `up --agent <another app's agent>`, `scan --submit`
+and `init` on one monorepo and found: `up --agent X` kept the first run's entry file
+(another app's, so its traffic would be credited to X); the CamelCase name the code
+gives an agent became `financialplanneragent` in the registry but
+`financial-planner-agent` in `auto()`; and every path added its own copy.
+"""
+
+from __future__ import annotations
+
+import textwrap
+from pathlib import Path
+
+import pytest
+from sqlalchemy import select
+
+from agentfox.core.db import session_scope
+from agentfox.core.models import Agent
+from tests.apps.cli.test_up import _up, home  # noqa: F401 - fixtures
+
+PLANNER = """
+from agents import Agent, Runner, function_tool
+
+@function_tool
+def search_filings(q: str) -> str:
+    return ""
+
+PlannerAgent = Agent(name="FinancialPlannerAgent", instructions="Plan.", tools=[search_filings])
+
+if __name__ == "__main__":
+    Runner.run_sync(PlannerAgent, "hi")
+"""
+
+TRIP = """
+from crewai import Agent, Crew, Task
+
+scout = Agent(role="venue_scout", goal="find venues", backstory="b")
+trip_crew = Crew(agents=[scout], tasks=[Task(description="d", expected_output="e", agent=scout)])
+
+if __name__ == "__main__":
+    trip_crew.kickoff()
+"""
+
+
+def _mono(tmp_path: Path) -> Path:
+    root = tmp_path / "mono"
+    for rel, code in {"apps/research/main.py": PLANNER, "apps/trip/main.py": TRIP}.items():
+        path = root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(textwrap.dedent(code))
+    (root / ".git").mkdir()
+    return root
+
+
+def _rows() -> list[Agent]:
+    with session_scope() as session:
+        rows = list(session.scalars(select(Agent)))
+        for row in rows:
+            session.expunge(row)
+    return rows
+
+
+@pytest.mark.usefixtures("home")
+def test_up_agent_edits_that_agents_own_app_not_the_saved_one(tmp_path):
+    root = _mono(tmp_path)
+    first = _up(str(root), "--yes", "--with", "python-app", "--agent", "venue-scout")
+    assert first.exit_code == 0, first.output
+    assert "agentfox.auto(" in (root / "apps/trip/main.py").read_text()
+
+    second = _up(str(root), "--yes", "--with", "python-app", "--agent", "financial-planner-agent")
+    assert second.exit_code == 0, second.output
+    research = (root / "apps/research/main.py").read_text()
+    assert 'agentfox.auto("financial-planner-agent"' in research
+    assert "financial-planner-agent" not in (root / "apps/trip/main.py").read_text()
+
+
+@pytest.mark.usefixtures("home")
+def test_a_camel_case_agent_has_one_key_whatever_the_path(tmp_path):
+    from agentfox.platform.registry.service import observe_agent, slugify
+
+    assert slugify("FinancialPlannerAgent") == "financial-planner-agent"
+    root = _mono(tmp_path)
+    result = _up(
+        str(root), "--yes", "--with", "python-app,scan-report", "--agent", "financial-planner-agent"
+    )
+    assert result.exit_code == 0, result.output
+    # auto("FinancialPlannerAgent") at runtime lands on the same row.
+    with session_scope() as session:
+        agent, shadow = observe_agent(session, "FinancialPlannerAgent")
+        assert (agent.slug, shadow) == ("financial-planner-agent", False)
+    planners = [a for a in _rows() if "planner" in a.slug]
+    assert [a.slug for a in planners] == ["financial-planner-agent"]
+
+
+def test_an_agent_registered_under_the_old_key_is_found_by_its_name(tmp_path, monkeypatch):
+    """A database from before the keys were unified keeps its agent."""
+    from agentfox.platform.registry.service import find_agent, observe_agent, register_agent
+
+    monkeypatch.setenv("AGENTFOX_DATABASE_URL", f"sqlite:///{tmp_path / 'af.db'}")
+    from agentfox.core.db import init_db
+
+    init_db()
+    with session_scope() as session:
+        old = Agent(slug="financialplanneragent", name="FinancialPlannerAgent", status="active")
+        session.add(old)
+        session.flush()
+        assert find_agent(session, "FinancialPlannerAgent").slug == "financialplanneragent"
+        agent, shadow = observe_agent(session, "FinancialPlannerAgent")
+        assert (agent.slug, shadow) == ("financialplanneragent", False)
+        again = register_agent(session, "FinancialPlannerAgent", name="FinancialPlannerAgent")
+        assert again.slug == "financialplanneragent"
+        assert len(list(session.scalars(select(Agent)))) == 1
+
+
+ADK = """
+from google.adk.agents import LlmAgent
+
+def lookup_fund(name: str) -> str:
+    return ""
+
+root_agent = LlmAgent(name="fund_advisor", model="gemini-2.5-pro", instruction="advise",
+                      tools=[lookup_fund])
+"""
+
+
+@pytest.mark.usefixtures("home")
+def test_up_says_auto_does_not_govern_an_adk_agents_model_calls(tmp_path):
+    root = tmp_path / "advisor"
+    (root / "app").mkdir(parents=True)
+    (root / ".git").mkdir()
+    (root / "app" / "agent.py").write_text(textwrap.dedent(ADK))
+    result = _up(str(root), "--yes", "--with", "python-app")
+    assert result.exit_code == 0, result.output
+    out = " ".join(result.output.split())
+    assert "NOT governed by auto()" in out
+    assert "google-genai" in out
+    assert "records every call" not in out
+
+
+@pytest.mark.usefixtures("home")
+def test_up_in_a_folder_with_no_agent_sets_nothing_up(tmp_path):
+    root = tmp_path / "empty"
+    root.mkdir()
+    (root / "notes.txt").write_text("hello\n")
+    result = _up(str(root), "--yes")
+    assert result.exit_code == 0, result.output
+    out = " ".join(result.output.split())
+    assert "Nothing to set up here" in out
+    # It read the AI tools' settings in the home folder too, and says so.
+    assert "home folder" in out and "--skip-machine" in out
+    assert "Done" not in out
+    assert not (root / "agentfox.toml").exists() and not (root / ".agentfox").exists()
+
+
+@pytest.mark.usefixtures("home")
+def test_up_counts_the_apps_its_agent_systems_are_in(tmp_path):
+    root = _mono(tmp_path)
+    for app_dir, name in (("apps/research", "research"), ("apps/trip", "trip")):
+        (root / app_dir / "pyproject.toml").write_text(f'[project]\nname = "{name}"\n')
+    result = _up(str(root), "--yes", "--with", "python-app")
+    assert result.exit_code == 0, result.output
+    out = " ".join(result.output.split())
+    assert "2 separate agent systems here, in 2 apps" in out
+    assert "steps done" in out or "step done" in out
+
+
+ADK_TEAM = """
+from google.adk.agents import LlmAgent
+from google.adk.tools.agent_tool import AgentTool
+
+def lookup_fund(name: str) -> str:
+    return ""
+
+analyst = LlmAgent(name="data_analyst", model="gemini-2.5-pro", instruction="x")
+trader = LlmAgent(name="trading_analyst", model="gemini-2.5-pro", instruction="x")
+root_agent = LlmAgent(name="coordinator", model="gemini-2.5-pro", instruction="c",
+                      tools=[lookup_fund, AgentTool(agent=analyst), AgentTool(agent=trader)])
+"""
+
+
+@pytest.mark.usefixtures("home")
+def test_sub_agents_used_as_tools_are_not_counted_as_tools(tmp_path):
+    root = tmp_path / "advisor"
+    (root / "app").mkdir(parents=True)
+    (root / ".git").mkdir()
+    (root / "app" / "agent.py").write_text(textwrap.dedent(ADK_TEAM))
+    result = _up(str(root), "--yes", "--with", "python-app,tools")
+    assert result.exit_code == 0, result.output
+    out = " ".join(result.output.split())
+    assert "declared 1 tool and 2 sub-agents it calls as tools" in out
+
+
+TEAM = """
+from agents import Agent
+
+checker = Agent(name="CheckerAgent", instructions="check")
+writer = Agent(name="WriterAgent", instructions="write",
+               tools=[checker.as_tool(tool_name="check_facts", tool_description="x")])
+"""
+
+SEARCH = """
+from agents import Agent, Runner
+from agents.tool import WebSearchTool
+
+searcher = Agent(name="SearchAgent", instructions="search", tools=[WebSearchTool()])
+
+if __name__ == "__main__":
+    Runner.run_sync(searcher, "hi")
+"""
+
+
+@pytest.mark.usefixtures("home")
+def test_up_declares_only_its_own_systems_tools_and_sub_agents(tmp_path):
+    from agentfox.platform.identity import check_capability, ensure_identity
+
+    root = tmp_path / "research"
+    root.mkdir()
+    (root / ".git").mkdir()
+    (root / "main.py").write_text(textwrap.dedent(SEARCH))
+    (root / "team.py").write_text(textwrap.dedent(TEAM))
+    result = _up(str(root), "--yes", "--with", "python-app,tools", "--agent", "search-agent")
+    assert result.exit_code == 0, result.output
+    out = " ".join(result.output.split())
+    assert "declared 1 tool" in out and "sub-agent" not in out
+    with session_scope() as session:
+        agent = session.scalar(select(Agent).where(Agent.slug == "search-agent"))
+        identity = ensure_identity(session, agent)
+        assert check_capability(session, identity, "WebSearchTool").granted
+        assert not check_capability(session, identity, "check_facts").granted

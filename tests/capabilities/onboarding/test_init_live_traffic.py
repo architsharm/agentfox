@@ -143,3 +143,73 @@ def test_the_env_file_names_the_command_that_wrote_it(tmp_path):
     )
     head = (root / ".agentfox" / "agentfox.env").read_text().splitlines()[0]
     assert head == "# Written by `agentfox init`. Holds credentials: never commit it."
+
+
+def test_the_line_goes_into_the_file_that_runs_the_agent_in_its_own_app(tmp_path):
+    """`init` put `auto()` into `planner_agent.py`, which only defines the agent, not
+    the app's entry point; in a monorepo the entry is its own app's, never another's."""
+    (tmp_path / ".git").mkdir()
+    files = {
+        "apps/research/agents/planner_agent.py": (
+            "from agents import Agent\n\nplanner_agent = Agent(name='PlannerAgent', "
+            "instructions='plan')\n"
+        ),
+        "apps/research/manager.py": (
+            "from agents import Runner\nfrom .agents.planner_agent import planner_agent\n\n"
+            "async def go():\n    return await Runner.run(planner_agent, 'hi')\n"
+        ),
+        "apps/trip/main.py": (
+            "from crew import TripCrew\n\nif __name__ == '__main__':\n"
+            "    TripCrew().crew().kickoff()\n"
+        ),
+    }
+    for rel, text in files.items():
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text(text)
+    registered = [
+        {
+            "slug": "planner-agent",
+            "name": "PlannerAgent",
+            "file": "apps/research/agents/planner_agent.py",
+            "attr": "planner_agent",
+        }
+    ]
+    console = Console(record=True, width=200)
+    connect_live_traffic(console, tmp_path, "https://gw", "nom_api_abc", registered, ask=False)
+    out = console.export_text()
+    assert 'agentfox.auto("planner-agent")' in out
+    assert "apps/research/manager.py" in out, out
+
+
+def test_an_adk_agent_is_told_auto_does_not_govern_its_model_calls(tmp_path):
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "agent.py").write_text(
+        "from google.adk.agents import LlmAgent\n\n"
+        "root_agent = LlmAgent(name='advisor', model='gemini-2.5-pro', instruction='x')\n"
+    )
+    registered = [
+        {"slug": "advisor", "name": "advisor", "file": "agent.py", "framework": "Google ADK"}
+    ]
+    console = Console(record=True, width=200)
+    connect_live_traffic(console, tmp_path, "https://gw", "nom_api_abc", registered, ask=False)
+    out = console.export_text()
+    assert "NOT governed by auto()" in out and "google-genai" in out
+
+
+def test_init_counts_tools_not_tool_assignments():
+    from agentfox.capabilities.onboarding.client import _print_coverage
+
+    mapped = {
+        "structure": {
+            "agents": [{"id": "a"}, {"id": "b"}],
+            "tools": [
+                {"name": "search", "agentId": "a"},
+                {"name": "search", "agentId": "b"},
+                {"name": "send", "agentId": "b"},
+            ],
+        },
+        "read": 3,
+    }
+    console = Console(record=True, width=200)
+    _print_coverage(console, mapped)
+    assert "2 agents, 2 tools" in console.export_text()

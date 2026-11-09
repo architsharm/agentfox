@@ -216,6 +216,8 @@ def report(api: Any, console: Console, root: Path, server: str, key: str) -> dic
                 **a,
                 "file": (local.get(a.get("name")) or {}).get("file"),
                 "attr": attrs.get((local.get(a.get("name")) or {}).get("id")),
+                "framework": a.get("framework")
+                or (local.get(a.get("name")) or {}).get("framework"),
             }
             for a in connected.get("registered") or []
         ]
@@ -356,6 +358,16 @@ def connect_live_traffic(
             )
         except EOFError:
             answer = "n"
+    from agentfox.capabilities.discovery.agents import UNPATCHED_FRAMEWORKS
+
+    for framework in sorted(
+        {a.get("framework") for a in registered if a.get("framework") in UNPATCHED_FRAMEWORKS}
+    ):
+        console.print(
+            f"[yellow]{framework}'s model calls are NOT governed by auto()[/yellow]: it "
+            f"calls its model through {UNPATCHED_FRAMEWORKS[framework]}, which auto() does "
+            "not patch. Route them through the gateway instead (`agentfox up --with gateway`)."
+        )
     if answer.startswith("y"):
         insert_auto(path, block)
         console.print(
@@ -390,8 +402,39 @@ def _entry_file(root: Path, registered: list[dict[str, Any]]) -> tuple[Path, str
         runs = bool(guard and name and re.search(rf"\b{re.escape(name)}\b", text[guard.end() :]))
         return (not runs, not guard)
 
-    path, slug, _attr = sorted(candidates, key=rank)[0]
+    ranked = sorted(candidates, key=rank)
+    path, slug, attr = ranked[0]
+    if rank(ranked[0])[0]:
+        # No agent's own file runs it: the file that does is the entry point the
+        # project runs (`main.py`, the manager that calls `Runner.run`), in the same
+        # app: the one that imports the agent's module. `auto()` goes there, not into
+        # the module that only defines the agent.
+        from agentfox.capabilities.onboarding.project_files import entry_points
+
+        for entry in entry_points(root):
+            text = entry.read_text(errors="ignore")
+            for file, agent_slug, agent_attr in ranked:
+                if entry == file:
+                    return entry, agent_slug
+                # Its own app only: an entry beside or above the agent's folder.
+                if file.parent.is_relative_to(entry.parent) and _imports(
+                    text, file.stem, agent_attr
+                ):
+                    return entry, agent_slug
     return path, slug
+
+
+def _imports(text: str, module: str, attr: str | None) -> bool:
+    """Whether ``text`` imports the module ``module`` (``from .agents.planner_agent
+    import planner_agent``, ``import planner_agent``), or ``attr`` from anywhere."""
+    name = re.escape(module)
+    stem = re.compile(rf"^\s*(?:from\s+[\w.]*\b{name}\s+import|import\s+[\w.]*\b{name}\b)", re.M)
+    if stem.search(text):
+        return True
+    if attr and attr.isidentifier():
+        imported = re.findall(r"^\s*from\s+[\w.]+\s+import\s+(\([^)]*\)|[^\n]*)", text, re.M)
+        return any(re.search(rf"\b{re.escape(attr)}\b", group) for group in imported)
+    return False
 
 
 def _print_coverage(console: Console, mapped: dict[str, Any]) -> None:
@@ -399,7 +442,8 @@ def _print_coverage(console: Console, mapped: dict[str, Any]) -> None:
     from agentfox.capabilities.discovery.repo import SUPPORTED_LANGUAGES
 
     s = mapped["structure"]
-    n_agents, n_tools = len(s["agents"]), len(s["tools"])
+    # Tools, not tool assignments: one tool two agents are handed is one tool.
+    n_agents, n_tools = len(s["agents"]), len({t["name"] for t in s["tools"]})
     n_handoffs = sum(len(a.get("handsOffTo") or []) for a in s["agents"])
     read = mapped.get("read", 0)
     console.print(

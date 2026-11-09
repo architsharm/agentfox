@@ -34,8 +34,11 @@ ANSWERS_FILE = "up.json"
 
 
 def slugify(text: str) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
-    return slug or "agent"
+    """The registry key for a name (:func:`agentfox.core.naming.slug`): what `up`
+    writes into `auto("...")` is what `init`, the scan and the registry call it."""
+    from agentfox.core.naming import slug
+
+    return slug(text)
 
 
 @dataclass

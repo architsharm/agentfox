@@ -240,6 +240,8 @@ def agent_tools(session: Session, slug: str) -> dict[str, Any]:
     since = dt.datetime.now(dt.UTC) - dt.timedelta(days=WINDOW_DAYS)
     called: set[str] = set()
     if agent:
+        # Seen called and let through at least once (see `agent_map`): a tool only ever
+        # blocked is an attempt, not one of the agent's tools.
         called = {
             k
             for k in session.scalars(
@@ -248,6 +250,7 @@ def agent_tools(session: Session, slug: str) -> dict[str, Any]:
                     Decision.agent_id == agent.id,
                     Decision.created_at >= since,
                     Decision.tool_key.is_not(None),
+                    Decision.verdict != "block",
                 )
                 .distinct()
             )
@@ -502,7 +505,11 @@ def agent_map(session: Session, slug: str) -> dict[str, Any]:
                 )
 
     # --- tools ---------------------------------------------------------------
-    grants, in_code, seen_keys = _tool_sources(session, agent, set(tool_stats))
+    # A tool every call to which was blocked was attempted, not used: an injected
+    # `payments.transfer` must not become part of the agent's drawn shape. Its blocked
+    # calls stay in Activity and its findings.
+    used = {k for k, c in tool_stats.items() if c["total"] > c.get("blocked", 0)}
+    grants, in_code, seen_keys = _tool_sources(session, agent, used)
     registry = {t.key: t for t in session.scalars(select(Tool))}
     ladders = list(
         session.scalars(

@@ -372,7 +372,10 @@ def check(
     ),
     limit: int = typer.Option(15, "--limit", "-n", help="How many sites to show, worst first."),
     fail_on_ungoverned: bool = typer.Option(
-        False, "--fail", help="Exit non-zero if any model call is ungoverned (for CI)."
+        False,
+        "--fail",
+        help="Exit non-zero if any model call is ungoverned (for CI). Only that: a "
+        "critical finding such as a lethal trifecta is reported, not failed on.",
     ),
     submit: bool | None = typer.Option(
         None,
@@ -564,6 +567,13 @@ def check(
 
     if fail_on_ungoverned and report.ungoverned:
         raise typer.Exit(1)
+    if fail_on_ungoverned and report.trifectas:
+        # Exit 0 below a CRITICAL reads as a pass in CI: say what --fail checked.
+        console.print(
+            f"  [yellow]--fail passed:[/] it checks for ungoverned model calls only (none "
+            f"here). The {plural(len(report.trifectas), 'critical lethal trifecta')} above "
+            "is not part of it."
+        )
 
 
 def _agent_groups(agents: list[Any]) -> list[tuple[str, list[Any]]]:

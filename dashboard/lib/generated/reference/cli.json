@@ -526,7 +526,7 @@
         "required": false,
         "multiple": false,
         "default": null,
-        "help": "Exit non-zero if any model call is ungoverned (for CI)."
+        "help": "Exit non-zero if any model call is ungoverned (for CI). Only that: a critical finding such as a lethal trifecta is reported, not failed on."
        },
        {
         "kind": "option",
@@ -1448,8 +1448,8 @@
         "choices": [],
         "required": false,
         "multiple": false,
-        "default": "user",
-        "help": "Worst provenance an argument may carry and still go through without an approval. One of: none, user, retrieved, tool_result, subagent, memory."
+        "default": null,
+        "help": "Worst provenance an argument may carry and still go through without an approval. One of: none, user, retrieved, tool_result, subagent, memory. Default, as the dashboard's Add: 'memory' (anything) for a tool that only reads, 'user' for any other."
        },
        {
         "kind": "option",

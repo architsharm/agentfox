@@ -243,3 +243,24 @@ def test_models_are_the_agents_own_and_recent(client):
     models = _map(client)["agent"]["models"]
     assert "gpt-new" in models and "gpt-declared" in models
     assert "gpt-old" not in models and "tool-model" not in models
+
+
+def test_a_tool_only_ever_blocked_is_not_one_of_the_agents_tools(client):
+    """One blocked `payments.transfer` attempt (an injection, say) drew the tool on the
+    agent's map as "Not allowed", beside its real tools: the attempt became its shape."""
+    from sqlalchemy import select
+
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Agent, Decision
+
+    with session_scope() as s:
+        agent = s.scalar(select(Agent).where(Agent.slug == ORCH))
+        s.add(
+            Decision(agent_id=agent.id, surface="tool_call", verdict="block", tool_key="payments.x")
+        )
+        s.add(Decision(agent_id=agent.id, surface="tool_call", verdict="allow", tool_key="kb.y"))
+    keys = {t["key"] for t in _map(client)["tools"]}
+    assert "payments.x" not in keys
+    assert "kb.y" in keys
+    tools = client.get(f"/api/agents/{ORCH}/tools", headers=ADMIN).json()["tools"]
+    assert "payments.x" not in {t["key"] for t in tools}

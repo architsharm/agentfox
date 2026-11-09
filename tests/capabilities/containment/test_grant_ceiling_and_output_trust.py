@@ -368,3 +368,13 @@ def test_a_database_that_has_not_run_the_migration_still_serves_tool_calls(tmp_p
     finally:
         reset_settings_cache()
         reset_engine()
+
+
+def test_default_deny_names_the_agent_as_the_dashboard_lists_it(session, bot):
+    """The dashboard lists `personalized_activity_planner`; the reason said
+    `personalized-activity-planner`, a name found nowhere on the page."""
+    from agentfox.platform.identity.service import default_deny_hint
+
+    hint = default_deny_hint("agent:activity-planner", REFUND, "mono/activity_planner")
+    assert "Agents → activity_planner → Access" in hint
+    assert f"agentfox permit grant activity-planner {REFUND}" in hint

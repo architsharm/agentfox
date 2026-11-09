@@ -23,7 +23,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from agentfox.apps.cli._style import match_id, print_unknown_agent, short_id
+from agentfox.apps.cli._style import match_id, print_unknown_agent
 
 console = Console()
 
@@ -51,6 +51,19 @@ def _session():
 
     init_db()
     return session_scope()
+
+
+def _default_taint(tool: str) -> str:
+    """The provenance a grant allows when none is given: the same as the tools found in
+    an agent's code get when it is added (``registry.service.grant_found_tools``), so a
+    grant means the same from the CLI as from the dashboard."""
+    from sqlalchemy import select
+
+    from agentfox.core.models import Tool
+
+    with _session() as session:
+        impact = session.scalar(select(Tool.impact).where(Tool.key == tool))
+    return "memory" if impact == "read" else "user"
 
 
 def _parse_limit(raw: str) -> tuple[str, Any]:
@@ -262,11 +275,12 @@ def capability_grant(
         help="Argument limit, repeatable. path=value, or path:op=value — "
         "for example --limit amount:lt=1000 --limit currency:in=USD,EUR.",
     ),
-    max_taint: str = typer.Option(
-        "user",
+    max_taint: str | None = typer.Option(
+        None,
         "--max-taint",
         help="Worst provenance an argument may carry and still go through without "
-        f"an approval. One of: {', '.join(TAINT_LEVELS)}.",
+        f"an approval. One of: {', '.join(TAINT_LEVELS)}. Default, as the dashboard's "
+        "Add: 'memory' (anything) for a tool that only reads, 'user' for any other.",
     ),
     requires_approval: bool = typer.Option(
         False,
@@ -293,6 +307,8 @@ def capability_grant(
     """
     from agentfox.core.models import utcnow
 
+    if max_taint is None:
+        max_taint = _default_taint(tool)
     if max_taint not in TAINT_LEVELS:
         console.print(
             f"[red]unknown provenance level '{max_taint}'[/]. Use one of: {', '.join(TAINT_LEVELS)}"
@@ -490,7 +506,8 @@ def _print_grants(rows: list[dict[str, Any]], agent: str | None, as_json: bool) 
             conditions.append(f"before {row['expires_at'][:10]}")
         actions = ", ".join(row["actions"])
         tool = row["tool_key"] if actions == "*" else f"{row['tool_key']} [{actions}]"
-        cells = [f"[dim]{short_id(row['id'])}[/]"]
+        # The whole id: `permit revoke` takes it as shown.
+        cells = [f"[dim]{row['id']}[/]"]
         if show_agent:
             cells.append(row["agent"])
         cells.extend([tool, "; ".join(conditions)])
