@@ -171,8 +171,8 @@ export function RuleTuner({
     <div className="k-form">
       {tree && workspace.length > 0 && (
         <div className="k-field">
-          <label>Apply this change to</label>
-          <div className="k-seg" role="group" aria-label="Apply this change to">
+          <label>Applies to</label>
+          <div className="k-seg" role="group" aria-label="Applies to">
             <button disabled={busy} className={!some ? "active" : ""} onClick={() => { reset(); setSome(false); }}>
               Every agent
             </button>

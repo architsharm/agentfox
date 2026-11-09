@@ -45,6 +45,11 @@ describe("simulationSummary", () => {
     expect(simulationSummary({ replayed: 9, blocked: 0, held: 0, hidden: 0, since_days: 7 })).toBe("Last 7 days: would have blocked 0 of 9 checks.");
     expect(simulationSummary({ replayed: 0, blocked: 0, held: 0, hidden: 0, since_days: 30 })).toMatch(/^No traffic in the last 30 days/);
   });
+  it("says what it catches that other rules already stopped, instead of hiding it", () => {
+    expect(simulationSummary({ replayed: 26, blocked: 0, held: 0, hidden: 0, already_stopped: 4, since_days: 30 })).toBe(
+      "Last 30 days: would have blocked 0 of 26 checks. It also catches 4 that other rules already stopped.",
+    );
+  });
 });
 
 describe("whereOn / libraryPath", () => {

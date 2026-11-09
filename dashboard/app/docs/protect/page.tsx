@@ -57,7 +57,7 @@ export default function Page() {
               <p>
                 Press <strong>Simulate</strong> to replay recent traffic as if the rules blocked, then{" "}
                 <strong>Start blocking</strong>. Start blocking stays unavailable until a simulation of
-                exactly these rules has run. <strong>Switch to watching</strong> undoes it.
+                exactly these rules has run. <strong>Back to watching</strong> undoes it.
               </p>
             </Tab>
             <Tab label="CLI">
@@ -79,7 +79,8 @@ agentfox policy enforce baseline`}</Code>
 
       <h2>Change a rule for one agent</h2>
       <p>
-        Open a rule and press <strong>Change</strong>. Under <strong>Applies to</strong>, choose{" "}
+        Open a rule and press <strong>Change</strong> (its <strong>Tune</strong> tab). Under{" "}
+        <strong>Applies to</strong>, choose{" "}
         <strong>Every agent</strong> or <strong>Only some agents</strong>, then the action or the
         sensitivity. AgentFox checks the change against the last 7 days before you press{" "}
         <strong>Apply</strong>. One agent can always be stricter than the workspace; looser only where

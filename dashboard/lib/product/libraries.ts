@@ -19,7 +19,16 @@ export type LibraryRule = {
 };
 
 /** What a library's last "Simulate" found (the simulate route's answer, and `simulation`). */
-export type SimulationResult = { replayed: number; blocked: number; held: number; hidden: number; since_days: number; at?: string };
+export type SimulationResult = {
+  replayed: number;
+  blocked: number;
+  held: number;
+  hidden: number;
+  /** Checks its rules catch that something else already stopped: caught, but no change. */
+  already_stopped?: number;
+  since_days: number;
+  at?: string;
+};
 
 export type LibraryContents = {
   id: string;
@@ -92,7 +101,8 @@ export function simulationSummary(r: SimulationResult): string {
   if (!r.replayed) return `No traffic in the last ${r.since_days} days to replay. Blocking is allowed now; nothing tells you yet what it will stop.`;
   const parts = [`blocked ${r.blocked}`, r.held ? `asked a person about ${r.held}` : "", r.hidden ? `hidden data in ${r.hidden}` : ""].filter(Boolean);
   const last = parts.length > 1 ? ` and ${parts.pop()}` : "";
-  return `Last ${r.since_days} days: would have ${parts.join(", ")}${last} of ${r.replayed} checks.`;
+  const already = r.already_stopped ? ` It also catches ${r.already_stopped} that other rules already stopped.` : "";
+  return `Last ${r.since_days} days: would have ${parts.join(", ")}${last} of ${r.replayed} checks.${already}`;
 }
 
 /** "the agent", "all 3 agents" or "2 of 3 agents" of the project. */

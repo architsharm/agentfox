@@ -48,6 +48,10 @@ class SimulationDiff:
     #: hidden data (redact, mask, tokenize) with it enforcing: the other half of "what
     #: changes if I enforce this?" for a pack that hides rather than stops.
     would_hide: list[dict[str, Any]] = field(default_factory=list)
+    #: Calls the candidate's own rules would stop or hold that something else (another
+    #: pack, a grant, a limit) already stopped or held: caught, but changing nothing.
+    #: Without it a library whose catches were all already blocked read "0 of 26".
+    already_stopped: list[dict[str, Any]] = field(default_factory=list)
     #: Distinct runs (traces) the replayed checks belong to: what a person calls a
     #: request. One user message is several checks (input, each tool, output).
     runs: set[str] = field(default_factory=set)
@@ -69,6 +73,7 @@ class SimulationDiff:
             "newly_escalated": self.newly_escalated,
             "would_stop": self.would_stop[:50],
             "would_hide": self.would_hide[:50],
+            "already_stopped": self.already_stopped[:50],
             "counts": {
                 "newly_blocked": len(self.newly_blocked),
                 "newly_allowed": len(self.newly_allowed),
@@ -76,6 +81,7 @@ class SimulationDiff:
                 "would_stop": len(self.would_stop),
                 "own_would_stop": len(own),
                 "would_hide": len(self.would_hide),
+                "already_stopped": len(self.already_stopped),
             },
         }
 
@@ -212,6 +218,8 @@ def simulate(
             diff.would_stop.append(record)
         elif new.redactions and applied not in ("block", "escalate", *_HIDING):
             diff.would_hide.append(record)
+        if candidate_effect in ("block", "escalate") and applied in ("block", "escalate"):
+            diff.already_stopped.append(record)
 
         if new_effective == old_effective:
             diff.unchanged += 1

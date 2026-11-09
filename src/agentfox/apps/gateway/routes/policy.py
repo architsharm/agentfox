@@ -976,9 +976,9 @@ def change_mode(
     if not simulated:
         raise HTTPException(
             409,
-            f"version {target.version} of '{key}' has not been simulated: replay recent "
-            "traffic against it first (POST /api/policies/simulate with its body, or "
-            "Simulate in the editor), then promote",
+            f"Version {target.version} of '{key}' has not been simulated. Simulate it "
+            "first to see what it would have stopped in recent traffic, then start "
+            "blocking (API: POST /api/policies/simulate with its body and persist=true).",
         )
 
     binding = set_mode(
