@@ -1411,6 +1411,13 @@ def run_campaign(
         profile = deployment_profile(session, agent_slug)
         pool = pool + generate_deployment_probes(session, agent_slug)
     selected = _select(pool, probes)
+    # Every probe is checked the way live traffic is, so an opted-in model must be
+    # loaded first: a check does not wait for a model still loading (it runs without
+    # it), and otherwise the whole campaign would. Once per process; a no-op without
+    # a model detector.
+    from agentfox.capabilities.detection.warmup import warm_now
+
+    warm_now()
 
     campaign = RedTeamCampaign(
         name=name or f"Red-team {agent_slug}",

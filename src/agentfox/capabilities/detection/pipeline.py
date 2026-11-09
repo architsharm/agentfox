@@ -34,6 +34,7 @@ from agentfox.capabilities.detection.base import (
     all_detectors,
 )
 from agentfox.capabilities.detection.loading import CallScope, enter_scope
+from agentfox.capabilities.detection.warmup import WARMING, warming
 from agentfox.capabilities.judgment.jev import MALFORMED, OUTAGE
 from agentfox.core.config import get_settings
 
@@ -314,6 +315,24 @@ class DetectorPipeline:
         # so they run while these do, and stay under the budget.
         inline = [d for d in detectors if _runs_inline(d)]
         pooled = [d for d in detectors if not _runs_inline(d)]
+        # A model the background warm-up is still loading (`warmup.warming`) is not
+        # waited for: its call would queue behind the load, time out, and keep a pool
+        # thread (which the interpreter joins at exit) blocked until the load ended.
+        # The check runs on the other detectors and says why this one did not run.
+        # Not counted as degraded: the detector is not slow or broken, it is not
+        # loaded yet, exactly as it is not installed when `available()` says so.
+        loading = [d for d in pooled if warming(d.key)]
+        if loading:
+            pooled = [d for d in pooled if d not in loading]
+            result.results.extend(
+                DetectorResult(
+                    detector_key=d.key,
+                    version=d.version,
+                    status="unavailable",
+                    raw={"cause": WARMING},
+                )
+                for d in loading
+            )
         # Judges of one kind asking about this content share one model call
         # (`panel.ask_shared`); each needs to know how many of them run here.
         party: dict[str, int] = {}

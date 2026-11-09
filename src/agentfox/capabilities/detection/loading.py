@@ -45,8 +45,54 @@ class load_once(Generic[T]):  # noqa: N801 - used as a decorator, like cached_pr
             return cache[self.attrname]
         with _load_lock:
             if self.attrname not in cache:
-                cache[self.attrname] = self.func(instance)
+                with quiet_model_load():
+                    cache[self.attrname] = self.func(instance)
             return cache[self.attrname]
+
+
+#: torch's notice, on every macOS import, that a feature nobody here uses is missing.
+_TORCH_NOISE_LOGGERS = ("torch.distributed.elastic.multiprocessing.redirects",)
+
+
+@contextlib.contextmanager
+def quiet_model_load() -> Iterator[None]:
+    """Load a model without printing into somebody's program.
+
+    An in-process app (`agentfox.auto()`) shares its terminal with the loader, which
+    printed a torch platform notice, a torch deprecation warning and one "Loading
+    weights" progress bar per model into the app's output. None of it is about the
+    app. `AGENTFOX_VERBOSE=1` keeps all of it. The progress bar is switched off for
+    the load and back on after, so an app's own transformers use is unchanged.
+    """
+    import os
+
+    if os.environ.get("AGENTFOX_VERBOSE", "").strip().lower() in ("1", "true", "yes"):
+        yield
+        return
+    import logging
+    import warnings
+
+    for name in _TORCH_NOISE_LOGGERS:
+        logging.getLogger(name).setLevel(logging.ERROR)
+    warnings.filterwarnings(
+        "ignore", message=r"`torch\.jit\.script` is deprecated", category=FutureWarning
+    )
+    bars = None
+    try:
+        from agentfox.capabilities.detection.validators.base import module_present
+
+        if module_present("transformers"):
+            from transformers.utils import logging as bars
+    except Exception:  # noqa: BLE001 - quieting is cosmetic; never fail a load over it
+        bars = None
+    was_on = bool(bars and bars.is_progress_bar_enabled())
+    if was_on:
+        bars.disable_progress_bar()
+    try:
+        yield
+    finally:
+        if was_on:
+            bars.enable_progress_bar()
 
 
 def inference_lock(model: Any) -> threading.Lock:
