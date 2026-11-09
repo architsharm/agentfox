@@ -99,10 +99,13 @@ rules:
       detection: {entity_prefix: SECRET, min_score: 0.9}
     effect: block
     severity: critical
-    reason: "Credential or secret detected; blocked to prevent leakage."
+    reason: "Credential or secret detected; blocking keeps it from leaking."
     controls: [NOM-RTG-03]
 
   # --- PII (NOM-RTG-02) -----------------------------------------------
+  # Reasons say what was found and what the rule's action is for, never that it was
+  # done: a watching pack records the same reason for a reply it let through, and
+  # "redacted before delivery" next to an app that printed the SSN is a false claim.
   - id: pii.outbound_redact
     description: Redact personal data leaving the agent.
     when:
@@ -111,7 +114,7 @@ rules:
     effect: redact
     redaction: mask
     severity: medium
-    reason: "Personal data detected in the response; redacted before delivery."
+    reason: "Personal data detected in the response; redacting it keeps it out of the reply."
     controls: [NOM-RTG-02]
 
   - id: pii.inbound_tokenize
@@ -124,7 +127,7 @@ rules:
     effect: tokenize
     redaction: tokenize
     severity: medium
-    reason: "Personal data detected in the prompt; tokenised before it reaches the model."
+    reason: "Personal data detected in the prompt; tokenising it keeps it from the model."
     controls: [NOM-RTG-02]
 
   - id: pii.high_sensitivity
@@ -146,7 +149,7 @@ rules:
     effect: redact
     redaction: mask
     severity: medium
-    reason: "Personal data detected in a memory write or inter-agent message; redacted."
+    reason: "Personal data detected in a memory write or inter-agent message; redacting it keeps it from persisting."
     controls: [NOM-RTG-13, NOM-IAM-08]
 
   # --- Safety (NOM-RTG-05) --------------------------------------------
