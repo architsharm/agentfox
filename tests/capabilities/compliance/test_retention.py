@@ -238,13 +238,17 @@ def test_an_agent_scoped_legal_hold_keeps_that_agents_rows(session):
     session.add(LegalHold(scope_json={"agents": ["held-bot"]}, reason="litigation"))
     session.flush()
 
-    purge(session)
+    run = purge(session)
 
     assert session.get(Trace, "tr_held-bot_old") is not None
     assert session.get(Span, "sp_held-bot_old").attributes_json["agentfox.output"]
     assert session.get(Decision, "dec_held-bot_old") is not None
     assert session.get(DetectorRun, "dr_held-bot_old") is not None
     assert session.get(Trace, "tr_free-bot_old") is None
+    # The table read "Nothing due" for what the hold kept; the run says how much.
+    assert run.results_json["traces"]["runs_held"] == 1
+    assert run.results_json["decisions"]["decisions_held"] == 1
+    assert run.results_json["prompt_content"]["runs_held"] == 1
 
 
 def test_an_unscoped_legal_hold_stops_the_purge(session):

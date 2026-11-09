@@ -386,10 +386,12 @@ def place_hold(
     hold = LegalHold(scope_json=payload.scope, reason=payload.reason, placed_by=user.email)
     session.add(hold)
     session.flush()
+    # "operator", like a retention change: both decide what the purge may remove, and
+    # the audit log named the same person "operator" for one and "user" for the other.
     chain.append(
         session,
         "legal_hold.placed",
-        actor_type="user",
+        actor_type="operator",
         actor_id=user.email or user.id,
         subject_type="legal_hold",
         subject_id=hold.id,
@@ -399,6 +401,7 @@ def place_hold(
 
 
 class LegalHoldRelease(BaseModel):
+    #: Required: releasing lets the purge delete what the hold preserved.
     reason: str = ""
 
 
@@ -415,16 +418,22 @@ def release_hold(
         raise HTTPException(404, "no such legal hold")
     if hold.released_at is not None:
         raise HTTPException(409, "this hold was already released")
+    reason = (payload.reason if payload else "").strip()
+    if not reason:
+        # One click used to release a hold, with nothing on the record to say why.
+        raise HTTPException(
+            400, "releasing a legal hold lets the purge delete what it kept; give a reason"
+        )
     hold.released_at = dt.datetime.now(dt.UTC)
     session.flush()
     chain.append(
         session,
         "legal_hold.released",
-        actor_type="user",
+        actor_type="operator",
         actor_id=user.email or user.id,
         subject_type="legal_hold",
         subject_id=hold.id,
-        payload={"reason": (payload.reason if payload else "").strip()},
+        payload={"reason": reason},
     )
     return {"id": hold.id, "released_at": _iso(hold.released_at)}
 

@@ -275,7 +275,12 @@ def _purge_prompt_content(session, cutoff, holds, policy) -> dict[str, int]:
             turn.user_text = ""
             turn.agent_text = ""
             turns += 1
-    return {"spans_redacted": spans, "runs_redacted": traces, "turns_redacted": turns}
+    return {
+        "spans_redacted": spans,
+        "runs_redacted": traces,
+        "turns_redacted": turns,
+        "runs_held": len(held),
+    }
 
 
 def _purge_detection_sample(session, cutoff, holds, policy) -> dict[str, int]:
@@ -290,7 +295,7 @@ def _purge_detection_sample(session, cutoff, holds, policy) -> dict[str, int]:
             continue
         row.sample = ""
         n += 1
-    return {"samples_redacted": n}
+    return {"samples_redacted": n, "runs_held": len(held)}
 
 
 def _purge_traces(session, cutoff, holds, policy) -> dict[str, int]:
@@ -300,7 +305,14 @@ def _purge_traces(session, cutoff, holds, policy) -> dict[str, int]:
             (Trace.agent_slug.is_(None)) | (Trace.agent_slug.not_in(holds.agent_slugs))
         )
     ids = list(session.scalars(query))
-    counts = {"runs_deleted": 0, "spans_deleted": 0, "links_deleted": 0, "turns_deleted": 0}
+    # Past their period but kept by a hold: the table said "Nothing due" for these.
+    counts = {
+        "runs_deleted": 0,
+        "spans_deleted": 0,
+        "links_deleted": 0,
+        "turns_deleted": 0,
+        "runs_held": len(_held_trace_ids(session, holds, cutoff)),
+    }
     for i in range(0, len(ids), 500):
         chunk = ids[i : i + 500]
         counts["spans_deleted"] += session.execute(
@@ -331,7 +343,25 @@ def _purge_decisions(session, cutoff, holds, policy) -> dict[str, int]:
         )
         if trace_id not in held
     ]
-    counts = {"decisions_deleted": 0, "detector_runs_deleted": 0, "detections_deleted": 0}
+    held_decisions = (
+        len(
+            list(
+                session.scalars(
+                    select(Decision.id).where(
+                        Decision.created_at < cutoff, Decision.agent_id.in_(holds.agent_ids)
+                    )
+                )
+            )
+        )
+        if holds.agent_ids
+        else 0
+    )
+    counts = {
+        "decisions_deleted": 0,
+        "detector_runs_deleted": 0,
+        "detections_deleted": 0,
+        "decisions_held": held_decisions,
+    }
     for i in range(0, len(ids), 500):
         counts["decisions_deleted"] += session.execute(
             delete(Decision).where(Decision.id.in_(ids[i : i + 500]))

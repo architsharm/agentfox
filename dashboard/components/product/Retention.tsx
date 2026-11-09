@@ -15,20 +15,44 @@ export function days(n?: number | null): string {
   return `${n} day${n === 1 ? "" : "s"}`;
 }
 
+/** What a purge count key counts, singular and plural. */
+const NOUN: Record<string, [string, string]> = {
+  runs: ["run", "runs"],
+  spans: ["span", "spans"],
+  links: ["trace link", "trace links"],
+  turns: ["conversation turn", "conversation turns"],
+  decisions: ["decision", "decisions"],
+  detector_runs: ["detector run", "detector runs"],
+  detections: ["detection", "detections"],
+  samples: ["sample", "samples"],
+  outputs: ["eval output", "eval outputs"],
+};
+
+function counted(result: any, suffix: string): string {
+  return Object.entries(result)
+    .filter(([k, v]) => k.endsWith(suffix) && typeof v === "number" && v > 0)
+    .map(([k, v]) => {
+      const [one, many] = NOUN[k.slice(0, -suffix.length)] || [k.slice(0, -suffix.length).replace(/_/g, " "), ""];
+      return `${v} ${v === 1 ? one : many || one}`;
+    })
+    .join(", ");
+}
+
+/**
+ * One class's last purge in words: what it deleted, what it redacted, and what a
+ * legal hold kept. "7 deleted" summed runs, spans and turns into one number nobody
+ * could read, and a class whose old rows were all held read "Nothing due".
+ */
 export function purgeSummary(result: any): string {
   if (!result) return "—";
   if (result.skipped) {
-    return result.skipped === "no policy" ? "Kept" : result.skipped === "legal hold" ? "Held" : "—";
+    return result.skipped === "no policy" ? "Kept" : result.skipped === "legal hold" ? "Held by a legal hold" : "—";
   }
-  let deleted = 0;
-  let redacted = 0;
-  for (const [k, v] of Object.entries(result)) {
-    if (typeof v !== "number") continue;
-    if (k.endsWith("_deleted")) deleted += v;
-    if (k.endsWith("_redacted")) redacted += v;
-  }
-  if (!deleted && !redacted) return "Nothing due";
-  return [deleted ? `${deleted} deleted` : "", redacted ? `${redacted} redacted` : ""].filter(Boolean).join(", ");
+  const deleted = counted(result, "_deleted");
+  const redacted = counted(result, "_redacted");
+  const held = counted(result, "_held");
+  const parts = [deleted && `${deleted} deleted`, redacted && `${redacted} redacted`, held && `${held} kept by a legal hold`];
+  return parts.filter(Boolean).join("; ") || "Nothing due";
 }
 
 /**
@@ -104,10 +128,13 @@ export function Retention({ retention }: { retention: any }) {
                             min={1}
                             max={3650}
                             required
-                            defaultValue={c.retain_days ?? c.default_days ?? 365}
+                            defaultValue={c.retain_days ?? undefined}
+                            placeholder={c.retain_days ? undefined : `e.g. ${c.default_days ?? 365}`}
                             aria-label="Days to keep"
                           />
-                          <span className="small muted">days</span>
+                          <span className="small muted">
+                            days{c.retain_days ? "" : " (kept indefinitely until you set this)"}
+                          </span>
                         </div>
                         <input
                           className="k-input"
@@ -172,9 +199,25 @@ export function Retention({ retention }: { retention: any }) {
                   </td>
                   <td className="tight">
                     {!h.released_at && (
-                      <form action={`/api/legal-holds/${encodeURIComponent(h.id)}/release`} method="POST">
-                        <button type="submit" className="k-btn">Release</button>
-                      </form>
+                      <details>
+                        <summary className="small">Release</summary>
+                        <form
+                          action={`/api/legal-holds/${encodeURIComponent(h.id)}/release`}
+                          method="POST"
+                          className="k-limits-form"
+                          style={{ marginTop: 8 }}
+                        >
+                          <span className="small muted">The next purge can then delete what this hold kept.</span>
+                          <input
+                            className="k-input"
+                            name="reason"
+                            required
+                            placeholder="Reason, kept on the audit log"
+                            aria-label="Reason for releasing the hold"
+                          />
+                          <button type="submit" className="k-btn">Release hold</button>
+                        </form>
+                      </details>
                     )}
                   </td>
                 </tr>
