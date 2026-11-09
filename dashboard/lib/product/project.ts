@@ -107,3 +107,78 @@ export function projectInPath(pathname: string): string | null {
 
 /** How long the chosen scope is remembered: a year, like any other preference. */
 export const PROJECT_COOKIE_AGE = 60 * 60 * 24 * 365;
+
+/** A member of a project, as GET /api/projects lists it. */
+export type ProjectMember = { slug: string; name?: string; repo?: string | null; status?: string };
+
+/** A row of GET /api/projects: one system (a root and what it hands work to). */
+export type ProjectRow = {
+  project: string;
+  /** Set by `switcherOptions`: the repository the row stands for, or null. */
+  repo?: string | null;
+  agents: number;
+  slugs?: string[];
+  members?: ProjectMember[];
+  name?: string;
+  repos?: string[];
+  last_seen_at?: string | null;
+};
+
+/**
+ * What the switcher offers: one row per repository `agentfox init` mapped (its
+ * systems together, as the map draws them), and each system no repository holds on
+ * its own. The API lists systems, so a repository of three independent agents was
+ * three identical "mono · 1 agent" rows while its map showed 3 agents. Counted the
+ * way the map counts: each agent once, only agents someone added or proposed (not
+ * one disconnected).
+ */
+export function switcherOptions(projects: ProjectRow[]): ProjectRow[] {
+  const out = new Map<string, ProjectRow>();
+  for (const p of projects) {
+    // A system belongs to its root's repository: the map of that repository draws it.
+    const repo = p.members?.find((m) => m.slug === p.project)?.repo ?? (p.repos?.length === 1 ? p.repos[0] : null);
+    const key = repo ?? p.project;
+    const prev = out.get(key);
+    const members = [...(prev?.members ?? []), ...(p.members ?? [])].filter(
+      (m, i, all) => all.findIndex((x) => x.slug === m.slug) === i,
+    );
+    const seen = [prev?.last_seen_at, p.last_seen_at].filter(Boolean).sort().pop() ?? null;
+    out.set(key, {
+      ...(prev ?? p),
+      project: key,
+      repo,
+      name: repo ?? p.name,
+      repos: [...new Set([...(prev?.repos ?? []), ...(p.repos ?? [])])].sort(),
+      members,
+      slugs: members.map((m) => m.slug),
+      agents: members.filter((m) => !["removed", "rejected"].includes(m.status ?? "")).length,
+      last_seen_at: seen,
+    });
+  }
+  return [...out.values()];
+}
+
+/** The agents disconnecting an option takes off the dashboard: its members from its repository (or, with none, from none). */
+export function disconnectedBy(option: ProjectRow): ProjectMember[] {
+  const repo = option.repo !== undefined ? option.repo : option.repos?.length === 1 ? option.repos[0] : null;
+  return (option.members ?? []).filter((m) => (m.repo ?? null) === repo && !["removed", "rejected"].includes(m.status ?? ""));
+}
+
+/**
+ * The agent the map opens a project on: the one with the most recent traffic, an added
+ * agent before a proposal; with no traffic, the root (the map's first agent). Takes the
+ * project map's agents and GET /api/agents rows (for `last_seen_at`).
+ */
+export function openingAgent(
+  mapAgents: { slug: string; status?: string; depth?: number }[],
+  agents: { slug: string; last_seen_at?: string | null }[],
+): string | undefined {
+  const seen = new Map(agents.map((a) => [a.slug, a.last_seen_at ?? ""]));
+  const ranked = [...mapAgents].sort(
+    (a, b) =>
+      Number(NOT_ADDED.has(a.status ?? "")) - Number(NOT_ADDED.has(b.status ?? "")) ||
+      String(seen.get(b.slug) ?? "").localeCompare(String(seen.get(a.slug) ?? "")) ||
+      (a.depth ?? 0) - (b.depth ?? 0),
+  );
+  return ranked[0]?.slug;
+}

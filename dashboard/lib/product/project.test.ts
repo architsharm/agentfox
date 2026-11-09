@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultProject, hasAddedAgent, projectHref, projectInPath, projectView } from "./project";
+import { defaultProject, disconnectedBy, openingAgent, hasAddedAgent, projectHref, projectInPath, projectView, switcherOptions } from "./project";
 import { WORKSPACE_NAV, projectNav } from "./nav";
 
 describe("project views", () => {
@@ -93,5 +93,54 @@ describe("hasAddedAgent", () => {
   });
   it("is true once one is added", () => {
     expect(hasAddedAgent([{ members: [{ status: "draft" }] }, { members: [{ status: "active" }] }])).toBe(true);
+  });
+});
+
+describe("the project switcher counts what the map draws", () => {
+  const rows = [
+    { project: "planner", agents: 1, repos: ["mono"], members: [{ slug: "planner", repo: "mono", status: "active" }], last_seen_at: null },
+    { project: "writer", agents: 1, repos: ["mono"], members: [{ slug: "writer", repo: "mono", status: "draft" }], last_seen_at: "2026-11-09T10:00:00" },
+    {
+      project: "crew",
+      agents: 2,
+      repos: ["mono", "other"],
+      members: [
+        { slug: "crew", repo: "mono", status: "active" },
+        { slug: "helper", repo: "other", status: "active" },
+      ],
+    },
+    { project: "solo", agents: 1, repos: [], name: "Solo", members: [{ slug: "solo", repo: null, status: "active" }] },
+  ];
+  it("one row per repository, not one identical row per system", () => {
+    const opts = switcherOptions(rows);
+    // The crew's root is in mono, so mono's map draws it (and its helper from "other").
+    expect(opts.map((o) => [o.project, o.agents])).toEqual([
+      ["mono", 4],
+      ["solo", 1],
+    ]);
+    expect(opts[0].last_seen_at).toBe("2026-11-09T10:00:00");
+  });
+  it("the disconnect dialog names exactly the agents it takes off", () => {
+    const [mono, solo] = switcherOptions(rows);
+    // The helper from another repository stays: disconnecting mono acts on mono's agents.
+    expect(disconnectedBy(mono).map((m) => m.slug)).toEqual(["planner", "writer", "crew"]);
+    expect(disconnectedBy(solo).map((m) => m.slug)).toEqual(["solo"]);
+  });
+});
+
+describe("the map opens on the agent in use", () => {
+  it("picks the most recently active added agent, not the first in the list", () => {
+    const map = [
+      { slug: "root", status: "active", depth: 0 },
+      { slug: "busy", status: "active", depth: 1 },
+      { slug: "draft", status: "draft", depth: 1 },
+    ];
+    const agents = [
+      { slug: "root", last_seen_at: "2026-11-01T00:00:00" },
+      { slug: "busy", last_seen_at: "2026-11-09T00:00:00" },
+      { slug: "draft", last_seen_at: "2026-11-10T00:00:00" },
+    ];
+    expect(openingAgent(map, agents)).toBe("busy");
+    expect(openingAgent(map, [])).toBe("root");
   });
 });
