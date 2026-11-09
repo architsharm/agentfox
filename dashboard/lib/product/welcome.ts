@@ -46,9 +46,13 @@ export function upCommand({ gateway, token, siteUrl }: { gateway: string; token:
   } catch {
     // An unparseable site URL is a self-hosted deployment's own name.
   }
+  // Installed, not `uvx`: the install line is the one every other card and docs page
+  // uses, and the coding-agent hooks `up` writes call this install by absolute path,
+  // which a uvx cache entry does not keep.
   return [
+    `pip install -U ${INSTALL_SPEC}`,
     `AGENTFOX_API_KEY=${token} \\`,
-    `  uvx ${INSTALL_SPEC} up --target ${target} --api-url ${gateway} --mode observe --yes`,
+    `  agentfox up --target ${target} --api-url ${gateway} --mode observe --yes`,
   ].join("\n");
 }
 

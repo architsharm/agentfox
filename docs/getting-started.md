@@ -14,7 +14,7 @@ You need Python 3.11 or newer.
 2. In your repository, run the command the card shows, with your key and server filled in:
 
    ```bash
-   pip install agentfox
+   pip install -U agentfox
    agentfox init --key nom_api_… --server https://…
    ```
 
