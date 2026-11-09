@@ -439,8 +439,8 @@ def _evidence_unavailable(ctx: typer.Context) -> None:
         "Evidence packages are part of AgentFox Enterprise, which is not installed here. "
         "They come with AgentFox Cloud (`agentfox up --target cloud`). To self-host, install "
         "Enterprise from a clone of the repository (it is not on PyPI): "
-        "`pip install agentfox ./ee`.\nThe tamper-evident audit chain they carry is in the open core: "
-        "`agentfox report verify`.",
+        "`pip install agentfox ./ee`.\nThe tamper-evident audit chain they carry is in the "
+        "open core: `agentfox report verify`.",
         err=True,
     )
     raise typer.Exit(2)
