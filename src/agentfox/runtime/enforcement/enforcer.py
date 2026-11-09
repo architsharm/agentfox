@@ -67,6 +67,7 @@ from agentfox.platform.policy import (
     PolicyInput,
     UnloadablePolicyVersion,
     combine,
+    containment_mode,
     get_engine,
     policies_in_force,
 )
@@ -220,26 +221,6 @@ class _Evaluation:
     redeemed_approval: Any = None
     latency_ms: float = 0.0
     reason: str = ""
-
-
-def containment_mode(evaluated: list[Any]) -> str:
-    """The mode the Tool containment library is in for one call: ``enforce`` when a
-    pack in force that rules on missing grants (``when: {capability: denied}``: the
-    ``tool-containment`` pack, and an agent's copy of it) blocks, else ``observe``.
-
-    The containment facts the enforcer adds itself (a tool the agent was not
-    granted, an argument whose provenance its grant does not accept, a read tool's
-    output carried into a higher-impact tool) are that library's rules, so they
-    follow its watch/block mode: while it watches they are recorded as would-block
-    and the call goes through. With no such pack in force nothing has asked for
-    containment to block, so it watches. What a person set on a grant themselves
-    (a limit, "Ask first") is not covered: that applies the moment it is set."""
-    modes = [
-        doc.mode
-        for doc, *_rest in evaluated
-        if any(rule.when.capability == "denied" for rule in getattr(doc, "rules", []))
-    ]
-    return "enforce" if "enforce" in modes else "observe"
 
 
 def _deciding_mode(verdict: str, effective: str, packs_mode: str) -> str:

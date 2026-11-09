@@ -189,6 +189,8 @@ const RULE_TITLES: Record<string, string> = {
   "taint.high_impact_tool": "High-impact actions on untrusted data",
   "taint.write_from_tool_result": "Writes copied from tool output",
   "capability.denied": "Tools the agent wasn't given",
+  "capability.default_deny": "Tools the agent wasn't given",
+  "composition.escalation": "One tool's output driving a riskier tool",
   "capability.constraint_violated": "Calls outside allowed limits",
   "capability.approval_required": "Actions that need approval",
   "intent.undeclared_irreversible": "Irreversible action with no task",

@@ -32,6 +32,11 @@ describe("libraryState", () => {
     expect(libraryState({ ...base, agents: ["a"] }, 1).text).toBe("On the agent · watching");
   });
 
+  it("says Tool containment's built-in rules watch where it is not applied", () => {
+    expect(libraryState({ ...base, builtIn: true }, 2)).toEqual({ text: "Built-in rules only · watching", tone: "pol-watch" });
+    expect(libraryState({ ...base, builtIn: false, agents: ["a"], blocking: true }, 1).text).toBe("On the agent · blocking");
+  });
+
   it("says when it was applied workspace-wide", () => {
     expect(libraryState({ ...base, workspace: true, blocking: true }, 2)).toEqual({ text: "On every agent (workspace) · blocking", tone: "pol-on" });
   });

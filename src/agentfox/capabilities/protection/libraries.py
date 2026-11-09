@@ -38,6 +38,9 @@ OWN = "Set for this agent"
 #: The id the basic guardrails go by in the library routes.
 BASIC_ID = "basic"
 
+#: The library the enforcer's own containment facts belong to.
+CONTAINMENT_ID = "tool-containment"
+
 #: How far back a library's copies are replayed by :func:`simulate_library`; the
 #: same default as ``POST /api/policies/simulate``.
 SIMULATE_DAYS = 30
@@ -475,6 +478,10 @@ def library_status(session: Any, pack_id: str, slugs: list[str]) -> dict[str, An
         "blocking": bool(modes) and all(m == "enforce" for m in modes),
         "outdated": bool(outdated),
         "outdatedAgents": outdated,
+        # Tool containment's own facts (a missing grant, a composed escalation) are
+        # applied by the enforcer on every agent, applied library or not; where the
+        # library is not applied they watch (`platform.policy.containment_mode`).
+        "builtIn": pack_id == CONTAINMENT_ID and not on and not workspace,
     }
 
 
