@@ -254,9 +254,19 @@ def capability_grant(
         f"  expires        {expires_at.isoformat(timespec='seconds') if expires_at else 'never'}"
     )
     _explain_taint_ceiling(tool, max_taint)
-    if not yes and not typer.confirm(
-        "\nThis widens what the agent may do. Grant it?", default=False
-    ):
+    try:
+        confirmed = yes or typer.confirm(
+            "\nThis widens what the agent may do. Grant it?", default=False
+        )
+    except typer.Abort:
+        # No answer to read (a script, CI, stdin closed): the prompt used to end in a
+        # bare "Aborted.", which says nothing about granting without a person there.
+        console.print(
+            "\n[yellow]nothing granted[/]: no answer to the prompt. "
+            "Pass --yes to grant without asking (scripts and CI)."
+        )
+        raise typer.Exit(1) from None
+    if not confirmed:
         console.print("[yellow]nothing granted[/]")
         raise typer.Exit(1)
 

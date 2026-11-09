@@ -91,6 +91,18 @@ def test_capability_grant_asks_before_widening_what_an_agent_may_do():
     assert all(row["tool_key"] != "payments.transfer" for row in _json(listed.output))
 
 
+def test_capability_grant_with_no_one_to_answer_says_to_pass_yes():
+    """In a script or CI the prompt reads end-of-input. It used to end in a bare
+    "Aborted."; it says what to do instead."""
+    _seed()
+    result = runner.invoke(app, ["permit", "grant", "support-triage", "payments.transfer"])
+    assert result.exit_code == 1
+    out = flat(result.output)
+    assert "nothing granted" in out
+    assert "--yes" in out
+    assert "Aborted" not in out
+
+
 def test_capability_grant_is_recorded_in_the_audit_chain():
     """Every other state-changing command in this CLI appends to the chain; a grant
     widens authority, so it is the last one that should be exempt."""

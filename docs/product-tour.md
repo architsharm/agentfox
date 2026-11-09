@@ -329,7 +329,7 @@ write them by hand:
 ```bash
 agentfox declare tool billing.export --impact write    # read | write | high_impact | irreversible
 agentfox declare tool crm.lookup --impact read --output-trust trusted   # its output is yours
-agentfox permit grant support-triage tickets.close \
+agentfox permit grant support-triage tickets.close --yes \
     --limit priority:in=low,normal --max-taint user
 agentfox permit list support-triage                    # anything not listed is refused
 agentfox permit revoke <capability-id>
@@ -338,8 +338,8 @@ agentfox permit revoke <capability-id>
 `--max-taint` is the worst provenance an argument may carry and still go through without an
 approval: `none`, `user`, `retrieved`, `tool_result`, `subagent`, `memory`. Within it, the taint
 rules defer to the grant; `composition.escalation` (one tool's output fed into a higher-impact tool)
-does not, unless the producing tool's output is declared trusted. `permit grant` confirms before it
-writes; `--yes` skips the prompt in CI. `agentfox agents register <slug> --owner you@example.com` turns a
+does not, unless the producing tool's output is declared trusted. Without `--yes`, `permit grant`
+confirms before it writes, and with no terminal to answer at it grants nothing and says so. `agentfox agents register <slug> --owner you@example.com` turns a
 shadow agent into an owned one, and `agentfox agents budget` sets the caps `budget.exceeded` blocks on.
 Whether provenance is read per run or per argument is one setting, `taint_scope` (`session`, the
 default, or `argument`); see [Getting started, step 5b](getting-started.md#5b-let-it-propose-the-grants-learned-permissions).

@@ -405,7 +405,7 @@ with fox.session(intent="reply to a customer about their order") as s:
     except ApprovalRequired as exc:
         print("held:", [r["rule_id"] for r in exc.result.rules_fired])`}</Code>
       <p>
-        With <code>agentfox permit grant support-bot email.send</code> made (after the
+        With <code>agentfox permit grant support-bot email.send --yes</code> made (after the
         agent has run once, so it is registered):
       </p>
       <Output>{`sent to ada@example.com

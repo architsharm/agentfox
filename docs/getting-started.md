@@ -381,13 +381,14 @@ never lands in an argument. Every published number was measured under `session`.
 
 ```bash
 agentfox declare tool payments.transfer --impact irreversible
-agentfox permit grant my-agent payments.transfer \
+agentfox permit grant my-agent payments.transfer --yes \
     --limit amount:lt=1000 --max-taint user
 ```
 
 `permit grant` is the only command that widens least privilege, so it prints exactly what it is
-about to allow and asks before it writes, then records the grant in the audit chain. Pass `--yes`
-in scripts. `--max-taint user` means: arguments a person typed are fine, anything that came out of
+about to allow and, without `--yes`, asks before it writes; then it records the grant in the audit
+chain. Leave `--yes` off to be asked; with no terminal to answer at, it grants nothing and says to
+pass `--yes`. `--max-taint user` means: arguments a person typed are fine, anything that came out of
 a document or another tool needs a human. A higher ceiling is respected: within it, the taint rules
 do not overrule the grant. `composition.escalation` still applies, and the command says so.
 
