@@ -137,12 +137,29 @@ def get_structure(
     structure = row.structure if row else None
     return {
         "connected": structure is not None,
+        # The agents this init found that still wait to be added: the dashboard keeps
+        # asking to add them until someone does (or dismisses the prompt), on any page.
+        "pending": _pending(session, structure),
         # When `agentfox init` last reported its map: lets setup tell a fresh connection
         # from one made before the page was opened.
         "connectedAt": row.structure_at.isoformat() if row and row.structure_at else None,
         "runnerConnected": _runner_connected(row.runner_seen_at if row else None),
         "structure": structure or service.EMPTY_STRUCTURE,
     }
+
+
+def _pending(session: Session, structure: dict[str, Any] | None) -> list[dict[str, Any]]:
+    """The agents of the last reported map that are still drafts (proposed, not added)."""
+    from sqlalchemy import select
+
+    from agentfox.core.models import Agent
+
+    slugs = [a["slug"] for a in (structure or {}).get("agents", []) if a.get("slug")]
+    if not slugs:
+        return []
+    rows = session.scalars(select(Agent).where(Agent.slug.in_(slugs), Agent.status == "draft"))
+    drafts = {a.slug: a for a in rows}
+    return [{"slug": s, "name": drafts[s].name or s} for s in slugs if s in drafts]
 
 
 class EditedStructure(BaseModel):
@@ -410,15 +427,18 @@ def runner_session(
     raw = (authorization or "").removeprefix("Bearer ").removeprefix("bearer ").strip()
     if not raw.startswith(keys.KEY_PREFIXES):
         raise HTTPException(
-            401, "Send the key from the Connect screen: Authorization: Bearer nom_api_…"
+            401,
+            "Send your AgentFox key (Settings → API keys in the dashboard): "
+            "Authorization: Bearer nom_api_…",
         )
     try:
         _token, user, row = keys.resolve(session, raw, allowed_roles=WRITE_ROLES["registry"])
     except LookupError:
         raise HTTPException(
             401,
-            "That setup key isn't valid: it may have expired or been replaced. Copy a new "
-            "one from the Connect screen.",
+            "That key isn't valid any more: it was revoked, replaced, or (an older setup "
+            "key) expired. Make a new one in the dashboard (Settings → API keys) and put it "
+            "in .agentfox/agentfox.env.",
         ) from None
     except keys.SetupKeyRefused as exc:
         raise HTTPException(403, str(exc)) from None

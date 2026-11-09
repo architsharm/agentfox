@@ -6,7 +6,8 @@ repository, sends its app's traffic (`agentfox.auto()` reads it from the
 Any live workspace key whose owner may change the registry is accepted, and so is a
 setup key from before (``afi_``), which only ever reached the runner routes.
 
-The older setup key is an operator token in everything but reach (``platform/identity/operators``):
+The workspace key never expires by itself (it is the app's runtime key); it ends when
+it is rotated or revoked. The older setup key is an operator token in everything but reach (``platform/identity/operators``):
 stored as a hash with a findable prefix, shown in full once when it is made, expiring
 (``onboarding_key_ttl_days``), revocable from the token list or by rotating it, and
 written to the audit log when it is issued or revoked. Its ``afi_`` prefix keeps it
@@ -79,7 +80,11 @@ def mint(
         session,
         user,
         name=SETUP_KEY_NAME,
-        ttl_days=get_settings().onboarding_key_ttl_days or None,
+        # The key init writes to `.agentfox/agentfox.env` is the one the app runs on:
+        # one that lapsed after 30 days would silently stop a running app reporting.
+        # It lasts until it is rotated or revoked; `onboarding_key_ttl_days` is for
+        # the older ``afi_`` setup keys only.
+        ttl_days=None,
         actor=actor,
         reason=reason,
         prefix=API_KEY_PREFIX,
