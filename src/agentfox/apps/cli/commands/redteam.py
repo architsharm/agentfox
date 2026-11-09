@@ -113,16 +113,17 @@ def redteam_run(
         raise typer.Exit(2)
     with _session() as session:
         from agentfox.core.models import Agent
-        from agentfox.platform.registry.service import slugify
+        from agentfox.platform.registry.service import find_agent
 
-        if session.scalar(select(Agent).where(Agent.slug == slugify(agent))) is None:
+        found = find_agent(session, agent)
+        if found is None:
             known = sorted(session.scalars(select(Agent.slug)))
             console.print(
                 f"[red]No agent '{agent}'.[/] "
                 + (f"Agents here: {', '.join(known[:12])}" if known else "None registered yet.")
             )
             raise typer.Exit(2)
-        slug = slugify(agent)
+        slug = found.slug
         written, not_run = ([], []) if adaptive else agent_tool_probes(session, slug, chosen)
         tools = agent_tool_map(session, slug) if written else []
         why_generic = "" if written or adaptive else no_tool_probes_reason(session, slug)

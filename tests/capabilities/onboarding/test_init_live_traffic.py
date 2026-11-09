@@ -114,3 +114,39 @@ def test_with_two_agents_in_one_file_the_line_names_the_one_the_script_runs(tmp_
     console = Console(record=True)
     connect_live_traffic(console, tmp_path, "https://gw", "nom_api_abc", registered, ask=False)
     assert 'agentfox.auto("support-triage")' in console.export_text()
+
+
+def test_the_line_goes_into_the_file_that_runs_the_agent_in_its_own_app(tmp_path):
+    """`init` put `auto()` into `planner_agent.py`, which only defines the agent, not
+    the app's entry point; in a monorepo the entry is its own app's, never another's."""
+    (tmp_path / ".git").mkdir()
+    files = {
+        "apps/research/agents/planner_agent.py": (
+            "from agents import Agent\n\nplanner_agent = Agent(name='PlannerAgent', "
+            "instructions='plan')\n"
+        ),
+        "apps/research/manager.py": (
+            "from agents import Runner\nfrom .agents.planner_agent import planner_agent\n\n"
+            "async def go():\n    return await Runner.run(planner_agent, 'hi')\n"
+        ),
+        "apps/trip/main.py": (
+            "from crew import TripCrew\n\nif __name__ == '__main__':\n"
+            "    TripCrew().crew().kickoff()\n"
+        ),
+    }
+    for rel, text in files.items():
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text(text)
+    registered = [
+        {
+            "slug": "planner-agent",
+            "name": "PlannerAgent",
+            "file": "apps/research/agents/planner_agent.py",
+            "attr": "planner_agent",
+        }
+    ]
+    console = Console(record=True, width=200)
+    connect_live_traffic(console, tmp_path, "https://gw", "nom_api_abc", registered, ask=False)
+    out = console.export_text()
+    assert 'agentfox.auto("planner-agent")' in out
+    assert "apps/research/manager.py" in out, out

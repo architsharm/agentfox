@@ -86,6 +86,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from agentfox.core import naming
+
 #: How a parent hands work to a child, strongest claim first: when the same pair is
 #: related twice (a crew member that is also the manager's delegate), the first wins.
 #:
@@ -3141,17 +3143,11 @@ class _Linker:
         return out
 
 
-_SLUG = re.compile(r"[^a-z0-9-]+")
-#: Word boundaries inside a CamelCase name: `GameBuilderCrew`, `LLMAgent`.
-_CAMEL = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
-
-
 def _slug(value: str) -> str:
-    """The key form of a name the code gives: lower case, words joined by hyphens,
-    whether the code wrote them `snake_case`, `CamelCase` or as a sentence, so
-    `GameBuilderCrew`, `game_builder_crew` and "Game builder crew" are one key."""
-    words = _CAMEL.sub("-", (value or "").strip())
-    return _SLUG.sub("-", words.lower()).strip("-") or "agent"
+    """The key form of a name the code gives (:func:`agentfox.core.naming.slug`, the one
+    the registry and `auto()` use too): `GameBuilderCrew`, `game_builder_crew` and
+    "Game builder crew" are one key."""
+    return naming.slug(value)
 
 
 def agent_key(name: str, file: str, taken: set[str]) -> str:

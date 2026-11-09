@@ -682,6 +682,7 @@ def register_structure(
     from agentfox.platform.registry.projects import TALKS_TO, TOUCHES
     from agentfox.platform.registry.service import (
         PROPOSABLE,
+        find_agent,
         impact_source_of,
         propose_draft,
         record_edge,
@@ -697,6 +698,9 @@ def register_structure(
         return agent.status in PROPOSABLE and agent.project in (None, project)
 
     def place(name: str) -> tuple[str, Any] | None:
+        known = find_agent(session, name)
+        if known is not None and owned(known):
+            return known.slug, known
         for candidate in [slugify(name), *([slugify(f"{project}-{name}")] if project else [])]:
             existing = session.scalar(select(Agent).where(Agent.slug == candidate))
             if existing is None or owned(existing):

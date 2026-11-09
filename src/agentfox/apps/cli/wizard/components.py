@@ -517,7 +517,11 @@ def _python_ask(run: Run) -> None:
     first = preferred if preferred in files else (files[0] if files else None)
     choices = [Choice(f, f, "starts your agent" if f == first else "") for f in files]
     choices.append(Choice("none", "Don't edit my code", "show the line to add instead"))
-    default = run.ctx.saved.get("entry_point") or first or "none"
+    # The agent being set up decides the file: a saved answer is another run's (in a
+    # monorepo, another app's entry file), used only when this run picked none.
+    default = (preferred if preferred in files else None) or (
+        run.ctx.saved.get("entry_point") or first or "none"
+    )
     if default not in {c.key for c in choices}:
         default = choices[0].key
     run.answers["python-app"] = run.prompter.select(

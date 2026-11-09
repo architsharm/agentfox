@@ -349,8 +349,39 @@ def _entry_file(root: Path, registered: list[dict[str, Any]]) -> tuple[Path, str
         runs = bool(guard and name and re.search(rf"\b{re.escape(name)}\b", text[guard.end() :]))
         return (not runs, not guard)
 
-    path, slug, _attr = sorted(candidates, key=rank)[0]
+    ranked = sorted(candidates, key=rank)
+    path, slug, attr = ranked[0]
+    if rank(ranked[0])[0]:
+        # No agent's own file runs it: the file that does is the entry point the
+        # project runs (`main.py`, the manager that calls `Runner.run`), in the same
+        # app: the one that imports the agent's module. `auto()` goes there, not into
+        # the module that only defines the agent.
+        from agentfox.capabilities.onboarding.project_files import entry_points
+
+        for entry in entry_points(root):
+            text = entry.read_text(errors="ignore")
+            for file, agent_slug, agent_attr in ranked:
+                if entry == file:
+                    return entry, agent_slug
+                # Its own app only: an entry beside or above the agent's folder.
+                if file.parent.is_relative_to(entry.parent) and _imports(
+                    text, file.stem, agent_attr
+                ):
+                    return entry, agent_slug
     return path, slug
+
+
+def _imports(text: str, module: str, attr: str | None) -> bool:
+    """Whether ``text`` imports the module ``module`` (``from .agents.planner_agent
+    import planner_agent``, ``import planner_agent``), or ``attr`` from anywhere."""
+    name = re.escape(module)
+    stem = re.compile(rf"^\s*(?:from\s+[\w.]*\b{name}\s+import|import\s+[\w.]*\b{name}\b)", re.M)
+    if stem.search(text):
+        return True
+    if attr and attr.isidentifier():
+        imported = re.findall(r"^\s*from\s+[\w.]+\s+import\s+(\([^)]*\)|[^\n]*)", text, re.M)
+        return any(re.search(rf"\b{re.escape(attr)}\b", group) for group in imported)
+    return False
 
 
 def _print_coverage(console: Console, mapped: dict[str, Any]) -> None:

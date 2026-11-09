@@ -29,6 +29,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from agentfox.core import naming
 from agentfox.core.models import (
     TOOL_EFFECT_CLASSES,
     Agent,
@@ -45,11 +46,31 @@ from agentfox.core.models import (
 from agentfox.platform.ledger.findings import auto_resolve, raise_finding, resolve_finding
 from agentfox.platform.policy import PolicyDocument, save_policy
 
-_SLUG = re.compile(r"[^a-z0-9-]+")
-
 
 def slugify(value: str) -> str:
-    return _SLUG.sub("-", (value or "unknown").strip().lower()).strip("-") or "unknown"
+    """The registry key for a name: :func:`agentfox.core.naming.slug`, the one every
+    path (scan, up, init, a submitted scan, `auto()`) uses."""
+    return naming.slug(value or "unknown", default="unknown")
+
+
+def find_agent(session: Session, value: str) -> Agent | None:
+    """The agent ``value`` names: under its key, or under the key an earlier release
+    gave the same name (``financialplanneragent``), so an agent registered before the
+    keys were unified keeps its grants, traces and policies."""
+    key = slugify(value)
+    agent = session.scalar(select(Agent).where(Agent.slug == key))
+    if agent is None:
+        legacy = naming.legacy_slug(value or "unknown", default="unknown")
+        if legacy != key:
+            agent = session.scalar(select(Agent).where(Agent.slug == legacy))
+    return agent
+
+
+def agent_slug(session: Session, value: str) -> str:
+    """The key ``value`` resolves to: an existing agent's (see :func:`find_agent`), else
+    the canonical one."""
+    agent = find_agent(session, value)
+    return agent.slug if agent is not None else slugify(value)
 
 
 def _get_or_create(session: Session, model: type, **lookup: Any) -> Any:
@@ -96,7 +117,7 @@ def register_agent(
     as live until a human approves it. Approval just flips those two fields, it does
     not re-run this function.
     """
-    slug = slugify(slug)
+    slug = agent_slug(session, slug)
     agent = _get_or_create(session, Agent, slug=slug)
 
     agent.name = name or agent.name or slug
@@ -138,7 +159,7 @@ def propose_draft(session: Session, *, slug: str, **fields: Any) -> Agent | None
     scan turning a live agent back into a proposal would silently undo the approval.
     Returns None for such an agent, since this scan did not propose it.
     """
-    existing = session.scalar(select(Agent).where(Agent.slug == slugify(slug)))
+    existing = find_agent(session, slug)
     if existing is not None and existing.status not in PROPOSABLE:
         return None
     return register_agent(session, slug=slug, draft=True, **fields)
@@ -402,7 +423,7 @@ def _propose_agent_specs(
         if agent is not None:
             created.append(agent.slug)
             continue
-        live = session.scalar(select(Agent).where(Agent.slug == slugify(slug)))
+        live = find_agent(session, slug)
         if live is not None and live.name == name:
             # The agent `agentfox up` registered for this same code: it takes what the
             # scan read rather than a second, draft copy of itself.
@@ -591,8 +612,8 @@ def observe_agent(
     Called on every gateway request and every ingested OTel batch, which is what
     makes shadow-agent discovery work without asking anyone to cooperate.
     """
-    slug = slugify(slug)
-    agent = session.scalar(select(Agent).where(Agent.slug == slug))
+    agent = find_agent(session, slug)
+    slug = agent.slug if agent is not None else slugify(slug)
     is_new_shadow = False
 
     if agent is None:
