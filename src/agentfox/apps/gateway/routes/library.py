@@ -323,15 +323,27 @@ def compile_text(
     # The tools a limit can bind to: the agent's own, else every tool this workspace
     # has seen, so "vendor payments" binds to its `pay_vendor`, not a generic name
     # nothing calls.
-    if agent is not None:
-        tools = list(agent.declared_tools or [])
-    else:
-        from agentfox.core.models import Tool
+    from agentfox.core.models import Decision, Tool
 
-        tools = (
-            sorted({k for k in session.scalars(select(Tool.key)) if not k.startswith("redteam.")})
-            or None
+    if agent is not None:
+        # What it declared, else what it has called: an agent onboarded from traffic
+        # declares nothing, and its limits must still bind to its own tools.
+        tools = list(agent.declared_tools or []) or sorted(
+            {
+                k
+                for k in session.scalars(
+                    select(Decision.tool_key).where(
+                        Decision.agent_id == agent.id, Decision.tool_key.is_not(None)
+                    )
+                )
+                if k and not k.startswith("redteam.")
+            }
         )
+    else:
+        tools = sorted(
+            {k for k in session.scalars(select(Tool.key)) if not k.startswith("redteam.")}
+        )
+    tools = tools or None
     return _field_warnings(
         session,
         compile_document(

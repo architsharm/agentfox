@@ -300,3 +300,22 @@ def test_compile_uses_the_tool_picked_in_the_form(client):
     ).json()
     ladder = next(r for r in out["rules"] if r["kind"] == "threshold_ladder")
     assert ladder["definition"]["tool"] == "pay_vendor"
+
+
+def test_compile_for_an_agent_that_declared_nothing_uses_the_tools_it_called(client):
+    from agentfox.core.db import session_scope
+    from agentfox.core.models import Agent, Decision
+
+    with session_scope() as session:
+        agent = Agent(slug="payables", registered=True, status="active", declared_tools=[])
+        session.add(agent)
+        session.flush()
+        for tool in ("lookup_invoice", "pay_vendor", "email_vendor"):
+            session.add(Decision(agent_id=agent.id, surface="tool_args", tool_key=tool))
+    out = client.post(
+        "/api/business/compile",
+        json={"text": "Vendor payments over $1,000 need approval.", "agent": "payables"},
+        headers=ADMIN,
+    ).json()
+    ladder = next(r for r in out["rules"] if r["kind"] == "threshold_ladder")
+    assert ladder["definition"]["tool"] == "pay_vendor"
