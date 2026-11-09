@@ -600,7 +600,18 @@ def _account_set_mode(remote, key: str, mode: str) -> None:
                 known = [p["key"] for p in remote.get("/api/policies").get("policies") or []]
             except AccountError:
                 known = []
-            _unknown_policy(key, known)
+            # A library applied per agent lives in one copy per agent
+            # (`agent.<slug>.<key>`): switch them all, as the local path does.
+            copies = sorted(
+                k
+                for k in known
+                if k.startswith("agent.") and k.count(".") >= 2 and k.split(".", 2)[2] == key
+            )
+            if not copies:
+                _unknown_policy(key, known)
+            for copy in copies:
+                _account_set_mode(remote, copy, mode)
+            return
         if exc.status == 409 and mode == "enforce":
             console.print(
                 f"[yellow]{key} has not been simulated yet[/], so it is still watching. "
