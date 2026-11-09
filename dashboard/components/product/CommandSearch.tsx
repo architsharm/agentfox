@@ -20,6 +20,13 @@ export function CommandSearch({ nav }: { nav: NavItem[] }) {
   const router = useRouter();
   const [records, setRecords] = useState<SearchItem[] | null>(null);
   const loading = useRef(false);
+  // Focus goes back to the Search button when the palette closes, not to <body>.
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (open) wasOpen.current = true;
+    else if (wasOpen.current) triggerRef.current?.focus();
+  }, [open]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -77,7 +84,7 @@ export function CommandSearch({ nav }: { nav: NavItem[] }) {
 
   if (!open) {
     return (
-      <button type="button" className="cmdk-trigger" onClick={() => setOpen(true)}>
+      <button ref={triggerRef} type="button" className="cmdk-trigger" onClick={() => setOpen(true)} aria-keyshortcuts="Meta+K Control+K">
         <SearchIcon />
         <span>Search</span>
         <span className="cmdk-kbd">⌘K</span>
@@ -87,7 +94,7 @@ export function CommandSearch({ nav }: { nav: NavItem[] }) {
 
   return (
     <div className="cmdk-overlay" onClick={() => setOpen(false)}>
-      <div className="cmdk-panel" onClick={(e) => e.stopPropagation()}>
+      <div className="cmdk-panel" role="dialog" aria-modal="true" aria-label="Search" onClick={(e) => e.stopPropagation()}>
         <input
           ref={inputRef}
           value={q}
@@ -106,6 +113,7 @@ export function CommandSearch({ nav }: { nav: NavItem[] }) {
               go(results[active].href);
             }
           }}
+          aria-label="Search"
           placeholder="Search agents, tools, rules, issues and pages, or paste a trc_/fnd_ id"
           className="cmdk-input"
         />
