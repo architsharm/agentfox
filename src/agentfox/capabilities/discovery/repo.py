@@ -50,6 +50,7 @@ from agentfox.capabilities.discovery.agents import (
     AgentSpec,
     agent_key,
     is_test_path,
+    tool_class,
     wrapped_tool,
 )
 
@@ -785,6 +786,10 @@ class _Visitor(ast.NodeVisitor):
                 self.functions.setdefault(
                     stmt.name, (stmt.lineno, ast.get_docstring(stmt) or "", _arg_names(stmt))
                 )
+            elif isinstance(stmt, ast.ClassDef) and (made := tool_class(stmt)) is not None:
+                # `class FileWriteTool(Tool)` naming itself "file_write": an agent
+                # handed `FileWriteTool()` reaches the tool by that name.
+                self.functions.setdefault(made[0], (stmt.lineno, made[1], made[2]))
         # Twice, so `graph = builder.compile()` after `builder = StateGraph(...)` and an
         # alias of an alias both resolve whatever order the assignments come in.
         for _ in range(2):
@@ -870,6 +875,22 @@ class _Visitor(ast.NodeVisitor):
         # `agentfox.auto()` anywhere in a file means its model calls are governed.
         if path.endswith("auto") and "agentfox" in path:
             self.governed = True
+        if path.rsplit(".", 1)[-1] == "FastMCP" and self._packages & {"mcp", "fastmcp"}:
+            # An MCP server this repository serves (`mcp = FastMCP("calculator")`):
+            # one of the servers an agent here can reach, its tools the `@mcp.tool()`
+            # functions the scan lists as tools.
+            name = _string_arg(node) or Path(self.path).stem
+            self.sites.append(
+                Site(
+                    kind="mcp_server",
+                    file=self.path,
+                    line=node.lineno,
+                    detail=f"MCP server '{name}' defined in this repository; its tools "
+                    "are listed with the others",
+                    severity="info",
+                    name=name,
+                )
+            )
         run = self._agent_run(node, path)
         if run is not None:
             provider, what = run
@@ -1904,6 +1925,14 @@ def _llm_apps(report: ScanReport) -> list[AgentSpec]:
             )
         )
     return out
+
+
+def _string_arg(node: ast.Call) -> str | None:
+    """The first positional argument, or ``name=``, when it is a string literal."""
+    for arg in [*node.args[:1], *(kw.value for kw in node.keywords if kw.arg == "name")]:
+        if isinstance(arg, ast.Constant) and isinstance(arg.value, str) and arg.value:
+            return arg.value
+    return None
 
 
 def _detect_mcp(root: Path, report: ScanReport) -> None:
