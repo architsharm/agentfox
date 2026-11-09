@@ -180,6 +180,32 @@ def verify_chain(
     return {**result.to_json(), "stats": chain.chain_stats(session)}
 
 
+@router.get("/report/summary")
+def report_summary(
+    since: str = "7d",
+    agent: list[str] = Query(default_factory=list),
+    format: str = Query("md", pattern="^(md|markdown|html)$"),
+    session: Session = Depends(db),
+    _user: User = Depends(current_user),
+) -> dict[str, Any]:
+    """The one-page summary `agentfox report` prints, for this workspace: what ran,
+    what was stopped and why, what is only watched. ``text`` is Markdown or HTML."""
+    from agentfox.apps.report.summary import (
+        build_summary,
+        parse_since,
+        render_html,
+        render_markdown,
+    )
+
+    try:
+        window = parse_since(since)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    data = build_summary(session, agents=list(agent), since=window)
+    text = render_html(data) if format == "html" else render_markdown(data)
+    return {"format": "html" if format == "html" else "md", "text": text}
+
+
 @router.post("/audit/checkpoint", status_code=201)
 def checkpoint(
     session: Session = Depends(db), user: User = Depends(require("evidence"))

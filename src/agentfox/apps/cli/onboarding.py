@@ -978,10 +978,6 @@ def findings_cmd(
     one row with a count, not one row per occurrence, so the length of this list is
     the number of distinct problems. `--types` lists the kinds of finding there are.
     """
-    from sqlalchemy import case, func, select
-
-    from agentfox.core.models import Finding
-
     if types:
         _finding_types(as_json)
         return
@@ -991,6 +987,57 @@ def findings_cmd(
             f"[red]unknown severity '{severity}'[/]. Use one of: {', '.join(SEVERITY_RANK)}"
         )
         raise typer.Exit(2)
+
+    from agentfox.apps.cli import account as _account
+
+    remote = _account.use(console, quiet=as_json)
+    if remote is not None:
+        rows, total = _account_findings(remote, severity, limit)
+    else:
+        rows, total = _local_findings(severity, limit)
+
+    _print_findings(rows, total, severity, as_json, remote is not None)
+
+
+#: The most open findings fetched from the account to rank. The route orders by
+#: creation time; the CLI ranks worst first, so it ranks the whole open set it gets.
+ACCOUNT_FETCH = 2000
+
+
+def _account_findings(remote: Any, severity: str | None, limit: int) -> tuple[list[dict], int]:
+    """The account's open findings (`GET /api/findings`), ranked as the local query is."""
+    from agentfox.apps.cli.account import AccountError, fail
+
+    try:
+        body = remote.get(
+            "/api/findings", status="open", severity=severity or None, limit=ACCOUNT_FETCH
+        )
+    except AccountError as exc:
+        fail(console, exc)
+    found = body.get("findings") or []
+    found.sort(key=lambda f: f.get("last_seen_at") or f.get("created_at") or "", reverse=True)
+    found.sort(key=lambda f: SEVERITY_RANK.get(f.get("severity") or "", 9))
+    rows = [
+        {
+            "id": f["id"],
+            "type": f.get("type"),
+            "severity": f.get("severity"),
+            "title": f.get("title"),
+            "subject": f"{f.get('subject_type')}:{f.get('subject_id')}",
+            "at": f.get("created_at"),
+            "occurrences": f.get("occurrences"),
+            "fingerprint": f.get("fingerprint"),
+            "last_seen_at": f.get("last_seen_at"),
+        }
+        for f in found[:limit]
+    ]
+    return rows, len(found)
+
+
+def _local_findings(severity: str | None, limit: int) -> tuple[list[dict], int]:
+    from sqlalchemy import case, func, select
+
+    from agentfox.core.models import Finding
 
     with _session() as session:
         # Ranked in SQL, not after the fact: sorting the page the database happened to
@@ -1015,7 +1062,12 @@ def findings_cmd(
             }
             for f in session.scalars(stmt.order_by(rank, recency.desc()).limit(limit))
         ]
+    return rows, total or 0
 
+
+def _print_findings(
+    rows: list[dict], total: int, severity: str | None, as_json: bool, on_account: bool
+) -> None:
     if as_json:
         console.print_json(json.dumps(rows, default=str))
         return
@@ -1061,12 +1113,13 @@ def findings_cmd(
         steps.append((f"agentfox findings --severity {worst}", f"just the {worst} ones"))
     steps.append(("agentfox findings --json", "whole ids, fingerprints and subjects"))
     steps.append(("agentfox doctor", "check the runtime configuration that produced these"))
-    steps.append(
-        (
-            "agentfox serve",
-            "control plane on http://127.0.0.1:8080, the full detail view",
+    if not on_account:
+        steps.append(
+            (
+                "agentfox serve",
+                "control plane on http://127.0.0.1:8080, the full detail view",
+            )
         )
-    )
     _print_next_steps(steps)
 
 

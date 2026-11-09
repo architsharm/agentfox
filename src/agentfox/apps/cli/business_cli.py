@@ -68,6 +68,13 @@ def rules_apply(
         console.print(f"[red]{file.name} is not a valid ladder:[/] {exc}")
         raise typer.Exit(1) from exc
 
+    from agentfox.apps.cli import account as _account
+
+    remote = _account.use(console)
+    if remote is not None:
+        _account_apply(remote, ladder, agent)
+        return
+
     with _session() as session:
         try:
             save_ladder(session, ladder, agent_slug=agent)
@@ -96,12 +103,63 @@ def rules_apply(
         console.print("  [dim]observe mode — the outcome is recorded, not applied.[/]")
 
 
+def _account_apply(remote, ladder, agent: str | None) -> None:
+    """Save the rule on the account (`POST /api/business/rules`), watching, as the
+    dashboard does; ``--mode enforce`` then asks for blocking through the route that
+    needs a recorded simulation first."""
+    from agentfox.apps.cli.account import AccountError, fail
+
+    definition = ladder.model_dump(by_alias=True, mode="json")
+    try:
+        remote.post("/api/business/rules", {"definition": definition, "agent": agent})
+    except AccountError as exc:
+        console.print(f"[red]{exc}[/] — nothing was saved.")
+        raise typer.Exit(1) from None
+    console.print(
+        f"[green]✓[/] [bold]{ladder.key}[/] — {len(ladder.bands)} bands on "
+        f"{ladder.field_path} ({ladder.unit})  [dim]in your account[/]"
+    )
+    _print_intervals(ladder)
+    if ladder.mode != "enforce":
+        console.print("  [dim]observe mode — the outcome is recorded, not applied.[/]")
+        return
+    try:
+        remote.post(f"/api/business/rules/{ladder.key}/mode", {"mode": "enforce"})
+    except AccountError as exc:
+        if exc.status != 409:
+            fail(console, exc)
+        console.print(
+            f"  [yellow]saved watching[/]: {exc}. Simulate it on its page in the dashboard "
+            "(Policies), then turn blocking on."
+        )
+        raise typer.Exit(1) from None
+    console.print("  [green]enforcing[/]")
+
+
 def rules_show(key: str | None = typer.Argument(None, help="Rule key; omit for all.")) -> None:
     """Show the resolved bands, so an author sees exactly what they wrote."""
-    from agentfox.capabilities.business import all_ladders
+    from agentfox.apps.cli import account as _account
+    from agentfox.capabilities.business import Ladder, all_ladders
 
-    with _session() as session:
-        ladders = [lad for lad in all_ladders(session) if key is None or lad.key == key]
+    remote = _account.use(console)
+    if remote is not None:
+        try:
+            rules = remote.get("/api/business/rules").get("rules") or []
+        except _account.AccountError as exc:
+            _account.fail(console, exc)
+        ladders = []
+        for rule in rules:
+            if key is not None and rule.get("key") != key:
+                continue
+            definition = {**(rule.get("definition") or {}), "mode": rule.get("mode") or "observe"}
+            definition.pop("kind", None)
+            try:
+                ladders.append(Ladder.model_validate(definition))
+            except Exception:  # noqa: BLE001 - another kind of business rule
+                continue
+    else:
+        with _session() as session:
+            ladders = [lad for lad in all_ladders(session) if key is None or lad.key == key]
 
     if not ladders:
         console.print("[dim]No business rules. Author one with `agentfox policy rules apply`.[/]")

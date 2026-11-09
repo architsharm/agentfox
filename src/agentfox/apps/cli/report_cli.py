@@ -45,10 +45,24 @@ def report(
         console.print(f"[red]{exc}[/]")
         raise typer.Exit(2) from exc
 
-    init_db()
-    with session_scope() as session:
-        data = build_summary(session, agents=list(agent or []), since=window)
-        text = render_html(data) if fmt == "html" else render_markdown(data)
+    from agentfox.apps.cli import account as _account
+
+    remote = _account.use(console)
+    if remote is not None:
+        try:
+            text = remote.get(
+                "/api/report/summary",
+                since=since,
+                agent=list(agent or []) or None,
+                format="html" if fmt == "html" else "md",
+            )["text"]
+        except _account.AccountError as exc:
+            _account.fail(console, exc)
+    else:
+        init_db()
+        with session_scope() as session:
+            data = build_summary(session, agents=list(agent or []), since=window)
+            text = render_html(data) if fmt == "html" else render_markdown(data)
 
     if out is not None:
         out.parent.mkdir(parents=True, exist_ok=True)

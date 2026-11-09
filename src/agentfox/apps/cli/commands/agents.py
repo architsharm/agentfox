@@ -31,29 +31,53 @@ def agents_list(
     if stopped:
         agents_controls()
         return
-    from sqlalchemy import select
-
-    from agentfox.core.models import Agent
+    from agentfox.apps.cli import account as _account
     from agentfox.platform.registry.projects import GONE
-    from agentfox.platform.registry.service import inventory
 
-    with _session() as session:
-        every = list(session.scalars(select(Agent).order_by(Agent.slug)))
-        agents = [a for a in every if show_all or a.status not in GONE]
-        hidden = len(every) - len(agents)
-        summary = inventory(session)
+    remote = _account.use(console, quiet=as_json)
+    if remote is not None:
+        try:
+            body = remote.get("/api/agents", include_removed="true")
+        except _account.AccountError as exc:
+            _account.fail(console, exc)
+        every = body.get("agents") or []
+        summary = body.get("inventory") or {}
+        agents = [a for a in every if show_all or a.get("status") not in GONE]
         rows = [
             {
-                "slug": a.slug,
-                "environment": a.environment,
-                "risk_tier": a.risk_tier,
-                "registered": a.registered,
-                "status": a.status,
-                "owner": a.owner_email,
-                "framework": a.framework,
+                "slug": a.get("slug"),
+                "environment": a.get("environment"),
+                "risk_tier": a.get("risk_tier"),
+                "registered": a.get("registered"),
+                "status": a.get("status"),
+                "owner": a.get("owner_email"),
+                "framework": a.get("framework"),
             }
             for a in agents
         ]
+    else:
+        from sqlalchemy import select
+
+        from agentfox.core.models import Agent
+        from agentfox.platform.registry.service import inventory
+
+        with _session() as session:
+            every = list(session.scalars(select(Agent).order_by(Agent.slug)))
+            agents = [a for a in every if show_all or a.status not in GONE]
+            summary = inventory(session)
+            rows = [
+                {
+                    "slug": a.slug,
+                    "environment": a.environment,
+                    "risk_tier": a.risk_tier,
+                    "registered": a.registered,
+                    "status": a.status,
+                    "owner": a.owner_email,
+                    "framework": a.framework,
+                }
+                for a in agents
+            ]
+    hidden = len(every) - len(agents)
     if as_json:
         _emit({"agents": rows, "inventory": summary}, True)
         return
@@ -71,8 +95,8 @@ def agents_list(
         )
     console.print(table)
     console.print(
-        f"  [dim]{summary['agents']} agents · {summary['shadow']} shadow · "
-        f"{summary['unowned']} unowned · {summary['lineage_edges']} lineage edges"
+        f"  [dim]{summary.get('agents', len(rows))} agents · {summary.get('shadow', 0)} shadow · "
+        f"{summary.get('unowned', 0)} unowned · {summary.get('lineage_edges', 0)} lineage edges"
         + (f" · {hidden} dismissed or disconnected, not listed (--all)" if hidden else "")
         + "[/]"
     )

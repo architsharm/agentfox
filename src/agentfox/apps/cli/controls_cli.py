@@ -271,22 +271,44 @@ def sources_list(as_json: bool = typer.Option(False, "--json")) -> None:
     """Every registered source, worst tier first."""
     from sqlalchemy import select
 
+    from agentfox.apps.cli import account as _account
     from agentfox.capabilities.grounding.provenance import TIER_RANK, freshness_breach
     from agentfox.core.models import SourceRecord
 
-    with _session() as session:
+    remote = _account.use(console, quiet=as_json)
+    if remote is not None:
+        try:
+            records = remote.get("/api/sources").get("sources") or []
+        except _account.AccountError as exc:
+            _account.fail(console, exc)
         rows = [
             {
-                "key": r.key,
-                "tier": r.tier,
-                "owner": r.owner or "—",
-                "domain": r.domain or "—",
-                "deprecated": r.deprecated,
-                "stale": bool(freshness_breach(r)),
-                "unknown_age": bool(r.freshness_sla_hours and r.updated_at_source is None),
+                "key": r["key"],
+                "tier": r.get("tier"),
+                "owner": r.get("owner") or "—",
+                "domain": r.get("domain") or "—",
+                "deprecated": bool(r.get("deprecated")),
+                "stale": bool(r.get("stale")),
+                "unknown_age": bool(
+                    r.get("freshness_sla_hours") and not r.get("updated_at_source")
+                ),
             }
-            for r in session.scalars(select(SourceRecord))
+            for r in records
         ]
+    else:
+        with _session() as session:
+            rows = [
+                {
+                    "key": r.key,
+                    "tier": r.tier,
+                    "owner": r.owner or "—",
+                    "domain": r.domain or "—",
+                    "deprecated": r.deprecated,
+                    "stale": bool(freshness_breach(r)),
+                    "unknown_age": bool(r.freshness_sla_hours and r.updated_at_source is None),
+                }
+                for r in session.scalars(select(SourceRecord))
+            ]
     rows.sort(key=lambda r: (-TIER_RANK.get(r["tier"], 9), r["key"]))
 
     if as_json:

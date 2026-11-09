@@ -286,7 +286,8 @@ def test_bare_report_is_the_one_page_summary(isolated_db):
     summary = runner.invoke(app, ["report", "summary"])
     bare = runner.invoke(app, ["report"])
     assert bare.exit_code == summary.exit_code == 0
-    assert bare.output.startswith("# AgentFox summary")
+    # The document is stdout; the line saying which store it came from is stderr.
+    assert bare.stdout.startswith("# AgentFox summary")
 
 
 # ---------------------------------------------------------------------------

@@ -24,13 +24,44 @@ def policy_list() -> None:
     """List policies and their enforcement mode."""
     from sqlalchemy import select
 
+    from agentfox.apps.cli import account as _account
     from agentfox.core.models import Policy, PolicyVersion
     from agentfox.platform.policy import current_binding
 
+    table = Table(box=None, pad_edge=False)
+    for column in ("policy", "version", "mode", "rules"):
+        table.add_column(column, style="bold" if column == "policy" else None)
+
+    remote = _account.use(console)
+    if remote is not None:
+        try:
+            policies = remote.get("/api/policies").get("policies") or []
+            business = [
+                r["mode"]
+                for r in remote.get("/api/business/rules").get("rules") or []
+                if r.get("enabled")
+            ]
+        except _account.AccountError as exc:
+            _account.fail(console, exc)
+        for policy in policies:
+            if policy.get("latest_version") is None:
+                continue
+            mode = policy.get("mode") or "unbound"
+            shown = policy.get("bound_version") or policy["latest_version"]
+            version = f"v{shown}"
+            if policy.get("bound_version") and policy["bound_version"] != policy["latest_version"]:
+                version += f" [dim](v{policy['latest_version']} saved, not live)[/]"
+            table.add_row(
+                policy["key"],
+                version,
+                f"[green]{mode}[/]" if mode == "enforce" else f"[yellow]{mode}[/]",
+                str(policy.get("rules", 0)),
+            )
+        _business_row(table, business)
+        console.print(table)
+        return
+
     with _session() as session:
-        table = Table(box=None, pad_edge=False)
-        for column in ("policy", "version", "mode", "rules"):
-            table.add_column(column, style="bold" if column == "policy" else None)
         for policy in session.scalars(select(Policy).order_by(Policy.key)):
             latest = session.scalars(
                 select(PolicyVersion)
@@ -55,17 +86,20 @@ def policy_list() -> None:
             )
         # Business rules (approval limits) are rules too, stored apart from the
         # packs; the dashboard counts them in Your rules, so they are counted here.
-        business = _business_modes(session)
-        if business:
-            modes = set(business)
-            mode = modes.pop() if len(modes) == 1 else "mixed"
-            table.add_row(
-                "business rules",
-                "—",
-                f"[green]{mode}[/]" if mode == "enforce" else f"[yellow]{mode}[/]",
-                str(len(business)),
-            )
+        _business_row(table, _business_modes(session))
         console.print(table)
+
+
+def _business_row(table: Table, business: list[str]) -> None:
+    if business:
+        modes = set(business)
+        mode = modes.pop() if len(modes) == 1 else "mixed"
+        table.add_row(
+            "business rules",
+            "—",
+            f"[green]{mode}[/]" if mode == "enforce" else f"[yellow]{mode}[/]",
+            str(len(business)),
+        )
 
 
 def _business_modes(session) -> list[str]:
@@ -159,16 +193,31 @@ def policy_effective(
     Opacity is what makes layered policy dangerous, so the resolver explains itself.
     Business rules (approval limits) are listed too, from `business`.
     """
+    from agentfox.apps.cli import account as _account
     from agentfox.capabilities.business.store import effective_entries
     from agentfox.platform.policy import effective_for, runtime_environment
 
-    with _session() as session:
-        environment = environment or runtime_environment(session, agent)
-        effective = effective_for(
-            session, agent_slug=agent, environment=environment, team=team, user=user
-        )
-        explanation = effective.explain()
-        explanation["rules"] = [*explanation["rules"], *effective_entries(session, agent)]
+    remote = _account.use(console)
+    if remote is not None:
+        try:
+            explanation = remote.get(
+                "/api/policies/effective",
+                agent=agent,
+                team=team,
+                user=user,
+                environment=environment,
+            )
+        except _account.AccountError as exc:
+            _account.fail(console, exc)
+        environment = explanation.get("environment") or environment or "production"
+    else:
+        with _session() as session:
+            environment = environment or runtime_environment(session, agent)
+            effective = effective_for(
+                session, agent_slug=agent, environment=environment, team=team, user=user
+            )
+            explanation = effective.explain()
+            explanation["rules"] = [*explanation["rules"], *effective_entries(session, agent)]
 
     # Per layer, not one mode for the lot: "mode enforce" whenever any layer
     # enforced read as though every rule listed was enforcing.
@@ -228,20 +277,57 @@ def policy_effective(
 
 @policy_app.command("simulate")
 def policy_simulate(
-    file: Path = typer.Option(..., "--file", "-f", help="Candidate policy YAML."),
+    key: str | None = typer.Argument(
+        None,
+        help="A policy already loaded (`agentfox policy list`): replay its live version, "
+        "the simulation `policy enforce` needs before it blocks. Or give --file.",
+    ),
+    file: Path | None = typer.Option(None, "--file", "-f", help="Candidate policy YAML."),
     agent: str | None = None,
     since_days: int = 30,
     limit: int = 1000,
 ) -> None:
-    """Replay recorded traffic against a candidate policy.
+    """Replay recorded traffic against a candidate policy, or a loaded one by key.
 
     Exits non-zero when the change would newly block production traffic, so it can
-    gate a policy PR the same way `eval gate` gates a code PR.
+    gate a policy PR the same way `test gate` gates a code PR.
     """
+    from agentfox.apps.cli import account as _account
     from agentfox.platform.policy import PolicyDocument, record_simulation, simulate
 
-    candidate = PolicyDocument.from_yaml(file.read_text())
+    if (key is None) == (file is None):
+        raise typer.BadParameter("give a policy key or --file, not both", param_hint="KEY")
+    if file is not None and not file.is_file():
+        console.print(f"[red]no such file: {file}[/]")
+        raise typer.Exit(2)
+    remote = _account.use(console)
+    if remote is not None:
+        try:
+            body = file.read_text() if file is not None else _live_body(remote, key or "")
+            result = remote.post(
+                "/api/policies/simulate",
+                {"body": body, "agent": agent, "since_days": since_days, "limit": limit},
+            )
+        except _account.AccountError as exc:
+            _account.fail(console, exc)
+        name = key or PolicyDocument.from_yaml(body).key
+        newly = {
+            k: result.get(k) or [] for k in ("newly_blocked", "newly_escalated", "newly_allowed")
+        }
+        _print_simulation(
+            name,
+            result.get("replayed", 0),
+            result.get("unchanged", 0),
+            newly,
+            bool(result.get("risky")),
+        )
+        return
+
     with _session() as session:
+        if file is not None:
+            candidate = PolicyDocument.from_yaml(file.read_text())
+        else:
+            candidate = PolicyDocument.from_yaml(_local_live_body(session, key or ""))
         diff = simulate(
             session,
             candidate,
@@ -250,16 +336,77 @@ def policy_simulate(
             limit=limit,
         )
         record_simulation(session, candidate, diff, run_by="cli")
+    _print_simulation(
+        candidate.key,
+        diff.replayed,
+        diff.unchanged,
+        {
+            "newly_blocked": diff.newly_blocked,
+            "newly_escalated": diff.newly_escalated,
+            "newly_allowed": diff.newly_allowed,
+        },
+        diff.risky,
+    )
 
-    console.print(f"[bold]{candidate.key}[/] simulated against {diff.replayed} decisions")
-    console.print(f"  unchanged        {diff.unchanged}")
-    console.print(f"  newly blocked    [red]{len(diff.newly_blocked)}[/]")
-    console.print(f"  newly escalated  [yellow]{len(diff.newly_escalated)}[/]")
-    console.print(f"  newly allowed    [green]{len(diff.newly_allowed)}[/]")
+
+def _unknown_policy(key: str, known: list[str]) -> None:
+    # "unknown policy" with no list leaves the reader guessing at a key they have
+    # never seen written down.
+    console.print(f"[red]unknown policy '{key}'[/]")
+    if known:
+        console.print(f"  known policies: {', '.join(sorted(known))}")
+        console.print("  [dim]`agentfox policy list` shows each one's mode.[/]")
+    else:
+        console.print("  no policies loaded yet. Run `agentfox init` to load the shipped packs.")
+    raise typer.Exit(1)
+
+
+def _live_body(remote, key: str) -> str:
+    """The YAML of the version of ``key`` in force on the account (newest when unbound)."""
+    from agentfox.apps.cli.account import AccountError
+
+    try:
+        policy = remote.get(f"/api/policies/{key}")
+    except AccountError as exc:
+        if exc.status != 404:
+            raise
+        _unknown_policy(key, [p["key"] for p in remote.get("/api/policies").get("policies") or []])
+    return policy.get("live_body") or policy.get("body") or ""
+
+
+def _local_live_body(session, key: str) -> str:
+    from sqlalchemy import select
+
+    from agentfox.core.models import Policy, PolicyVersion
+    from agentfox.platform.policy import current_binding
+
+    policy = session.scalar(select(Policy).where(Policy.key == key))
+    if policy is None:
+        _unknown_policy(key, [p.key for p in session.scalars(select(Policy))])
+    _binding, bound = current_binding(session, policy.id)
+    version = (
+        bound
+        or session.scalars(
+            select(PolicyVersion)
+            .where(PolicyVersion.policy_id == policy.id)
+            .order_by(PolicyVersion.version.desc())
+        ).first()
+    )
+    return version.body if version else ""
+
+
+def _print_simulation(
+    name: str, replayed: int, unchanged: int, newly: dict[str, list], risky: bool
+) -> None:
+    console.print(f"[bold]{name}[/] simulated against {replayed} decisions")
+    console.print(f"  unchanged        {unchanged}")
+    console.print(f"  newly blocked    [red]{len(newly['newly_blocked'])}[/]")
+    console.print(f"  newly escalated  [yellow]{len(newly['newly_escalated'])}[/]")
+    console.print(f"  newly allowed    [green]{len(newly['newly_allowed'])}[/]")
     for label, colour, records in (
-        ("would block", "red", diff.newly_blocked),
-        ("would escalate", "yellow", diff.newly_escalated),
-        ("would allow", "green", diff.newly_allowed),
+        ("would block", "red", newly["newly_blocked"]),
+        ("would escalate", "yellow", newly["newly_escalated"]),
+        ("would allow", "green", newly["newly_allowed"]),
     ):
         for record in records[:10]:
             why = (record["reasons"] or [""])[0] or (
@@ -272,7 +419,7 @@ def policy_simulate(
             )
         if len(records) > 10:
             console.print(f"    [dim]… and {len(records) - 10} more {label}[/]")
-    if diff.risky:
+    if risky:
         console.print(
             "\n[bold red]This change would block production traffic. "
             "Review before promoting to enforce.[/]"
@@ -296,25 +443,20 @@ def policy_observe(key: str) -> None:
 def _set_mode(key: str, mode: str) -> None:
     from sqlalchemy import select
 
+    from agentfox.apps.cli import account as _account
     from agentfox.core.models import Policy
     from agentfox.platform.ledger import chain
     from agentfox.platform.policy import set_mode
 
+    remote = _account.use(console)
+    if remote is not None:
+        _account_set_mode(remote, key, mode)
+        return
+
     with _session() as session:
         binding = set_mode(session, key, mode)
         if binding is None:
-            # "unknown policy" with no list leaves the reader guessing at a key they
-            # have never seen written down.
-            known = sorted(p.key for p in session.scalars(select(Policy)))
-            console.print(f"[red]unknown policy '{key}'[/]")
-            if known:
-                console.print(f"  known policies: {', '.join(known)}")
-                console.print("  [dim]`agentfox policy list` shows each one's mode.[/]")
-            else:
-                console.print(
-                    "  no policies loaded yet. Run `agentfox init` to load the shipped packs."
-                )
-            raise typer.Exit(1)
+            _unknown_policy(key, [p.key for p in session.scalars(select(Policy))])
         chain.append(
             session,
             f"policy.mode_{mode}",
@@ -325,6 +467,35 @@ def _set_mode(key: str, mode: str) -> None:
             payload={"mode": mode},
         )
     console.print(f"[green]{key}[/] → [bold]{mode}[/]")
+
+
+def _account_set_mode(remote, key: str, mode: str) -> None:
+    """Change the mode on the account, through the route the dashboard uses: blocking
+    needs a recorded simulation of exactly the rules that would block, as Start
+    blocking does in the dashboard (`policy simulate <key>` records one)."""
+    from agentfox.apps.cli.account import AccountError, fail
+
+    try:
+        changed = remote.post(f"/api/policies/{key}/mode", {"mode": mode})
+    except AccountError as exc:
+        if exc.status == 404:
+            try:
+                known = [p["key"] for p in remote.get("/api/policies").get("policies") or []]
+            except AccountError:
+                known = []
+            _unknown_policy(key, known)
+        if exc.status == 409 and mode == "enforce":
+            console.print(
+                f"[yellow]{key} has not been simulated yet[/], so it is still watching. "
+                "Blocking needs a replay of recent traffic first, as in the dashboard:"
+            )
+            console.print(f"  agentfox policy simulate {key}")
+            console.print(f"  agentfox policy enforce {key}")
+            raise typer.Exit(1) from None
+        fail(console, exc)
+    console.print(
+        f"[green]{key}[/] → [bold]{changed.get('mode', mode)}[/]  [dim]in your account[/]"
+    )
 
 
 @policy_app.command("validate")
