@@ -229,6 +229,17 @@ the file it came from.
   uses `$AGENTFOX_URL` and says so.
 
 ### Fixed
+- **`auto()` with an account key checks a tool's result as a tool result.** It was sent
+  as a plain input, so the rules for what the agent reads (indirect injection) never
+  judged it there, unlike the attack test and the local path. An issue raised by a tool
+  result now says so ("Blocked a tool result: a prompt attack").
+- Activity keeps an Agents SDK hand-off in the turn it belongs to, and a question asked
+  again after a reply starts a new turn; a run that recorded the person's message starts
+  its own turn. A run's page is titled with the turn's message.
+- An agent's Settings shows the environment its traffic comes from; "Needs attention"
+  counts only agents with a reason; hand-off targets read as names; an imported policy
+  gets a description; the run-your-app step shows the `auto()` line on one line.
+- Docs screenshots re-shot from the current app.
 - `up`, `login`, `doctor` and key errors link to useagentfox.com only for AgentFox Cloud's
   own gateway; a self-hosted server gets its own address, or a plain note that it is
   unknown.
