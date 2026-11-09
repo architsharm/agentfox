@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appReturnPath, breakerLabel, breakerRule, controlNotice, noticeSentence, refusalText, stateLabel } from "./agentStatus";
+import { appReturnPath, attentionReasons, breakerLabel, breakerRule, controlNotice, environmentLabel, noticeSentence, refusalText, stateLabel } from "./agentStatus";
 
 const O = "https://app.example.com";
 const F = "/app/projects/support";
@@ -59,5 +59,33 @@ describe("breaker", () => {
     expect(breakerLabel({ mode: "alert", state: "open" })[0]).toBe("Tripped: issue raised");
     expect(breakerLabel({ mode: "pause", state: "open" })[0]).toBe("Open: calls refused");
     expect(breakerLabel({ mode: "pause", state: "closed" })[0]).toBe("Closed");
+  });
+});
+
+describe("attentionReasons", () => {
+  const fresh = { registered: true, owner_email: null, risk_tier: "limited", control_state: "active" };
+
+  it("does not count an agent whose only gap is a missing owner", () => {
+    // Every agent `agentfox init` adds starts like this: Needs attention said 11 of 11.
+    expect(attentionReasons(fresh)).toEqual([]);
+  });
+
+  it("names each real reason", () => {
+    expect(attentionReasons({ ...fresh, registered: false })).toEqual(["Not registered: seen in traffic, never added"]);
+    expect(attentionReasons({ ...fresh, control_state: "quarantined" })).toEqual(["Paused"]);
+    expect(attentionReasons(fresh, 2)).toEqual(["2 open issues"]);
+    expect(attentionReasons({ ...fresh, risk_tier: "high" })).toEqual(["No owner for a high-risk agent"]);
+    expect(attentionReasons({ ...fresh, risk_tier: "high", owner_email: "a@example.com" })).toEqual([]);
+  });
+});
+
+describe("environmentLabel", () => {
+  it("says where the traffic comes from, and the registered one when it differs", () => {
+    expect(environmentLabel({ environment: "development", traffic_environment: "production" })).toBe(
+      "production (its traffic; registered as development)",
+    );
+    expect(environmentLabel({ environment: "production", traffic_environment: "production" })).toBe("production");
+    expect(environmentLabel({ environment: "development" })).toBe("development");
+    expect(environmentLabel({})).toBe("—");
   });
 });

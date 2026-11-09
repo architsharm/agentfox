@@ -33,6 +33,7 @@ from agentfox.core.models import (
     LineageEdge,
     McpServer,
     Tool,
+    Trace,
     User,
     utcnow,
 )
@@ -368,7 +369,21 @@ def get_agent(
     slug: str, session: Session = Depends(db), _user: User = Depends(current_user)
 ) -> dict[str, Any]:
     agent = get_agent_or_404(session, slug)
-    return _agent_json(agent, session)
+    return _agent_detail_json(agent, session)
+
+
+def _agent_detail_json(agent: Agent, session: Session) -> dict[str, Any]:
+    """One agent, with where its traffic comes from beside the environment it was
+    registered in: `agentfox init` registers a new agent as development while
+    `auto()` reports production, and its page said "development" for an agent
+    running live. What discovery stored is left as it is."""
+    latest = session.scalar(
+        select(Trace.environment)
+        .where(Trace.agent_id == agent.id)
+        .order_by(Trace.started_at.desc())
+        .limit(1)
+    )
+    return {**_agent_json(agent, session), "traffic_environment": latest}
 
 
 class AgentUpdate(BaseModel):
@@ -441,7 +456,7 @@ def agent_posture(
     slug: str, session: Session = Depends(db), _user: User = Depends(current_user)
 ) -> dict[str, Any]:
     from agentfox.capabilities.evaluation.drift import evaluate_slos
-    from agentfox.core.models import Decision, Trace
+    from agentfox.core.models import Decision
 
     agent = get_agent_or_404(session, slug)
 
@@ -465,7 +480,7 @@ def agent_posture(
         by_verdict[decision.verdict] = by_verdict.get(decision.verdict, 0) + 1
 
     return {
-        "agent": _agent_json(agent, session),
+        "agent": _agent_detail_json(agent, session),
         "traces": len(traces),
         "decisions": len(decisions),
         "decisions_by_verdict": by_verdict,

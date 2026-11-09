@@ -188,11 +188,14 @@ export default async function PolicyDetail({
   return (
     <>
       <Header back={{ href: "/app/policies", label: "Policies" }} title={policy.name || key} />
-      <p className="sub">
-        {isNew
-          ? `New policy — nothing saved yet. Save below to create it${initialScopeId && initialScopeId !== "*" ? ` scoped to ${initialScopeId}` : ""}.`
-          : policy.description || "No description."}
-      </p>
+      {/* A policy with no description (an older import) shows no line, not "No description." */}
+      {(isNew || policy.description) && (
+        <p className="sub">
+          {isNew
+            ? `New policy — nothing saved yet. Save below to create it${initialScopeId && initialScopeId !== "*" ? ` scoped to ${initialScopeId}` : ""}.`
+            : policy.description}
+        </p>
+      )}
 
       <div className="row small" style={{ gap: 16, marginBottom: 16, alignItems: "center", flexWrap: "wrap" }}>
         <ModePill mode={binding?.mode} />

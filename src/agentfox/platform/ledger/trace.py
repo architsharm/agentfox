@@ -13,6 +13,7 @@ dashboards and SIEMs understand our spans without a translation layer.
 from __future__ import annotations
 
 import datetime as dt
+import json
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from typing import Any
@@ -338,6 +339,8 @@ def full_trace(
             "status": trace.status,
             "verdict": trace.verdict,
             "intent": trace.intent,
+            # What the person asked in the turn this run belongs to: its page's title.
+            "asked": _turn_message(session, trace, spans),
             "model": trace.model,
             "provider": trace.provider,
             "usage": trace.token_usage_json,
@@ -364,6 +367,40 @@ def full_trace(
             for t in taints
         ],
     }
+
+
+def _turn_message(session: Session, trace: Trace, spans: list[Span]) -> str | None:
+    """What the person asked in the turn ``trace`` is part of (masked).
+
+    ``auto()`` checks a message, each tool call and each tool's result as separate
+    runs; a tool call's page was titled with the tool's name. Its own message when it
+    has one (its summary, else an ``agentfox.input`` span), otherwise that of the
+    latest run before it on the same conversation: its session, else the same agent
+    and environment within `TURN_GAP` (how Activity folds a turn, `_group_turns`).
+    """
+    if trace.summary:
+        return trace.summary
+    for sp in spans:
+        text = (sp.attributes_json or {}).get("agentfox.input")
+        if text:
+            return str(text)[:200]
+    query = select(Trace.summary).where(
+        Trace.id != trace.id,
+        Trace.summary.is_not(None),
+        Trace.started_at <= trace.started_at,
+    )
+    if trace.session_id:
+        query = query.where(Trace.session_id == trace.session_id)
+    elif trace.agent_slug:
+        query = query.where(
+            Trace.session_id.is_(None),
+            Trace.agent_slug == trace.agent_slug,
+            Trace.environment == trace.environment,
+            Trace.started_at >= trace.started_at - TURN_GAP,
+        )
+    else:
+        return None
+    return session.scalar(query.order_by(Trace.started_at.desc()).limit(1))
 
 
 def _approvals_of(session: Session, decisions: list[Decision]) -> dict[str, dict[str, Any]]:
@@ -550,6 +587,16 @@ def search_traces(
             if held
             else {}
         )
+        # A run that kept the person's message (`record_input`) carries what they
+        # asked, even when the request also held a document or a tool's result and its
+        # input check therefore saw untrusted content: such a run starts a turn too.
+        asked.update(
+            session.scalars(
+                select(Span.trace_id).where(
+                    Span.trace_id.in_({t.id for t in traces}), Span.kind == "input"
+                )
+            )
+        )
         # A refusal before any check (a paused agent) left a span, not a decision.
         for sp in session.scalars(
             select(Span).where(Span.trace_id.in_({t.id for t in traces}), Span.kind == REFUSAL_SPAN)
@@ -617,25 +664,42 @@ def _group_turns(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     the runs after it on the same conversation (its ``session_id``, else the same
     agent and environment within `TURN_GAP`) that only check a tool call, a tool's
     result or the reply. A run that re-checks the same message (a framework sends
-    the whole conversation on each model call) continues the turn too. Without the
-    fold, one question read as three rows, the second and third headed by a tool's
-    name and a tool's output.
+    the whole conversation on each model call) continues the turn too, until the
+    turn has replied: the same question asked again after an answer is a new turn.
+    Without the fold, one question read as three rows, the second and third headed
+    by a tool's name and a tool's output.
+
+    A hand-off continues the turn it came from (`_handoff_ack`): the agent handed to
+    checks the hand-off's acknowledgement as its input, under its own name, and its
+    runs belong to the question the person asked the first agent.
     """
     out: list[dict[str, Any]] = []
     open_turns: dict[tuple[str, ...], tuple[dict[str, Any], dt.datetime | None]] = {}
+    # The turn each environment touched last, for a hand-off to continue.
+    latest: dict[str, tuple[dict[str, Any], dt.datetime | None]] = {}
     for row in reversed(rows):
         key = _turn_key(row)
+        env = str(row.get("environment") or "")
         at = _parse(row.get("started_at"))
+        if _handoff_ack(row):
+            row = {**row, "asked": False, "summary": None}
+            source = open_turns.get(key) if key[0] == "session" else latest.get(env)
+            if source is not None and _near(key, at, source[1]):
+                turn = source[0]
+                _fold(turn, row)
+                open_turns[key] = latest[env] = (turn, at or source[1])
+                continue
         current = open_turns.get(key)
         if current is not None:
             turn, last = current
-            near = key[0] == "session" or (
-                at is not None and last is not None and at - last <= TURN_GAP
+            same_message = (
+                bool(row.get("summary"))
+                and row.get("summary") == turn.get("summary")
+                and "output" not in turn["surfaces"]
             )
-            same_message = bool(row.get("summary")) and row.get("summary") == turn.get("summary")
-            if near and (not row.get("asked") or same_message):
+            if _near(key, at, last) and (not row.get("asked") or same_message):
                 _fold(turn, row)
-                open_turns[key] = (turn, at or last)
+                open_turns[key] = latest[env] = (turn, at or last)
                 continue
         turn = {
             **row,
@@ -645,10 +709,32 @@ def _group_turns(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "tools": list(row["tools"]),
             "surfaces": list(row["surfaces"]),
         }
-        open_turns[key] = (turn, at)
+        open_turns[key] = latest[env] = (turn, at)
         out.append(turn)
     out.reverse()
     return out
+
+
+def _near(key: tuple[str, ...], at: dt.datetime | None, last: dt.datetime | None) -> bool:
+    return key[0] == "session" or (at is not None and last is not None and at - last <= TURN_GAP)
+
+
+def _handoff_ack(row: dict[str, Any]) -> bool:
+    """Whether the run's message is an OpenAI Agents SDK hand-off's acknowledgement,
+    ``{"assistant": "<agent name>"}``: the tool output the agent handed to reads as its
+    input, and nothing the person said."""
+    summary = str(row.get("summary") or "").strip()
+    if not (summary.startswith("{") and summary.endswith("}")):
+        return False
+    try:
+        value = json.loads(summary)
+    except ValueError:
+        return False
+    return (
+        isinstance(value, dict)
+        and list(value) == ["assistant"]
+        and isinstance(value["assistant"], str)
+    )
 
 
 def _fold(turn: dict[str, Any], row: dict[str, Any]) -> None:

@@ -10,6 +10,7 @@ import { Modal } from "@/components/product/Modal";
 import { byRepo, groupProposed, isAdded, isProposed, memberRelation, noAgents, proposedSource, searchProposed } from "@/lib/product/proposedSystems";
 import { ProposedBulk } from "@/components/product/ProposedBulk";
 import { NoticeToast } from "@/components/product/NoticeToast";
+import { attentionReasons } from "@/lib/product/agentStatus";
 
 export const metadata: Metadata = appPageMetadata("Agents", "Every agent in this workspace.");
 export const dynamic = "force-dynamic";
@@ -43,15 +44,14 @@ export default async function Projects({ searchParams }: { searchParams: Promise
   const shownProposed = searchProposed(proposed, q);
   const repos = byRepo(shownProposed);
   const live = all.filter(isAdded);
-  // Why each one needs attention, said on its row.
-  const reasons = (a: any) => [!a.registered && "Not registered: seen in traffic, never added", !a.owner_email && "No owner"].filter(Boolean) as string[];
-  const attention = live.filter((a) => reasons(a).length > 0);
-  const tab = sp.tab === "attention" ? "attention" : sp.tab === "proposed" ? "proposed" : "all";
-  const rows = tab === "attention" ? attention : live;
-
   const byAgent: Record<string, any> = Object.fromEntries((usage.rows || []).map((r: any) => [r.key, r]));
   const issues: Record<string, number> = {};
   for (const f of findings.findings || []) if (f.agent_slug) issues[f.agent_slug] = (issues[f.agent_slug] || 0) + 1;
+  // Why each one needs attention, said on its row; an agent with no reason is not counted.
+  const reasons = (a: any) => attentionReasons(a, issues[a.slug] || 0);
+  const attention = live.filter((a) => reasons(a).length > 0);
+  const tab = sp.tab === "attention" ? "attention" : sp.tab === "proposed" ? "proposed" : "all";
+  const rows = tab === "attention" ? attention : live;
   const max = Math.max(1, ...Object.values(byAgent).map((r: any) => r.requests));
 
   return (
@@ -167,7 +167,7 @@ export default async function Projects({ searchParams }: { searchParams: Promise
             </table>
           ) : (
             tab === "attention" ? (
-              <Empty>Every agent is registered and owned.</Empty>
+              <Empty>Nothing needs attention.</Empty>
             ) : (
               <Empty action={<Link href={noAgents(proposed.length).href} className="k-btn-primary">{noAgents(proposed.length).action}</Link>}>
                 {noAgents(proposed.length).text}

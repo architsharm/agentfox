@@ -1128,13 +1128,22 @@ def _finish(
     if not builder.rules:
         out.notes.append(f"Nothing from `{name}` translated, so no policy is created for it.")
         return
+    description = str(
+        data.get("description") or (data.get("metadata") or {}).get("description") or ""
+    ).strip()
+    if not description:
+        # The policy page would otherwise read "No description.": say where it came from.
+        count = len(builder.rules)
+        what = "a policy manifest" if source == "manifest" else "a governance rule file"
+        description = (
+            f"Imported from {what} (Agent Governance Toolkit): "
+            f"{count} {'rule' if count == 1 else 'rules'}."
+        )
     out.documents.append(
         PolicyDocument(
             key=builder.key,
             name=f"{name} (imported)",
-            description=str(
-                data.get("description") or (data.get("metadata") or {}).get("description") or ""
-            ).strip()[:1000],
+            description=description[:1000],
             mode="observe",
             default_effect="allow",
             scope=scope,
