@@ -35,10 +35,13 @@ export function AppChrome({
   const showBanner = !pathname.startsWith("/app/onboarding");
   return (
     <div className="shell">
+      <a href="#main" className="lp-skip">
+        Skip to content
+      </a>
       {side}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
         {topbar}
-        <main>
+        <main id="main">
           {showBanner && banner}
           {newProject && !gateOpen(pathname) ? <NewProjectPage server={newProject.server} first={newProject.first} github={newProject.github} /> : children}
         </main>

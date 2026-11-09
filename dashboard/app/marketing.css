@@ -445,7 +445,7 @@
 .mk .mk-btn-outline:hover { border-color: var(--mk-accent); background: var(--mk-accent-soft); }
 .mk .mk-btn-ghost { color: var(--mk-muted); padding-inline: 12px; }
 .mk .mk-btn-ghost:hover { color: var(--mk-text); }
-.mk a:focus-visible, .mk button:focus-visible {
+.mk a:focus-visible, .mk button:focus-visible, .mk summary:focus-visible, .mk pre[tabindex]:focus-visible {
   outline: 2px solid var(--mk-accent);
   outline-offset: 3px;
   border-radius: var(--mk-r-sm);
@@ -1460,6 +1460,7 @@
 /* The pricing-announcement capture, under the editions grid rather than inside a
    card: it is about all three editions, not one of them. */
 .mk-notify {
+  scroll-margin-top: 96px; /* a submit lands on #waitlist, under the sticky header */
   margin-top: 22px;
   display: flex;
   flex-wrap: wrap;
@@ -3674,6 +3675,9 @@
 .docs-doc p { margin: 12px 0 0; }
 .docs-doc ul { margin: 12px 0 0; padding-left: 1.2em; }
 .docs-doc a { color: var(--mk-accent); }
+/* A link inside a sentence needs more than colour: in dark the rose is only 2.6:1
+   against the body grey, under WCAG's 3:1 for telling a link from its text. */
+.docs-doc :is(p, li, td, dd) a:not([class]) { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
 .docs-doc pre {
   margin: 14px 0 0;
   padding: 14px 16px;

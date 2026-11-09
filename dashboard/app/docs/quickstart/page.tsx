@@ -21,6 +21,8 @@ export default function Page() {
         minutes. You need Python 3.11 or newer.
       </p>
 
+      {/* For screen readers: each step's title is an h3. */}
+      <h2 className="sr-only">Steps</h2>
       <Steps>
         <Step title="Create a key">
           <p>

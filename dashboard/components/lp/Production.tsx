@@ -67,7 +67,7 @@ export function Production() {
     <div className="lp">
       <Reveal />
       <LpNav />
-      <main>
+      <main id="main">
         <section className="lp-hero">
           <FlowArt mode="production" />
           <div className="lp-hero-copy">

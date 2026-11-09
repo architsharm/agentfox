@@ -54,7 +54,7 @@ export default function Privacy() {
   return (
     <div className="mk">
       <MarketingNav />
-      <main className="mk-prose">
+      <main id="main" className="mk-prose">
         <section className="mk-section mk-page-hero mk-ink-act">
           <div className="mk-wrap">
             <div className="mk-narrow">

@@ -34,7 +34,7 @@
 
   --af-fg: #1a1916;       /* 17.5:1 */
   --af-fg-2: #4a4740;     /*  7.9:1 */
-  --af-muted: #6e6a62;    /*  4.9:1 */
+  --af-muted: #6b675f;    /*  5.6:1 on white; 4.6:1 on the #e8e8ed chip (marketing.css), which #6e6a62 missed */
 
   --af-brand: #c8285a;    /*  5.2:1 */
   --af-brand-press: #a91f4a;

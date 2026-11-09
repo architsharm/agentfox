@@ -34,7 +34,8 @@ export function Code({
           {copy && lang !== "text" && <CopyButton text={text} />}
         </figcaption>
       )}
-      <pre>
+      {/* Focusable so a keyboard user can scroll a long line sideways. */}
+      <pre tabIndex={0}>
         <code>{text}</code>
       </pre>
     </figure>

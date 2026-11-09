@@ -332,7 +332,7 @@ export default async function LivePage() {
   return (
     <div className="mk">
       <MarketingNav />
-      <main>
+      <main id="main">
         <section className="mk-section mk-page-hero mk-ink-act">
           <div className="mk-wrap">
             <span className="mk-eyebrow mk-up">Live</span>

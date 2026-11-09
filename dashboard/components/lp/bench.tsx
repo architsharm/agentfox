@@ -84,7 +84,7 @@ export function Table({
 }) {
   return (
     <figure className="lp-doc-fig">
-      <div className="lp-doc-scroll">
+      <div className="lp-doc-scroll" tabIndex={0} role="region" aria-label={head.join(", ")}>
         <table className="lp-table">
           <thead>
             <tr>

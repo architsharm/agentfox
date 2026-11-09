@@ -11,11 +11,11 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
       <MarketingNav />
       <div className="docs-shell">
         <DocsSidebar />
-        <div className="docs-main">
+        <main id="main" className="docs-main">
           <DocsKicker />
           {children}
           <DocsPager />
-        </div>
+        </main>
       </div>
       <Footer />
     </div>
