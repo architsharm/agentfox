@@ -115,7 +115,7 @@ export default function Page() {
 
       <h2>Version 0.5</h2>
       <ul>
-        <li>No SSO, OIDC or SCIM. The first operator comes from GitHub sign-in or <code>agentfox admin users create</code>.</li>
+        <li>No SSO, OIDC or SCIM. The first operator comes from GitHub sign-in or <code>agentfox admin users create</code>; teammates are added under Settings → Members with a sign-in key (no email invite).</li>
         <li>One organisation per deployment, enforced at the database session.</li>
         <li>Text only.</li>
       </ul>

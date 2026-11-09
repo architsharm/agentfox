@@ -323,7 +323,7 @@ function ConnectLive({ gateway, siteUrl, counts }: { gateway: string; siteUrl: s
       />
       <p className="k-muted gs-note">
         Requests through this gateway show up here. Claude Code and Codex hooks decide on your machine and record there.{" "}
-        <a href="/app">Go to the dashboard</a> · <Link href="/app/start">Full checklist</Link>
+        <a href="/app">Go to the dashboard</a>
       </p>
     </div>
   );

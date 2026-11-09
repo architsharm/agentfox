@@ -34,8 +34,8 @@ function parse(href: string): Pattern {
  * only when the page has those values; on a page below the pattern's path the
  * query is not asked for (an issue's own page is still Issues). A bare path
  * matches its subtree, unless another row claims the page's query on that same
- * path — so "Get started" (/app/start) and "Settings" (/app/start?tab=connect)
- * never light up together, nor Canvas and Activity. `/app` is the prefix of
+ * path — so a row with a query and the bare row on that path
+ * never light up together. `/app` is the prefix of
  * everything, so it only ever matches exactly.
  */
 export function SideNav({ projects, initial }: { projects: ProjectOption[]; initial: string | null }) {

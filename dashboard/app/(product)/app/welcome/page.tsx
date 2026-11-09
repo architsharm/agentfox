@@ -75,6 +75,7 @@ export default async function Welcome({ searchParams }: { searchParams: Promise<
  * in this workspace the same way.
  */
 function NoGithub({ hasAccount }: { hasAccount: boolean }) {
+  const githubReady = Boolean(process.env.GITHUB_CLIENT_ID);
   return (
     <>
       {/* The card's title is an h3, straight under the page's h1. */}
@@ -92,14 +93,12 @@ function NoGithub({ hasAccount }: { hasAccount: boolean }) {
             <Link href="/app" className="k-btn-primary">
               Create a key and connect
             </Link>
-            {!hasAccount && (
+            {/* Only where this server has a GitHub OAuth app: without one it can only fail. */}
+            {!hasAccount && githubReady && (
               <a href="/api/auth/github/login" className="k-btn">
                 Connect GitHub instead
               </a>
             )}
-            <Link href="/app/start" className="k-btn-ghost">
-              Full checklist
-            </Link>
           </div>
         </div>
       </Card>

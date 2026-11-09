@@ -43,6 +43,16 @@ describe("sign out", () => {
     expect(res.headers.get("set-cookie") || "").toMatch(/agentfox_session=;/);
   });
 
+  it("never revokes a pasted key kept as the session: the CLI and the app run on it", async () => {
+    const req = new NextRequest("http://localhost:3000/api/auth/logout", {
+      method: "POST",
+      headers: { Cookie: "agentfox_session=nom_api_ownerkey; agentfox_session_kept=1" },
+    });
+    const res = await POST(req);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(res.headers.get("set-cookie") || "").toMatch(/agentfox_session=;/);
+  });
+
   it("makes no gateway call without a session", async () => {
     await POST(logout());
     expect(fetchMock).not.toHaveBeenCalled();

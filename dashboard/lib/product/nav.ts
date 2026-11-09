@@ -26,12 +26,8 @@ const SETTINGS: NavItem = [
   "Settings",
   "/app/settings",
   [
-    "/app/start",
-    "/app/start?tab=connect",
-    "/app/start?tab=tokens",
     "/app/sources",
     "/app/entitlement",
-    "/app/onboarding",
     "/app/features",
     "/app/guardrails",
   ],
@@ -48,7 +44,7 @@ export const WORKSPACE_NAV: NavGroup[] = [
   {
     group: "Guardrails",
     items: [
-      ["Agents", "/app/map", ["/app/projects"], "/app/projects"],
+      ["Agents", "/app/map", ["/app/projects", "/app/onboarding", "/app/welcome"], "/app/projects"],
       ["Policies", "/app/policies"],
       ["Approvals", "/app/approvals"],
       ["Issues", "/app/findings"],

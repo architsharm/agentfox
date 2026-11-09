@@ -160,7 +160,7 @@ export default async function Compliance({
                 {counts.not_computed > 0 && (
                   <span className="small muted">
                     {counts.not_computed} never computed. They need real traffic.{" "}
-                    <Link href="/app/start">Connect an agent</Link>
+                    <Link href="/app/map">Connect an agent</Link>
                   </span>
                 )}
                 <form action="/api/compliance/compute" method="POST">

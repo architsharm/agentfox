@@ -138,7 +138,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-339 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+342 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -169,6 +169,9 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/detectors/{key}/pull` | Download the model weights this detector loads, in a background job. |
 | `GET` | `/api/health` | Liveness, plus what is currently not being checked. |
 | `GET` | `/api/me` | The signed-in identity, for the account menu. |
+| `GET` | `/api/members` | Everyone in this workspace, owners first. |
+| `POST` | `/api/members` | Add a teammate with a role. Returns a sign-in key for them, shown this once. |
+| `PATCH` | `/api/members/{member_id}` | Change a teammate's role, or deactivate them (their keys stop working with it). |
 | `GET` | `/api/memory` | List Entries |
 | `POST` | `/api/memory/{entry_id}/revoke` | Pull an entry immediately — the concrete fix for 'no way to find and |
 | `POST` | `/api/memory/{entry_id}/verify` | A human vouches for an entry — it stops decaying on the unverified TTL. |

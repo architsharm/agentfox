@@ -17,5 +17,5 @@ export default async function TokensRedirect({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  return legacyTabRedirect(searchParams, "/app/start", "tokens");
+  return legacyTabRedirect(searchParams, "/app/settings", "tokens");
 }

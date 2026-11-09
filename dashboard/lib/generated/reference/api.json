@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 337,
+ "count": 342,
  "routes": [
   {
    "method": "GET",
@@ -1057,6 +1057,39 @@
   },
   {
    "method": "POST",
+   "path": "/api/agents/reject",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Dismiss several proposed agents at once (\"Dismiss all\" on a long Proposed list): the same state change and ledger entry as dismissing each. Ids that are not drafts are skipped.",
+   "description": "Dismiss several proposed agents at once (\"Dismiss all\" on a long Proposed list):\nthe same state change and ledger entry as dismissing each. Ids that are not drafts\nare skipped.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "DraftIds",
+    "fields": [
+     {
+      "name": "ids",
+      "type": "array",
+      "required": true,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
    "path": "/api/agents/{agent_id}/approve",
    "section": "agents",
    "audience": "operator",
@@ -1143,6 +1176,35 @@
    "body": null
   },
   {
+   "method": "DELETE",
+   "path": "/api/agents/{slug}",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Remove one agent from the dashboard (a duplicate, or one that is gone), the way disconnecting its project removes each of its agents: its guardrails recorded and emptied, its tool permissions revoked, what init declared for it cleared. Its history (traffic, issues, audit) is kept, and `agentfox init` or ``agentfox up`` proposes it again. The rest of its project stays.",
+   "description": "Remove one agent from the dashboard (a duplicate, or one that is gone), the way\ndisconnecting its project removes each of its agents: its guardrails recorded and\nemptied, its tool permissions revoked, what init declared for it cleared. Its\nhistory (traffic, issues, audit) is kept, and `agentfox init` or ``agentfox up``\nproposes it again. The rest of its project stays.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
    "method": "GET",
    "path": "/api/agents/{slug}",
    "section": "agents",
@@ -1201,6 +1263,12 @@
    "body": {
     "model": "AgentUpdate",
     "fields": [
+     {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
      {
       "name": "owner_email",
       "type": "string",
@@ -8009,6 +8077,113 @@
     }
    ],
    "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/members",
+   "section": "members",
+   "audience": "operator",
+   "summary": "Everyone in this workspace, owners first.",
+   "description": "Everyone in this workspace, owners first.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/members",
+   "section": "members",
+   "audience": "operator",
+   "summary": "Add a teammate with a role. Returns a sign-in key for them, shown this once.",
+   "description": "Add a teammate with a role. Returns a sign-in key for them, shown this once.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "MemberIn",
+    "fields": [
+     {
+      "name": "email",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "role",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "PATCH",
+   "path": "/api/members/{member_id}",
+   "section": "members",
+   "audience": "operator",
+   "summary": "Change a teammate's role, or deactivate them (their keys stop working with it).",
+   "description": "Change a teammate's role, or deactivate them (their keys stop working with it).",
+   "params": [
+    {
+     "name": "member_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "MemberUpdate",
+    "fields": [
+     {
+      "name": "role",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "active",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
   },
   {
    "method": "GET",

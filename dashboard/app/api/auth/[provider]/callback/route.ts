@@ -5,6 +5,7 @@
  * email) and mint a token.
  */
 
+import { SIGNED_IN_LANDING } from "@/lib/product/session";
 import { NextRequest, NextResponse } from "next/server";
 import { apiBase, env } from "@/lib/env";
 import { SESSION_COOKIE } from "@/lib/product/api";
@@ -80,7 +81,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ provider: s
   }
   const { token } = await provisionRes.json();
 
-  const res = NextResponse.redirect(new URL("/app/welcome", origin));
+  const res = NextResponse.redirect(new URL(SIGNED_IN_LANDING, origin));
   res.cookies.delete(oauthStateCookie(provider.id));
   res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
