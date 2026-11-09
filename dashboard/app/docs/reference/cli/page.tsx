@@ -36,10 +36,12 @@ agentfox scan --help`}</Code>
 
       <Callout kind="note" title="Where state lives">
         <p>
-          Commands that read or write state use the database in{" "}
-          <code>AGENTFOX_STATE_DIR</code> (or <code>AGENTFOX_DATABASE_URL</code>). In a
-          source checkout the default is the repository itself; set the variable to keep
-          experiments out of it. See <Link href="/docs/reference/config">Configuration</Link>.
+          Commands that read or write local state use one database per
+          installation, not per folder: <code>~/.agentfox/agentfox.db</code> (or{" "}
+          <code>$XDG_DATA_HOME/agentfox/agentfox.db</code>). <code>AGENTFOX_STATE_DIR</code> or{" "}
+          <code>AGENTFOX_DATABASE_URL</code> moves it; in a source checkout it is the repository
+          root. The full table is in{" "}
+          <Link href="/docs/reference/install#state">Install options</Link>.
         </p>
       </Callout>
 

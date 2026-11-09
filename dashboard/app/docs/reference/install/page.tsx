@@ -62,7 +62,11 @@ export default function Page() {
             <td><code>uv add agentfox</code></td>
           </tr>
           <tr>
-            <td>As a tool, on the PATH everywhere (needed for Claude Code and Codex hooks)</td>
+            <td>
+              As a tool, on the PATH everywhere. Claude Code and Codex hooks call AgentFox by
+              absolute path, so they work from any of these installs; a tool install keeps them
+              working if you delete the virtual environment.
+            </td>
             <td><code>uv tool install agentfox</code> or <code>pipx install agentfox</code></td>
           </tr>
           <tr>
