@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import datetime as dt
+import os
+import re
 from pathlib import Path
 
 import typer
@@ -283,8 +285,63 @@ def policy_simulate(
 
 @policy_app.command("enforce")
 def policy_enforce(key: str) -> None:
-    """Promote a policy from observe to enforce."""
+    """Promote a policy from observe to enforce.
+
+    KEY is a policy key (`agentfox policy list`) or a library applied per agent
+    (`basic`, `tool-containment`): every agent's copy of it is switched.
+    """
     _set_mode(key, "enforce")
+    _warn_observe_lines(Path.cwd())
+
+
+#: Directories never searched for `agentfox.auto(...)` lines: installs and VCS.
+_SKIP_DIRS = {".git", ".venv", "venv", "env", "node_modules", "site-packages", "__pycache__"}
+_OBSERVE_LINE = re.compile(r"""agentfox\.auto\([^)]*mode\s*=\s*["']observe["']""")
+
+
+def observe_lines(root: Path, limit: int = 5000) -> list[tuple[Path, int, str]]:
+    """The `agentfox.auto(..., mode="observe")` lines under ``root``: (file, line
+    number, line). Such a line never raises, whatever the policies' modes, so
+    `policy enforce` changes nothing for that process. Earlier versions of
+    `agentfox up` wrote it."""
+    found: list[tuple[Path, int, str]] = []
+    seen = 0
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS and not d.startswith(".")]
+        for name in filenames:
+            if not name.endswith(".py"):
+                continue
+            seen += 1
+            if seen > limit:
+                return found
+            path = Path(dirpath) / name
+            try:
+                text = path.read_text(errors="ignore")
+            except OSError:
+                continue
+            if "agentfox.auto(" not in text:
+                continue
+            for number, line in enumerate(text.splitlines(), start=1):
+                if _OBSERVE_LINE.search(line):
+                    found.append((path, number, line.strip()))
+    return found
+
+
+def _warn_observe_lines(root: Path) -> None:
+    """Say which `auto(mode="observe")` lines keep blocking off, and the edit."""
+    from rich.markup import escape
+
+    for path, number, line in observe_lines(root):
+        try:
+            where = path.relative_to(root)
+        except ValueError:
+            where = path
+        fixed = re.sub(r""",?\s*mode\s*=\s*["']observe["']""", "", line).replace("(,", "(")
+        console.print(
+            f"[yellow]{escape(str(where))}:{number} calls agentfox.auto with "
+            f'mode="observe", which never blocks whatever the policies say.[/] '
+            f"For this to take effect there, change the line to: [cyan]{escape(fixed)}[/]"
+        )
 
 
 @policy_app.command("observe")
@@ -302,6 +359,43 @@ def _set_mode(key: str, mode: str) -> None:
 
     with _session() as session:
         binding = set_mode(session, key, mode)
+        if binding is None:
+            # A library applied per agent (the dashboard's Libraries, `basic` the basic
+            # guardrails) lives in one copy per agent, `agent.<slug>.<key>`: switch
+            # them all, so the command the docs and `auto()` give works there too.
+            copies = sorted(
+                k
+                for k in session.scalars(select(Policy.key).where(Policy.key.like("agent.%")))
+                if k.count(".") >= 2 and k.split(".", 2)[2] == key
+            )
+            for copy in copies:
+                set_mode(session, copy, mode)
+                chain.append(
+                    session,
+                    f"policy.mode_{mode}",
+                    actor_type="user",
+                    actor_id="cli",
+                    subject_type="policy",
+                    subject_id=copy,
+                    payload={"mode": mode, "library": key},
+                )
+                console.print(f"[green]{copy}[/] → [bold]{mode}[/]")
+            if copies:
+                return
+            # A shipped pack this workspace never loaded (a workspace set up from the
+            # dashboard has the per-agent libraries instead): load it in that mode.
+            from agentfox.platform.policy import load_available, save_policy
+
+            shipped = next((d for d in load_available() if d.key == key), None)
+            if shipped is not None:
+                save_policy(
+                    session,
+                    shipped,
+                    author="cli",
+                    notes="loaded by agentfox policy",
+                    bind_mode=mode,
+                )
+                binding = set_mode(session, key, mode)
         if binding is None:
             # "unknown policy" with no list leaves the reader guessing at a key they
             # have never seen written down.

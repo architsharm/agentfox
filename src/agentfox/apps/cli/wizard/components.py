@@ -526,8 +526,11 @@ def _python_ask(run: Run) -> None:
 
 
 def _auto_lines(run: Run) -> str:
-    mode = ', mode="observe"' if run.mode == "observe" else ""
-    return f'import agentfox\n\nagentfox.auto("{run.agent}"{mode})  # added by `agentfox up`\n'
+    # No `mode=` whatever the choice: the policies' modes decide (`auto()`'s default
+    # "policy" mode), so "Watch first" watches and `agentfox policy enforce <key>`
+    # starts blocking with nothing to edit. `mode="observe"` would never raise
+    # whatever the policies say, which made that suggested next step a no-op.
+    return f'import agentfox\n\nagentfox.auto("{run.agent}")  # added by `agentfox up`\n'
 
 
 def _python_apply(run: Run) -> None:
@@ -1229,7 +1232,8 @@ BY_KEY = {c.key: c for c in CATALOGUE}
 def _apply_declared_modes(run: Run) -> None:
     """ "Shipped defaults": each pack in the mode it declares. A new workspace starts
     every pack watching (`setup_workspace`); this is the choice that makes tool
-    containment block, the one pack that declares enforce."""
+    containment block, the one pack that declares enforce. Only ever upgrades: a pack
+    someone switched to blocking stays blocking (see `apply_mode`)."""
     from agentfox.platform.policy import load_available
 
     try:
@@ -1241,7 +1245,7 @@ def _apply_declared_modes(run: Run) -> None:
     changed = []
     for key, mode in sorted(modes.items()):
         want = declared.get(key, mode)
-        if want == mode:
+        if want == mode or want != "enforce":
             continue
         try:
             run.target.backend.set_policy_mode(key, want)
@@ -1259,7 +1263,14 @@ def _apply_declared_modes(run: Run) -> None:
 
 
 def apply_mode(run: Run) -> None:
-    """Put the policies in the chosen safety mode."""
+    """Put the policies in the chosen safety mode.
+
+    Never downgrades. A pack that blocks was switched to blocking by a person
+    (`agentfox policy enforce`, Start blocking, or an earlier "enforce" here), and
+    running `up` again, which only adds what is new, must not quietly put it back to
+    watching. New packs are bound watching (`setup_workspace`); "Watch first" leaves
+    every mode as it is, the other two choices only turn blocking on. Demoting is
+    `agentfox policy observe <key>`."""
     if run.mode == "defaults":
         _apply_declared_modes(run)
         return
@@ -1271,19 +1282,22 @@ def apply_mode(run: Run) -> None:
         return
     changed, refused = [], []
     for key, mode in sorted(modes.items()):
-        if mode == want:
+        if mode == want or want == "observe":
             continue
         try:
             run.target.backend.set_policy_mode(key, want)
             changed.append(key)
         except BackendError as exc:
             refused.append(f"{key} ({exc})")
-    verb = "recorded, not blocked yet" if want == "observe" else "every policy blocks"
-    run.done(
-        "mode",
-        f"{plural(len(modes), 'policy')} in {want} — {verb}"
-        + (f" [dim](changed {', '.join(changed)})[/]" if changed else ""),
-    )
+    blocking = sorted(k for k, m in modes.items() if m == "enforce" or k in changed)
+    if want == "observe":
+        watching = len(modes) - len(blocking)
+        text = f"{plural(watching, 'policy')} watching — recorded, not blocked yet"
+        if blocking:
+            text += f"; kept blocking: {', '.join(blocking)}"
+    else:
+        text = f"{plural(len(modes), 'policy')} in enforce — every policy blocks"
+    run.done("mode", text + (f" [dim](changed {', '.join(changed)})[/]" if changed else ""))
     for item in refused:
         run.failed("mode", item)
     if want == "observe":
