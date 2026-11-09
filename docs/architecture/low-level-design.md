@@ -325,8 +325,8 @@ GitHub sign-in retires all but the newest `MAX_LOGIN_SESSIONS` (5) login tokens.
 ## 11. CLI command tree — `src/agentfox/apps/cli/`
 
 `main.py` registers every command; `layout.py:apply_layout` re-registers them under the
-thirteen visible verbs, in the panels ARCHITECTURE.md lists (Start, See, Watch, Contain,
-Prove, Operate). Nothing else is reachable at the top level except `demo` (hidden) and two
+fourteen visible verbs, in seven panels (Start, Discover, Govern, Protect, Test, Prove,
+Operate). Nothing else is reachable at the top level except `demo` (hidden) and two
 hidden protocol endpoints that installed configs call, `hooks run` and `mcp serve`. Every
 subcommand, checked against the live CLI, is in
 [plugins/shared/reference/cli.md](../../plugins/shared/reference/cli.md).
