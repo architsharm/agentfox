@@ -725,6 +725,7 @@ def _tools_apply(run: Run) -> None:
     # that cannot tell (the gateway). It reaches nothing itself; the sub-agent's own
     # tools are declared above and decided on their own.
     subagents = {n: c for n, c in run.ctx.agent_tools.items() if n not in impacts}
+    tools_added = added
     for name, child in subagents.items():
         try:
             if run.target.backend.declare_tool(
@@ -750,7 +751,14 @@ def _tools_apply(run: Run) -> None:
     risky = sorted(n for n, i in impacts.items() if i in ("high_impact", "irreversible"))
     run.done(
         "tools",
-        f"declared {plural(added, 'tool')}"
+        # Tools and the sub-agents it calls as tools, counted apart: "3 tools" for one
+        # tool and two `AgentTool(sub-agent)` read as three things it can do.
+        f"declared {plural(tools_added, 'tool')}"
+        + (
+            f" and {plural(added - tools_added, 'sub-agent')} it calls as tools"
+            if added > tools_added
+            else ""
+        )
         + (f", kept {kept} already declared" if kept else "")
         + granted
         + (f" — {len(risky)} irreversible/high-impact: {', '.join(risky[:5])}" if risky else ""),

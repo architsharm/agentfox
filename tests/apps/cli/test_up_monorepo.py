@@ -163,3 +163,29 @@ def test_up_counts_the_apps_its_agent_systems_are_in(tmp_path):
     out = " ".join(result.output.split())
     assert "2 separate agent systems here, in 2 apps" in out
     assert "steps done" in out or "step done" in out
+
+
+ADK_TEAM = """
+from google.adk.agents import LlmAgent
+from google.adk.tools.agent_tool import AgentTool
+
+def lookup_fund(name: str) -> str:
+    return ""
+
+analyst = LlmAgent(name="data_analyst", model="gemini-2.5-pro", instruction="x")
+trader = LlmAgent(name="trading_analyst", model="gemini-2.5-pro", instruction="x")
+root_agent = LlmAgent(name="coordinator", model="gemini-2.5-pro", instruction="c",
+                      tools=[lookup_fund, AgentTool(agent=analyst), AgentTool(agent=trader)])
+"""
+
+
+@pytest.mark.usefixtures("home")
+def test_sub_agents_used_as_tools_are_not_counted_as_tools(tmp_path):
+    root = tmp_path / "advisor"
+    (root / "app").mkdir(parents=True)
+    (root / ".git").mkdir()
+    (root / "app" / "agent.py").write_text(textwrap.dedent(ADK_TEAM))
+    result = _up(str(root), "--yes", "--with", "python-app,tools")
+    assert result.exit_code == 0, result.output
+    out = " ".join(result.output.split())
+    assert "declared 1 tool and 2 sub-agents it calls as tools" in out
