@@ -217,3 +217,18 @@ export function defaultRuleScope(agent: string | undefined, agents: { slug: stri
   if (agent) return agent;
   return agents.length === 1 ? agents[0].slug : "";
 }
+
+// --- a rule's entries -----------------------------------------------------------------------
+
+/**
+ * The entries typed into a words or patterns rule. Words may be one per line or
+ * separated by commas ("Globex, Initech"). Anything else (a pattern, an example
+ * question) is one per line only: a comma is part of the regex (`\b\d{8,12}\b`), so splitting on it would save two broken
+ * halves and Try it would test something else than what runs.
+ */
+export function ruleEntries(kind: string, text: string): string[] {
+  return text
+    .split(kind === "terms" ? /\n|,/ : /\n/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+}

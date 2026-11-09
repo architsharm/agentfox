@@ -10,7 +10,7 @@ import { ValidatorFields, paramsFor, rawFrom, useValidators, validatorReady } fr
 import type { ValidatorValue } from "@/components/product/policies/ValidatorFields";
 import { keptRuleFields, keptWithin } from "@/lib/product/resave";
 import { AgentScope, type ScopeAgent } from "@/components/product/policies/AgentScope";
-import { defaultRuleScope } from "@/lib/product/policyWords";
+import { defaultRuleScope, ruleEntries } from "@/lib/product/policyWords";
 
 type Kind = "terms" | "patterns" | "topic" | "allow" | "sequence" | "condition" | "validator";
 
@@ -36,12 +36,6 @@ const ACTIONS: { effect: string; label: string; only?: Kind[] }[] = [
   { effect: "redact", label: "Mask", only: ["terms", "patterns", "condition"] },
   { effect: "allow", label: "Log only" },
 ];
-
-const lines = (s: string) =>
-  s
-    .split(/\n|,/)
-    .map((x) => x.trim())
-    .filter(Boolean);
 
 const slug = (s: string) =>
   s
@@ -162,8 +156,8 @@ export function CustomRule({
         surfaces: checks.filter((c) => !checkInfo || checkInfo.surfaces.includes(c)),
       };
     if (isTopic)
-      return { ...base, kind: "topic", polarity: kind === "allow" ? "allow" : "deny", description: entries.trim(), examples: lines(examples), surfaces: checks };
-    return { ...base, kind, entries: lines(entries), surfaces: checks };
+      return { ...base, kind: "topic", polarity: kind === "allow" ? "allow" : "deny", description: entries.trim(), examples: ruleEntries("examples", examples), surfaces: checks };
+    return { ...base, kind, entries: ruleEntries(kind, entries), surfaces: checks };
   };
 
   const pickKind = (k: Kind) => {
@@ -353,7 +347,7 @@ export function CustomRule({
       ) : (
         <>
           <div className="k-field">
-            <label htmlFor="cr-entries">{isTopic ? "Topics" : kind === "patterns" ? "Patterns, one per line" : "Words, one per line"}</label>
+            <label htmlFor="cr-entries">{isTopic ? "Topics" : kind === "patterns" ? "Patterns, one per line" : "Words, one per line or separated by commas"}</label>
             <textarea
               id="cr-entries"
               className={`k-input${kind === "patterns" ? " k-mono" : ""}`}
