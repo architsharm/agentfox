@@ -684,8 +684,10 @@ def _handoff_ack(row: dict[str, Any]) -> bool:
         value = json.loads(summary)
     except ValueError:
         return False
-    return isinstance(value, dict) and list(value) == ["assistant"] and isinstance(
-        value["assistant"], str
+    return (
+        isinstance(value, dict)
+        and list(value) == ["assistant"]
+        and isinstance(value["assistant"], str)
     )
 
 

@@ -2353,8 +2353,7 @@ def _remote_preflight(
     for index, message in enumerate(fresh):
         source = (
             "tool_result"
-            if (message.get("role") == "tool" and id(message) not in handed)
-            or str(index) in quoted
+            if (message.get("role") == "tool" and id(message) not in handed) or str(index) in quoted
             else "user"
         )
         body = state.remote.post(
