@@ -11,6 +11,8 @@ the file it came from.
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-11-09
+
 ### Added
 - **`agentfox.auto()` governs Google ADK (google-genai) and smolagents (huggingface_hub
   and smolagents tools)**: model calls, streams, function calls and automatic function
