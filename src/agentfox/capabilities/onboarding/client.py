@@ -401,7 +401,8 @@ def _print_coverage(console: Console, mapped: dict[str, Any]) -> None:
     from agentfox.capabilities.discovery.repo import SUPPORTED_LANGUAGES
 
     s = mapped["structure"]
-    n_agents, n_tools = len(s["agents"]), len(s["tools"])
+    # Tools, not tool assignments: one tool two agents are handed is one tool.
+    n_agents, n_tools = len(s["agents"]), len({t["name"] for t in s["tools"]})
     n_handoffs = sum(len(a.get("handsOffTo") or []) for a in s["agents"])
     read = mapped.get("read", 0)
     console.print(

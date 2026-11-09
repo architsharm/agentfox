@@ -165,3 +165,22 @@ def test_an_adk_agent_is_told_auto_does_not_govern_its_model_calls(tmp_path):
     connect_live_traffic(console, tmp_path, "https://gw", "nom_api_abc", registered, ask=False)
     out = console.export_text()
     assert "NOT governed by auto()" in out and "google-genai" in out
+
+
+def test_init_counts_tools_not_tool_assignments():
+    from agentfox.capabilities.onboarding.client import _print_coverage
+
+    mapped = {
+        "structure": {
+            "agents": [{"id": "a"}, {"id": "b"}],
+            "tools": [
+                {"name": "search", "agentId": "a"},
+                {"name": "search", "agentId": "b"},
+                {"name": "send", "agentId": "b"},
+            ],
+        },
+        "read": 3,
+    }
+    console = Console(record=True, width=200)
+    _print_coverage(console, mapped)
+    assert "2 agents, 2 tools" in console.export_text()
