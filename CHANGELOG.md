@@ -147,6 +147,29 @@ the file it came from.
   uses `$AGENTFOX_URL` and says so.
 
 ### Fixed
+- **Public pages render without JavaScript.** A loading boundary at the root of the
+  site wrapped every public page, so each was served as a dashboard skeleton with the
+  page itself hidden until scripts ran: visitors and crawlers without JavaScript saw
+  the skeleton (or, on /benchmark, nothing), and everyone else saw it flash. The app
+  keeps its own loading state inside the app shell.
+- **Every public page unfurls with the site card.** Pages other than the home page
+  and blog posts had no `og:image` or `twitter:image`.
+- **Site polish for launch:** favicon.ico and a web app manifest; a skip link on
+  every public page and in the app; a `main` landmark on the docs; heading order on
+  /benchmark, /pricing and the quickstart; the mobile menu closes on Escape or an
+  outside click; the header fits a 320px screen; the waitlist form returns to its own
+  result with the error tied to the field; the playground shows plain, announced
+  errors instead of "Failed to fetch"; slightly darker muted text so chips pass AA;
+  underlined links in docs prose; wide tables and code scroll inside the page instead
+  of widening it at 320px. On phones the home page keeps a "Get started" bar at the
+  bottom once the hero's buttons scroll away.
+- **The waitlist confirmation matches the form.** It said "we'll email you when hosted
+  AgentFox opens"; the form asks to be told when pricing is announced.
+- **App forms say what went wrong.** A dropped connection showed "Failed to fetch",
+  and a failed request over HTTP/2 could show an empty error; errors are now
+  announced to screen readers. Primary buttons that are links had dark text on the
+  rose (3.3:1), status badges were under 4.5:1, and the search palette now returns
+  focus to its button when closed.
 - "Start blocking" on Your rules said "0 would have been stopped" right after a words
   rule had flagged a message: it counted calls newly blocked compared with what a
   watching rule already would have done. It now counts what the pack's own rules
