@@ -7,7 +7,8 @@ import { RANGE_WORDS } from "@/lib/product/vocab";
 import { ApiDown } from "@/components/ui";
 import { Card, Dot, Empty, Header, Pill, StackBar, Tabs, ago, href, num, pctOf } from "@/components/kit";
 import { Modal } from "@/components/product/Modal";
-import { groupProposed, memberRelation } from "@/lib/product/proposedSystems";
+import { byRepo, groupProposed, isAdded, isProposed, memberRelation, noAgents, proposedSource, searchProposed } from "@/lib/product/proposedSystems";
+import { ProposedBulk } from "@/components/product/ProposedBulk";
 import { NoticeToast } from "@/components/product/NoticeToast";
 
 export const metadata: Metadata = appPageMetadata("Agents", "Every agent in this workspace.");
@@ -35,12 +36,16 @@ export default async function Projects({ searchParams }: { searchParams: Promise
   ]);
 
   const all: any[] = agents.agents || [];
-  const proposed = all.filter((a) => a.status === "draft");
-  // A scanned multi-agent system is proposed as one agent per agent; shown together,
-  // with the agents each one hands work to indented under it.
-  const proposedGroups = groupProposed(proposed);
-  const live = all.filter((a) => a.status !== "draft");
-  const attention = live.filter((a) => !a.registered || !a.owner_email);
+  const proposed = all.filter(isProposed);
+  // A long list (a monorepo, a scan of many apps): searched, and grouped by the
+  // repository each came from, each group with Add all / Dismiss all.
+  const q = (sp.q || "").trim();
+  const shownProposed = searchProposed(proposed, q);
+  const repos = byRepo(shownProposed);
+  const live = all.filter(isAdded);
+  // Why each one needs attention, said on its row.
+  const reasons = (a: any) => [!a.registered && "Not registered: seen in traffic, never added", !a.owner_email && "No owner"].filter(Boolean) as string[];
+  const attention = live.filter((a) => reasons(a).length > 0);
   const tab = sp.tab === "attention" ? "attention" : sp.tab === "proposed" ? "proposed" : "all";
   const rows = tab === "attention" ? attention : live;
 
@@ -63,52 +68,44 @@ export default async function Projects({ searchParams }: { searchParams: Promise
       <NoticeToast error={sp.review_error} />
 
       {tab === "proposed" ? (
-        <Card flush>
-          {proposed.length ? (
-            <ul className="k-list">
-              {proposedGroups.flatMap((g) => {
-                const system = g.members.length > 1;
-                const rows = g.members.map(({ agent: a, depth, relation }) => (
-                  <li key={a.id} style={depth ? { paddingLeft: `${16 + depth * 24}px` } : undefined}>
-                    <div className="k-list-main">
-                      <span className="k-name">{a.name || a.slug}</span>
-                      <span className="muted">
-                        {depth ? memberRelation(relation) : "Found by a repo scan"}
-                        {a.framework ? ` · ${a.framework}` : ""}
-                        {(a.declared_tools || []).length ? ` · ${(a.declared_tools || []).length} tool${(a.declared_tools || []).length === 1 ? "" : "s"}` : ""}
-                      </span>
-                    </div>
-                    <div className="k-list-end">
-                      <form action={`/api/agents/${a.id}/reject`} method="POST">
-                        <button type="submit" className="k-btn-ghost">Dismiss</button>
-                      </form>
-                      <form action={`/api/agents/${a.id}/approve`} method="POST">
-                        <button type="submit" className={system ? "k-btn" : "k-btn-primary"}>Add agent</button>
-                      </form>
-                    </div>
-                  </li>
-                ));
-                if (!system) return rows;
-                return [
-                  <li key={`system:${g.root.id}`}>
-                    <div className="k-list-main">
-                      <span className="k-name">Multi-agent system · {g.members.length} agents</span>
-                      <span className="muted">The agents its code hands work to are listed under it</span>
-                    </div>
-                    <div className="k-list-end">
-                      <form action={`/api/agents/${g.root.id}/approve-system`} method="POST">
-                        <button type="submit" className="k-btn-primary">Add all {g.members.length}</button>
-                      </form>
-                    </div>
-                  </li>,
-                  ...rows,
-                ];
-              })}
-            </ul>
-          ) : (
-            <Empty action={<Link href="/app/start?tab=connect" className="k-btn">Scan a repo</Link>}>Nothing proposed.</Empty>
+        <>
+          {proposed.length > 8 && (
+            <form method="GET" action="/app/projects" className="gs-row" role="search" style={{ margin: "12px 0" }}>
+              <input type="hidden" name="tab" value="proposed" />
+              <input className="k-input" type="search" name="q" defaultValue={q} placeholder="Search by name, repository or framework" aria-label="Search proposed agents" />
+              <button type="submit" className="k-btn">Search</button>
+              {q && <Link href="/app/projects?tab=proposed">Clear</Link>}
+            </form>
           )}
-        </Card>
+          {proposed.length > 1 && (
+            <div className="gs-row" style={{ justifyContent: "space-between", margin: "8px 0" }}>
+              <span className="k-muted">
+                {q ? `${shownProposed.length} of ${proposed.length} match` : `${proposed.length} waiting to be added`}
+              </span>
+              <ProposedBulk ids={shownProposed.map((a) => a.id)} label={q ? "the matching agents" : "every proposed agent"} />
+            </div>
+          )}
+          {proposed.length === 0 ? (
+            <Card>
+              <Empty action={<Link href="/app/settings?tab=connect" className="k-btn">Scan a repo</Link>}>Nothing proposed.</Empty>
+            </Card>
+          ) : shownProposed.length === 0 ? (
+            <Card>
+              <Empty>No proposed agent matches “{q}”.</Empty>
+            </Card>
+          ) : (
+            repos.map(({ repo, agents: inRepo }) => (
+              <Card
+                key={repo ?? "(none)"}
+                title={repos.length > 1 || repo ? `${repo ?? "Not from a repository"} · ${inRepo.length} ${inRepo.length === 1 ? "agent" : "agents"}` : undefined}
+                action={repos.length > 1 && inRepo.length > 1 ? <ProposedBulk ids={inRepo.map((a) => a.id)} project={q ? null : repo} label={repo ?? "these agents"} /> : undefined}
+                flush
+              >
+                <ProposedList agents={inRepo} />
+              </Card>
+            ))
+          )}
+        </>
       ) : (
         <Card flush>
           {rows.length ? (
@@ -138,7 +135,11 @@ export default async function Projects({ searchParams }: { searchParams: Promise
                           </Link>
                           {!a.registered && <Pill tone="bad">Unregistered</Pill>}
                         </span>
-                        {a.purpose && <span className="sub">{a.purpose}</span>}
+                        {tab === "attention" ? (
+                          <span className="sub">{reasons(a).join(" · ")}</span>
+                        ) : (
+                          a.purpose && <span className="sub">{a.purpose}</span>
+                        )}
                       </td>
                       <td>
                         {a.owner_email ? (
@@ -165,13 +166,63 @@ export default async function Projects({ searchParams }: { searchParams: Promise
               </tbody>
             </table>
           ) : (
-            <Empty action={<Link href="/app/start" className="k-btn-primary">Connect an agent</Link>}>
-              {tab === "attention" ? "Every agent is registered and owned." : "No agents yet."}
-            </Empty>
+            tab === "attention" ? (
+              <Empty>Every agent is registered and owned.</Empty>
+            ) : (
+              <Empty action={<Link href={noAgents(proposed.length).href} className="k-btn-primary">{noAgents(proposed.length).action}</Link>}>
+                {noAgents(proposed.length).text}
+              </Empty>
+            )
           )}
         </Card>
       )}
     </>
+  );
+}
+
+/** One repository's proposals: a multi-agent system together, its members indented under it. */
+function ProposedList({ agents }: { agents: any[] }) {
+  return (
+    <ul className="k-list">
+      {groupProposed(agents).flatMap((g) => {
+        const system = g.members.length > 1;
+        const rows = g.members.map(({ agent: a, depth, relation }) => (
+          <li key={a.id} style={depth ? { paddingLeft: `${16 + depth * 24}px` } : undefined}>
+            <div className="k-list-main">
+              <span className="k-name">{a.name || a.slug}</span>
+              <span className="muted">
+                {depth ? memberRelation(relation) : proposedSource(a)}
+                {a.framework ? ` · ${a.framework}` : ""}
+                {(a.declared_tools || []).length ? ` · ${(a.declared_tools || []).length} tool${(a.declared_tools || []).length === 1 ? "" : "s"}` : ""}
+              </span>
+            </div>
+            <div className="k-list-end">
+              <form action={`/api/agents/${a.id}/reject`} method="POST">
+                <button type="submit" className="k-btn-ghost">Dismiss</button>
+              </form>
+              <form action={`/api/agents/${a.id}/approve`} method="POST">
+                <button type="submit" className={system ? "k-btn" : "k-btn-primary"}>Add agent</button>
+              </form>
+            </div>
+          </li>
+        ));
+        if (!system) return rows;
+        return [
+          <li key={`system:${g.root.id}`}>
+            <div className="k-list-main">
+              <span className="k-name">Multi-agent system · {g.members.length} agents</span>
+              <span className="muted">The agents its code hands work to are listed under it</span>
+            </div>
+            <div className="k-list-end">
+              <form action={`/api/agents/${g.root.id}/approve-system`} method="POST">
+                <button type="submit" className="k-btn-primary">Add all {g.members.length}</button>
+              </form>
+            </div>
+          </li>,
+          ...rows,
+        ];
+      })}
+    </ul>
   );
 }
 

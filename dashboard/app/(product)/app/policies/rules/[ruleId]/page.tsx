@@ -1,3 +1,4 @@
+import { isAdded } from "@/lib/product/proposedSystems";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { appPageMetadata } from "@/lib/site";
@@ -225,7 +226,7 @@ async function Tests({ ruleId, pack, agents }: { ruleId: string; pack?: string; 
       : Promise.resolve({ results: [] }),
     safeApi<any>("/api/agents", { agents: [] }),
   ]);
-  const slugs = Array.from(new Set([...agents, ...(all.agents || []).filter((a: any) => a.status !== "draft").map((a: any) => a.slug)]));
+  const slugs = Array.from(new Set([...agents, ...(all.agents || []).filter(isAdded).map((a: any) => a.slug)]));
   return <RuleTests ruleId={ruleId} results={checked.results || []} agents={slugs} />;
 }
 

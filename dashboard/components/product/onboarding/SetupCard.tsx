@@ -81,7 +81,15 @@ export function SetupCard({
     if (mock) return;
     api
       .getStructure()
-      .then((r: any) => (baseline.current = { connected: Boolean(r.connected), at: r.connectedAt ?? null }))
+      .then((r: any) => {
+        baseline.current = { connected: Boolean(r.connected), at: r.connectedAt ?? null };
+        // init already reported and its agents still wait to be added (a reload, or
+        // the card opened again): pick up at the Add step, not "waiting for init".
+        if (r.pending?.length && r.structure?.agents?.length) {
+          setFound(r.structure);
+          setPhase("found");
+        }
+      })
       .catch(() => (baseline.current = { connected: false, at: null }));
   }, [api, mock]);
 

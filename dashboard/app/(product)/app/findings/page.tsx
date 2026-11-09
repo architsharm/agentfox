@@ -1,3 +1,5 @@
+import { NoAgents } from "@/components/product/NoAgents";
+import { isAdded, isProposed } from "@/lib/product/proposedSystems";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { agentName, agentNames, withAgentNames } from "@/lib/product/names";
@@ -48,6 +50,7 @@ export default async function Issues({ searchParams }: { searchParams: Promise<S
   );
   const keep = { agent: sp.agent, severity: sp.severity };
   const names = agentNames(agents.agents);
+  const proposedCount = (agents.agents || []).filter(isProposed).length;
   // "No open issues" in a workspace that has never been scanned or sent a request
   // reads as good news when it means nothing has been looked at yet. Asked only
   // when the list is empty, so a busy workspace pays nothing for it.
@@ -110,9 +113,11 @@ export default async function Issues({ searchParams }: { searchParams: Promise<S
             </tbody>
           </table>
         ) : (
-          untouched ? (
-            <Empty action={<Link href="/app/welcome?again=1" className="k-btn-primary">Scan a repository</Link>}>
-              Nothing scanned yet. Issues appear once a repository is scanned or an agent sends a request.
+          proposedCount > 0 && !(agents.agents || []).some(isAdded) ? (
+            <NoAgents proposed={proposedCount} />
+          ) : untouched ? (
+            <Empty action={<Link href="/app/map" className="k-btn-primary">Connect an agent</Link>}>
+              No issues yet. They appear once an agent is connected and its attack test or its traffic finds something.
             </Empty>
           ) : (
             <Empty>{status === "open" ? "No open issues." : "Nothing here."}</Empty>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultProject, projectHref, projectInPath, projectView } from "./project";
+import { defaultProject, hasAddedAgent, projectHref, projectInPath, projectView } from "./project";
 import { WORKSPACE_NAV, projectNav } from "./nav";
 
 describe("project views", () => {
@@ -83,5 +83,15 @@ describe("default project", () => {
     expect(defaultProject([row("a", "draft"), row("b", "active"), row("c", "active")])?.project).toBe("b");
     expect(defaultProject([row("a", "shadow"), row("b", "draft")])?.project).toBe("a");
     expect(defaultProject([])).toBeUndefined();
+  });
+});
+
+describe("hasAddedAgent", () => {
+  it("is false while init's agents are only proposed (the setup card stays)", () => {
+    expect(hasAddedAgent([{ members: [{ status: "draft" }, { status: "draft" }] }])).toBe(false);
+    expect(hasAddedAgent([{ members: [{ status: "removed" }, { status: "shadow" }] }])).toBe(false);
+  });
+  it("is true once one is added", () => {
+    expect(hasAddedAgent([{ members: [{ status: "draft" }] }, { members: [{ status: "active" }] }])).toBe(true);
   });
 });

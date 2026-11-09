@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { httpApi } from "./api";
-import { isFreshConnection, requestError } from "./connect";
+import { isFreshConnection, requestError, pendingPrompt, addLabel } from "./connect";
 
 describe("creating a key", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -77,5 +77,35 @@ describe("isFreshConnection: has agentfox init just reported in?", () => {
   it("with no timestamp (older servers), only a first connection counts", () => {
     expect(isFreshConnection({ connected: false, at: null }, live(null))).toBe(true);
     expect(isFreshConnection({ connected: true, at: null }, live(null))).toBe(false);
+  });
+});
+
+describe("pendingPrompt: the Add step stays until done or dismissed", () => {
+  const live = {
+    connected: true,
+    connectedAt: "2026-11-09T10:00:00",
+    structure: { project: "shop" },
+    pending: [
+      { slug: "a", name: "Planner" },
+      { slug: "b", name: "Writer" },
+    ],
+  };
+  it("asks while init's agents are still drafts", () => {
+    const p = pendingPrompt(live, []);
+    expect(p?.project).toBe("shop");
+    expect(p?.agents.map((a) => a.slug)).toEqual(["a", "b"]);
+    expect(addLabel(p!.agents)).toBe("Add 2 agents to AgentFox");
+  });
+  it("stops once they are added", () => {
+    expect(pendingPrompt({ ...live, pending: [] }, [])).toBeNull();
+  });
+  it("stops once this report is dismissed, and asks again for a later init", () => {
+    const key = pendingPrompt(live, [])!.key;
+    expect(pendingPrompt(live, [key])).toBeNull();
+    expect(pendingPrompt({ ...live, connectedAt: "2026-11-09T11:00:00" }, [key])).not.toBeNull();
+    expect(pendingPrompt({ ...live, structure: { project: "billing" } }, [key])).not.toBeNull();
+  });
+  it("names a single agent", () => {
+    expect(addLabel([{ name: "Planner" }])).toBe("Add Planner to AgentFox");
   });
 });

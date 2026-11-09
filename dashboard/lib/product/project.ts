@@ -45,6 +45,12 @@ export function defaultProject<T extends { project: string; last_seen_at?: strin
   return seen[0] ?? added[0] ?? projects[0];
 }
 
+/** Has anyone added an agent yet (one that is not a proposal or a shadow)? Takes GET /api/projects rows. */
+export function hasAddedAgent(projects: { members?: { status?: string }[] }[]): boolean {
+  const gone = new Set([...NOT_ADDED, "removed", "rejected"]);
+  return projects.some((p) => (p.members ?? []).some((m) => m.status && !gone.has(m.status)));
+}
+
 /** The views of one project, in the order the page offers them. */
 export const PROJECT_VIEWS = [
   { key: "canvas", label: "Canvas" },

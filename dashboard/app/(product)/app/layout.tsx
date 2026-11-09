@@ -13,7 +13,7 @@ import { TableLabels } from "@/components/product/TableLabels";
 import { AppChrome } from "@/components/product/AppChrome";
 import { Crumbs } from "@/components/product/Crumbs";
 import { WORKSPACE_NAV } from "@/lib/product/nav";
-import { MAP_PROJECT_COOKIE, NEW_PROJECT } from "@/lib/product/project";
+import { MAP_PROJECT_COOKIE, NEW_PROJECT, hasAddedAgent } from "@/lib/product/project";
 import { apiBase } from "@/lib/env";
 import { TopbarStats } from "@/components/product/TopbarStats";
 import { getEdition } from "@/lib/product/edition";
@@ -115,14 +115,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // AppChrome drops the sidebar and topbar on full-screen routes (onboarding).
   // Adding a project, or having none yet: the same view either way — each page's own
   // empty cards and the connection card. A new signup and "+ Add a project" match.
-  const projectCount = signedIn ? ((await safeApi<any>("/api/projects", { projects: [] })).projects ?? []).length : 0;
-  const adding = signedIn && (project === NEW_PROJECT || projectCount === 0);
+  const projects: any[] = signedIn ? ((await safeApi<any>("/api/projects", { projects: [] })).projects ?? []) : [];
+  const projectCount = projects.length;
+  // The first init's agents are proposed, not added: until they are, the card stays
+  // (its Add step), across reloads, instead of giving way to a project of drafts.
+  const awaitingFirstAdd =
+    signedIn && projectCount > 0 && !hasAddedAgent(projects) && ((await safeApi<any>("/api/onboarding/structure", null))?.pending?.length ?? 0) > 0;
+  const adding = signedIn && (project === NEW_PROJECT || projectCount === 0 || awaitingFirstAdd);
   // With GitHub connected, the card leads with scanning a repository (/app/welcome).
   const github = adding ? githubConnected(await safeApi<any>("/api/me", null)) : false;
-  const newProject = adding ? { server: apiBase(), first: projectCount === 0, github } : null;
+  const newProject = adding ? { server: apiBase(), first: projectCount === 0 || awaitingFirstAdd, github } : null;
   return (
     <AppChrome
       newProject={newProject}
+      signedIn={signedIn}
       side={
         <nav className="side">
           {/* The mark and the name only. "by Nometria" sat under both of them
