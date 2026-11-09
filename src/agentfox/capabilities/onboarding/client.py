@@ -576,7 +576,8 @@ def _drivers(
             out[agent["id"]] = Driver(
                 name,
                 refuse=f"Not run: AgentFox couldn't find where {name} is created "
-                "(a module-level `agent = ...`, or a function that builds or runs it).",
+                "(a module-level `agent = ...`, a function that builds or runs it, or a "
+                "method of a CrewAI `@CrewBase` class).",
             )
             continue
         module, attr, kind = ref

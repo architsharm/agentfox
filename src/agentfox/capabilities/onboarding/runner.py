@@ -14,6 +14,12 @@ email, no row written.
 * **OpenAI Agents SDK**: ``FunctionTool.on_invoke_tool`` goes to the recorder for
   every function tool. An agent with a tool that runs on OpenAI's side (web search,
   code interpreter) or an MCP server is not run: it can't be faked.
+* **CrewAI**: ``run`` / ``_run`` (and their async forms) on every CrewAI tool class
+  and ``invoke`` / ``ainvoke`` on ``CrewStructuredTool`` go to the recorder, so a
+  ``@tool`` function, a ``BaseTool`` subclass and a ``crewai_tools`` tool are faked
+  the same way. CrewAI's own delegation tools still run: they are how a crew's agents
+  (and a hierarchical crew's manager) hand work to each other. An agent with MCP
+  servers or CrewAI platform apps is not run: they can't be faked.
 * **A plain function-calling loop**: the functions its mapped tools name are replaced
   in the repository's modules (and in any dispatch table holding them). If one can't
   be found, the agent is not run.
@@ -51,6 +57,7 @@ import importlib
 import inspect
 import json
 import os
+import re
 import sys
 import tempfile
 import threading
@@ -456,6 +463,145 @@ def _install_langchain() -> None:
             _set(BaseTool, name, lazy)
 
 
+#: CrewAI's own tools that are how a crew works, not what it does: delegating to and
+#: asking a crewmate (a hierarchical crew's manager runs its members with them), its
+#: memory and its tool cache. They run as they would; everything else is faked.
+_CREW_INTERNAL = (
+    "crewai.tools.agent_tools.delegate_work_tool",
+    "crewai.tools.agent_tools.ask_question_tool",
+    "crewai.tools.agent_tools.base_agent_tools",
+    "crewai.tools.memory_tools",
+    "crewai.tools.cache_tools",
+)
+
+
+def _crew_owner(tool: Any) -> Any:
+    """The tool a CrewAI structured tool was made from, or the tool itself."""
+    original = getattr(tool, "_original_tool", None)
+    return original if original is not None else tool
+
+
+def _crew_internal(tool: Any) -> bool:
+    return type(_crew_owner(tool)).__module__.startswith(_CREW_INTERNAL)
+
+
+def _crew_tool_name(tool: Any) -> str:
+    """The name the map knows a CrewAI tool by: its ``name`` ("Search the internet with
+    Serper"), its class (``SerperDevTool``, what a static read of ``tools=[...]``
+    sees) or its function's name, whichever the attack's map has."""
+    owner = _crew_owner(tool)
+    func = getattr(owner, "func", None) or getattr(tool, "func", None)
+    candidates = [
+        str(getattr(owner, "name", "") or ""),
+        type(owner).__name__,
+        str(getattr(func, "__name__", "") or ""),
+    ]
+    run = _CTX.get()
+    if run is not None:
+        known = {_tool_key(k): k for k in (*run.tools, *run.attack.responses)}
+        for c in candidates:
+            if c and _tool_key(c) in known:
+                return known[_tool_key(c)]
+    return candidates[0] or candidates[1]
+
+
+def _tool_key(name: str) -> str:
+    return "".join(ch for ch in name.lower() if ch.isalnum())
+
+
+def _crew_args(tool: Any, args: tuple[Any, ...], kwargs: dict[str, Any]) -> dict[str, Any]:
+    kwargs = {k: v for k, v in kwargs.items() if k not in ("config", "callbacks", "run_manager")}
+    if args:
+        schema = getattr(tool, "args_schema", None)
+        names = list(getattr(schema, "model_fields", None) or {})
+        for i, value in enumerate(args):
+            kwargs[names[i] if i < len(names) else f"arg{i}"] = value
+    return kwargs
+
+
+def _crew_input(raw: Any) -> dict[str, Any]:
+    """A structured tool's ``invoke`` input (a dict, or JSON text) as arguments."""
+    if isinstance(raw, dict):
+        return dict(raw)
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+        except ValueError:
+            return {"input": raw}
+        return parsed if isinstance(parsed, dict) else {"input": parsed}
+    return {} if raw is None else {"input": raw}
+
+
+def _patch_crew_class(cls: type, names: tuple[str, ...]) -> None:
+    """Route this CrewAI tool class's own entry points to the recorder."""
+    with _PATCH_LOCK:
+        if cls in _PATCHED_CLASSES:
+            return
+        _PATCHED_CLASSES.add(cls)
+        own = vars(cls)
+        for name in names:
+            original = own.get(name)
+            if not callable(original) or getattr(original, "__isabstractmethod__", False):
+                continue
+            entry = name in ("invoke", "ainvoke")
+
+            def args_of(self: Any, a: tuple[Any, ...], k: dict[str, Any], entry: bool = entry):
+                if entry:
+                    return _crew_input(a[0] if a else k.get("input"))
+                return _crew_args(self, a, k)
+
+            if inspect.iscoroutinefunction(original):
+
+                async def arecorded(self: Any, *a: Any, __o: Any = original, __args=args_of,
+                                    **k: Any) -> Any:  # fmt: skip
+                    if not _suite_active() or _crew_internal(self):
+                        return await __o(self, *a, **k)
+                    name, args = _crew_tool_name(self), __args(self, a, k)
+                    return _as_text(await asyncio.to_thread(_record, name, args))
+
+                _set(cls, name, arecorded)
+            else:
+
+                def recorded(self: Any, *a: Any, __o: Any = original, __args=args_of,
+                             **k: Any) -> Any:  # fmt: skip
+                    if not _suite_active() or _crew_internal(self):
+                        return __o(self, *a, **k)
+                    return _as_text(_record(_crew_tool_name(self), __args(self, a, k)))
+
+                _set(cls, name, recorded)
+
+
+#: Off while a suite runs: CrewAI's telemetry and trace upload would send every faked
+#: run to CrewAI's servers, and its first-run trace prompt would wait for an answer.
+_CREW_QUIET = {"CREWAI_DISABLE_TELEMETRY": "true", "CREWAI_TRACING_ENABLED": "false"}
+
+
+def _install_crewai() -> None:
+    # Only when CrewAI is what's loaded (the user's crew imported it): the same reason
+    # as `_install_openai_agents`.
+    base = getattr(sys.modules.get("crewai.tools.base_tool"), "BaseTool", None)
+    structured_mod = sys.modules.get("crewai.tools.structured_tool")
+    structured = getattr(structured_mod, "CrewStructuredTool", None)
+    if base is None and structured is None:
+        return
+    if base is not None:
+        for cls in [base, *_all_subclasses(base)]:
+            _patch_crew_class(cls, ("run", "_run", "arun", "_arun"))
+    if structured is not None:
+        _patch_crew_class(structured, ("invoke", "ainvoke", "_run"))
+    saved = {k: os.environ.get(k) for k in _CREW_QUIET}
+    os.environ.update(_CREW_QUIET)
+
+    def undo() -> None:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+    _UNDO.append(undo)
+
+
 _SDK_RECORDER = "_agentfox_recorder"
 
 
@@ -543,6 +689,7 @@ def faking() -> Iterator[None]:
             _install_audit_hook()
             _install_langchain()
             _install_openai_agents()
+            _install_crewai()
             _quiet_sdk_tracing()
         _ACTIVE += 1
     try:
@@ -685,9 +832,28 @@ def _module_dirs(root: Path, module: str) -> list[Path]:
     return out
 
 
+def _resolve(mod: Any, attr: str) -> Any:
+    """``attr`` in the module; ``Class.method`` (a ``@CrewBase`` crew or crew member,
+    see `AgentSpec.attr`) is a factory that builds the class with no arguments, as
+    ``crewai run`` does, and calls the method."""
+    if "." not in attr:
+        return getattr(mod, attr)
+    cls_name, method = attr.split(".", 1)
+    cls = getattr(mod, cls_name)
+    if not callable(getattr(cls, method, None)):
+        raise AttributeError(f"{cls_name} has no method {method}")
+
+    def build() -> Any:
+        return getattr(cls(), method)()
+
+    build.__name__ = build.__qualname__ = attr
+    build.__module__ = getattr(mod, "__name__", build.__module__)
+    return build
+
+
 def load_agent(root: str | Path, module: str, attr: str) -> Any:
-    """Import the user's module and return the named object. The working directory and
-    ``sys.path`` are put back as they were afterwards."""
+    """Import the user's module and return the named object (see `_resolve`). The
+    working directory and ``sys.path`` are put back as they were afterwards."""
     root = Path(root).resolve()
     with _LOAD_LOCK:
         cwd, path = os.getcwd(), list(sys.path)
@@ -697,7 +863,7 @@ def load_agent(root: str | Path, module: str, attr: str) -> Any:
                 if str(p) not in sys.path:
                     sys.path.insert(0, str(p))
             try:
-                return getattr(importlib.import_module(module), attr)
+                return _resolve(importlib.import_module(module), attr)
             except ModuleNotFoundError as exc:
                 # Only when what is missing sits right beside the file: then the file
                 # imports its siblings by bare name, as a script or a langgraph.json
@@ -715,7 +881,7 @@ def load_agent(root: str | Path, module: str, attr: str) -> Any:
                     if str(p) not in sys.path:
                         sys.path.append(str(p))
                 importlib.invalidate_caches()
-                return getattr(importlib.import_module(module), attr)
+                return _resolve(importlib.import_module(module), attr)
         finally:
             os.chdir(cwd)
             sys.path[:] = path
@@ -999,11 +1165,15 @@ def make_driver(
         kind is None and plain and framework in ("openai", "python", "function")
     ):
         return _function_driver(obj, name=name, tools=tools or [], modules=modules or [])
+    factory: Callable[[], Any] | None = None
     if kind == "factory" or (kind is None and plain):
+        factory = obj
         try:
             obj = obj()
         except Exception as exc:  # noqa: BLE001 - their factory failing is the answer
             return Driver(name, refuse=f"Not run: couldn't build {name}: {error_text(exc)}")
+    if _is_crewai(obj):
+        return _crew_driver(obj, factory, name=name)
     sdk_agent = _sdk_agent_class()
     if sdk_agent is not None and isinstance(obj, sdk_agent):
         obj = _sdk_stand_ins(obj, tools or [])
@@ -1077,9 +1247,161 @@ def make_driver(
     return Driver(
         name,
         refuse=f"Can't drive {name} yet: it is a {type(obj).__name__}, and AgentFox runs "
-        "LangChain / LangGraph agents, OpenAI Agents SDK agents and function-calling "
-        "functions.",
+        "LangChain / LangGraph agents, OpenAI Agents SDK agents, CrewAI crews and agents, "
+        "and function-calling functions.",
     )
+
+
+# --- CrewAI ---------------------------------------------------------------------------
+
+#: A ``{name}`` CrewAI fills from ``kickoff(inputs=...)`` (``crewai.utilities.string_utils``).
+_CREW_VARIABLE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_\-]*)}")
+#: What a crew member is asked for when it is run on its own.
+CREW_EXPECTED = "A reply to the user's request."
+
+
+def _crewai_types() -> tuple[type | None, type | None]:
+    """(Crew, BaseAgent) when CrewAI is loaded; never imported here (the reason
+    `_install_openai_agents` gives)."""
+    crew = getattr(sys.modules.get("crewai.crew"), "Crew", None)
+    agent = getattr(sys.modules.get("crewai.agents.agent_builder.base_agent"), "BaseAgent", None)
+    return crew, agent
+
+
+def _crewbase_instance(obj: Any) -> bool:
+    """An instance of a ``@CrewBase`` class: its ``@crew`` method builds the crew."""
+    return bool(getattr(type(obj), "is_crew_class", False)) and not isinstance(obj, type)
+
+
+def _is_crewai(obj: Any) -> bool:
+    crew, agent = _crewai_types()
+    return _crewbase_instance(obj) or any(
+        t is not None and isinstance(obj, t) for t in (crew, agent)
+    )
+
+
+def _crew_of(base: Any) -> Any:
+    """The crew a ``@CrewBase`` instance builds: its ``@crew`` method."""
+    for attr in dir(type(base)):
+        if getattr(getattr(type(base), attr, None), "is_crew", False):
+            return getattr(base, attr)()
+    raise TypeError(f"{type(base).__name__} has no @crew method")
+
+
+def crew_inputs(crew: Any) -> list[str]:
+    """The ``{inputs}`` a crew's tasks and agents are written with, in order: what
+    ``kickoff(inputs=...)`` fills, so where a user's words reach the crew."""
+    texts: list[str] = []
+    for task in getattr(crew, "tasks", None) or []:
+        texts += [str(getattr(task, f, "") or "") for f in ("description", "expected_output")]
+    for agent in getattr(crew, "agents", None) or []:
+        texts += [str(getattr(agent, f, "") or "") for f in ("role", "goal", "backstory")]
+    return list(dict.fromkeys(v for t in texts for v in _CREW_VARIABLE.findall(t)))
+
+
+def _crew_unfakeable(crew_or_agent: Any) -> list[str]:
+    """What a crew's agents reach that runs off this machine and can't be faked: MCP
+    servers and CrewAI platform apps."""
+    agents = getattr(crew_or_agent, "agents", None)
+    agents = list(agents) if agents is not None else [crew_or_agent]
+    manager = getattr(crew_or_agent, "manager_agent", None)
+    agents += [manager] if manager is not None else []
+    out: list[str] = []
+    for a in agents:
+        if getattr(a, "mcps", None):
+            out.append("an MCP server")
+        if getattr(a, "apps", None):
+            out.append("CrewAI platform apps")
+    return list(dict.fromkeys(out))
+
+
+def _quiet_crew(build: Callable[[], Any]) -> Any:
+    """A crew (or agent) built for one attack, without its console output: CrewAI's
+    verbose panels would bury AgentFox's progress lines. CrewAI's own switch for that
+    is per context, and each attack runs in its own."""
+    quiet = getattr(sys.modules.get("crewai_core.printer"), "set_suppress_console_output", None)
+    if callable(quiet):
+        quiet(True)
+    obj = build()
+    for target in [obj, *(getattr(obj, "agents", None) or [])]:
+        try:
+            target.verbose = False
+        except Exception:  # noqa: BLE001 - a field that won't take it stays as it is
+            pass
+    return obj
+
+
+def _crew_driver(obj: Any, factory: Callable[[], Any] | None, *, name: str) -> Driver:
+    """A CrewAI crew, or one agent of one, run the way ``crewai run`` runs it, on the
+    user's own model. A fresh crew per attack (from the factory, a ``@CrewBase``
+    class, or a copy), so no attack sees another's tool cache or memory.
+
+    * A **crew** is kicked off with the attack as every ``{input}`` its tasks and
+      agents take: those are where a user's words reach it. A hierarchical crew runs
+      its manager (``manager_llm`` or ``manager_agent``), who delegates to the members.
+    * An **agent** gets the attack as the one task of a crew of its own (CrewAI runs
+      every agent from a task), with :data:`CREW_EXPECTED` as what it should produce.
+    """
+    if _crewbase_instance(obj):
+        base_cls = type(obj)
+        try:
+            obj = _crew_of(obj)
+        except Exception as exc:  # noqa: BLE001 - their crew failing to build is the answer
+            return Driver(name, refuse=f"Not run: couldn't build {name}: {error_text(exc)}")
+
+        def fresh() -> Any:
+            return _crew_of(base_cls())
+
+    elif factory is not None:
+
+        def fresh() -> Any:
+            made = factory()
+            return _crew_of(made) if _crewbase_instance(made) else made
+
+    else:
+
+        def fresh() -> Any:
+            return obj.copy()
+
+    bad = _crew_unfakeable(obj)
+    if bad:
+        one = len(bad) == 1
+        return Driver(
+            name,
+            refuse=f"Not run: {name} uses {', '.join(bad)}, which "
+            f"{'runs' if one else 'run'} outside this machine, so AgentFox can't fake "
+            f"{'it' if one else 'them'} safely.",
+        )
+    crew_cls, _agent_cls = _crewai_types()
+    if crew_cls is not None and isinstance(obj, crew_cls):
+        inputs = crew_inputs(obj)
+        if not inputs:
+            return Driver(
+                name,
+                refuse=f"Not run: {name} takes no inputs (no {{placeholder}} in its tasks), "
+                "so there is no user message to attack it with. Its agents are tested "
+                "one by one.",
+            )
+
+        def run_crew(message: str) -> str:
+            crew = _quiet_crew(fresh)
+            return _crew_reply(crew.kickoff(inputs=dict.fromkeys(inputs, message)))
+
+        return Driver(name, call=run_crew)
+
+    def run_agent(message: str) -> str:
+        from crewai import Crew, Task
+
+        agent = _quiet_crew(fresh)
+        task = Task(description=message, expected_output=CREW_EXPECTED, agent=agent)
+        return _crew_reply(Crew(agents=[agent], tasks=[task], verbose=False).kickoff())
+
+    return Driver(name, call=run_agent)
+
+
+def _crew_reply(result: Any) -> str:
+    raw = getattr(result, "raw", None)
+    return str(raw) if raw is not None else _reply_text(result)
 
 
 def _function_driver(
@@ -1501,6 +1823,7 @@ _CREDITS = (
     "no credits",
     "payment required",
 )
+_NO_KEY = ("api_key client option must be set", "_api_key is required for model")
 _BAD_KEY = (
     "invalid_api_key",
     "incorrect api key",
@@ -1567,6 +1890,13 @@ def explain_model_error(error: str) -> str:
         return (
             f"Your agent's {name}API key was rejected, so the attacks couldn't run. Check "
             "the key in your agent's environment, then try again."
+        )
+    if head.endswith("missingapikeyerror") or any(w in text for w in _NO_KEY):
+        # CrewAI's `MissingAPIKeyError`, the OpenAI client's "api_key ... must be set".
+        name = f"{provider[0]} " if provider else ""
+        return (
+            f"Your agent's {name}API key isn't set in this environment, so the attacks "
+            "couldn't reach its model. Set it where you run agentfox, then try again."
         )
     if status == 429 or head.endswith("ratelimiterror") or ("rate" in text and "limit" in text):
         name = provider[0] if provider else "model"
