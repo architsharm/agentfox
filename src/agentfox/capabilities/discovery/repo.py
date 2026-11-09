@@ -620,10 +620,17 @@ class ScanReport:
         ``agentfox.auto()``, for a caller that offers a command doing it instead.
         """
         if self.trifectas and not self.inconclusive:
+            places = (
+                "1 place in this repository can be steered by an instruction hidden in "
+                "content it reads"
+                if len(self.trifectas) == 1
+                else f"{len(self.trifectas)} places in this repository can be steered by an "
+                "instruction hidden in content they read"
+            )
             first = (
-                f"{len(self.trifectas)} place(s) in this repository can be steered by an "
-                "instruction hidden in content they read into sending private data out. "
-                "Contain those first — each lethal-trifecta finding names the command."
+                f"{places} into sending private data out. Contain "
+                + ("it" if len(self.trifectas) == 1 else "those")
+                + " first — each lethal-trifecta finding names the command."
             )
             if not suggest_auto:
                 return first
