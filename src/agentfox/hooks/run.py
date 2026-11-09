@@ -44,9 +44,11 @@ def _delivery_root() -> Path | None:
     override = os.environ.get("AGENTFOX_DELIVERY_STATE")
     if override:
         return Path(override)
-    from agentfox.hooks.protocol import socket_path
+    from agentfox.core.config import STATE_ROOT
 
-    return socket_path().parent.parent / "delivery"
+    # Beside the database, not beside the socket: the socket may live in a short
+    # temporary path (`protocol.socket_path`), the delivery state may not.
+    return STATE_ROOT / "delivery"
 
 
 def _delivery(event: AgentEvent) -> Decision | None:

@@ -78,12 +78,18 @@ agentfox scan`}</Code>
 
       <h2>Connect to an account later</h2>
       <p>
-        <Link href="/login">Sign in</Link> (that creates your workspace), press <strong>Create a key</strong> on the Agents page, and
-        run the <code>init</code> command from the card in the same repository. It saves the key in{" "}
+        <Link href="/login">Sign in</Link> (that creates your workspace), press <strong>Create a key</strong> on
+        Get started, and run the <code>init</code> command from the card in the same repository, or{" "}
+        <code>agentfox login</code> from the terminal. Either saves the key in{" "}
         <code>.agentfox/agentfox.env</code>, and from then on your app&apos;s calls go to your account
-        and show up on the dashboard. The <Link href="/docs/quickstart">Quickstart</Link> walks through
-        it. To set the key another way, see <Link href="/docs/connect/python#key">where auto() finds the key</Link>.
+        and show up on the dashboard. The CLI uses the same account: <code>findings</code>,{" "}
+        <code>agents list</code>, <code>permit</code>, <code>declare</code>, <code>policy</code>,{" "}
+        <code>report</code> and <code>test suites</code> read and write it, and each prints which it
+        uses. <code>agentfox doctor</code> checks the key. The{" "}
+        <Link href="/docs/quickstart">Quickstart</Link> walks through it. To set the key another way,
+        see <Link href="/docs/connect/python#key">where auto() finds the key</Link>.
       </p>
+      <Code>{`agentfox login --server <gateway address from Get started>`}</Code>
 
       <h2>If something goes wrong</h2>
       <div className="docs-table" tabIndex={0}><table>

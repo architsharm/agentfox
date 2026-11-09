@@ -36,6 +36,9 @@ from agentfox.apps.cli.wizard.backend import BackendError, Remote
 #: script may be parsing.
 _status = Console(stderr=True)
 
+#: Set to 1 to make the CLI use this machine's database although a key is configured.
+LOCAL_ENV_VAR = "AGENTFOX_LOCAL"
+
 #: The page a key is made on. Cloud's dashboard is `wizard.targets.CLOUD_APP_URL`.
 KEY_STEP = "Get started → Create a key"
 
@@ -152,8 +155,10 @@ def configured(root: Path | None = None) -> Account | None:
     the environment first, then ``.agentfox/agentfox.env`` here. An explicit
     ``AGENTFOX_DATABASE_URL`` in the environment wins over both: the CLI then uses
     that database directly, which is how a self-hosted team already shares one.
+    ``AGENTFOX_LOCAL=1`` says the same for this machine's database: what the
+    coding-agent hooks record, in a project that is connected to an account.
     """
-    if os.environ.get("AGENTFOX_DATABASE_URL"):
+    if os.environ.get("AGENTFOX_DATABASE_URL") or _local_forced():
         return None
     from agentfox.frameworks.autoguard import remote
 
@@ -171,6 +176,10 @@ def configured(root: Path | None = None) -> Account | None:
     if not (url and key):
         return None
     return Account(url=url, key=key, origin=origin)
+
+
+def _local_forced() -> bool:
+    return os.environ.get(LOCAL_ENV_VAR, "").strip().lower() in ("1", "true", "yes", "on")
 
 
 def local_label() -> str:
@@ -210,7 +219,7 @@ def use(console: Console | None = None, *, quiet: bool = False) -> Account | Non
         if not quiet:
             hint = (
                 ""
-                if os.environ.get("AGENTFOX_DATABASE_URL")
+                if os.environ.get("AGENTFOX_DATABASE_URL") or _local_forced()
                 else " (`agentfox login` to use your account)"
             )
             _status.print(f"[dim]{escape(local_label())}{hint}[/]", soft_wrap=True)

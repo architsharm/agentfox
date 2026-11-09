@@ -943,6 +943,8 @@ def _check_account(add: Any) -> int | None:
         url = os.environ.get("AGENTFOX_URL") or os.environ.get("AGENTFOX_API_URL")
         if os.environ.get("AGENTFOX_DATABASE_URL"):
             add("info", "account", f"none: AGENTFOX_DATABASE_URL is set, so {local_label()}")
+        elif os.environ.get("AGENTFOX_LOCAL"):
+            add("info", "account", f"not used: AGENTFOX_LOCAL is set, so {local_label()}")
         elif url:
             add(
                 "warn",

@@ -109,11 +109,18 @@ export AGENTFOX_URL=https://…
 export AGENTFOX_API_KEY=nom_api_…
 ```
 
-With these set (or `.agentfox/agentfox.env`, or `agentfox.auto(server=…, key=…)`),
-every check `agentfox.auto()` makes goes to your account's gateway and the calls appear
-on the dashboard. Without a key it checks and records locally. Every OpenAI, Anthropic,
-LiteLLM and LangChain call in the process is checked, and every tool call in a response
-is checked before your code can run it; a refused one raises `agentfox.Blocked`.
+Or run `agentfox login`, which checks the key and saves both in `.agentfox/agentfox.env`
+(as `agentfox init --key` and `agentfox up` do). With a key set, every check
+`agentfox.auto()` makes goes to your account's gateway and the calls appear on the
+dashboard, and the CLI reads and writes the same account: `findings`, `agents list`,
+`permit`, `declare`, `policy`, `report` and `test suites` show what the dashboard shows,
+and each says on its first line which it is using (`Account: https://… (workspace …)` or
+`Local: ~/.agentfox/agentfox.db`). `agentfox doctor` checks the server and the key. Without
+a key everything checks and records locally. Every OpenAI, Anthropic, LiteLLM and
+LangChain call in the process is checked, and every tool call in a response is checked
+before your code can run it; a refused one raises `agentfox.Blocked`. Coding-agent hooks
+record on this machine; `AGENTFOX_LOCAL=1 agentfox findings` reads them in a project
+connected to an account.
 
 ### Other ways in
 

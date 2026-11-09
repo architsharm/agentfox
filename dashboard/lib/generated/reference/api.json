@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 337,
+ "count": 338,
  "routes": [
   {
    "method": "GET",
@@ -1325,6 +1325,12 @@
      },
      {
       "name": "impact",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "expires_at",
       "type": "string",
       "required": false,
       "description": ""
@@ -11648,6 +11654,47 @@
   },
   {
    "method": "GET",
+   "path": "/api/report/summary",
+   "section": "report",
+   "audience": "operator",
+   "summary": "The one-page summary `agentfox report` prints, for this workspace: what ran, what was stopped and why, what is only watched. ``text`` is Markdown or HTML.",
+   "description": "The one-page summary `agentfox report` prints, for this workspace: what ran,\nwhat was stopped and why, what is only watched. ``text`` is Markdown or HTML.",
+   "params": [
+    {
+     "name": "since",
+     "in": "query",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": "array"
+    },
+    {
+     "name": "format",
+     "in": "query",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
    "path": "/api/retention",
    "section": "retention",
    "audience": "operator",
@@ -12580,6 +12627,18 @@
      {
       "name": "output_trust",
       "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "effect_class",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "triggers",
+      "type": "array",
       "required": false,
       "description": ""
      }

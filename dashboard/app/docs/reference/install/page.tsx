@@ -176,6 +176,14 @@ python -m spacy download en_core_web_lg   # for pii.presidio, about 400MB`}</Cod
         to keep them apart. <code>AGENTFOX_DATABASE_URL</code> and{" "}
         <code>AGENTFOX_EVIDENCE_DIR</code> override the two locations one at a time.
       </p>
+      <p>
+        With an account key (<code>AGENTFOX_URL</code> and <code>AGENTFOX_API_KEY</code>, or the{" "}
+        <code>.agentfox/agentfox.env</code> that <code>init --key</code>, <code>up</code> and{" "}
+        <code>login</code> write), the commands that show what the dashboard shows read and write the
+        account instead, and say so on their first line. An explicit{" "}
+        <code>AGENTFOX_DATABASE_URL</code>, or <code>AGENTFOX_LOCAL=1</code>, keeps them on the
+        database.
+      </p>
       <h3 id="postgres">Postgres</h3>
       <p>
         SQLite is fine for one process. For a server or more than one worker, use Postgres

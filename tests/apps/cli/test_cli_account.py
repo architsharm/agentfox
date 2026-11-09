@@ -295,3 +295,13 @@ def test_login_without_a_key_says_where_to_make_one(monkeypatch, tmp_path):
     )
     assert result.exit_code == 2
     assert "Get started → Create a key" in result.output
+
+
+def test_agentfox_local_reads_this_machine_with_a_key_configured(account, monkeypatch):
+    """What the coding-agent hooks record stays on this machine; in a project connected
+    to an account, AGENTFOX_LOCAL=1 reads it."""
+    monkeypatch.setenv("AGENTFOX_LOCAL", "1")
+    result = runner.invoke(app, ["findings"])
+    assert result.exit_code == 0, result.output
+    assert "Local:" in result.output
+    assert not account
