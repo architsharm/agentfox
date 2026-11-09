@@ -78,7 +78,7 @@ export default async function RulePage({ params, searchParams }: { params: Promi
           <>
             {/* A rule you wrote is switched on with its library, Your rules, or on its own
                 when Your rules already blocks and it was added since (it watches until then). */}
-            {mode !== "enforce" && rule?.packs.some((p) => p.key === "custom") && (
+            {mode !== "enforce" && tab !== "tune" && rule?.packs.some((p) => p.key === "custom") && (
               <Link
                 className="k-btn-primary"
                 href={rule.packs.some((p) => p.key === "custom" && p.mode === "enforce") ? tabHref("tune") : "/app/policies?tab=libraries&open=custom"}

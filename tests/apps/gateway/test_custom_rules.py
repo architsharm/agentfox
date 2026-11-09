@@ -317,6 +317,8 @@ def test_a_rules_history_says_what_changed_and_restoring_puts_the_words_back(cli
     assert r.json()["rule"]["entries"] == ["Globex", "Initech"]
     assert _guard(client, "Ask Initech")["effective_verdict"] == "block"
     assert _guard(client, "Ask Hooli")["effective_verdict"] == "allow"
+    latest = client.get("/api/custom-rules/rivals/history", headers=ADMIN).json()["versions"][0]
+    assert latest["change"] == "Restored version 1: added “Initech”; removed “Hooli”"
     again = client.post("/api/custom-rules/rivals/versions/3/restore", headers=ADMIN)
     assert again.status_code == 409
 

@@ -20,6 +20,7 @@ screen can show it.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -324,11 +325,15 @@ def history(session: Session, key: str) -> list[dict[str, Any]]:
         payload = entry.payload_json or {}
         after = payload.get("after") or {}
         version = after.get("version") if isinstance(after.get("version"), int) else n
+        change = describe_change(previous, after)
+        restored = re.search(r"restored to version (\d+)", str(payload.get("reason") or ""))
+        if restored:
+            change = f"Restored version {restored.group(1)}: {change[0].lower()}{change[1:]}"
         out.append(
             {
                 "version": version,
                 "definition": after,
-                "change": describe_change(previous, after),
+                "change": change,
                 "at": entry.occurred_at.isoformat() if entry.occurred_at else None,
                 "author": entry.actor_id,
                 "live": version == (row.version or 1),
