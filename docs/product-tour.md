@@ -210,8 +210,8 @@ cannot exceed the ceiling for tool-sourced data.
 
 ```bash
 agentfox admin hooks daemon                             # the warm process, once
-agentfox admin hooks install --agent my-agent --write   # writes .claude/settings.json
-agentfox admin hooks install --harness codex --agent my-agent --write   # Codex CLI
+agentfox admin hooks install --agent claude-dev --write   # writes .claude/settings.json; name it as you like
+agentfox admin hooks install --harness codex --agent codex-dev --write   # Codex CLI
 ```
 
 For Claude Code, four events, because one event is one surface:
@@ -276,7 +276,7 @@ destructive endpoint, an MCP server whose tools drifted. A finding closes itself
 clears and reopens if it comes back; a run that could not read the source closes nothing.
 
 ```bash
-agentfox scan monitors list                       # what is watched, last outcome, next run
+agentfox scan monitors list                       # Enterprise: what is watched, last outcome, next run
 agentfox scan monitors add github_repo acme/bot   # or created for you when you connect one
 agentfox admin jobs run-due                       # self-hosted: put this on cron
 ```
@@ -293,9 +293,11 @@ connection. The hosted runner is triggered by
 
 ## Commands, grouped by what you are trying to do
 
-`agentfox --help` lists fourteen top-level commands in six groups: Start (`up`, `init`, `demo`), See (`scan`,
-`agents`), Watch (`serve`, `findings`), Contain (`permit`, `declare`, `policy`), Prove (`test`,
-`report`) and Operate (`doctor`, `admin`). Below, the same commands by task.
+`agentfox --help` lists fourteen top-level commands in seven groups: Start (`up`, `init`, `demo`),
+Discover (`scan`, `agents`), Govern (`permit`, `declare`, `policy`), Protect (`serve`, `findings`),
+Test (`test`), Prove (`report`) and Operate (`doctor`, `admin`). Below, the same commands by task. They name the demo's
+agents (`support-triage`, `payments-ops`): use your own agent's name (`agentfox agents list`), or run
+`agentfox demo --in-workspace` first to follow along.
 
 Every decision lands in a tamper-evident audit chain and maps to the controls you answer to.
 Evidence packages (Enterprise) ship with a stdlib-only `verify_chain.py`, so an auditor re-derives
@@ -337,7 +339,7 @@ write them by hand:
 ```bash
 agentfox declare tool billing.export --impact write    # read | write | high_impact | irreversible
 agentfox declare tool crm.lookup --impact read --output-trust trusted   # its output is yours
-agentfox permit grant support-triage tickets.close \
+agentfox permit grant support-triage tickets.close --yes \
     --limit priority:in=low,normal --max-taint user
 agentfox permit list support-triage                    # anything not listed is refused
 agentfox permit revoke <capability-id>
@@ -346,8 +348,8 @@ agentfox permit revoke <capability-id>
 `--max-taint` is the worst provenance an argument may carry and still go through without an
 approval: `none`, `user`, `retrieved`, `tool_result`, `subagent`, `memory`. Within it, the taint
 rules defer to the grant; `composition.escalation` (one tool's output fed into a higher-impact tool)
-does not, unless the producing tool's output is declared trusted. `permit grant` confirms before it
-writes; `--yes` skips the prompt in CI. `agentfox agents register <slug> --owner you@example.com` turns a
+does not, unless the producing tool's output is declared trusted. Without `--yes`, `permit grant`
+confirms before it writes, and with no terminal to answer at it grants nothing and says so. `agentfox agents register <slug> --owner you@example.com` turns a
 shadow agent into an owned one, and `agentfox agents budget` sets the caps `budget.exceeded` blocks on.
 Whether provenance is read per run or per argument is one setting, `taint_scope` (`session`, the
 default, or `argument`); see [Getting started, step 5b](getting-started.md#5b-let-it-propose-the-grants-learned-permissions).

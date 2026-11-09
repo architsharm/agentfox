@@ -36,7 +36,7 @@ export const SAME_DB_NOTE =
 
 export const PATH_NOTE: Record<PathKey, string> = {
   http: "Ask before each tool call. Branch on verdict: allow, redact, escalate or block.",
-  python: "Check each message and each tool call from your agent's code, before it acts.",
+  python: "One line in your entry point checks every model and tool call. Or check each one yourself, before it acts.",
   "openai-agents": "One call governs every agent, hand-off and tool: messages are checked and each tool call is authorised.",
   typescript: "Check each message and tool call from your agent's code.",
   openai: "Point your existing client at the gateway. Every model call is checked and traced.",
@@ -63,9 +63,21 @@ export function snippetsFor(path: PathKey, gateway: string, agent: string): Snip
       ];
     case "python":
       return [
-        { label: "Install", code: "pip install agentfox" },
+        { label: "Install", code: "pip install -U agentfox" },
         {
-          label: "In your agent",
+          label: "Your account",
+          code: `export AGENTFOX_URL=${gateway}
+export AGENTFOX_API_KEY=nom_api_…`,
+        },
+        {
+          // The docs' path: one line, and every model and tool call is checked and traced.
+          label: "In your entry point",
+          code: `import agentfox
+
+agentfox.auto("${a}")`,
+        },
+        {
+          label: "Or check each call yourself",
           code: `from agentfox import AgentFox, ApprovalRequired, PolicyViolation
 
 # Reads your key from AGENTFOX_API_KEY.

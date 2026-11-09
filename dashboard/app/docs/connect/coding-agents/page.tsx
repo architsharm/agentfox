@@ -69,7 +69,7 @@ agentfox admin hooks status`}</Code>
             MCP tools arrive as <code>mcp__server__tool</code> and have no grant, so they are refused.
             Grant one, or let a few sessions run and have grants proposed from what the agent called.
           </p>
-          <Code>{`AGENTFOX_LOCAL=1 agentfox permit grant claude-dev mcp__github__create_issue
+          <Code>{`AGENTFOX_LOCAL=1 agentfox permit grant claude-dev mcp__github__create_issue --yes   # --yes: no prompt (scripts, coding agents)
 AGENTFOX_LOCAL=1 agentfox policy proposals from-traffic --agent claude-dev`}</Code>
         </Step>
 

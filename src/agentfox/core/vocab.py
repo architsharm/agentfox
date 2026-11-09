@@ -114,3 +114,7 @@ CAPABILITY_REFUSAL_RULE_IDS = frozenset(
 #: Set by `agentfox init` while its process runs the attack test, which imports the
 #: app: `agentfox.auto()` stands down, so the attacks are not reported as its traffic.
 ATTACK_TEST_ENV = "AGENTFOX_ATTACK_TEST"
+
+#: Set to 1 (or true/yes) to turn `agentfox.auto()` off without editing code: it patches
+#: nothing, checks nothing and sends nothing, and the app runs as if it were not there.
+DISABLED_ENV = "AGENTFOX_DISABLED"

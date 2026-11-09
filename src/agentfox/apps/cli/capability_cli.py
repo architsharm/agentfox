@@ -23,7 +23,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from agentfox.apps.cli._style import match_id, print_unknown_agent
+from agentfox.apps.cli._style import match_id, plural, print_unknown_agent
 
 console = Console()
 
@@ -347,9 +347,19 @@ def capability_grant(
         f"  expires        {expires_at.isoformat(timespec='seconds') if expires_at else 'never'}"
     )
     _explain_taint_ceiling(tool, max_taint)
-    if not yes and not typer.confirm(
-        "\nThis widens what the agent may do. Grant it?", default=False
-    ):
+    try:
+        confirmed = yes or typer.confirm(
+            "\nThis widens what the agent may do. Grant it?", default=False
+        )
+    except typer.Abort:
+        # No answer to read (a script, CI, stdin closed): the prompt used to end in a
+        # bare "Aborted.", which says nothing about granting without a person there.
+        console.print(
+            "\n[yellow]nothing granted[/]: no answer to the prompt. "
+            "Pass --yes to grant without asking (scripts and CI)."
+        )
+        raise typer.Exit(1) from None
+    if not confirmed:
         console.print("[yellow]nothing granted[/]")
         raise typer.Exit(1)
 
@@ -516,7 +526,7 @@ def _print_grants(rows: list[dict[str, Any]], agent: str | None, as_json: bool) 
 
     expired = [r for r in rows if r["expired"]]
     console.print(
-        f"\n  [dim]{len(rows)} grant(s)"
+        f"\n  [dim]{plural(len(rows), 'grant')}"
         + (f", {len(expired)} past their expiry and no longer matched" if expired else "")
         + ". Anything not listed is refused by default.[/]"
     )

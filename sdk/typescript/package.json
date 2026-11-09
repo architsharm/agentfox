@@ -18,7 +18,7 @@
     "anthropic",
     "agentfox"
   ],
-  "homepage": "https://useagentfox.com/docs/guides/gateway",
+  "homepage": "https://useagentfox.com/docs/connect/typescript",
   "bugs": {
     "url": "https://github.com/architsharm/agentfox/issues"
   },

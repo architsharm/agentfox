@@ -4,7 +4,7 @@
   "path": "",
   "name": "agentfox",
   "summary": "",
-  "help": "Agent-native, vendor-neutral governance for AI agents in production.",
+  "help": "The control plane for AI agents: discover them, govern what they may do, protect them at runtime, test them, and prove it.\n\nNew here? `agentfox scan`, then `agentfox up` (guided setup). With an account key: `agentfox init --key …`.",
   "panel": null,
   "params": [
    {
@@ -22,12 +22,13 @@
    }
   ],
   "default_subcommand": null,
+  "enterprise": false,
   "commands": [
    {
     "path": "up",
     "name": "up",
-    "summary": "Set up AgentFox for this project: scan, choose, and it does the rest.",
-    "help": "Set up AgentFox for this project: scan, choose, and it does the rest.\n\nAsks where AgentFox runs (this machine, your own server, or AgentFox Cloud), what\nto cover (coding agents, your Python agent, the gateway, tools, MCP servers,\nmonitoring, compliance, the dashboard) and how strict to start, then does all of\nit. Every question has a recommended answer; `--yes` takes them all. Run it again\nany time: it remembers the answers and only changes what is new.",
+    "summary": "Guided setup: scan, choose what to cover, and it does the rest.",
+    "help": "Guided setup: scan, choose what to cover, and it does the rest.\n\nAsks where AgentFox runs (this machine, your own server, or AgentFox Cloud), what\nto cover (coding agents, your Python agent, the gateway, tools, MCP servers,\nmonitoring, compliance, the dashboard) and how strict to start, then does all of\nit. Every question has a recommended answer; `--yes` takes them all. Run it again\nany time: it remembers the answers and only changes what is new.",
     "panel": "Start",
     "params": [
      {
@@ -203,13 +204,14 @@
      }
     ],
     "default_subcommand": null,
+    "enterprise": false,
     "commands": []
    },
    {
     "path": "init",
     "name": "init",
-    "summary": "Set everything up.",
-    "help": "Set everything up. Idempotent, offline, and safe to run twice.\n\nCreates the database, applies migrations, loads the control catalog and the\nshipped policy packs, every one watching (observe) until you switch it to blocking\nwith `agentfox policy enforce <key>`; coding-agent only for agents this repo's\ncoding-harness hooks govern. Destructive commands and tampering with AgentFox\nare refused from the start; a tool an agent was not granted is refused once\ntool-containment blocks. It writes an\nagentfox.toml carrying the real runtime defaults so they are visible rather than\nimplicit. AGENTFOX_* environment variables override that file.",
+    "summary": "Connect this repo to your account (--key), or set up locally.",
+    "help": "Connect this repo to your account (--key), or set up locally.\n\nWithout --key: prepares the local database and policies.\n\nIdempotent and safe to run twice. Without --key it is offline and edits no code;\n`agentfox up` is the guided setup that also adds `agentfox.auto()`.\n\nCreates the database, applies migrations, loads the control catalog and the\nshipped policy packs, every one watching (observe) until you switch it to blocking\nwith `agentfox policy enforce <key>`; coding-agent only for agents this repo's\ncoding-harness hooks govern. Destructive commands and tampering with AgentFox\nare refused from the start; a tool an agent was not granted is refused once\ntool-containment blocks. It writes an\nagentfox.toml carrying the real runtime defaults so they are visible rather than\nimplicit. AGENTFOX_* environment variables override that file.",
     "panel": "Start",
     "params": [
      {
@@ -281,13 +283,14 @@
      }
     ],
     "default_subcommand": null,
+    "enterprise": false,
     "commands": []
    },
    {
     "path": "demo",
     "name": "demo",
-    "summary": "Run the end-to-end walkthrough (offline), in a database of its own.",
-    "help": "Run the end-to-end walkthrough (offline), in a database of its own.\n\nThree made-up agents, sample traffic and the findings it opens go to `demo.db`\nbeside your workspace database, so `agentfox findings` in a real project never\nopens with the demo's. The closing panel says how to look around it.",
+    "summary": "A walkthrough on made-up agents, offline, in its own database.",
+    "help": "A walkthrough on made-up agents, offline, in its own database.\n\nThree made-up agents, sample traffic and the findings it opens go to `demo.db`\nbeside your workspace database, so `agentfox findings` in a real project never\nopens with the demo's. The closing panel says how to look around it.",
     "panel": "Start",
     "params": [
      {
@@ -305,16 +308,18 @@
      }
     ],
     "default_subcommand": null,
+    "enterprise": false,
     "commands": []
    },
    {
     "path": "scan",
     "name": "scan",
-    "summary": "Find what is worth governing: a repo, this machine, an MCP server, the runtime.",
-    "help": "Find what is worth governing: a repo, this machine, an MCP server, the runtime.\n\n`agentfox scan [PATH] [--fail] [--json]` scans a repository (the default). `agentfox scan --sessions [PATH]` also reads local AI-tool sessions and runs the live detector check. `machine` checks the MCP servers and skills your AI tools load on this machine. `mcp`, `skills` and `runtime` scan the rest; `monitors` re-checks connected sources on a schedule.",
-    "panel": "See",
+    "summary": "Find what to govern: a repo, this machine, MCP servers, runtime.",
+    "help": "Find what to govern: a repo, this machine, MCP servers, runtime.\n\n`agentfox scan [PATH] [--fail] [--json]` scans a repository (the default). `agentfox scan --sessions [PATH]` also reads local AI-tool sessions and runs the live detector check. `machine` checks the MCP servers and skills your AI tools load on this machine. `mcp`, `skills` and `runtime` scan the rest; `monitors` re-checks connected sources on a schedule.",
+    "panel": "Discover",
     "params": [],
     "default_subcommand": "repo",
+    "enterprise": false,
     "commands": [
      {
       "path": "scan skills",
@@ -352,6 +357,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -390,6 +396,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -466,6 +473,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -557,6 +565,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -567,6 +576,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -577,6 +587,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": true,
       "commands": [
        {
         "path": "scan monitors list",
@@ -600,6 +611,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": true,
         "commands": []
        },
        {
@@ -663,6 +675,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": true,
         "commands": []
        },
        {
@@ -687,6 +700,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": true,
         "commands": []
        },
        {
@@ -711,6 +725,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": true,
         "commands": []
        },
        {
@@ -735,6 +750,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": true,
         "commands": []
        },
        {
@@ -772,6 +788,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": true,
         "commands": []
        }
       ]
@@ -783,9 +800,10 @@
     "name": "agents",
     "summary": "Find every agent that is running, and who owns it.",
     "help": "Find every agent that is running, and who owns it.",
-    "panel": "See",
+    "panel": "Discover",
     "params": [],
     "default_subcommand": null,
+    "enterprise": false,
     "commands": [
      {
       "path": "agents list",
@@ -835,6 +853,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -924,6 +943,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -1026,6 +1046,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -1063,6 +1084,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -1101,6 +1123,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -1139,6 +1162,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -1177,205 +1201,20 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      }
     ]
-   },
-   {
-    "path": "serve",
-    "name": "serve",
-    "summary": "Run the gateway and control-plane API, the MCP server for AI clients, or the model server.",
-    "help": "Run the gateway and control-plane API, the MCP server for AI clients, or the model server.\n\n`agentfox serve [--host] [--port] [--reload]` starts the API (the default); `agentfox serve mcp` speaks MCP over stdio; `agentfox serve models` runs the model-backed detectors for gateways that should not hold weights.",
-    "panel": "Watch",
-    "params": [],
-    "default_subcommand": "api",
-    "commands": [
-     {
-      "path": "serve api",
-      "name": "api",
-      "summary": "Start the gateway and control-plane API.",
-      "help": "Start the gateway and control-plane API.\n\nIt serves JSON: the API under /api, the gateway under /v1, and interactive API\ndocs at /docs. The web dashboard is AgentFox Cloud (`agentfox up --target cloud`)\nor the self-hosted stack (`agentfox up --target self-hosted`).",
-      "panel": null,
-      "params": [
-       {
-        "kind": "option",
-        "name": "host",
-        "opts": [
-         "--host"
-        ],
-        "type": "text",
-        "choices": [],
-        "required": false,
-        "multiple": false,
-        "default": "127.0.0.1",
-        "help": ""
-       },
-       {
-        "kind": "option",
-        "name": "port",
-        "opts": [
-         "--port"
-        ],
-        "type": "integer",
-        "choices": [],
-        "required": false,
-        "multiple": false,
-        "default": 8080,
-        "help": ""
-       },
-       {
-        "kind": "option",
-        "name": "reload",
-        "opts": [
-         "--reload",
-         "--no-reload"
-        ],
-        "type": "flag",
-        "choices": [],
-        "required": false,
-        "multiple": false,
-        "default": null,
-        "help": ""
-       }
-      ],
-      "default_subcommand": null,
-      "commands": []
-     },
-     {
-      "path": "serve mcp",
-      "name": "mcp",
-      "summary": "Serve MCP over stdio (for Claude Code, Claude Desktop and other MCP clients).",
-      "help": "Serve MCP over stdio (for Claude Code, Claude Desktop and other MCP clients).\n\nRead-only by design: nothing that changes enforcement or stops an agent is exposed.",
-      "panel": null,
-      "params": [],
-      "default_subcommand": null,
-      "commands": []
-     },
-     {
-      "path": "serve models",
-      "name": "models",
-      "summary": "Run the model server: model-backed detectors for gateways that should not hold weights.",
-      "help": "Run the model server: model-backed detectors for gateways that should not\nhold weights. Point a gateway at it with AGENTFOX_MODEL_SERVER_URL.",
-      "panel": null,
-      "params": [
-       {
-        "kind": "option",
-        "name": "host",
-        "opts": [
-         "--host"
-        ],
-        "type": "text",
-        "choices": [],
-        "required": false,
-        "multiple": false,
-        "default": "127.0.0.1",
-        "help": ""
-       },
-       {
-        "kind": "option",
-        "name": "port",
-        "opts": [
-         "--port"
-        ],
-        "type": "integer",
-        "choices": [],
-        "required": false,
-        "multiple": false,
-        "default": 8090,
-        "help": ""
-       },
-       {
-        "kind": "option",
-        "name": "workers",
-        "opts": [
-         "--workers"
-        ],
-        "type": "integer",
-        "choices": [],
-        "required": false,
-        "multiple": false,
-        "default": 1,
-        "help": "Processes; each loads every model once."
-       }
-      ],
-      "default_subcommand": null,
-      "commands": []
-     }
-    ]
-   },
-   {
-    "path": "findings",
-    "name": "findings",
-    "summary": "What the platform found.",
-    "help": "What the platform found. The list `agentfox.auto()` tells you to read.\n\nOrdered worst first, then most recently seen. A finding that keeps happening is\none row with a count, not one row per occurrence, so the length of this list is\nthe number of distinct problems. `--types` lists the kinds of finding there are.",
-    "panel": "Watch",
-    "params": [
-     {
-      "kind": "option",
-      "name": "severity",
-      "opts": [
-       "--severity",
-       "-s"
-      ],
-      "type": "text",
-      "choices": [],
-      "required": false,
-      "multiple": false,
-      "default": null,
-      "help": "Show only this severity: critical, high, medium, low or info."
-     },
-     {
-      "kind": "option",
-      "name": "limit",
-      "opts": [
-       "--limit",
-       "-n"
-      ],
-      "type": "integer",
-      "choices": [],
-      "required": false,
-      "multiple": false,
-      "default": 20,
-      "help": "How many findings to show, worst first."
-     },
-     {
-      "kind": "option",
-      "name": "as_json",
-      "opts": [
-       "--json"
-      ],
-      "type": "flag",
-      "choices": [],
-      "required": false,
-      "multiple": false,
-      "default": null,
-      "help": "Full records for scripts: whole ids, fingerprints, subjects and timestamps."
-     },
-     {
-      "kind": "option",
-      "name": "types",
-      "opts": [
-       "--types"
-      ],
-      "type": "flag",
-      "choices": [],
-      "required": false,
-      "multiple": false,
-      "default": null,
-      "help": "List every finding type instead: what each means, its usual severity, who raises it."
-     }
-    ],
-    "default_subcommand": null,
-    "commands": []
    },
    {
     "path": "permit",
     "name": "permit",
-    "summary": "Grant, list and withdraw what an agent — or an end user — may do, and decide the calls held for a person (`permit approvals`).",
-    "help": "Grant, list and withdraw what an agent — or an end user — may do, and decide the calls held for a person (`permit approvals`).",
-    "panel": "Contain",
+    "summary": "Grant and withdraw what an agent may do; decide held calls.",
+    "help": "Grant and withdraw what an agent may do; decide held calls.\n\nGrant, list and withdraw what an agent — or an end user — may do, and decide the calls held for a person (`permit approvals`).",
+    "panel": "Govern",
     "params": [],
     "default_subcommand": null,
+    "enterprise": false,
     "commands": [
      {
       "path": "permit grant",
@@ -1507,6 +1346,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -1544,6 +1384,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -1582,6 +1423,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -1658,6 +1500,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -1668,6 +1511,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": [
        {
         "path": "permit approvals list",
@@ -1717,6 +1561,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -1754,6 +1599,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -1805,6 +1651,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -1856,6 +1703,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        }
       ]
@@ -1865,11 +1713,12 @@
    {
     "path": "declare",
     "name": "declare",
-    "summary": "Declare the facts containment reasons over: tools, data scope, sources, hand-offs.",
-    "help": "Declare the facts containment reasons over: tools, data scope, sources, hand-offs.\n\nWhat a tool can do, which column says whose row it is, what an agent has no data for, which sources are authoritative, and when to hand off to a person.",
-    "panel": "Contain",
+    "summary": "Declare the facts containment uses: tools, scope, sources.",
+    "help": "Declare the facts containment uses: tools, scope, sources.\n\nWhat a tool can do, which column says whose row it is, what an agent has no data for, which sources are authoritative, and when to hand off to a person.",
+    "panel": "Govern",
     "params": [],
     "default_subcommand": null,
+    "enterprise": false,
     "commands": [
      {
       "path": "declare tool",
@@ -1971,6 +1820,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -2008,6 +1858,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -2071,6 +1922,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -2095,6 +1947,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -2184,6 +2037,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -2287,6 +2141,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -2311,6 +2166,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -2400,6 +2256,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -2477,6 +2334,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -2514,6 +2372,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      }
     ]
@@ -2521,11 +2380,12 @@
    {
     "path": "policy",
     "name": "policy",
-    "summary": "Write the rules, try them against recorded traffic, then turn them on.",
-    "help": "Write the rules, try them against recorded traffic, then turn them on.",
-    "panel": "Contain",
+    "summary": "Write rules, try them on recorded traffic, then turn them on.",
+    "help": "Write rules, try them on recorded traffic, then turn them on.",
+    "panel": "Govern",
     "params": [],
     "default_subcommand": null,
+    "enterprise": false,
     "commands": [
      {
       "path": "policy list",
@@ -2535,6 +2395,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -2559,6 +2420,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -2622,13 +2484,14 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
       "path": "policy simulate",
       "name": "simulate",
       "summary": "Replay recorded traffic against a candidate policy, or a loaded one by key.",
-      "help": "Replay recorded traffic against a candidate policy, or a loaded one by key.\n\nExits non-zero when the change would newly block production traffic, so it can\ngate a policy PR the same way `test gate` gates a code PR.",
+      "help": "Replay recorded traffic against a candidate policy, or a loaded one by key.\n\nExits non-zero when the change would newly block production traffic, so it can\ngate a policy PR the same way `agentfox test gate` gates a code PR.",
       "panel": null,
       "params": [
        {
@@ -2669,7 +2532,7 @@
         "required": false,
         "multiple": false,
         "default": null,
-        "help": ""
+        "help": "Replay one agent's traffic only."
        },
        {
         "kind": "option",
@@ -2682,7 +2545,7 @@
         "required": false,
         "multiple": false,
         "default": 30,
-        "help": ""
+        "help": "How far back to replay."
        },
        {
         "kind": "option",
@@ -2695,10 +2558,11 @@
         "required": false,
         "multiple": false,
         "default": 1000,
-        "help": ""
+        "help": "The most recorded calls to replay."
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -2723,6 +2587,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -2747,6 +2612,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -2771,6 +2637,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -2796,6 +2663,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -2834,6 +2702,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -2924,6 +2793,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -2961,6 +2831,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -3011,6 +2882,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -3021,6 +2893,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": "files",
+      "enterprise": false,
       "commands": [
        {
         "path": "policy packs files",
@@ -3030,6 +2903,7 @@
         "panel": null,
         "params": [],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -3067,6 +2941,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -3104,6 +2979,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -3141,6 +3017,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -3191,6 +3068,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -3241,6 +3119,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        }
       ]
@@ -3253,6 +3132,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": [
        {
         "path": "policy rules apply",
@@ -3302,6 +3182,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -3326,6 +3207,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -3350,6 +3232,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -3387,6 +3270,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -3424,6 +3308,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -3448,6 +3333,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -3472,6 +3358,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -3482,6 +3369,7 @@
         "panel": null,
         "params": [],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -3532,6 +3420,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        }
       ]
@@ -3544,6 +3433,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": [
        {
         "path": "policy proposals list",
@@ -3606,6 +3496,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -3643,6 +3534,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -3693,6 +3585,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -3743,6 +3636,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -3793,6 +3687,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -3843,6 +3738,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -3906,6 +3802,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -3943,6 +3840,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -3993,6 +3891,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        }
       ]
@@ -4000,13 +3899,256 @@
     ]
    },
    {
+    "path": "serve",
+    "name": "serve",
+    "summary": "Run the gateway and API, the MCP server, or the model server.",
+    "help": "Run the gateway and API, the MCP server, or the model server.\n\n`agentfox serve` starts the API (the default) on 127.0.0.1:8080. `--host 0.0.0.0` and `--port 9000` change where it listens; `--reload` restarts it when the code changes; `agentfox serve api --help` lists every option.\n\n`agentfox serve mcp` speaks MCP over stdio; `agentfox serve models` runs the model-backed detectors for gateways that should not hold weights.",
+    "panel": "Protect",
+    "params": [],
+    "default_subcommand": "api",
+    "enterprise": false,
+    "commands": [
+     {
+      "path": "serve api",
+      "name": "api",
+      "summary": "Start the gateway and control-plane API.",
+      "help": "Start the gateway and control-plane API.\n\nIt serves JSON: the API under /api, the gateway under /v1, and interactive API\ndocs at /docs. The web dashboard is AgentFox Cloud (`agentfox up --target cloud`)\nor the self-hosted stack (`agentfox up --target self-hosted`).",
+      "panel": null,
+      "params": [
+       {
+        "kind": "option",
+        "name": "host",
+        "opts": [
+         "--host"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "127.0.0.1",
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "port",
+        "opts": [
+         "--port"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": 8080,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "reload",
+        "opts": [
+         "--reload",
+         "--no-reload"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "enterprise": false,
+      "commands": []
+     },
+     {
+      "path": "serve mcp",
+      "name": "mcp",
+      "summary": "Serve MCP over stdio (for Claude Code, Claude Desktop and other MCP clients).",
+      "help": "Serve MCP over stdio (for Claude Code, Claude Desktop and other MCP clients).\n\nRead-only by design: nothing that changes enforcement or stops an agent is exposed.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "enterprise": false,
+      "commands": []
+     },
+     {
+      "path": "serve models",
+      "name": "models",
+      "summary": "Run the model server: model-backed detectors for gateways that should not hold weights.",
+      "help": "Run the model server: model-backed detectors for gateways that should not\nhold weights. Point a gateway at it with AGENTFOX_MODEL_SERVER_URL.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "option",
+        "name": "host",
+        "opts": [
+         "--host"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "127.0.0.1",
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "port",
+        "opts": [
+         "--port"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": 8090,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "workers",
+        "opts": [
+         "--workers"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": 1,
+        "help": "Processes; each loads every model once."
+       }
+      ],
+      "default_subcommand": null,
+      "enterprise": false,
+      "commands": []
+     }
+    ]
+   },
+   {
+    "path": "findings",
+    "name": "findings",
+    "summary": "What was found, worst first: the list `agentfox.auto()` points to.",
+    "help": "What was found, worst first: the list `agentfox.auto()` points to.\n\n`agentfox findings [--severity high] [--limit 50] [--json]` lists the open ones, worst first (the default); `agentfox findings show <id>` shows one in full; `agentfox findings --types` lists the kinds there are.",
+    "panel": "Protect",
+    "params": [],
+    "default_subcommand": "list",
+    "enterprise": false,
+    "commands": [
+     {
+      "path": "findings list",
+      "name": "list",
+      "summary": "What the platform found.",
+      "help": "What the platform found. The list `agentfox.auto()` tells you to read.\n\nOrdered worst first, then most recently seen. A finding that keeps happening is\none row with a count, not one row per occurrence, so the length of this list is\nthe number of distinct problems. `--types` lists the kinds of finding there are.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "option",
+        "name": "severity",
+        "opts": [
+         "--severity",
+         "-s"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Show only this severity: critical, high, medium, low or info."
+       },
+       {
+        "kind": "option",
+        "name": "limit",
+        "opts": [
+         "--limit",
+         "-n"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": 20,
+        "help": "How many findings to show, worst first."
+       },
+       {
+        "kind": "option",
+        "name": "as_json",
+        "opts": [
+         "--json"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Full records for scripts: whole ids, fingerprints, subjects and timestamps."
+       },
+       {
+        "kind": "option",
+        "name": "types",
+        "opts": [
+         "--types"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "List every finding type instead: what each means, its usual severity, who raises it."
+       }
+      ],
+      "default_subcommand": null,
+      "enterprise": false,
+      "commands": []
+     },
+     {
+      "path": "findings show",
+      "name": "show",
+      "summary": "One finding in full: its whole id, what it is about, when, and the evidence.",
+      "help": "One finding in full: its whole id, what it is about, when, and the evidence.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "argument",
+        "name": "finding_id",
+        "opts": [
+         "finding_id"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": true,
+        "multiple": false,
+        "default": null,
+        "help": "The finding's id: whole, or the tail `agentfox findings` prints."
+       },
+       {
+        "kind": "option",
+        "name": "as_json",
+        "opts": [
+         "--json"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "The whole record, for scripts."
+       }
+      ],
+      "default_subcommand": null,
+      "enterprise": false,
+      "commands": []
+     }
+    ]
+   },
+   {
     "path": "test",
     "name": "test",
-    "summary": "Prove the controls hold before you ship: score, gate, attack, and dry-run.",
-    "help": "Prove the controls hold before you ship: score, gate, attack, and dry-run.",
-    "panel": "Prove",
+    "summary": "Prove the controls hold before you ship: score, gate, attack.",
+    "help": "Prove the controls hold before you ship: score, gate, attack.",
+    "panel": "Test",
     "params": [],
     "default_subcommand": null,
+    "enterprise": false,
     "commands": [
      {
       "path": "test run",
@@ -4082,6 +4224,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -4210,6 +4353,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -4247,6 +4391,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -4257,6 +4402,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -4307,6 +4453,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -4327,7 +4474,7 @@
         "required": true,
         "multiple": false,
         "default": null,
-        "help": ""
+        "help": "The agent to attack: its name, as `agents list` shows."
        },
        {
         "kind": "option",
@@ -4340,7 +4487,7 @@
         "required": false,
         "multiple": false,
         "default": null,
-        "help": ""
+        "help": "Run only these built-in probes, comma-separated keys from `agentfox test probes` (they run alongside the attacks written from the agent's tools)."
        },
        {
         "kind": "option",
@@ -4449,6 +4596,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -4459,6 +4607,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -4535,6 +4684,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -4572,6 +4722,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -4609,6 +4760,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      }
     ]
@@ -4621,6 +4773,7 @@
     "panel": "Prove",
     "params": [],
     "default_subcommand": "summary",
+    "enterprise": false,
     "commands": [
      {
       "path": "report summary",
@@ -4686,6 +4839,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -4724,6 +4878,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": true,
       "commands": []
      },
      {
@@ -4826,6 +4981,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": true,
       "commands": []
      },
      {
@@ -4863,6 +5019,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -4873,6 +5030,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": true,
       "commands": []
      },
      {
@@ -4883,6 +5041,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": true,
       "commands": []
      },
      {
@@ -4893,6 +5052,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": true,
       "commands": []
      },
      {
@@ -4903,6 +5063,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": true,
       "commands": []
      },
      {
@@ -4940,6 +5101,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": true,
       "commands": []
      },
      {
@@ -5003,6 +5165,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": true,
       "commands": []
      },
      {
@@ -5027,6 +5190,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -5064,6 +5228,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -5101,6 +5266,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      }
     ]
@@ -5127,16 +5293,18 @@
      }
     ],
     "default_subcommand": null,
+    "enterprise": false,
     "commands": []
    },
    {
     "path": "admin",
     "name": "admin",
-    "summary": "Run the deployment: operators, tokens, schema, scheduled jobs, key rotation, catalog upkeep, hooks, seed data.",
-    "help": "Run the deployment: operators, tokens, schema, scheduled jobs, key rotation, catalog upkeep, hooks, seed data.",
+    "summary": "Run the deployment: operators, keys, schema, jobs, hooks.",
+    "help": "Run the deployment: operators, keys, schema, jobs, hooks.\n\nOperators and tokens, the database schema, scheduled jobs, key rotation, catalog upkeep, coding-agent hooks and seed data.",
     "panel": "Operate",
     "params": [],
     "default_subcommand": null,
+    "enterprise": false,
     "commands": [
      {
       "path": "admin checkpoint",
@@ -5146,6 +5314,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -5170,6 +5339,7 @@
        }
       ],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -5180,6 +5350,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": []
      },
      {
@@ -5190,6 +5361,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": [
        {
         "path": "admin auth issue",
@@ -5240,6 +5412,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -5264,6 +5437,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -5288,6 +5462,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -5298,6 +5473,7 @@
         "panel": null,
         "params": [],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        }
       ]
@@ -5310,6 +5486,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": [
        {
         "path": "admin users create",
@@ -5387,6 +5564,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -5411,6 +5589,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        }
       ]
@@ -5423,6 +5602,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": [
        {
         "path": "admin db upgrade",
@@ -5446,6 +5626,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -5470,6 +5651,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -5480,6 +5662,7 @@
         "panel": null,
         "params": [],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        }
       ]
@@ -5492,6 +5675,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": [
        {
         "path": "admin detectors list",
@@ -5501,6 +5685,7 @@
         "panel": null,
         "params": [],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -5525,6 +5710,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        }
       ]
@@ -5537,6 +5723,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": true,
       "commands": [
        {
         "path": "admin catalog sync",
@@ -5546,6 +5733,7 @@
         "panel": null,
         "params": [],
         "default_subcommand": null,
+        "enterprise": true,
         "commands": []
        },
        {
@@ -5570,6 +5758,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": true,
         "commands": []
        },
        {
@@ -5580,6 +5769,7 @@
         "panel": null,
         "params": [],
         "default_subcommand": null,
+        "enterprise": true,
         "commands": []
        }
       ]
@@ -5592,6 +5782,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": [
        {
         "path": "admin hooks daemon",
@@ -5615,6 +5806,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -5652,6 +5844,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -5755,6 +5948,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -5765,6 +5959,7 @@
         "panel": null,
         "params": [],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        }
       ]
@@ -5777,6 +5972,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": [
        {
         "path": "admin jobs run-due",
@@ -5813,6 +6009,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        }
       ]
@@ -5825,6 +6022,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": [
        {
         "path": "admin keys status",
@@ -5848,6 +6046,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        },
        {
@@ -5885,6 +6084,7 @@
          }
         ],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        }
       ]
@@ -5897,6 +6097,7 @@
       "panel": null,
       "params": [],
       "default_subcommand": null,
+      "enterprise": false,
       "commands": [
        {
         "path": "admin mcp tools",
@@ -5906,6 +6107,7 @@
         "panel": null,
         "params": [],
         "default_subcommand": null,
+        "enterprise": false,
         "commands": []
        }
       ]

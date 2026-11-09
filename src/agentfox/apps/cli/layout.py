@@ -1,12 +1,12 @@
-"""The visible shape of the CLI: fourteen verbs in six panels.
+"""The visible shape of the CLI: fourteen verbs in seven panels.
 
 The commands themselves live in their own modules (``commands/``, ``onboarding.py``,
 ``controls_cli.py`` …), each registered on the app under a working name. This module
 decides what ``agentfox`` actually exposes and under which name. It runs once, after
 every other module has registered its commands, and does three things:
 
-1. registers the callbacks under the tree (Start · See · Watch · Contain · Prove ·
-   Operate);
+1. registers the callbacks under the tree (Start · Discover · Govern · Protect · Test
+   · Prove · Operate);
 2. removes every other top-level name, except the two protocol endpoints below;
 3. swaps the root group for one that adds ``--version`` and orders the panels.
 
@@ -29,11 +29,14 @@ from typer.core import TyperGroup, TyperOption
 from typer.main import get_command_name
 from typer.models import CommandInfo, TyperInfo
 
-START, SEE, WATCH, CONTAIN, PROVE, OPERATE = (
+# The panels follow the product's five jobs (discover, govern, protect, test, prove),
+# between getting started and running the deployment.
+START, DISCOVER, GOVERN, PROTECT, TEST, PROVE, OPERATE = (
     "Start",
-    "See",
-    "Watch",
-    "Contain",
+    "Discover",
+    "Govern",
+    "Protect",
+    "Test",
     "Prove",
     "Operate",
 )
@@ -44,14 +47,14 @@ VISIBLE: list[tuple[str, str]] = [
     ("up", START),
     ("init", START),
     ("demo", START),
-    ("scan", SEE),
-    ("agents", SEE),
-    ("serve", WATCH),
-    ("findings", WATCH),
-    ("permit", CONTAIN),
-    ("declare", CONTAIN),
-    ("policy", CONTAIN),
-    ("test", PROVE),
+    ("scan", DISCOVER),
+    ("agents", DISCOVER),
+    ("permit", GOVERN),
+    ("declare", GOVERN),
+    ("policy", GOVERN),
+    ("serve", PROTECT),
+    ("findings", PROTECT),
+    ("test", TEST),
     ("report", PROVE),
     ("doctor", OPERATE),
     ("admin", OPERATE),
@@ -209,14 +212,50 @@ def _find_optional(app: typer.Typer, *path: str) -> CommandInfo | None:
 
 def _alias(
     target: typer.Typer, info: CommandInfo | None, name: str, *, hidden: bool = False
-) -> None:
-    if info is None:  # an extension command that is not installed
-        return
+) -> bool:
+    """Register ``info`` under ``name``; False when it is an extension command that is
+    not installed (callers then put an `_enterprise_only` stub in its place)."""
+    if info is None:
+        return False
     clone = copy.copy(info)
     clone.name = name
     clone.hidden = hidden
     clone.rich_help_panel = None
     target.registered_commands.append(clone)
+    return True
+
+
+#: A stub takes whatever the real command would have, so it is reached and can explain.
+_PASS_THROUGH = {"allow_extra_args": True, "ignore_unknown_options": True, "help_option_names": []}
+
+#: Marks a callback as an Enterprise-only stub (the docs reference badges these).
+ENTERPRISE_ONLY = "__agentfox_enterprise_only__"
+
+
+def _enterprise_message(command: str, what: str) -> str:
+    return (
+        f"{what} (`agentfox {command}`) is part of AgentFox Enterprise, which is not "
+        "installed here. It comes with AgentFox Cloud (`agentfox up --target cloud`) and "
+        "the self-hosted Enterprise stack.\nIn the open core: `agentfox report` for the "
+        "summary, `agentfox report verify` for the tamper-evident audit chain."
+    )
+
+
+def _enterprise_only(target: typer.Typer, command: str, what: str) -> None:
+    """Register ``command``'s last word on ``target`` as a stub that says it is Enterprise.
+
+    The name is listed (the docs list it too), takes any arguments and options, and exits
+    2 with one clear message rather than a usage error from whichever command the
+    arguments fell through to.
+    """
+
+    def unavailable(ctx: typer.Context) -> None:
+        typer.echo(_enterprise_message(command, what), err=True)
+        raise typer.Exit(2)
+
+    unavailable.__doc__ = f"{what} (AgentFox Enterprise; not installed here)."
+    setattr(unavailable, ENTERPRISE_ONLY, True)
+    target.command(command.split()[-1], context_settings=_PASS_THROUGH)(unavailable)
 
 
 def _new_group(help: str, cls: type[TyperGroup] | None = None, **kwargs: Any) -> typer.Typer:
@@ -248,7 +287,7 @@ def apply_layout(app: typer.Typer) -> None:
     scan.cls = default_group("repo", routes={"--sessions": "sessions"})
     scan.no_args_is_help = False
     scan.help = (
-        "Find what is worth governing: a repo, this machine, an MCP server, the runtime.\n\n"
+        "Find what to govern: a repo, this machine, MCP servers, runtime.\n\n"
         "`agentfox scan [PATH] [--fail] [--json]` scans a repository (the default). "
         "`agentfox scan --sessions [PATH]` also reads local AI-tool sessions and runs "
         "the live detector check. `machine` checks the MCP servers and skills your AI "
@@ -259,6 +298,8 @@ def apply_layout(app: typer.Typer) -> None:
     _alias(scan_app, find("check"), "repo")
     _alias(scan_app, find("quickscan"), "sessions", hidden=True)
     _alias(scan_app, find("agents", "discover"), "runtime")
+    if not any(info.name == "monitors" for info in scan_app.registered_groups):
+        _enterprise_only(scan_app, "scan monitors", "Scheduled monitoring of connected sources")
 
     # -- See: agents -------------------------------------------------------------
     find("agents", "discover").hidden = True  # -> scan runtime
@@ -268,9 +309,10 @@ def apply_layout(app: typer.Typer) -> None:
     serve_info = find("serve")
     app.registered_commands.remove(serve_info)
     serve_app = _new_group(
-        "Run the gateway and control-plane API, the MCP server for AI clients, or the "
-        "model server.\n\n"
-        "`agentfox serve [--host] [--port] [--reload]` starts the API (the default); "
+        "Run the gateway and API, the MCP server, or the model server.\n\n"
+        "`agentfox serve` starts the API (the default) on 127.0.0.1:8080. "
+        "`--host 0.0.0.0` and `--port 9000` change where it listens; `--reload` restarts "
+        "it when the code changes; `agentfox serve api --help` lists every option.\n\n"
         "`agentfox serve mcp` speaks MCP over stdio; `agentfox serve models` runs the "
         "model-backed detectors for gateways that should not hold weights.",
         cls=default_group("api"),
@@ -283,8 +325,27 @@ def apply_layout(app: typer.Typer) -> None:
         _alias(serve_app, models_info, "models")
     app.add_typer(serve_app, name="serve")
 
+    # -- Protect: findings ---------------------------------------------------------
+    # Bare `findings [--severity] [--limit] [--json]` is the list, as it always was;
+    # `findings show <id>` opens one in full (the list only has room for an id's tail).
+    findings_info = find("findings")
+    app.registered_commands.remove(findings_info)
+    findings_app = _new_group(
+        "What was found, worst first: the list `agentfox.auto()` points to.\n\n"
+        "`agentfox findings [--severity high] [--limit 50] [--json]` lists the open ones, "
+        "worst first (the default); `agentfox findings show <id>` shows one in full; "
+        "`agentfox findings --types` lists the kinds there are.",
+        cls=default_group("list"),
+    )
+    _alias(findings_app, findings_info, "list")
+    from agentfox.apps.cli.onboarding import findings_show
+
+    findings_app.command("show")(findings_show)
+    app.add_typer(findings_app, name="findings")
+
     # -- Contain: permit -----------------------------------------------------------
     permit_app = _new_group(
+        "Grant and withdraw what an agent may do; decide held calls.\n\n"
         "Grant, list and withdraw what an agent — or an end user — may do, and decide "
         "the calls held for a person (`permit approvals`)."
     )
@@ -298,7 +359,7 @@ def apply_layout(app: typer.Typer) -> None:
 
     # -- Contain: declare ----------------------------------------------------------
     declare_app = _new_group(
-        "Declare the facts containment reasons over: tools, data scope, sources, hand-offs.\n\n"
+        "Declare the facts containment uses: tools, scope, sources.\n\n"
         "What a tool can do, which column says whose row it is, what an agent has no "
         "data for, which sources are authoritative, and when to hand off to a person."
     )
@@ -327,9 +388,7 @@ def apply_layout(app: typer.Typer) -> None:
     policy_app.add_typer(sub["proposals"].typer_instance, name="proposals")
 
     # -- Prove: test ---------------------------------------------------------------
-    test_app = _new_group(
-        "Prove the controls hold before you ship: score, gate, attack, and dry-run."
-    )
+    test_app = _new_group("Prove the controls hold before you ship: score, gate, attack.")
     for name in ("run", "gate", "baseline", "suites", "online"):
         _alias(test_app, find("eval", name), name)
     _alias(test_app, find("redteam", "run"), "redteam")
@@ -356,21 +415,30 @@ def apply_layout(app: typer.Typer) -> None:
     )
     if summary_info is not None:
         _alias(report_app, summary_info, "summary")
-    _alias(report_app, find("compliance", "status"), "status")
+    # Without Enterprise these names fell through to the default command and failed with
+    # "unexpected extra argument (risk)". Each says what it is instead (_enterprise_only).
+    _alias(report_app, find("compliance", "status"), "status") or _enterprise_only(
+        report_app, "report status", "Compliance posture"
+    )
     evidence_info = find("evidence", "export")
     if evidence_info is not None:
         _alias(report_app, evidence_info, "evidence")
     else:
-        # Without Enterprise, `report evidence` fell through to the default command and
-        # failed with "unexpected extra argument (evidence)". Say what it is instead.
-        report_app.command(
-            "evidence",
-            context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
-        )(_evidence_unavailable)
+        report_app.command("evidence", context_settings=_PASS_THROUGH)(_evidence_unavailable)
     _alias(report_app, find("audit", "verify"), "verify")
-    for name in ("risk", "obligations", "frameworks", "board", "review-packet"):
-        _alias(report_app, find("compliance", name), name)
-    _alias(report_app, find("compliance", "review"), "signoff")
+    for name, what in (
+        ("risk", "Risk assessment"),
+        ("obligations", "Regulatory obligations"),
+        ("frameworks", "Compliance frameworks"),
+        ("board", "The board report"),
+        ("review-packet", "The reviewer packet"),
+    ):
+        _alias(report_app, find("compliance", name), name) or _enterprise_only(
+            report_app, f"report {name}", what
+        )
+    _alias(report_app, find("compliance", "review"), "signoff") or _enterprise_only(
+        report_app, "report signoff", "Compliance sign-off"
+    )
     _alias(report_app, find("entitlement", "report"), "entitlement")
     _alias(report_app, find("escalation", "scan"), "escalations")
     _alias(report_app, find("eval", "drift"), "drift")
@@ -378,8 +446,9 @@ def apply_layout(app: typer.Typer) -> None:
 
     # -- Operate: admin ------------------------------------------------------------
     admin_app = _new_group(
-        "Run the deployment: operators, tokens, schema, scheduled jobs, key rotation, catalog "
-        "upkeep, hooks, seed data."
+        "Run the deployment: operators, keys, schema, jobs, hooks.\n\n"
+        "Operators and tokens, the database schema, scheduled jobs, key rotation, catalog "
+        "upkeep, coding-agent hooks and seed data."
     )
     admin_app.add_typer(sub["auth"].typer_instance, name="auth")
     admin_app.add_typer(sub["users"].typer_instance, name="users")
@@ -390,6 +459,8 @@ def apply_layout(app: typer.Typer) -> None:
         _alias(catalog_app, find("compliance", name), name)
     if catalog_app.registered_commands:
         admin_app.add_typer(catalog_app, name="catalog")
+    else:
+        _enterprise_only(admin_app, "admin catalog", "The compliance control catalog")
     _alias(admin_app, find("audit", "checkpoint"), "checkpoint")
     _alias(admin_app, find("seed"), "seed")
     _alias(admin_app, find("version"), "version")
@@ -446,6 +517,9 @@ def _evidence_unavailable(ctx: typer.Context) -> None:
         err=True,
     )
     raise typer.Exit(2)
+
+
+setattr(_evidence_unavailable, ENTERPRISE_ONLY, True)
 
 
 def _declared_list(tools_list: CommandInfo, sources_list: CommandInfo):

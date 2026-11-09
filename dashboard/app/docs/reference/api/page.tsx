@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Callout, Code, Output } from "@/components/docs/blocks";
+import { Callout, Code, NextSteps, Output } from "@/components/docs/blocks";
 import { API_COUNT, ApiReference } from "@/components/docs/reference";
 import { publicPageMetadata } from "@/lib/site";
 
@@ -31,6 +31,7 @@ export default function Page() {
         evidence. It takes a bearer token from <code>agentfox admin auth issue</code>.
       </p>
       <Code title="Check a tool call before running it">{`curl -s http://localhost:8080/v1/guard/tool_call \\
+  -H "Authorization: Bearer $AGENTFOX_API_KEY" \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer $AGENTFOX_API_KEY" \\
   -H "X-AgentFox-Agent: support-triage" \\
@@ -50,7 +51,9 @@ export default function Page() {
         <code>verdict</code> is <code>allow</code> and <code>effective_verdict</code> says
         what it would have done: nothing is granted yet, so default-deny would refuse it, and
         the reason says how to fix it. Once <code>agentfox policy enforce tool-containment</code>{" "}
-        has run, the same call returns <code>&quot;verdict&quot;:&quot;block&quot;</code>.
+        has run, the same call returns <code>&quot;verdict&quot;:&quot;block&quot;</code>. The key is an
+        agent key (<code>nom_agt_…</code>) or a workspace key (<code>nom_api_…</code>); a
+        local gateway with authentication off accepts the call without one.
       </p>
       <p>
         Worked examples for each endpoint are in the guides:{" "}
@@ -155,6 +158,14 @@ export default function Page() {
       <h2 id="unauthenticated">Public, unauthenticated</h2>
       <p>The playground, the waitlist and the live showcase feed. Sandboxed or read-only, rate-limited, and separate from your data.</p>
       <ApiReference audience="public-unauthenticated" />
+
+      <NextSteps
+        items={[
+          { href: "/docs/connect/http", label: "Any language (HTTP)", why: "the proxy and the guard calls, worked through" },
+          { href: "/docs/connect/typescript", label: "TypeScript SDK", why: "the same routes from TypeScript" },
+          { href: "/docs/reference/config#gateway", label: "Gateway requests", why: "headers, status codes and streaming" },
+        ]}
+      />
     </article>
   );
 }

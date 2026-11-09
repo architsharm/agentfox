@@ -26,7 +26,7 @@ from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 
-from agentfox.apps.cli._style import SEVERITY_COLOUR, short_id
+from agentfox.apps.cli._style import SEVERITY_COLOUR, display_path, short_id
 
 console = Console()
 
@@ -188,7 +188,12 @@ def init(
         help="The AgentFox API to report to. Default: http://127.0.0.1:8080.",
     ),
 ) -> None:
-    """Set everything up. Idempotent, offline, and safe to run twice.
+    """Connect this repo to your account (--key), or set up locally.
+
+    Without --key: prepares the local database and policies.
+
+    Idempotent and safe to run twice. Without --key it is offline and edits no code;
+    `agentfox up` is the guided setup that also adds `agentfox.auto()`.
 
     Creates the database, applies migrations, loads the control catalog and the
     shipped policy packs, every one watching (observe) until you switch it to blocking
@@ -312,7 +317,7 @@ def setup_workspace(
             )
             live, _ = current_binding(session, policy.id)
             modes[document.key] = live.mode if live is not None else "observe"
-        say(f"  [green]✓[/] {len(documents)} policy pack(s) loaded")
+        say(f"  [green]✓[/] {plural(len(documents), 'policy pack')} loaded")
         for document in sorted(documents, key=lambda d: d.key):
             mode = modes[document.key]
             colour = "red" if mode == "enforce" else "yellow"
@@ -415,7 +420,11 @@ def check(
     # rather than an inventory line, and the reader who stops after one screen should
     # stop after reading it.
     print_trifectas(console, report)
-    console.print(f"[bold]Scanned[/] {report.files_scanned} files in [dim]{report.root}[/]")
+    console.print(
+        f"[bold]Scanned[/] {plural(report.files_scanned, 'file')} in "
+        f"[dim]{display_path(report.root)}[/]",
+        soft_wrap=True,
+    )
     if report.excluded_files:
         console.print(
             f"  [dim]left out {plural(report.excluded_files, 'test, docs or benchmark file')}"
@@ -507,7 +516,11 @@ def check(
         # A budget for the path column, so the paths can be shortened deliberately
         # (from the left, filename last) instead of being cut by the renderer at
         # whatever column happened to be left over.
-        where_width = max(28, min(52, console.width // 2))
+        # Only as wide as the longest path needs: a fixed half of an 80-column terminal
+        # left `app.py:3` padded to 40 columns and folded the call site mid-token.
+        budget = max(28, min(52, console.width // 2))
+        needed = max(len(f"{site.file}:{site.line}") for site in ranked)
+        where_width = max(8, min(needed, budget))
         table = Table(box=None, padding=(0, 1), header_style="dim")
         table.add_column("severity", no_wrap=True)
         table.add_column("where", no_wrap=True, width=where_width)
@@ -543,13 +556,13 @@ def check(
             # Naming the unit reconciles them without changing either number.
             hidden = len(listed) - len(ranked)
             console.print(
-                f"  [dim]{hidden} more finding(s) not shown, across every kind above. "
+                f"  [dim]{plural(hidden, 'more finding')} not shown, across every kind above. "
                 f"See all of them:[/] [cyan]agentfox scan{target} "
                 f"--limit {len(listed)}[/]"
             )
 
     if report.errors:
-        console.print(f"\n  [yellow]{len(report.errors)} file(s) could not be parsed[/]")
+        console.print(f"\n  [yellow]{plural(len(report.errors), 'file')} could not be parsed[/]")
         for error in report.errors[:3]:
             console.print(f"    [dim]{error}[/]")
 
@@ -696,15 +709,25 @@ def doctor(
                 .count()
             )
             grants = session.query(Capability).count()
+            # `agentfox up` declares the tools it found with an impact guessed from the
+            # name, marked inferred, and says doctor will flag them until confirmed.
+            from agentfox.platform.registry.service import impact_source_of
+
+            inferred = sorted(
+                tool.key
+                for tool in session.query(Tool).all()
+                if impact_source_of(tool) == "inferred"
+            )
             scoped_tables = session.query(AccessScopeRule).count()
             enforcing = (
                 session.query(Decision).filter_by(mode="enforce").count() if decisions else 0
             )
-        add("ok", "database", f"reachable — {agents} agent(s), {traces} trace(s)")
+        add("ok", "database", f"reachable — {plural(agents, 'agent')}, {plural(traces, 'trace')}")
     except Exception as exc:
         add("bad", "database", f"unreachable: {database_error_hint(exc, settings.database_url)}")
         agents = traces = decisions = findings = boundaries = enforcing = 0
         tools_declared = tools_acting = grants = scoped_tables = 0
+        inferred = []
 
     if decisions == 0:
         add(
@@ -717,7 +740,7 @@ def doctor(
         add(
             "warn",
             "enforcement",
-            f"{decisions} decision(s), all in observe mode — recorded, nothing blocked. "
+            f"{plural(decisions, 'decision')}, all in observe mode — recorded, nothing blocked. "
             "That is the safe default, not a finished configuration.",
         )
     else:
@@ -728,17 +751,27 @@ def doctor(
     from agentfox.platform.identity.operators import header_identity_allowed
 
     if header_identity_allowed():
-        add(
-            "info"
-            if settings.environment.lower() in ("development", "dev", "test", "local")
-            else "bad",
-            "authentication",
-            f"DEVELOPMENT auth is active (environment={settings.environment}, "
-            f"auth_mode={settings.auth_mode}): an /api request with no token acts as the "
-            "user named in X-AgentFox-User, or as admin@example.com (an owner, once "
-            "seeded) — anyone who can reach this port is any user they name. Fine "
-            "locally, unacceptable anywhere else.",
-        )
+        local = settings.environment.lower() in ("development", "dev", "test", "local")
+        if local:
+            # Plain words for someone who has never started a server: the mechanism
+            # (the identity header, the seeded admin) only matters once one is exposed.
+            add(
+                "info",
+                "authentication",
+                "development: a server started here (`agentfox serve`) answers API calls "
+                "without a token, so anyone who can reach this port can act as its owner. "
+                "Fine on this machine; set AGENTFOX_AUTH_MODE=token before anyone else "
+                "can reach it.",
+            )
+        else:
+            add(
+                "bad",
+                "authentication",
+                f"development auth is on in {settings.environment} "
+                f"(auth_mode={settings.auth_mode}): anyone who can reach this port can act "
+                "as any user, named in X-AgentFox-User, with no token. Set "
+                "AGENTFOX_AUTH_MODE=token.",
+            )
     else:
         add("ok", "authentication", "API tokens required; the identity header is refused")
 
@@ -815,15 +848,15 @@ def doctor(
         add(
             "warn",
             "containment",
-            f"{tools_declared} tool(s) declared, none of them write/high-impact/irreversible "
-            "— if this agent can act, its impact tiers are understated and containment "
-            "rules cannot fire.",
+            f"{plural(tools_declared, 'tool')} declared, none of them "
+            "write/high-impact/irreversible — if this agent can act, its impact tiers are "
+            "understated and containment rules cannot fire.",
         )
     elif grants == 0:
         add(
             "warn",
             "containment",
-            f"{tools_acting} acting tool(s) declared but no capability grants — least "
+            f"{plural(tools_acting, 'acting tool')} declared but no capability grants — least "
             "privilege is unconfigured, so policy is the only thing standing in the way. "
             "Grant them with `agentfox permit grant <agent> <tool> --limit ...`.",
         )
@@ -831,14 +864,27 @@ def doctor(
         add(
             "ok",
             "containment",
-            f"{tools_acting} of {tools_declared} tool(s) can act, {grants} capability "
-            "grant(s) — an action outside these is refused whether or not a detector fires",
+            f"{tools_acting} of {plural(tools_declared, 'tool')} can act, "
+            f"{plural(grants, 'capability grant')} — an action outside these is refused "
+            "whether or not a detector fires",
+        )
+
+    if inferred:
+        shown = ", ".join(inferred[:4]) + (
+            f" and {len(inferred) - 4} more" if len(inferred) > 4 else ""
+        )
+        add(
+            "warn",
+            "tool impacts",
+            f"{plural(len(inferred), 'tool impact')} guessed from the name, not confirmed: "
+            f"{shown}. Check each with `agentfox declare list tools` and confirm or correct "
+            "it with `agentfox declare tool <name> --impact <impact>`.",
         )
 
     add(
         "ok" if scoped_tables else default_state,
         "data scope",
-        f"{scoped_tables} table(s) declared row-scoped"
+        f"{plural(scoped_tables, 'table')} declared row-scoped"
         if scoped_tables
         else "no table row-scoping declared — a query across every customer's rows reads "
         "as ordinary. Declare with `agentfox declare scope <table> --column ...`.",
@@ -1166,7 +1212,7 @@ def _print_findings(
     repeats = sum((row["occurrences"] or 1) for row in rows)
     shown = f"{len(rows)} of {total}" if total and total > len(rows) else str(len(rows))
     console.print(
-        f"\n  [dim]{shown} open finding(s)"
+        f"\n  [dim]{shown} open finding{'' if max(total or 0, len(rows)) == 1 else 's'}"
         + (f", {repeats} occurrences in total" if repeats > len(rows) else "")
         + ".[/]"
     )
@@ -1177,6 +1223,7 @@ def _print_findings(
     worst = min(rows, key=lambda r: SEVERITY_RANK.get(r["severity"], 9))["severity"]
     if not severity and worst in ("critical", "high"):
         steps.append((f"agentfox findings --severity {worst}", f"just the {worst} ones"))
+    steps.append((f"agentfox findings show {rows[0]['id'][-8:]}", "one finding in full, by id"))
     steps.append(("agentfox findings --json", "whole ids, fingerprints and subjects"))
     steps.append(("agentfox doctor", "check the runtime configuration that produced these"))
     if not on_account:
@@ -1266,6 +1313,76 @@ def login(
             ("agentfox up", "add agentfox.auto() to your app so its calls reach the account"),
         ]
     )
+
+
+def findings_show(
+    finding_id: str = typer.Argument(
+        ..., help="The finding's id: whole, or the tail `agentfox findings` prints."
+    ),
+    as_json: bool = typer.Option(False, "--json", help="The whole record, for scripts."),
+) -> None:
+    """One finding in full: its whole id, what it is about, when, and the evidence."""
+    from sqlalchemy import select
+
+    from agentfox.apps.cli._style import match_id
+    from agentfox.core.models import Finding
+
+    with _session() as session:
+        matches = [f for f in session.scalars(select(Finding)) if match_id(finding_id, f.id)]
+        if not matches:
+            console.print(
+                f"[red]no finding '{escape(finding_id)}'[/] — `agentfox findings` lists them"
+            )
+            raise typer.Exit(2)
+        if len(matches) > 1:
+            console.print(
+                f"[yellow]'{escape(finding_id)}' matches {len(matches)} findings[/]; give more "
+                "of the id: " + ", ".join(f.id for f in matches[:5])
+            )
+            raise typer.Exit(2)
+        f = matches[0]
+        record = {
+            "id": f.id,
+            "type": f.type,
+            "severity": f.severity,
+            "status": f.status,
+            "title": f.title,
+            "subject": f"{f.subject_type}:{f.subject_id}",
+            "occurrences": f.occurrences or 1,
+            "created_at": f.created_at.isoformat() if f.created_at else None,
+            "last_seen_at": f.last_seen_at.isoformat() if f.last_seen_at else None,
+            "controls": list(f.control_keys or []),
+            "evidence": f.evidence_json or {},
+            "fingerprint": f.fingerprint,
+        }
+
+    if as_json:
+        console.print_json(json.dumps(record, default=str))
+        return
+    colour = SEVERITY_COLOUR.get(record["severity"], "dim")
+    console.print(f"[bold]{escape(record['title'])}[/]")
+    # The id on a line of its own, whole and unstyled, so it copies cleanly.
+    console.print(record["id"], soft_wrap=True, highlight=False)
+    rows = [
+        ("severity", f"[{colour}]{record['severity']}[/]"),
+        ("type", record["type"]),
+        ("status", record["status"]),
+        ("about", escape(record["subject"])),
+        ("seen", f"{plural(record['occurrences'], 'time')}, first {record['created_at']}"),
+    ]
+    if record["last_seen_at"]:
+        rows.append(("last seen", record["last_seen_at"]))
+    if record["controls"]:
+        rows.append(("controls", ", ".join(record["controls"])))
+    table = Table(box=None, padding=(0, 2), show_header=False)
+    table.add_column(style="dim", no_wrap=True)
+    table.add_column(overflow="fold")
+    for name, value in rows:
+        table.add_row(name, value)
+    console.print(table)
+    if record["evidence"]:
+        console.print("\n[dim]evidence[/]")
+        console.print_json(json.dumps(record["evidence"], default=str))
 
 
 def register(app: typer.Typer) -> None:

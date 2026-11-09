@@ -32,6 +32,10 @@ export default function Page() {
         It is included on AgentFox Cloud. To self-host it, install it from a clone of the repository
         (it is not on PyPI): <code>pip install agentfox ./ee</code>. For more agents or workspaces, write
         to <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> for a commercial licence.
+        <br />
+        With the open-source package alone, the Enterprise commands below (<code>report status</code>,{" "}
+        <code>report evidence</code>, <code>report review-packet</code>, <code>admin catalog sync</code>) say
+        they are not installed and exit 2.
       </Callout>
 
       <Steps topLevel>
@@ -131,7 +135,8 @@ python3 verify_chain.py              # manifest signature and checkpoints too`}<
         and they are not legal advice. Each one is labelled <code>DRAFT — UNVERIFIED</code> until a
         named person signs it off: open a control on <strong>Compliance</strong> and use{" "}
         <strong>Record a review</strong> (written to the audit log, valid for 90 days), or hand the
-        reviewer <Link href={cli("report-review-packet")}><code>agentfox report review-packet</code></Link>.
+        reviewer <Link href={cli("report-review-packet")}><code>agentfox report review-packet</code></Link>{" "}
+        (Enterprise).
       </p>
 
       <h2>Before you show checkpoints to anyone</h2>
@@ -180,7 +185,8 @@ python3 verify_chain.py              # manifest signature and checkpoints too`}<
           <tr>
             <td>Every compliance count is zero</td>
             <td>
-              Press <strong>Load control catalog</strong>, or run <code>agentfox admin catalog sync</code>.
+              Press <strong>Load control catalog</strong>, or run <code>agentfox admin catalog sync</code>{" "}
+              (both Enterprise).
             </td>
           </tr>
           <tr>

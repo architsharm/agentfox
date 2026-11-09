@@ -17,7 +17,7 @@ export const toc: TocItem[] = [
 export const faq: FaqItem[] = [
   {
     q: "How do I upgrade to AgentFox 0.5?",
-    a: "Run pip install -U agentfox. Coding-agent users should then rerun agentfox admin hooks install --write to pick up the new Stop hook. Self-hosted deployments pull the 0.5.0 images. Nothing in an existing policy needs changing.",
+    a: "Run pip install -U agentfox. Coding-agent users should then rerun agentfox admin hooks install --agent <slug> --write, with the agent slug they installed with (for example claude-dev), to pick up the new Stop hook. Self-hosted deployments pull the 0.5.0 images. Nothing in an existing policy needs changing.",
   },
   {
     q: "Does AgentFox support multi-agent systems?",
@@ -171,7 +171,7 @@ agentfox up`}</Code>
 
       <h2 id="upgrade">Upgrading</h2>
       <Code>{`pip install -U agentfox
-agentfox admin hooks install --write   # coding agents: picks up the Stop hook`}</Code>
+agentfox admin hooks install --agent claude-dev --write   # coding agents: your agent's slug; picks up the Stop hook`}</Code>
       <p>
         Self-hosted deployments pull the <code>0.5.0</code> images. Nothing in an existing
         policy needs changing; the new detector reports through the injection rules you already

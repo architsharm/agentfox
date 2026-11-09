@@ -197,3 +197,22 @@ def test_an_empty_filter_result_is_not_reported_as_an_empty_deployment():
     result = runner.invoke(app, ["policy", "proposals", "list", "--status", "approved"])
     assert result.exit_code == 0
     assert "no proposals match that filter" in flat(result.output)
+
+
+def test_policy_simulate_help_names_the_current_command():
+    out = flat(runner.invoke(app, ["policy", "simulate", "--help"]).output)
+    assert "eval gate" not in out
+    assert "agentfox test gate" in out
+    assert "Replay one agent's traffic only" in out
+
+
+def test_policy_simulate_with_a_missing_file_is_a_usage_error_not_a_traceback(tmp_path):
+    result = runner.invoke(app, ["policy", "simulate", "--file", str(tmp_path / "nope.yaml")])
+    assert result.exit_code == 2
+    assert "does not exist" in flat(result.output)
+    assert result.exception is None or isinstance(result.exception, SystemExit)
+
+
+def test_redteam_probes_option_says_what_it_takes():
+    out = flat(runner.invoke(app, ["test", "redteam", "--help"]).output.replace("│", " "))
+    assert "comma-separated keys from `agentfox test probes`" in out

@@ -240,12 +240,13 @@ allow []
 
       <h2 id="checks">Choosing checks in the app</h2>
       <p>
-        <strong>Policies → Checks</strong> is the one place to choose what runs. Every
+        The checks list is the one place to choose what runs: open it from{" "}
+        <strong>Settings → Detection</strong> (the <strong>Checks on</strong> count) or from an
+        agent&apos;s guardrail map. Every
         detector is grouped by what it catches (prompt attacks, personal data and
         secrets, harmful content, grounding and wrong answers, your own), with where it
         runs, its average time, and where it comes from: built-in, an open-source model
-        (with its licence), an LLM judge, or yours. Settings and the guardrail map link
-        there too.
+        (with its licence), an LLM judge, or yours.
       </p>
       <ul>
         <li>
@@ -525,7 +526,7 @@ agentfox findings --json --limit 1`}</Code>
  …xwc4v44j  medium       containment          support-triage tried an irreversible action (email.send) with no stated
                                               task (held for approval)
 
-  16 open finding(s), 34 occurrences in total.`}</Output>
+  16 open findings, 34 occurrences in total.`}</Output>
       <Output title="--json">{`[
   {
     "id": "fnd_01m469wtf1vnr8bbqq",
@@ -699,7 +700,7 @@ agentfox findings --json --limit 1`}</Code>
         items={[
           { href: "/docs/reference/policies", label: "Policy language", why: "write rules on these entities" },
           { href: "/docs/protect/tuning", label: "Fix false positives", why: "labels and suppressions from the app" },
-          { href: "/docs/prove", label: "Traces and issues", why: "triage findings with the full evidence" },
+          { href: "/docs/prove", label: "Activity and issues", why: "triage findings with the full evidence" },
           { href: "/docs/benchmarks", label: "Benchmarks", why: "what was measured, and where each result stops" },
         ]}
       />

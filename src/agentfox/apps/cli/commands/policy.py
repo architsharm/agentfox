@@ -16,7 +16,7 @@ from agentfox.apps.cli.commands._shared import _emit, _session, console
 from agentfox.apps.cli.commands.packs import packs_app
 
 policy_app = typer.Typer(
-    help="Write the rules, try them against recorded traffic, then turn them on.",
+    help="Write rules, try them on recorded traffic, then turn them on.",
     no_args_is_help=True,
 )
 policy_app.add_typer(packs_app, name="packs")
@@ -141,6 +141,25 @@ def policy_lint(
         console.print("\n[green]LINT PASS[/] [dim](advisory findings only)[/]")
 
 
+def _effective_columns(rows: list[dict], width: int) -> dict[str, int]:
+    """Which columns `policy effective` shows, and how wide, for a terminal ``width``.
+
+    Every column but the title is shown whole. The title gets what is left, and is left
+    out when that is too little to read; `overrides` only appears when a rule has one.
+    """
+    names = ["rule", "effect", "mode", "from"]
+    if any(row["overrides"] != "—" for row in rows):
+        names.append("overrides")
+    widths = {n: max([len(n), *(len(str(row[n])) for row in rows)]) for n in names}
+    used = sum(widths.values()) + 2 * len(widths)  # one space either side of each column
+    room = min(48, width - used - 2)
+    columns: dict[str, int] = {"rule": widths["rule"]}
+    if room >= 16:
+        columns["title"] = room
+    columns.update({n: widths[n] for n in names[1:]})
+    return columns
+
+
 def _rule_title(rule: dict) -> str:
     """What a person calls the rule: its title or description, one line."""
     text = str(rule.get("title") or rule.get("description") or "").strip()
@@ -240,29 +259,38 @@ def policy_effective(
     else:
         console.print("  [dim]layers: none[/]\n")
 
+    rows = [
+        {
+            "rule": rule["rule_id"],
+            "title": _rule_title(rule),
+            "effect": rule["effect"],
+            "mode": rule["enforcement"],
+            "from": rule["source"],
+            "overrides": ", ".join(rule["overrides"]) or "—",
+        }
+        for rule in explanation["rules"]
+    ]
+    columns = _effective_columns(rows, console.width)
     table = Table(box=None, pad_edge=False)
-    # The title takes what the id and the four short columns leave of the width.
-    longest = max((len(r["rule_id"]) for r in explanation["rules"]), default=10)
-    title_width = max(10, min(48, console.width - longest - 48))
-    for column in ("rule", "title", "effect", "mode", "from", "overrides"):
-        # One line per rule: the title gives way to the terminal's width, never the id.
+    for column, width in columns.items():
+        # One line per rule, every id, effect and mode whole: only the title gives way
+        # to the terminal's width, and at 80 columns it is left out rather than cut to
+        # "A query …" while the mode read "observ".
         table.add_column(
             column,
             style="bold" if column == "rule" else ("dim" if column == "title" else None),
             no_wrap=True,
             overflow="ellipsis" if column == "title" else "fold",
-            max_width=title_width if column == "title" else None,
+            min_width=None if column == "title" else width,
+            max_width=width if column == "title" else None,
         )
-    for rule in explanation["rules"]:
-        table.add_row(
-            rule["rule_id"],
-            _rule_title(rule),
-            rule["effect"],
-            rule["enforcement"],
-            rule["source"],
-            ", ".join(rule["overrides"]) or "—",
-        )
+    for row in rows:
+        table.add_row(*(row[column] for column in columns))
     console.print(table)
+    if "title" not in columns and rows:
+        console.print(
+            "  [dim]rule titles are left out at this width; a wider terminal shows them[/]"
+        )
 
     if explanation["rejected"]:
         console.print("\n[bold yellow]rejected layer rules[/]")
@@ -286,14 +314,14 @@ def policy_simulate(
         "the simulation `policy enforce` needs before it blocks. Or give --file.",
     ),
     file: Path | None = typer.Option(None, "--file", "-f", help="Candidate policy YAML."),
-    agent: str | None = None,
-    since_days: int = 30,
-    limit: int = 1000,
+    agent: str | None = typer.Option(None, "--agent", help="Replay one agent's traffic only."),
+    since_days: int = typer.Option(30, "--since-days", help="How far back to replay."),
+    limit: int = typer.Option(1000, "--limit", help="The most recorded calls to replay."),
 ) -> None:
     """Replay recorded traffic against a candidate policy, or a loaded one by key.
 
     Exits non-zero when the change would newly block production traffic, so it can
-    gate a policy PR the same way `test gate` gates a code PR.
+    gate a policy PR the same way `agentfox test gate` gates a code PR.
     """
     from agentfox.apps.cli import account as _account
     from agentfox.platform.policy import PolicyDocument, record_simulation, simulate

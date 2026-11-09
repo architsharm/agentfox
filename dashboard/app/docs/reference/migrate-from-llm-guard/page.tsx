@@ -323,7 +323,7 @@ Refused: Prompt-injection or jailbreak attempt detected in user input.; System-p
         <code>BanSubstrings(substrings=[...])</code>,{" "}
         <code>BanCompetitors(competitors=[...])</code> and{" "}
         <code>BanTopics(topics=[...])</code> become custom rules. Add them in the app
-        (Policies → Add rule) or over the API against a running gateway:
+        (Policies → New rule) or over the API against a running gateway:
       </p>
       <Code>{`curl -X POST $AGENTFOX_URL/api/custom-rules -H "Authorization: Bearer $TOKEN" \\
   -H "Content-Type: application/json" -d '{

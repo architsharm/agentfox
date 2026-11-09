@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Screenshot } from "@/components/docs/blocks";
+import { NextSteps, Screenshot } from "@/components/docs/blocks";
 import { SCREENS } from "@/lib/docs/screens";
 import { publicPageMetadata } from "@/lib/site";
 
@@ -17,6 +17,14 @@ export default function Page() {
     <article className="docs-doc">
       <h1>Core concepts</h1>
       <p className="docs-lede">The words the rest of the docs use, one short section each.</p>
+
+      <h2 id="workspace">Workspace</h2>
+      <p>
+        Everything one account holds: its agents, rules, keys, issues and audit log. An API key
+        belongs to one workspace, so the CLI, <code>agentfox.auto()</code> and the app see the same
+        workspace when they use the same key. Without a key, the CLI and <code>auto()</code> use a
+        local workspace in one SQLite file per installation.
+      </p>
 
       <h2 id="agent">Agent</h2>
       <p>
@@ -115,13 +123,98 @@ export default function Page() {
         row. The CLI lists them with <code>agentfox findings</code>.
       </p>
 
-      <h2 id="traces">Traces</h2>
+      <h2 id="traces">Runs (traces)</h2>
       <p>
-        One run end to end: the user&apos;s message, each model call, each tool call, and every check
+        One run end to end, listed on <strong>Activity</strong> (the API and SDK call a run a
+        trace): the user&apos;s message, each model call, each tool call, and every check
         each one went through, with the reason for any block. Every decision is also written to a
         tamper-evident log, which is what <Link href="/docs/prove/audit">audit evidence</Link> is built
         from.
       </p>
+
+      <h2 id="glossary">The app and the CLI: same things, two names</h2>
+      <p>
+        The app uses plain words; the CLI and the API keep the older, shorter ones. They name the
+        same objects.
+      </p>
+      <div className="docs-table" tabIndex={0}><table>
+        <thead>
+          <tr>
+            <th>In the app</th>
+            <th>CLI and API</th>
+            <th>What it is</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Watch / Block</td>
+            <td><code>observe</code> / <code>enforce</code> (<code>agentfox policy observe|enforce</code>, <code>auto(mode=…)</code>)</td>
+            <td>Whether a rule only records what it would stop, or stops it.</td>
+          </tr>
+          <tr>
+            <td>Libraries</td>
+            <td>packs (<code>agentfox policy packs</code>, <code>agentfox policy list</code>)</td>
+            <td>Ready-made sets of rules you apply to agents.</td>
+          </tr>
+          <tr>
+            <td>Applied rules, Your rules</td>
+            <td>policies, rules (<code>agentfox policy</code>, <code>agentfox policy rules</code>)</td>
+            <td>The rules in force, and the ones you wrote.</td>
+          </tr>
+          <tr>
+            <td>Issues</td>
+            <td>findings (<code>agentfox findings</code>, <code>/api/findings</code>)</td>
+            <td>Something that needs a person.</td>
+          </tr>
+          <tr>
+            <td>Activity → Runs</td>
+            <td>traces (<code>/api/traces</code>, ids <code>trc_…</code>); no CLI command</td>
+            <td>One run end to end, with every check.</td>
+          </tr>
+          <tr>
+            <td>Access tab</td>
+            <td>grants and declarations (<code>agentfox permit</code>, <code>agentfox declare tool</code>)</td>
+            <td>Which tools an agent may call, and each tool&apos;s impact.</td>
+          </tr>
+          <tr>
+            <td>Approvals</td>
+            <td>approvals (<code>agentfox permit approvals</code>)</td>
+            <td>Calls held for a person to decide.</td>
+          </tr>
+          <tr>
+            <td>Pause / Stop / Resume</td>
+            <td><code>agentfox agents quarantine</code> / <code>kill</code> / <code>resume</code></td>
+            <td>Refuse every call an agent makes until it is resumed.</td>
+          </tr>
+          <tr>
+            <td>Testing, attack test</td>
+            <td><code>agentfox test</code>, <code>agentfox test redteam</code></td>
+            <td>Attacks and test suites run against an agent.</td>
+          </tr>
+          <tr>
+            <td>Agents (a project&apos;s map)</td>
+            <td>agents (<code>agentfox agents list</code>, <code>--agent &lt;name&gt;</code>)</td>
+            <td>
+              The CLI works per agent. A <Link href="#project">project</Link> is the app&apos;s
+              grouping of an agent and the agents it hands work to; the CLI has no project
+              command.
+            </td>
+          </tr>
+          <tr>
+            <td>Workspace</td>
+            <td>workspace (the account a key belongs to)</td>
+            <td>See <Link href="#workspace">Workspace</Link>.</td>
+          </tr>
+        </tbody>
+      </table></div>
+
+      <NextSteps
+        items={[
+          { href: "/docs/quickstart", label: "Quickstart", why: "see these on your own agent" },
+          { href: "/docs/govern", label: "Tool access", why: "decide what each agent may call" },
+          { href: "/docs/protect", label: "Guardrails", why: "turn on checks, watch first, then block" },
+        ]}
+      />
     </article>
   );
 }

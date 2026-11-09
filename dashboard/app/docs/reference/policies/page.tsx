@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Callout, Code, NextSteps, Output, TaskTable } from "@/components/docs/blocks";
+import { Callout, Code, DemoAgentNames, NextSteps, Output, TaskTable } from "@/components/docs/blocks";
 import { publicPageMetadata } from "@/lib/site";
 
 export const metadata: Metadata = publicPageMetadata({
@@ -408,7 +408,7 @@ agentfox policy lint`}</Code>
   controls: []
   compiles to 73 lines of Rego
 …
-  ✓ 5 policy pack(s) loaded
+  ✓ 5 policy packs loaded
       agent-integrity          observe  recorded, nothing blocked
       baseline                 observe  recorded, nothing blocked
       eu-ai-act-high-risk      observe  recorded, nothing blocked
@@ -535,6 +535,8 @@ output: block ['pii.outbound_redact', 'output.card_number']`}</Output>
         over a guess. The SDK&apos;s <code>@fox.tool(&quot;key&quot;, impact=&quot;…&quot;)</code>{" "}
         declares too.
       </p>
+
+      <DemoAgentNames />
 
       <h3 id="grant-options">permit grant</h3>
       <Code>{`agentfox permit grant support-triage 'billing.*' --limit 'format:in=csv,json' --limit 'rows:lte=5000' --max-taint retrieved --requires-approval --expires-in-days 7 --yes`}</Code>

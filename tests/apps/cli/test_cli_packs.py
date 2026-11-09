@@ -48,7 +48,7 @@ def test_show_an_unknown_pack_is_a_message():
 def test_test_runs_the_cases():
     result = runner.invoke(app, ["policy", "packs", "test", "payments/refunds"])
     assert result.exit_code == 0, result.output
-    assert "7/7 case(s) passed" in flat(result.output)
+    assert "7/7 cases passed" in flat(result.output)
 
 
 def test_validate_fails_on_a_broken_pack(tmp_path):

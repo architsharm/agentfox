@@ -107,6 +107,25 @@ agentfox scan --fail --no-submit`}</Code>
         </li>
       </ul>
 
+      <h2 id="monitoring">Keep re-checking connected sources (Enterprise)</h2>
+      <p>
+        A scan is a snapshot. With AgentFox Enterprise (Cloud, or the self-hosted Enterprise stack), a
+        GitHub repository, a hosted API&apos;s OpenAPI document or an MCP server you connect in{" "}
+        <strong>Settings → Connections</strong> is re-checked every few hours, and on every push once
+        the GitHub webhook is registered. What changed since the last run becomes an issue (a new
+        lethal trifecta, a model call that lost its governance, a new tool or destructive endpoint, an
+        MCP server whose tools drifted), and the issue closes itself when the condition clears.
+        <strong> Settings → Alerts</strong> lists what is watched, with <strong>Run now</strong> and{" "}
+        <strong>Pause</strong>.
+      </p>
+      <Code>{`agentfox scan monitors list                      # what is watched, last outcome, next run
+agentfox scan monitors add github_repo acme/bot  # or created for you when you connect one
+agentfox admin jobs run-due                      # self-hosted: put this on cron`}</Code>
+      <p>
+        With the open-source package alone, <code>agentfox scan monitors</code> says it is not
+        installed. Run the scan on every pull request instead, with the GitHub Action above.
+      </p>
+
       <h2>If something goes wrong</h2>
       <div className="docs-table" tabIndex={0}><table>
         <thead>

@@ -75,6 +75,16 @@ def test_an_inconclusive_scan_never_claims_no_model_calls_were_found(repo):
     assert ".go" in step
 
 
+def test_an_empty_folder_says_there_is_nothing_to_scan(repo):
+    """An empty folder said it "says nothing about whether this repository calls a
+    model" and "Seen and skipped: no other files were present"."""
+    step = scan(repo).next_step()
+
+    assert "no files here to scan" in step
+    assert "agentfox scan <path>" in step
+    assert "no other files were present" not in step
+
+
 def test_config_files_alone_do_not_count_as_having_read_the_source(repo):
     """The deployed failure exactly: three JSON files opened, source never looked at.
 

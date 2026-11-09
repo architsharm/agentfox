@@ -106,7 +106,7 @@ def demo(
         "instead of its own. They stay there.",
     ),
 ) -> None:
-    """Run the end-to-end walkthrough (offline), in a database of its own.
+    """A walkthrough on made-up agents, offline, in its own database.
 
     Three made-up agents, sample traffic and the findings it opens go to `demo.db`
     beside your workspace database, so `agentfox findings` in a real project never

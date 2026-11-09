@@ -575,7 +575,7 @@ def up(
         help="Skip the user-level MCP configs and skills of the AI tools on this machine.",
     ),
 ) -> None:
-    """Set up AgentFox for this project: scan, choose, and it does the rest.
+    """Guided setup: scan, choose what to cover, and it does the rest.
 
     Asks where AgentFox runs (this machine, your own server, or AgentFox Cloud), what
     to cover (coding agents, your Python agent, the gateway, tools, MCP servers,
@@ -638,11 +638,6 @@ def up(
     except TargetError as exc:
         console.print(f"  [red]✗[/] {escape(str(exc))}")
         raise typer.Exit(1) from None
-    if chosen.key == "local" and not dry_run:
-        from agentfox.apps.cli.onboarding import setup_workspace
-
-        setup_workspace(root, saved.get("environment", "development"), brief=True)
-
     # `--agent` names one the scan found (set that one up) or a new name; a saved name
     # is kept. Either way the agent and the tools it is granted are the ones the chosen
     # file runs (see `_pick`), not every agent in the folder.
@@ -748,6 +743,12 @@ def up(
 
     # 7. Do it --------------------------------------------------------------------
     _step(5, "Setting up")
+    if chosen.key == "local":
+        # After the confirm, not before it: a Ctrl-C or "no" at the plan used to leave
+        # agentfox.toml and the database written for a setup that never happened.
+        from agentfox.apps.cli.onboarding import setup_workspace
+
+        setup_workspace(root, saved.get("environment", "development"), brief=True)
     for component in CATALOGUE:
         if component.key not in picked:
             continue
@@ -777,10 +778,16 @@ def up(
 
     # 8. Summary ------------------------------------------------------------------
     failed = [o for o in run.outcomes if o.status == "failed"]
+    # Named, not counted: "4 set up" did not say of what, and in a folder with no
+    # agent it counted housekeeping as if something had been governed.
+    done = [
+        BY_KEY[key].label.split(" — ")[0] if key in BY_KEY else key
+        for key in dict.fromkeys(o.component for o in run.outcomes if o.status == "done")
+    ]
     lines = [
         f"[bold]{'Done' if not failed else 'Done, with problems'}[/] — "
-        f"{plural(sum(o.status == 'done' for o in run.outcomes), 'step')} done"
-        + (f", [red]{len(failed)} failed[/]" if failed else ""),
+        + (f"set up: {escape(', '.join(done))}" if done else "nothing set up")
+        + (f"; [red]{len(failed)} failed[/]" if failed else ""),
     ]
     if run.running:
         lines.append("\n[bold]Running in the background[/]")
@@ -801,8 +808,7 @@ def up(
         ]
     )
     lines.append("\n[bold]Next[/]")
-    width = min(max(len(cmd) for cmd, _ in steps), 44)
-    lines.extend(f"  [cyan]{escape(cmd):<{width}}[/]  [dim]{escape(why)}[/]" for cmd, why in steps)
+    lines.extend(next_step_lines(steps))
     hidden = [c.label.split(" — ")[0].lower() for c in CATALOGUE if _hidden(c, run)]
     if hidden:
         # Said once, here, rather than as greyed-out options in the first run's list.
@@ -814,6 +820,28 @@ def up(
     console.print(Panel("\n".join(lines), border_style="red" if failed else "green"))
     if failed:
         raise typer.Exit(1)
+
+
+#: Columns a panel line has in an 80-column terminal: the border, padding and indent.
+PANEL_TEXT_WIDTH = 74
+
+
+def next_step_lines(steps: list[tuple[str, str]], width: int = PANEL_TEXT_WIDTH) -> list[str]:
+    """`command  why` rows that never wrap inside a command.
+
+    A row that fits in an 80-column panel stays on one line, the commands aligned. One
+    that does not puts the reason on the line below, so the command is never broken
+    across lines and copy-pastes whole.
+    """
+    column = min(max((len(cmd) for cmd, _ in steps), default=0), 44)
+    out: list[str] = []
+    for cmd, why in steps:
+        if len(cmd) <= column and 2 + column + 2 + len(why) <= width:
+            out.append(f"  [cyan]{escape(cmd):<{column}}[/]  [dim]{escape(why)}[/]")
+        else:
+            out.append(f"  [cyan]{escape(cmd)}[/]")
+            out.append(f"      [dim]{escape(why)}[/]")
+    return out
 
 
 def _first_steps(run: Run) -> list[tuple[str, str]]:

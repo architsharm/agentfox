@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Cards } from "@/components/docs/blocks";
+import { Cards, NextSteps } from "@/components/docs/blocks";
 import { publicPageMetadata } from "@/lib/site";
 
 export const metadata: Metadata = publicPageMetadata({
@@ -121,6 +121,14 @@ export default function Page() {
             title: "Prove",
             text: "Every call and every check is recorded, with reports you can hand to an auditor.",
           },
+        ]}
+      />
+
+      <NextSteps
+        items={[
+          { href: "/docs/quickstart", label: "Quickstart", why: "connect a repository, test its agents, add guardrails" },
+          { href: "/docs/quickstart/cli", label: "Quickstart without an account", why: "the same, on your machine only" },
+          { href: "/docs/concepts", label: "Core concepts", why: "agents, tools, access, guardrails, issues" },
         ]}
       />
     </article>
