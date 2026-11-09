@@ -98,7 +98,7 @@ export default async function Issues({ searchParams }: { searchParams: Promise<S
                   <td className="tight"><SeverityPill value={f.severity} /></td>
                   <td>
                     <Link className="k-name" href={`/app/findings/${f.id}`}>{sentence(withAgentNames(f.title, names))}</Link>
-                    <span className="sub">{findingTypeInfo(f.type).label}</span>
+                    <span className="sub">{findingTypeInfo(f.type, f.title).label}</span>
                   </td>
                   <td>
                     {f.agent_slug ? <Link style={{ whiteSpace: "nowrap" }} href={`/app/projects/${encodeURIComponent(f.agent_slug)}`}>{agentName(names, f.agent_slug)}</Link> : <span className="k-muted">—</span>}

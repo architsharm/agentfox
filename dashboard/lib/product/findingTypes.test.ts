@@ -19,6 +19,17 @@ describe("finding type labels", () => {
     expect(byType.redteam_over_block.title).toBe("Over-blocking");
   });
 
+  it("does not call a Watch-mode issue a contained action", async () => {
+    const { findingTypeInfo } = await import("@/components/ui");
+    expect(findingTypeInfo("containment", "Would have blocked payments-ops calling refund").label).toBe(
+      "Would have been contained (Watch)",
+    );
+    expect(findingTypeInfo("containment", "Blocked payments-ops calling refund").label).toBe("Contained action");
+    expect(findingTypeInfo("guardrail_detection", "Would have redacted an email").label).toBe(
+      "Guardrail catch (Watch only)",
+    );
+  });
+
   it("says budget_breach is a detector over its latency budget, not spend", () => {
     expect(byType.budget_breach.title).toBe("Detector over budget");
     expect(byType.budget_exhausted.title).toBe("Budget exhausted");

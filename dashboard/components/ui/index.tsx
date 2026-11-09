@@ -271,8 +271,16 @@ const FINDING_TYPE_INFO: Record<string, { label: string; blurb?: string }> = Obj
   findingTypes.types.map((t) => [t.type, { label: t.title, blurb: t.description }]),
 );
 
-export function findingTypeInfo(type: string): { label: string; blurb?: string } {
-  return FINDING_TYPE_INFO[type] || { label: type.replace(/_/g, " ") };
+/**
+ * ``title`` is the issue's own title. A rule in Watch raises its issue as "Would have
+ * …": nothing was stopped, so its kind must not read "Contained action".
+ */
+export function findingTypeInfo(type: string, title?: string | null): { label: string; blurb?: string } {
+  const info = FINDING_TYPE_INFO[type] || { label: type.replace(/_/g, " ") };
+  if (/^would have\b/i.test((title || "").trim())) {
+    return { ...info, label: type === "containment" ? "Would have been contained (Watch)" : `${info.label} (Watch only)` };
+  }
+  return info;
 }
 
 export function FindingType({ value }: { value: string }) {

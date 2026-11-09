@@ -53,7 +53,7 @@ export default async function IssueDetail({
   }
   const names = agentNames((await safeApi<any>("/api/agents", { agents: [] })).agents);
   if (f.evidence?.reason) f = { ...f, evidence: { ...f.evidence, reason: withAgentNames(f.evidence.reason, names) } };
-  const type = findingTypeInfo(f.type);
+  const type = findingTypeInfo(f.type, f.title);
   const st = STATUS[f.status] || { label: f.status, tone: "outline" as const };
   const remedies: Remedy[] = f.remedies || [];
   const hasActions = remedies.some((r) => r.kind === "action");
