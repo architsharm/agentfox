@@ -77,7 +77,7 @@ agentfox policy enforce baseline`}</Code>
         </li>
       </ul>
 
-      <h2>Change a rule for one agent</h2>
+      <h2 id="one-agent">Change a rule for one agent</h2>
       <p>
         Open a rule and press <strong>Change</strong> (its <strong>Tune</strong> tab). Under{" "}
         <strong>Applies to</strong>, choose{" "}

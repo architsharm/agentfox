@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type SyntheticEvent } from "react";
+import { useEffect, useRef, useState, type ReactNode, type SyntheticEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { Act } from "@/components/kit/Act";
 
@@ -20,6 +20,8 @@ export function LibraryCard({
   title,
   className = "",
   head,
+  count,
+  description,
   state,
   actions,
   drawer,
@@ -28,6 +30,9 @@ export function LibraryCard({
   title: string;
   className?: string;
   head: ReactNode;
+  /** "4 rules": the card's button that opens the drawer. */
+  count: string;
+  description: ReactNode;
   state: ReactNode;
   actions: ReactNode;
   drawer: ReactNode;
@@ -45,24 +50,19 @@ export function LibraryCard({
     // Only on arrival: closing must not reopen it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const onKey = (e: KeyboardEvent) => {
-    if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) return;
-    e.preventDefault();
-    open();
-  };
-
   return (
     <>
-      <article
-        className={`lib-card lib-open ${className}`}
-        role="button"
-        tabIndex={0}
-        aria-haspopup="dialog"
-        aria-label={`${title}: see its rules`}
-        onClick={open}
-        onKeyDown={onKey}
-      >
-        {head}
+      {/* The card opens on a click anywhere but its buttons; for keyboards and screen
+          readers the rule count is the button. The card itself is not a button: its
+          Apply and Start blocking buttons would have been buttons inside a button. */}
+      <article className={`lib-card lib-open ${className}`} onClick={open}>
+        <div className="lib-head">
+          {head}
+          <button type="button" className="lib-n lib-n-btn" aria-haspopup="dialog" aria-label={`${title}: see its ${count}`} onClick={(e) => (keep(e), open())}>
+            {count}
+          </button>
+        </div>
+        <p>{description}</p>
         <div className="lib-foot">
           {state}
           <span className="lib-actions" onClick={keep} onKeyDown={keep}>

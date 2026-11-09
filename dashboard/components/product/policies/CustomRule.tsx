@@ -14,14 +14,14 @@ import { defaultRuleScope, ruleEntries } from "@/lib/product/policyWords";
 
 type Kind = "terms" | "patterns" | "topic" | "allow" | "sequence" | "condition" | "validator";
 
-const KINDS: { key: Kind; label: string; placeholder: string }[] = [
-  { key: "terms", label: "Words", placeholder: "Globex\nInitech" },
-  { key: "patterns", label: "Patterns", placeholder: "ACC-\\d{6}" },
-  { key: "topic", label: "Topic to avoid", placeholder: "Medical diagnosis, symptoms, treatment" },
-  { key: "allow", label: "Allowed topics", placeholder: "Orders, shipping, returns, billing" },
-  { key: "sequence", label: "Sequence", placeholder: "" },
-  { key: "condition", label: "Value check", placeholder: "" },
-  { key: "validator", label: "Built-in check", placeholder: "" },
+const KINDS: { key: Kind; label: string; placeholder: string; name: string }[] = [
+  { key: "terms", label: "Words", placeholder: "Globex\nInitech", name: "Competitor mentions" },
+  { key: "patterns", label: "Patterns", placeholder: "ACC-\\d{6}", name: "Internal account numbers" },
+  { key: "topic", label: "Topic to avoid", placeholder: "Medical diagnosis, symptoms, treatment", name: "No medical advice" },
+  { key: "allow", label: "Allowed topics", placeholder: "Orders, shipping, returns, billing", name: "Only order questions" },
+  { key: "sequence", label: "Sequence", placeholder: "", name: "No email after reading customer data" },
+  { key: "condition", label: "Value check", placeholder: "", name: "Refunds over 500" },
+  { key: "validator", label: "Built-in check", placeholder: "", name: "System prompt leaks" },
 ];
 
 const CHECKS: { key: string; label: string }[] = [
@@ -259,8 +259,8 @@ export function CustomRule({
       : kind === "condition"
         ? conditionReady(cond)
         : kind === "validator"
-          ? validatorReady(checkInfo, check.params)
-          : entries.trim());
+          ? validatorReady(checkInfo, check.params) && checks.length > 0
+          : entries.trim() && checks.length > 0);
   const surfaces = kind === "condition" ? [cond.surface] : checks;
   const toolSample = kind === "condition" && (cond.surface === "tool_args" || cond.surface === "tool_result");
   const read = (tried?.observed || []).map((v) => (typeof v === "string" ? v : JSON.stringify(v))).join(", ");
@@ -283,7 +283,7 @@ export function CustomRule({
 
       <div className="k-field">
         <label htmlFor="cr-name">Name</label>
-        <input id="cr-name" className="k-input" maxLength={200} value={name} onChange={(e) => setName(e.target.value)} placeholder="Competitor mentions" />
+        <input id="cr-name" className="k-input" maxLength={200} value={name} onChange={(e) => setName(e.target.value)} placeholder={KINDS.find((k) => k.key === kind)?.name} />
       </div>
 
       {kind === "condition" ? (
@@ -445,6 +445,10 @@ export function CustomRule({
       )}
 
       {error && <div className="error" role="alert">{error}</div>}
+      {/* A rule saved with no place to check ran on a default nobody chose. */}
+      {!checks.length && !["sequence", "condition"].includes(kind) && (
+        <p className="k-help">Choose where to check: user messages, agent replies or tool calls.</p>
+      )}
       <div>
         <div className="k-pills" style={{ gap: 8 }}>
           <button className="k-btn-primary" disabled={busy || !ready} onClick={save}>

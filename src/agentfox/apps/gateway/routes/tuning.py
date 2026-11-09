@@ -114,11 +114,15 @@ def submit_feedback(
 def list_feedback(
     label: str | None = None,
     status: str | None = None,
+    trace_id: str | None = None,
     limit: int = Query(100, ge=1, le=1000),
     session: Session = Depends(db),
     _user: User = Depends(current_user),
 ) -> dict[str, Any]:
     stmt = select(GuardrailFeedback).order_by(GuardrailFeedback.created_at.desc()).limit(limit)
+    if trace_id:
+        # One run's marks, so its Checks tab shows which detections were marked.
+        stmt = stmt.where(GuardrailFeedback.trace_id == trace_id)
     if label:
         stmt = stmt.where(GuardrailFeedback.label == label)
     if status:

@@ -545,3 +545,27 @@ def test_latency_precision_and_recommendation_routes(client, blocked_decision):
         assert response.status_code == 200, path
     latency = client.get("/api/guardrails/latency", headers=as_user("marcus@example.com")).json()
     assert latency["runs"] > 0
+
+
+def test_a_runs_marks_are_listed_for_its_checks_tab(client, blocked_decision):
+    """The run page shows which detections were already marked, so Wrong sticks."""
+    error = blocked_decision.get("error") or {}
+    decision_id = error.get("decision_id")
+    filed = client.post(
+        "/api/guardrails/feedback",
+        json={"decision_id": decision_id, "label": "false_positive"},
+        headers=as_user("marcus@example.com"),
+    )
+    assert filed.status_code == 201, filed.text
+    trace_id = client.get("/api/guardrails/feedback", headers=as_user("marcus@example.com")).json()[
+        "feedback"
+    ][0]["trace_id"]
+    assert trace_id
+    mine = client.get(
+        f"/api/guardrails/feedback?trace_id={trace_id}", headers=as_user("marcus@example.com")
+    ).json()["feedback"]
+    assert [f["decision_id"] for f in mine] == [decision_id]
+    other = client.get(
+        "/api/guardrails/feedback?trace_id=trc_none", headers=as_user("marcus@example.com")
+    ).json()["feedback"]
+    assert other == []

@@ -314,7 +314,8 @@ export async function Libraries({ project, agents }: { project: string | null; a
     <section className="pol">
       <p className="pol-summary">
         A library is a set of rules you switch on together. <b>Your rules</b> holds the ones you write; the others ship with AgentFox. Applying one here puts it on{" "}
-        <b>{project}</b>&apos;s {total === 1 ? "agent" : `${total} agents`}, watching first, so you see what it would stop before it blocks. Click one to see its rules.
+        <b>{project}</b>&apos;s {total === 1 ? "agent" : `${total} agents`}, watching first, so you see what it would stop before it blocks. Click one to see its rules.{" "}
+        <Link href="/docs/protect">How libraries work</Link>
       </p>
       <div className="lib-grid">
         {all.map((l) => (
@@ -324,19 +325,13 @@ export async function Libraries({ project, agents }: { project: string | null; a
             title={l.title}
             className={l.className}
             head={
-              <>
-                <div className="lib-head">
-                  <span className="lib-head-title">
-                    <strong>{l.title}</strong>
-                    {l.tag ? <span className="lib-tag" title="The set we suggest every agent starts with">{l.tag}</span> : null}
-                  </span>
-                  <span className="lib-n">
-                    {l.rules} {l.rules === 1 ? "rule" : "rules"}
-                  </span>
-                </div>
-                <p>{l.description}</p>
-              </>
+              <span className="lib-head-title">
+                <strong>{l.title}</strong>
+                {l.tag ? <span className="lib-tag" title="The set we suggest every agent starts with">{l.tag}</span> : null}
+              </span>
             }
+            count={`${l.rules} ${l.rules === 1 ? "rule" : "rules"}`}
+            description={l.description}
             state={
               <span className={`lib-state ${l.state.tone}`} title={l.state.title}>
                 {l.state.text}

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { callJson } from "@/components/kit/Act";
@@ -322,6 +323,10 @@ export function RuleTuner({
         </div>
       )}
 
+      <p className="k-help">
+        <Link href="/docs/protect#one-agent">Changing a rule for every agent or only some</Link> ·{" "}
+        <Link href="/docs/protect/tuning">Fixing false positives</Link>
+      </p>
       {busy && !preview && <div className="k-muted">Checking against the last 7 days…</div>}
       {error && <div className="error" role="alert">{error}</div>}
 

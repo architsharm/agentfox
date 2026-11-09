@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { appPageMetadata } from "@/lib/site";
-import { ApiError, api, apiErrorProps } from "@/lib/product/api";
+import { ApiError, api, apiErrorProps, safeApi } from "@/lib/product/api";
 import { ApiDown, NotFound } from "@/components/ui";
 import {
   ActionPill,
@@ -252,8 +252,12 @@ function Steps({ spans }: { spans: any[] }) {
   );
 }
 
-function Checks({ runs, runId }: { runs: any[]; runId: string }) {
+async function Checks({ runs, runId }: { runs: any[]; runId: string }) {
   if (!runs.length) return <Card><Empty>No detectors ran.</Empty></Card>;
+  // What was already marked on this run, newest first: the button shows it stuck.
+  const marks = await safeApi<any>(`/api/guardrails/feedback?trace_id=${encodeURIComponent(runId)}&limit=200`, { feedback: [] });
+  const markOf = (decision: string, detector: string): string | undefined =>
+    (marks.feedback || []).find((f: any) => f.decision_id === decision && f.detector_key === detector)?.label;
   return (
     <Card flush>
       <table className="k-table">
@@ -293,7 +297,15 @@ function Checks({ runs, runId }: { runs: any[]; runId: string }) {
                         {r.findings.length === 1 && <input type="hidden" name="entity_type" value={r.findings[0].entity_type} />}
                         <input type="hidden" name="label" value={label} />
                         <input type="hidden" name="return_to" value={`/app/traces/${runId}?tab=checks`} />
-                        <button type="submit" className="k-btn-ghost">{label === "true_positive" ? "Correct" : "Wrong"}</button>
+                        {markOf(r.decision_id, r.detector) === label ? (
+                          <button type="submit" className="k-btn" aria-pressed="true" disabled>
+                            {label === "true_positive" ? "Marked correct" : "Marked wrong"}
+                          </button>
+                        ) : (
+                          <button type="submit" className="k-btn-ghost" aria-pressed="false">
+                            {label === "true_positive" ? "Correct" : "Wrong"}
+                          </button>
+                        )}
                       </form>
                     ))}
                   </span>

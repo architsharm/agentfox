@@ -6635,6 +6635,12 @@
      "type": null
     },
     {
+     "name": "trace_id",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
      "name": "limit",
      "in": "query",
      "required": false,

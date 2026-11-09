@@ -86,9 +86,12 @@ export default async function RulePage({ params, searchParams }: { params: Promi
                 Start blocking
               </Link>
             )}
-            <Link className="k-btn" href={tabHref("tune")}>
-              Change
-            </Link>
+            {/* On its Tune tab already: a Change button beside it would go nowhere. */}
+            {tab !== "tune" && (
+              <Link className="k-btn" href={tabHref("tune")}>
+                Change
+              </Link>
+            )}
           </>
         }
       />
@@ -357,9 +360,11 @@ async function BusinessRule({ ruleKey, sp }: { ruleKey: string; sp: SP }) {
           actions={
             <>
               {b.enabled !== false && <BusinessMode ruleKey={ruleKey} mode={b.mode} name={name} />}
-              <Link className="k-btn" href={tabHref("tune")}>
-                Change
-              </Link>
+              {tab !== "tune" && (
+                <Link className="k-btn" href={tabHref("tune")}>
+                  Change
+                </Link>
+              )}
             </>
           }
         />

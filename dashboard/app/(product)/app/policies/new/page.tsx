@@ -41,6 +41,11 @@ export default async function NewRule({ searchParams }: { searchParams: Promise<
     <>
       <Header back={{ href: "/app/policies", label: "Policies" }} title={sp.agent ? `New rule for ${sp.agent}` : "New rule"} />
       <Tabs items={tabs.map((t) => ({ ...t, href: href("/app/policies/new", { ...keep, from: t.key }) }))} active={tab} />
+      {DOCS[tab] && (
+        <p className="k-help">
+          <Link href={DOCS[tab].href}>{DOCS[tab].label}</Link>
+        </p>
+      )}
       {tab === "run" && sp.run && <FromRun id={sp.run} />}
       {tab === "describe" && <Describe agent={sp.agent} agents={scopeAgents} />}
       {tab === "custom" && (
@@ -58,6 +63,14 @@ export default async function NewRule({ searchParams }: { searchParams: Promise<
     </>
   );
 }
+
+/** Each way to add a rule, with the docs page that explains it. */
+const DOCS: Record<string, { href: string; label: string }> = {
+  custom: { href: "/docs/protect/custom-rules", label: "How your own rules work" },
+  describe: { href: "/docs/protect/custom-rules#limits", label: "How approval limits work" },
+  import: { href: "/docs/protect/custom-rules#import", label: "What can be imported, with an example file" },
+  packs: { href: "/docs/protect", label: "How libraries work" },
+};
 
 /** The same library cards, drawer and scope as Policies → Libraries: the project's agents first. */
 async function PacksTab() {
@@ -225,6 +238,9 @@ function Start({ agent, surfaces }: { agent?: string; surfaces?: string }) {
           </Link>
         ))}
       </div>
+      <p className="k-help">
+        <Link href="/docs/protect/custom-rules">How rules work: watch, then start blocking</Link>
+      </p>
     </>
   );
 }
