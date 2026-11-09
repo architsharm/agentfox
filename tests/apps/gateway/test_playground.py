@@ -93,9 +93,7 @@ def test_benign_message_is_allowed(client):
     assert "30 days" in body["reply"]
 
 
-def test_the_playground_never_uses_the_deployments_model_or_leaks_its_secrets(
-    client, monkeypatch
-):
+def test_the_playground_never_uses_the_deployments_model_or_leaks_its_secrets(client, monkeypatch):
     """A public chat box: prompt injection must not reach a hosted model on the
     operator's key, nor get a configured secret back."""
     from agentfox.core.config import get_settings
