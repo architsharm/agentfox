@@ -81,6 +81,41 @@ agentfox.auto(agent="support-triage", mode="observe")`}</Code>
       <Code lang="bash">{`export AGENTFOX_URL=https://…
 export AGENTFOX_API_KEY=nom_api_…`}</Code>
 
+      <h2 id="what-is-sent">What auto() sends to your account</h2>
+      <p>
+        Only with a key. Each check is one HTTPS request to your account&apos;s gateway
+        (<code>/v1/guard/input</code>, <code>/v1/guard/output</code>,{" "}
+        <code>/v1/guard/tool_call</code>), with the key in the <code>Authorization</code> header:
+      </p>
+      <ul>
+        <li>
+          <strong>Every request:</strong> the agent&apos;s name, the environment, and the session
+          id and <code>intent</code> if you passed them.
+        </li>
+        <li>
+          <strong>Before a model call:</strong> the text of each message that is new since the
+          model last answered (the user&apos;s turn and any tool results), each marked as coming
+          from the user or from a tool.
+        </li>
+        <li>
+          <strong>After it:</strong> the model&apos;s reply text, the model name and the token
+          counts.
+        </li>
+        <li>
+          <strong>Each tool call:</strong> the tool&apos;s name and its arguments, and what the
+          tool returned.
+        </li>
+      </ul>
+      <p>
+        That text is sent as it is: nothing is masked before it leaves your process, because the
+        checks need to read it. Not sent: your source code, environment variables, files, or your
+        model provider&apos;s API key. On the account, a run&apos;s one-line summary is masked,
+        detector matches are kept as a type, a position and a masked sample, and a call held for a
+        person keeps its arguments so they can decide. <strong>Settings → Retention</strong> sets
+        how long runs are kept. The full account is on the{" "}
+        <Link href="/privacy">privacy page</Link>. Without a key, nothing is sent to AgentFox.
+      </p>
+
       <h2 id="modes">Observe or enforce</h2>
       <div className="docs-table" tabIndex={0}><table>
         <thead>

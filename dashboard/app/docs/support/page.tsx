@@ -26,6 +26,9 @@ const PROBLEMS: [ReactNode, ReactNode][] = [
   [<>CI says <code>unknown suite</code></>, <><code>AGENTFOX_DATABASE_URL</code> points at a different database from the one with the suite.</>],
   ["Compliance counts are all zero (Enterprise)", <>Press <strong>Load control catalog</strong> on Reports → Compliance, or run <code>agentfox admin catalog sync</code>. Without AgentFox Enterprise there is no compliance view; the open core has <code>agentfox report</code> and <code>agentfox report verify</code>.</>],
   ["The audit log check fails", <>An entry was changed or removed after it was written. <code>agentfox report verify</code> names the first broken entry.</>],
+  ["agentfox up edited my file and I want it back", <><code>up</code> adds two lines to the entry point: <code>import agentfox</code> and <code>agentfox.auto(…)</code>, marked <code># added by `agentfox up`</code>. Delete them, or restore the file from version control. Everything else it wrote is listed under <Link href="/docs/reference/install#uninstall">Uninstall</Link>.</>],
+  [<>Every run prints <code>AgentFox is governing …</code></>, <>That banner on stderr is <code>auto()</code> saying what it covers. <code>agentfox.auto(quiet=True)</code> hides it; <code>AGENTFOX_VERBOSE=1</code> prints the full account.</>],
+  ["I want AgentFox off for a while", <>Set <code>AGENTFOX_DISABLED=1</code> and restart the app. See <Link href="/docs/reference/install#turn-off">Turn it off</Link>.</>],
 ];
 
 export default function Page() {
@@ -61,11 +64,59 @@ export default function Page() {
         </tbody>
       </table></div>
 
+      <h2 id="faq">Questions people ask</h2>
+      <dl className="docs-faq">
+        <dt>Does AgentFox block my users from the start?</dt>
+        <dd>
+          No. Checks start in Watch: they record what they would have stopped. What is refused
+          from the start is a destructive command or statement, an agent you paused, and, once an
+          agent holds any grant, a tool it was not given. You switch a guardrail to Block when its
+          results look right.
+        </dd>
+        <dt>Does my traffic leave my machine?</dt>
+        <dd>
+          Not to AgentFox without a key. With one, <code>auto()</code> sends each check to your
+          account: <Link href="/docs/connect/python#what-is-sent">exactly what is sent</Link>.
+        </dd>
+        <dt>Do I need a database or a server?</dt>
+        <dd>
+          No. Without an account, the CLI and <code>auto()</code> use one SQLite file per
+          installation, created on first use (
+          <Link href="/docs/reference/install#state">where it lives</Link>). Postgres and{" "}
+          <code>agentfox serve</code> are for a shared, self-hosted deployment.
+        </dd>
+        <dt>Do I need a database in CI?</dt>
+        <dd>
+          No. <code>agentfox scan --fail</code> and the{" "}
+          <Link href="/docs/test/ci">GitHub Action</Link> read the repository and write nothing.
+          Commands that keep state create a SQLite file on first use; point{" "}
+          <code>AGENTFOX_STATE_DIR</code> at a temporary folder so each run starts clean.
+        </dd>
+        <dt>How do I turn it off, or remove it?</dt>
+        <dd>
+          <code>AGENTFOX_DISABLED=1</code> turns <code>auto()</code> off without a code change.{" "}
+          <Link href="/docs/reference/install#uninstall">Uninstall</Link> lists every file AgentFox
+          writes and how to revoke your key.
+        </dd>
+        <dt>Which commands need AgentFox Enterprise?</dt>
+        <dd>
+          Compliance, evidence packages and monitoring of connected sources. They are marked{" "}
+          <strong>Enterprise</strong> in the <Link href="/docs/reference/cli">CLI reference</Link>,
+          and the open-source package says so if you run one.
+        </dd>
+        <dt>The app says Issues, the CLI says findings. Same thing?</dt>
+        <dd>
+          Yes. The <Link href="/docs/concepts#glossary">glossary</Link> maps each name in the app
+          to the CLI&apos;s.
+        </dd>
+      </dl>
+
       <h2 id="incident">When an agent misbehaves</h2>
       <ol>
         <li>
           Stop it: <strong>Stop</strong> in the agent&apos;s status menu, or{" "}
-          <code>agentfox agents kill support-triage</code>. Every call it makes is refused until you
+          <code>agentfox agents kill support-triage</code> (use your agent&apos;s name;{" "}
+          <code>agentfox agents list</code> shows them). Every call it makes is refused until you
           resume it.
         </li>
         <li>Deny its calls waiting on <strong>Approvals</strong>.</li>
