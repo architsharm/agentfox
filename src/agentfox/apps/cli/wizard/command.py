@@ -789,10 +789,17 @@ def _first_steps(run: Run) -> list[tuple[str, str]]:
             script = False
         # `python <file>` only for a file that runs as a script; a graph module or a
         # package entry point is started the way it always was.
+        from agentfox.apps.cli.wizard.components import unwatched_frameworks
+
+        unwatched = unwatched_frameworks(run)
         steps.append(
             (
                 f"python {entry}" if script else "run your app",
-                f'as usual: {entry} now calls auto("{run.agent}"), which records every call',
+                f'as usual: {entry} now calls auto("{run.agent}"), which records every call'
+                if not unwatched
+                else f'as usual: {entry} now calls auto("{run.agent}"); '
+                f"{' and '.join(unwatched)} model calls are not governed by it "
+                "(use the gateway)",
             )
         )
     elif "python-app" in run.picked:

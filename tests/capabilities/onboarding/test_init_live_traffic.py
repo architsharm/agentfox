@@ -150,3 +150,18 @@ def test_the_line_goes_into_the_file_that_runs_the_agent_in_its_own_app(tmp_path
     out = console.export_text()
     assert 'agentfox.auto("planner-agent")' in out
     assert "apps/research/manager.py" in out, out
+
+
+def test_an_adk_agent_is_told_auto_does_not_govern_its_model_calls(tmp_path):
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "agent.py").write_text(
+        "from google.adk.agents import LlmAgent\n\n"
+        "root_agent = LlmAgent(name='advisor', model='gemini-2.5-pro', instruction='x')\n"
+    )
+    registered = [
+        {"slug": "advisor", "name": "advisor", "file": "agent.py", "framework": "Google ADK"}
+    ]
+    console = Console(record=True, width=200)
+    connect_live_traffic(console, tmp_path, "https://gw", "nom_api_abc", registered, ask=False)
+    out = console.export_text()
+    assert "NOT governed by auto()" in out and "google-genai" in out

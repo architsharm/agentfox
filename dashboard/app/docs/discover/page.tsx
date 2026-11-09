@@ -90,6 +90,16 @@ agentfox scan --fail --no-submit`}</Code>
       <h2>What the scan reads</h2>
       <ul>
         <li>Python, TypeScript and JavaScript. Agents in the OpenAI and Anthropic SDKs, LangGraph, LangChain, CrewAI, AutoGen and Google ADK, and who hands work to whom.</li>
+        <li>
+          Agents a class builds (<code>self.tools = [...]</code>, then <code>create_react_agent(tools=self.tools)</code>),
+          an Agents SDK <code>agent.clone(tools=[other.as_tool()])</code>, a hierarchical crew&apos;s{" "}
+          <code>manager_llm</code>, and an agent built on your own <code>Agent</code> class, labelled by the SDK it
+          calls rather than by the package name.
+        </li>
+        <li>
+          Tools written as <code>Tool</code> subclasses that name themselves, and MCP servers your repository serves
+          (<code>FastMCP(&quot;name&quot;)</code>).
+        </li>
         <li>MCP servers from <code>.mcp.json</code>, Cursor, Claude Code and Claude Desktop configs.</li>
         <li>
           Not tools built at runtime, for example loaded from a database. Agents that send traffic show

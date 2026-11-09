@@ -111,3 +111,28 @@ def test_an_agent_registered_under_the_old_key_is_found_by_its_name(tmp_path, mo
         again = register_agent(session, "FinancialPlannerAgent", name="FinancialPlannerAgent")
         assert again.slug == "financialplanneragent"
         assert len(list(session.scalars(select(Agent)))) == 1
+
+
+ADK = """
+from google.adk.agents import LlmAgent
+
+def lookup_fund(name: str) -> str:
+    return ""
+
+root_agent = LlmAgent(name="fund_advisor", model="gemini-2.5-pro", instruction="advise",
+                      tools=[lookup_fund])
+"""
+
+
+@pytest.mark.usefixtures("home")
+def test_up_says_auto_does_not_govern_an_adk_agents_model_calls(tmp_path):
+    root = tmp_path / "advisor"
+    (root / "app").mkdir(parents=True)
+    (root / ".git").mkdir()
+    (root / "app" / "agent.py").write_text(textwrap.dedent(ADK))
+    result = _up(str(root), "--yes", "--with", "python-app")
+    assert result.exit_code == 0, result.output
+    out = " ".join(result.output.split())
+    assert "NOT governed by auto()" in out
+    assert "google-genai" in out
+    assert "records every call" not in out

@@ -202,6 +202,8 @@ def report(api: Any, console: Console, root: Path, server: str, key: str) -> dic
                 **a,
                 "file": (local.get(a.get("name")) or {}).get("file"),
                 "attr": attrs.get((local.get(a.get("name")) or {}).get("id")),
+                "framework": a.get("framework")
+                or (local.get(a.get("name")) or {}).get("framework"),
             }
             for a in connected.get("registered") or []
         ]
@@ -315,6 +317,16 @@ def connect_live_traffic(
             )
         except EOFError:
             answer = "n"
+    from agentfox.capabilities.discovery.agents import UNPATCHED_FRAMEWORKS
+
+    for framework in sorted(
+        {a.get("framework") for a in registered if a.get("framework") in UNPATCHED_FRAMEWORKS}
+    ):
+        console.print(
+            f"[yellow]{framework}'s model calls are NOT governed by auto()[/yellow]: it "
+            f"calls its model through {UNPATCHED_FRAMEWORKS[framework]}, which auto() does "
+            "not patch. Route them through the gateway instead (`agentfox up --with gateway`)."
+        )
     if answer.startswith("y"):
         insert_auto(path, block)
         console.print(

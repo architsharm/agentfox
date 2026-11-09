@@ -534,8 +534,37 @@ def _auto_lines(run: Run) -> str:
     return f'import agentfox\n\nagentfox.auto("{run.agent}"{mode})  # added by `agentfox up`\n'
 
 
+def unwatched_frameworks(run: Run) -> list[str]:
+    """The frameworks of the agent being set up (or, when the scan found none for it,
+    of the repository) whose model calls `auto()` cannot see (see
+    `autoguard.environment.UNPATCHED_FRAMEWORKS`)."""
+    from agentfox.capabilities.discovery.agents import UNPATCHED_FRAMEWORKS
+    from agentfox.platform.registry.service import slugify
+
+    mine = {
+        a.framework
+        for a in run.ctx.report.agents
+        if slugify(a.name or a.key) == run.agent or a.key == run.agent
+    }
+    found = mine or set(run.ctx.report.frameworks)
+    return sorted(f for f in found if f in UNPATCHED_FRAMEWORKS)
+
+
+def _unwatched_warning(run: Run) -> None:
+    from agentfox.capabilities.discovery.agents import UNPATCHED_FRAMEWORKS
+
+    for framework in unwatched_frameworks(run):
+        run.say(
+            f"[yellow]{framework}'s model calls are NOT governed by auto()[/] — it calls "
+            f"its model through {UNPATCHED_FRAMEWORKS[framework]}, which auto() does not "
+            "patch. Route them through the gateway instead: "
+            "[cyan]agentfox up --with gateway[/]"
+        )
+
+
 def _python_apply(run: Run) -> None:
     _register(run)
+    _unwatched_warning(run)
     choice = run.answers.get("python-app", "none")
     block = _auto_lines(run)
     if choice == "none":

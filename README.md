@@ -83,7 +83,11 @@ agentfox test redteam <agent>    # attack-test it
 LangGraph, LangChain, CrewAI, AutoGen, pydantic-ai and the OpenAI Agents SDK. The name is the
 agent that file runs (a crew or swarm takes its project's name), shown before anything changes
 so you can edit it. In a folder of separate examples it sets up one, with only that agent's
-tools, and says how to pick another (`agentfox up --agent <name>`). It starts in watch mode and
+tools, and says how to pick another (`agentfox up --agent <name>`); in a monorepo that edits
+the picked agent's own app, and `scan`, `up`, `init` and `auto()` all name one agent the same
+way (`FinancialPlannerAgent` is `financial-planner-agent` everywhere). `auto()` does not see
+the model calls of Google ADK (google-genai) or smolagents (huggingface_hub); `up` says so,
+and routes them through the gateway with `--with gateway`. It starts in watch mode and
 changes nothing else by default: coding-agent hooks, the GitHub workflow and the local API are
 `--with coding-agents`, `--with ci` and `--with view`. Everything stays on your machine; a pip
 install has no web dashboard (`agentfox findings` is the terminal view), which comes with

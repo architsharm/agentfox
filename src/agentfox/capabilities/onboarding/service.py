@@ -748,7 +748,9 @@ def register_structure(
                 project=project,
                 # A draft keeps what a reviewer may already have set on it.
                 risk_tier=existing.risk_tier if existing is not None else "limited",
-                environment=existing.environment if existing is not None else "production",
+                # Read from a checkout: development until a person says it runs in
+                # production (the traffic `auto()` sends from it is development too).
+                environment=existing.environment if existing is not None else "development",
             )
             report["proposed"].append(slug)
             outcome = "proposed"
