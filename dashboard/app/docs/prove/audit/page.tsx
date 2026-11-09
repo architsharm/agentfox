@@ -76,7 +76,7 @@ export default function Page() {
               </p>
             </Tab>
             <Tab label="CLI">
-              <Code>{`agentfox report evidence --agent payments-ops --since-days 30`}</Code>
+              <Code>{`agentfox report evidence --agent payments-ops --since-days 30 --out evidence.zip`}</Code>
             </Tab>
           </Tabs>
           <p>

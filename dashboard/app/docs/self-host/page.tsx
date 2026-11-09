@@ -92,6 +92,17 @@ agentfox serve --host 0.0.0.0 --port 8080`}</Code>
         <a href="https://github.com/architsharm/agentfox/blob/main/docs/deployment/systemd.md">systemd guide</a>.
       </p>
 
+      <h2 id="health">Health checks</h2>
+      <p>
+        Point a load balancer or uptime probe at <code>GET /health</code> on the gateway (the same answer
+        is at <code>/api/health</code>). It needs no sign-in and returns 200 with{" "}
+        <code>&quot;status&quot;: &quot;ok&quot;</code> while the process is serving, plus the running{" "}
+        <code>version</code>. <code>governance_healthy</code> is <code>false</code> when too many recent
+        checks were answered without a detector they should have run (for example, one keeps timing
+        out); alert on that rather than restart, since the process itself is fine.
+      </p>
+      <Code>{`curl -s http://localhost:8080/health`}</Code>
+
       <h2 id="upgrade">Upgrades</h2>
       <p>
         Back up the database, pull the new image or package, then migrate before the new version serves

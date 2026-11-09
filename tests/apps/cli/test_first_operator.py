@@ -74,3 +74,19 @@ def test_auth_status_advises_agentfox_variables():
     result = runner.invoke(app, ["admin", "auth", "status"])
     assert result.exit_code == 0, result.output
     assert "AGENTFOX_ENVIRONMENT=production" in flat(result.output)
+
+
+def test_issuing_a_token_does_not_warn_about_cross_tenant_scope(caplog):
+    """`admin auth issue` printed 'tenancy: cross-tenant scope entered' as a warning on
+    every run, and so did each gateway start: noise in front of a first-time user."""
+    import logging
+
+    from agentfox.platform.jobs.scheduler import schedule_all_tenants
+
+    runner.invoke(app, ["admin", "users", "create", "ops@corp.example", "--role", "owner"])
+    with caplog.at_level(logging.WARNING, logger="agentfox.core.tenancy"):
+        issued = runner.invoke(app, ["admin", "auth", "issue", "ops@corp.example"])
+        assert issued.exit_code == 0, issued.output
+        with session_scope() as session:
+            schedule_all_tenants(session)
+    assert not [r for r in caplog.records if "cross-tenant scope" in r.getMessage()]
