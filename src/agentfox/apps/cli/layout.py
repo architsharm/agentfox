@@ -285,7 +285,7 @@ def apply_layout(app: typer.Typer) -> None:
     scan.cls = default_group("repo", routes={"--sessions": "sessions"})
     scan.no_args_is_help = False
     scan.help = (
-        "Find what is worth governing: a repo, this machine, an MCP server, the runtime.\n\n"
+        "Find what to govern: a repo, this machine, MCP servers, runtime.\n\n"
         "`agentfox scan [PATH] [--fail] [--json]` scans a repository (the default). "
         "`agentfox scan --sessions [PATH]` also reads local AI-tool sessions and runs "
         "the live detector check. `machine` checks the MCP servers and skills your AI "
@@ -307,8 +307,7 @@ def apply_layout(app: typer.Typer) -> None:
     serve_info = find("serve")
     app.registered_commands.remove(serve_info)
     serve_app = _new_group(
-        "Run the gateway and control-plane API, the MCP server for AI clients, or the "
-        "model server.\n\n"
+        "Run the gateway and API, the MCP server, or the model server.\n\n"
         "`agentfox serve` starts the API (the default) on 127.0.0.1:8080. "
         "`--host 0.0.0.0` and `--port 9000` change where it listens; `--reload` restarts "
         "it when the code changes; `agentfox serve api --help` lists every option.\n\n"
@@ -330,7 +329,7 @@ def apply_layout(app: typer.Typer) -> None:
     findings_info = find("findings")
     app.registered_commands.remove(findings_info)
     findings_app = _new_group(
-        "What the platform found: the list `agentfox.auto()` tells you to read.\n\n"
+        "What was found, worst first: the list `agentfox.auto()` points to.\n\n"
         "`agentfox findings [--severity high] [--limit 50] [--json]` lists the open ones, "
         "worst first (the default); `agentfox findings show <id>` shows one in full; "
         "`agentfox findings --types` lists the kinds there are.",
@@ -344,6 +343,7 @@ def apply_layout(app: typer.Typer) -> None:
 
     # -- Contain: permit -----------------------------------------------------------
     permit_app = _new_group(
+        "Grant and withdraw what an agent may do; decide held calls.\n\n"
         "Grant, list and withdraw what an agent — or an end user — may do, and decide "
         "the calls held for a person (`permit approvals`)."
     )
@@ -357,7 +357,7 @@ def apply_layout(app: typer.Typer) -> None:
 
     # -- Contain: declare ----------------------------------------------------------
     declare_app = _new_group(
-        "Declare the facts containment reasons over: tools, data scope, sources, hand-offs.\n\n"
+        "Declare the facts containment uses: tools, scope, sources.\n\n"
         "What a tool can do, which column says whose row it is, what an agent has no "
         "data for, which sources are authoritative, and when to hand off to a person."
     )
@@ -387,7 +387,7 @@ def apply_layout(app: typer.Typer) -> None:
 
     # -- Prove: test ---------------------------------------------------------------
     test_app = _new_group(
-        "Prove the controls hold before you ship: score, gate, attack, and dry-run."
+        "Prove the controls hold before you ship: score, gate, attack."
     )
     for name in ("run", "gate", "baseline", "suites", "online"):
         _alias(test_app, find("eval", name), name)
@@ -446,8 +446,9 @@ def apply_layout(app: typer.Typer) -> None:
 
     # -- Operate: admin ------------------------------------------------------------
     admin_app = _new_group(
-        "Run the deployment: operators, tokens, schema, scheduled jobs, key rotation, catalog "
-        "upkeep, hooks, seed data."
+        "Run the deployment: operators, keys, schema, jobs, hooks.\n\n"
+        "Operators and tokens, the database schema, scheduled jobs, key rotation, catalog "
+        "upkeep, coding-agent hooks and seed data."
     )
     admin_app.add_typer(sub["auth"].typer_instance, name="auth")
     admin_app.add_typer(sub["users"].typer_instance, name="users")

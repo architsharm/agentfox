@@ -27,8 +27,8 @@
    {
     "path": "up",
     "name": "up",
-    "summary": "Guided setup for this project: scan, choose what to cover, and it does the rest.",
-    "help": "Guided setup for this project: scan, choose what to cover, and it does the rest.\n\nAsks where AgentFox runs (this machine, your own server, or AgentFox Cloud), what\nto cover (coding agents, your Python agent, the gateway, tools, MCP servers,\nmonitoring, compliance, the dashboard) and how strict to start, then does all of\nit. Every question has a recommended answer; `--yes` takes them all. Run it again\nany time: it remembers the answers and only changes what is new.",
+    "summary": "Guided setup: scan, choose what to cover, and it does the rest.",
+    "help": "Guided setup: scan, choose what to cover, and it does the rest.\n\nAsks where AgentFox runs (this machine, your own server, or AgentFox Cloud), what\nto cover (coding agents, your Python agent, the gateway, tools, MCP servers,\nmonitoring, compliance, the dashboard) and how strict to start, then does all of\nit. Every question has a recommended answer; `--yes` takes them all. Run it again\nany time: it remembers the answers and only changes what is new.",
     "panel": "Start",
     "params": [
      {
@@ -210,8 +210,8 @@
    {
     "path": "init",
     "name": "init",
-    "summary": "Connect this repo to your account (--key), or prepare the local database and policies.",
-    "help": "Connect this repo to your account (--key), or prepare the local database and policies.\n\nIdempotent and safe to run twice. Without --key it is offline and edits no code;\n`agentfox up` is the guided setup that also adds `agentfox.auto()`.\n\nCreates the database, applies migrations, loads the control catalog and the\nshipped policy packs, every one watching (observe) until you switch it to blocking\nwith `agentfox policy enforce <key>`; coding-agent only for agents this repo's\ncoding-harness hooks govern. Missing grants, destructive commands and tampering\nwith AgentFox are refused from the start. It writes an\nagentfox.toml carrying the real runtime defaults so they are visible rather than\nimplicit. AGENTFOX_* environment variables override that file.",
+    "summary": "Connect this repo to your account (--key), or set up locally.",
+    "help": "Connect this repo to your account (--key), or set up locally.\n\nWithout --key: prepares the local database and policies.\n\nIdempotent and safe to run twice. Without --key it is offline and edits no code;\n`agentfox up` is the guided setup that also adds `agentfox.auto()`.\n\nCreates the database, applies migrations, loads the control catalog and the\nshipped policy packs, every one watching (observe) until you switch it to blocking\nwith `agentfox policy enforce <key>`; coding-agent only for agents this repo's\ncoding-harness hooks govern. Missing grants, destructive commands and tampering\nwith AgentFox are refused from the start. It writes an\nagentfox.toml carrying the real runtime defaults so they are visible rather than\nimplicit. AGENTFOX_* environment variables override that file.",
     "panel": "Start",
     "params": [
      {
@@ -289,8 +289,8 @@
    {
     "path": "demo",
     "name": "demo",
-    "summary": "Run the end-to-end walkthrough (offline), in a database of its own.",
-    "help": "Run the end-to-end walkthrough (offline), in a database of its own.\n\nThree made-up agents, sample traffic and the findings it opens go to `demo.db`\nbeside your workspace database, so `agentfox findings` in a real project never\nopens with the demo's. The closing panel says how to look around it.",
+    "summary": "A walkthrough on made-up agents, offline, in its own database.",
+    "help": "A walkthrough on made-up agents, offline, in its own database.\n\nThree made-up agents, sample traffic and the findings it opens go to `demo.db`\nbeside your workspace database, so `agentfox findings` in a real project never\nopens with the demo's. The closing panel says how to look around it.",
     "panel": "Start",
     "params": [
      {
@@ -314,8 +314,8 @@
    {
     "path": "scan",
     "name": "scan",
-    "summary": "Find what is worth governing: a repo, this machine, an MCP server, the runtime.",
-    "help": "Find what is worth governing: a repo, this machine, an MCP server, the runtime.\n\n`agentfox scan [PATH] [--fail] [--json]` scans a repository (the default). `agentfox scan --sessions [PATH]` also reads local AI-tool sessions and runs the live detector check. `machine` checks the MCP servers and skills your AI tools load on this machine. `mcp`, `skills` and `runtime` scan the rest; `monitors` re-checks connected sources on a schedule.",
+    "summary": "Find what to govern: a repo, this machine, MCP servers, runtime.",
+    "help": "Find what to govern: a repo, this machine, MCP servers, runtime.\n\n`agentfox scan [PATH] [--fail] [--json]` scans a repository (the default). `agentfox scan --sessions [PATH]` also reads local AI-tool sessions and runs the live detector check. `machine` checks the MCP servers and skills your AI tools load on this machine. `mcp`, `skills` and `runtime` scan the rest; `monitors` re-checks connected sources on a schedule.",
     "panel": "Discover",
     "params": [],
     "default_subcommand": "repo",
@@ -1209,8 +1209,8 @@
    {
     "path": "permit",
     "name": "permit",
-    "summary": "Grant, list and withdraw what an agent — or an end user — may do, and decide the calls held for a person (`permit approvals`).",
-    "help": "Grant, list and withdraw what an agent — or an end user — may do, and decide the calls held for a person (`permit approvals`).",
+    "summary": "Grant and withdraw what an agent may do; decide held calls.",
+    "help": "Grant and withdraw what an agent may do; decide held calls.\n\nGrant, list and withdraw what an agent — or an end user — may do, and decide the calls held for a person (`permit approvals`).",
     "panel": "Govern",
     "params": [],
     "default_subcommand": null,
@@ -1713,8 +1713,8 @@
    {
     "path": "declare",
     "name": "declare",
-    "summary": "Declare the facts containment reasons over: tools, data scope, sources, hand-offs.",
-    "help": "Declare the facts containment reasons over: tools, data scope, sources, hand-offs.\n\nWhat a tool can do, which column says whose row it is, what an agent has no data for, which sources are authoritative, and when to hand off to a person.",
+    "summary": "Declare the facts containment uses: tools, scope, sources.",
+    "help": "Declare the facts containment uses: tools, scope, sources.\n\nWhat a tool can do, which column says whose row it is, what an agent has no data for, which sources are authoritative, and when to hand off to a person.",
     "panel": "Govern",
     "params": [],
     "default_subcommand": null,
@@ -2380,8 +2380,8 @@
    {
     "path": "policy",
     "name": "policy",
-    "summary": "Write the rules, try them against recorded traffic, then turn them on.",
-    "help": "Write the rules, try them against recorded traffic, then turn them on.",
+    "summary": "Write rules, try them on recorded traffic, then turn them on.",
+    "help": "Write rules, try them on recorded traffic, then turn them on.",
     "panel": "Govern",
     "params": [],
     "default_subcommand": null,
@@ -3888,8 +3888,8 @@
    {
     "path": "serve",
     "name": "serve",
-    "summary": "Run the gateway and control-plane API, the MCP server for AI clients, or the model server.",
-    "help": "Run the gateway and control-plane API, the MCP server for AI clients, or the model server.\n\n`agentfox serve` starts the API (the default) on 127.0.0.1:8080. `--host 0.0.0.0` and `--port 9000` change where it listens; `--reload` restarts it when the code changes; `agentfox serve api --help` lists every option.\n\n`agentfox serve mcp` speaks MCP over stdio; `agentfox serve models` runs the model-backed detectors for gateways that should not hold weights.",
+    "summary": "Run the gateway and API, the MCP server, or the model server.",
+    "help": "Run the gateway and API, the MCP server, or the model server.\n\n`agentfox serve` starts the API (the default) on 127.0.0.1:8080. `--host 0.0.0.0` and `--port 9000` change where it listens; `--reload` restarts it when the code changes; `agentfox serve api --help` lists every option.\n\n`agentfox serve mcp` speaks MCP over stdio; `agentfox serve models` runs the model-backed detectors for gateways that should not hold weights.",
     "panel": "Protect",
     "params": [],
     "default_subcommand": "api",
@@ -4014,8 +4014,8 @@
    {
     "path": "findings",
     "name": "findings",
-    "summary": "What the platform found: the list `agentfox.auto()` tells you to read.",
-    "help": "What the platform found: the list `agentfox.auto()` tells you to read.\n\n`agentfox findings [--severity high] [--limit 50] [--json]` lists the open ones, worst first (the default); `agentfox findings show <id>` shows one in full; `agentfox findings --types` lists the kinds there are.",
+    "summary": "What was found, worst first: the list `agentfox.auto()` points to.",
+    "help": "What was found, worst first: the list `agentfox.auto()` points to.\n\n`agentfox findings [--severity high] [--limit 50] [--json]` lists the open ones, worst first (the default); `agentfox findings show <id>` shows one in full; `agentfox findings --types` lists the kinds there are.",
     "panel": "Protect",
     "params": [],
     "default_subcommand": "list",
@@ -4130,8 +4130,8 @@
    {
     "path": "test",
     "name": "test",
-    "summary": "Prove the controls hold before you ship: score, gate, attack, and dry-run.",
-    "help": "Prove the controls hold before you ship: score, gate, attack, and dry-run.",
+    "summary": "Prove the controls hold before you ship: score, gate, attack.",
+    "help": "Prove the controls hold before you ship: score, gate, attack.",
     "panel": "Test",
     "params": [],
     "default_subcommand": null,
@@ -5273,8 +5273,8 @@
    {
     "path": "admin",
     "name": "admin",
-    "summary": "Run the deployment: operators, tokens, schema, scheduled jobs, key rotation, catalog upkeep, hooks, seed data.",
-    "help": "Run the deployment: operators, tokens, schema, scheduled jobs, key rotation, catalog upkeep, hooks, seed data.",
+    "summary": "Run the deployment: operators, keys, schema, jobs, hooks.",
+    "help": "Run the deployment: operators, keys, schema, jobs, hooks.\n\nOperators and tokens, the database schema, scheduled jobs, key rotation, catalog upkeep, coding-agent hooks and seed data.",
     "panel": "Operate",
     "params": [],
     "default_subcommand": null,

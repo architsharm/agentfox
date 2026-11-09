@@ -13,7 +13,7 @@ from agentfox.apps.cli.commands._shared import _emit, _session, console
 from agentfox.apps.cli.commands.packs import packs_app
 
 policy_app = typer.Typer(
-    help="Write the rules, try them against recorded traffic, then turn them on.",
+    help="Write rules, try them on recorded traffic, then turn them on.",
     no_args_is_help=True,
 )
 policy_app.add_typer(packs_app, name="packs")

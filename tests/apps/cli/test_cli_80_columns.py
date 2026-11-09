@@ -131,6 +131,25 @@ def test_policy_effective_shows_whole_ids_and_modes_at_80_columns(monkeypatch, t
     assert all(row[-2] in ("observe", "enforce") for row in rows), rows
 
 
+def test_top_level_help_gives_each_command_one_line_at_80_columns(monkeypatch):
+    """Summaries that wrapped left orphan words ("rest.", "own.", "on.") under them."""
+    monkeypatch.setenv("COLUMNS", "80")
+    from agentfox.apps.cli.layout import VISIBLE
+
+    lines = runner.invoke(app, ["--help"]).output.splitlines()
+    names = {name for name, _panel in VISIBLE}
+
+    def first_word(line: str) -> str:
+        words = line.strip("│ ").split()
+        return words[0] if words else ""
+
+    rows = [i for i, line in enumerate(lines) if line.startswith("│") and first_word(line) in names]
+    assert len(rows) == len(names), lines
+    for i in rows:
+        after = lines[i + 1]
+        assert after.startswith("╰") or first_word(after) in names, (lines[i], after)
+
+
 def test_effective_columns_drop_the_title_before_cutting_anything_else():
     from agentfox.apps.cli.commands.policy import _effective_columns
 
