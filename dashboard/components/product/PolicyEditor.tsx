@@ -473,7 +473,7 @@ export function PolicyEditor({
               </button>
             ) : (
               <button type="button" className="btn-scan" onClick={() => setMode("observe")} disabled={busy}>
-                Switch to watching
+                Back to watching
               </button>
             )}
             <button

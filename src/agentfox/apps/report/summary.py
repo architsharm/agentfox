@@ -482,18 +482,36 @@ def _scope_line(data: dict[str, Any]) -> str:
     return f"{who}, {data['period_from'][:10]} to {data['period_to'][:10]}"
 
 
+def plural(count: int, word: str, words: str | None = None) -> str:
+    """``1 agent``, ``2 agents``, rather than a parenthesised plural."""
+    return f"{count} {word if count == 1 else (words or word + 's')}"
+
+
+def _agents_line(inv: dict[str, Any]) -> str:
+    """Registered agents are under management; one found running unregistered is not.
+
+    Counting every agent as "under management" and then the same one again as
+    "running without being registered" said one agent was both.
+    """
+    managed = inv["agent_count"] - inv["unregistered"]
+    text = f"{plural(managed, 'agent')} under management"
+    if inv["unregistered"]:
+        text += f", {inv['unregistered']} found running without being registered"
+    return text
+
+
 def _headline(data: dict[str, Any]) -> str:
     inv = data["inventory"]
     stopped = data["contained"]["decisions"]
     would = data["observe"]["decisions"]
     parts = [
-        f"{inv['agent_count']} agent(s) under management",
-        f"{stopped} risky action(s) stopped or held for approval",
+        _agents_line(inv),
+        f"{plural(stopped, 'risky action')} stopped or held for approval",
     ]
     if would:
         parts.append(f"{would} more that observe-mode rules recorded but did not stop")
     if data["risky_combinations"]:
-        parts.append(f"{len(data['risky_combinations'])} agent(s) with a risky combination")
+        parts.append(f"{plural(len(data['risky_combinations']), 'agent')} with a risky combination")
     return "; ".join(parts) + "."
 
 
@@ -511,7 +529,7 @@ def render_markdown(data: dict[str, Any]) -> str:
         f"- **Agents:** {inv['agent_count']}"
         + (f" ({inv['unowned']} with no named owner)" if inv["unowned"] else "")
         + (
-            f", {inv['unregistered']} running without being registered"
+            f", of which {inv['unregistered']} found running without being registered"
             if inv["unregistered"]
             else ""
         ),
@@ -595,7 +613,7 @@ def _outcome_md(block: dict[str, Any], empty: str, *, would: bool = False) -> li
     if not block["decisions"]:
         return [empty]
     verb = "would have been stopped or held" if would else "stopped or held for approval"
-    out = [f"{block['decisions']} action(s) {verb}. By cause:", ""]
+    out = [f"{plural(block['decisions'], 'action')} {verb}. By cause:", ""]
     out += [f"- {row['label']}: {row['count']}" for row in block["by_cause"]]
     if block["examples"]:
         out += ["", "Examples:", ""]
@@ -638,7 +656,7 @@ def render_html(data: dict[str, Any]) -> str:
         if not block["decisions"]:
             return f"<p>{e(empty)}</p>"
         verb = "would have been stopped or held" if would else "stopped or held for approval"
-        body = f"<p>{block['decisions']} action(s) {verb}. By cause:</p>"
+        body = f"<p>{plural(block['decisions'], 'action')} {verb}. By cause:</p>"
         body += ul([f"{e(r['label'])}: {r['count']}" for r in block["by_cause"]])
         if block["examples"]:
             body += "<p>Examples:</p>" + ul(

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { callJson } from "@/components/kit/Act";
 import { TryIt, type AgentTool } from "@/components/product/test/TryIt";
+import { EnforceAgent } from "@/components/product/start/EnforceAgent";
 
 type Protection = {
   key: string;
@@ -235,10 +236,10 @@ export function ProtectWizard({
           </div>
           <TryIt agents={[{ slug: initial.agent }]} tools={tools} />
           {saved.policy.mode !== "enforce" && (
-            <p className="k-muted" style={{ marginTop: 12 }}>
-              These protections are watching: they record what they would stop. When that looks right,{" "}
-              <Link href={`/app/start?agent=${encodeURIComponent(initial.agent)}`}>turn enforcement on</Link> from Get started.
-            </p>
+            <div style={{ marginTop: 12 }}>
+              <p className="k-muted">These protections are watching: they record what they would stop. When that looks right, turn enforcement on.</p>
+              <EnforceAgent agent={initial.agent} />
+            </div>
           )}
         </>
       )}

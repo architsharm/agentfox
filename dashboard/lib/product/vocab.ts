@@ -189,6 +189,8 @@ const RULE_TITLES: Record<string, string> = {
   "taint.high_impact_tool": "High-impact actions on untrusted data",
   "taint.write_from_tool_result": "Writes copied from tool output",
   "capability.denied": "Tools the agent wasn't given",
+  "capability.default_deny": "Tools the agent wasn't given",
+  "composition.escalation": "One tool's output driving a riskier tool",
   "capability.constraint_violated": "Calls outside allowed limits",
   "capability.approval_required": "Actions that need approval",
   "intent.undeclared_irreversible": "Irreversible action with no task",
@@ -226,6 +228,12 @@ export function ruleTitle(ruleId: string, description?: string): string {
   // A fired custom rule carries its name in its reason: "<name>: your rule"
   // (older saves: "<name> — your rule").
   if (ruleId.startsWith("custom.") && description) return description.split(/:\s*your rule| — your rule/)[0];
+  // An approval limit is named as Your rules names it: the name it was given, else
+  // "Approval limit" (never its key, "Custom pay vendor", which no other screen says).
+  if (ruleId.startsWith("business.")) {
+    const given = (description || "").trim();
+    return given && !/^[a-z0-9]+(?:[-_.][a-z0-9]+)+$/.test(given) && given.length <= 80 ? given : "Approval limit";
+  }
   // The protection wizard's own rules, named by what they are rather than by id.
   const own = /^custom\.[a-z0-9-]+-(words|avoid|allowed)$/.exec(ruleId);
   if (own) return { words: "Blocked words", avoid: "Topics to avoid", allowed: "Off-topic question" }[own[1]]!;
@@ -300,6 +308,14 @@ export function detectorName(key: string): string {
   return DETECTORS[key] || key;
 }
 
+/**
+ * A sentence from the backend with its detector keys said as names: a control's
+ * rationale read "injection.heuristic, pii.native ran on 98% of …".
+ */
+export function withDetectorNames(text?: string | null): string {
+  return (text || "").replace(/\b[a-z_]+\.[a-z_]+\b/g, (key) => DETECTORS[key] || key);
+}
+
 /** A dimension value the backend could not attribute. */
 export function dimLabel(key: string): string {
   return key === "(unknown)" ? "Not recorded" : key;
@@ -366,4 +382,15 @@ export const SCORERS: Record<string, string> = {
 
 export function scorerName(key: string): string {
   return SCORERS[key] || key.replace(/_/g, " ");
+}
+
+/**
+ * Who an audit entry names, for a reader: the improvement loop's own identity
+ * (`agentfox-improver`, actor type `automation`) reads as AgentFox acting on its own,
+ * and an entry with no actor as AgentFox itself.
+ */
+export function actorWords(type?: string | null, id?: string | null): string {
+  if (type === "automation") return "AgentFox (automatic)";
+  if (!id) return !type || type === "system" ? "AgentFox" : type;
+  return id;
 }

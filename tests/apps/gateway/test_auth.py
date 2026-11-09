@@ -427,7 +427,7 @@ def test_doctor_reports_the_authentication_posture(ready, monkeypatch):
     flat = lambda text: " ".join(text.split())  # noqa: E731 - test readability
 
     development = flat(CliRunner().invoke(app, ["doctor"]).output)
-    assert "any user they name" in development
+    assert "without a token" in development
 
     monkeypatch.setattr(get_settings(), "environment", "production")
     production = flat(CliRunner().invoke(app, ["doctor"]).output)

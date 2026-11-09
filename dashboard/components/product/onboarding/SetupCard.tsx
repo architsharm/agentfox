@@ -81,7 +81,15 @@ export function SetupCard({
     if (mock) return;
     api
       .getStructure()
-      .then((r: any) => (baseline.current = { connected: Boolean(r.connected), at: r.connectedAt ?? null }))
+      .then((r: any) => {
+        baseline.current = { connected: Boolean(r.connected), at: r.connectedAt ?? null };
+        // init already reported and its agents still wait to be added (a reload, or
+        // the card opened again): pick up at the Add step, not "waiting for init".
+        if (r.pending?.length && r.structure?.agents?.length) {
+          setFound(r.structure);
+          setPhase("found");
+        }
+      })
       .catch(() => (baseline.current = { connected: false, at: null }));
   }, [api, mock]);
 
@@ -317,7 +325,7 @@ export function SetupCard({
                 <p className="text-muted-foreground">
                   Your key. <strong className="font-medium text-foreground">Copy it now: it&apos;s shown only once.</strong>{" "}
                   <code className="font-mono text-[12.5px]">agentfox init</code> uses it to send your agents&apos; map here, and your app uses it to send its
-                  calls. It&apos;s a workspace key: keep it out of your code.
+                  calls, so it doesn&apos;t expire: it works until you make a new one or revoke it. It&apos;s a workspace key: keep it out of your code.
                 </p>
                 <Code text={key} className="mt-3" />
               </>
@@ -325,8 +333,9 @@ export function SetupCard({
               <>
                 <p className="text-muted-foreground">
                   You already have a key{keyInfo.prefix ? <> (<code className="font-mono text-[12.5px]">{keyInfo.prefix}…</code>)</> : null}
-                  {keyInfo.createdAt ? `, made ${new Date(keyInfo.createdAt).toLocaleDateString()}` : ""}. It&apos;s shown only when it&apos;s made: use the one
-                  you saved, or make a new one.
+                  {keyInfo.createdAt ? `, made ${new Date(keyInfo.createdAt).toLocaleDateString()}` : ""}
+                  {keyInfo.expiresAt ? `, expires ${new Date(keyInfo.expiresAt).toLocaleDateString()}` : ", no expiry"}. It&apos;s shown only when it&apos;s made: use the
+                  one you saved, or make a new one.
                 </p>
                 {replacing ? (
                   <div className="mt-3 flex flex-wrap items-center gap-2" role="alertdialog" aria-label="Make a new key">

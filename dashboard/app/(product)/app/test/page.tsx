@@ -1,3 +1,5 @@
+import { NoAgents } from "@/components/product/NoAgents";
+import { isAdded, isProposed } from "@/lib/product/proposedSystems";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { scorerName } from "@/lib/product/vocab";
@@ -7,6 +9,7 @@ import { Card, Empty, Grid, Header, Kpi, Pill, Tabs, ago, href, num } from "@/co
 import { CodeSnippet } from "@/components/product/start/CodeSnippet";
 import { TryIt } from "@/components/product/test/TryIt";
 import { AddPathToTests } from "@/components/product/test/AddPathToTests";
+import { AttackRuns } from "@/components/product/test/AttackRuns";
 import { remoteApiBase } from "@/lib/env";
 import { NoticeToast } from "@/components/product/NoticeToast";
 import { campaignNumbers } from "@/lib/product/attackTest";
@@ -29,16 +32,19 @@ export default async function Test({ searchParams }: { searchParams: Promise<SP>
   const sp = await searchParams;
   const tab = TABS.some((t) => t.key === sp.tab) ? sp.tab! : "try";
   const agents = await safeApi<any>("/api/agents", { agents: [] });
-  const live = (agents.agents || []).filter((a: any) => a.status !== "draft");
+  const live = (agents.agents || []).filter(isAdded);
+  // Agents init or a scan found that nobody has added yet: the empty states point there.
+  const proposed = (agents.agents || []).filter(isProposed).length;
 
   return (
     <>
       <Header title="Testing" />
       <Tabs items={TABS.map((t) => ({ ...t, href: href("/app/test", { tab: t.key === "try" ? undefined : t.key }) }))} active={tab} />
       <NoticeToast notice={sp.review_notice} error={sp.review_error} />
-      {tab === "try" && <Try agents={live} />}
-      {tab === "attacks" && <Attacks agents={live} />}
-      {tab === "paths" && <Paths agents={live} agent={sp.agent} days={sp.days} />}
+      {tab === "try" && <Try agents={live} proposed={proposed} />}
+      {/* Every agent init mapped, proposed ones too: their first attack test runs before they are added. */}
+      {tab === "attacks" && <Attacks agents={agents.agents || []} />}
+      {tab === "paths" && <Paths agents={live} proposed={proposed} agent={sp.agent} days={sp.days} />}
       {tab === "suites" && <Suites />}
       {tab === "reliability" && <Reliability agents={live} />}
       {tab === "ci" && <Ci />}
@@ -46,7 +52,7 @@ export default async function Test({ searchParams }: { searchParams: Promise<SP>
   );
 }
 
-async function Try({ agents }: { agents: any[] }) {
+async function Try({ agents, proposed }: { agents: any[]; proposed: number }) {
   // The first agent's own tools; the picker loads another agent's when it changes.
   const tools = agents.length ? await safeApi<any>(`/api/agents/${encodeURIComponent(agents[0].slug)}/tools`, { tools: [] }) : { tools: [] };
   return (
@@ -54,7 +60,7 @@ async function Try({ agents }: { agents: any[] }) {
       {agents.length ? (
         <TryIt agents={agents.map((a) => ({ slug: a.slug, name: a.name }))} tools={tools.tools || []} />
       ) : (
-        <Empty action={<Link href="/app/start" className="k-btn-primary">Connect an agent</Link>}>No agents yet.</Empty>
+        <NoAgents proposed={proposed} />
       )}
     </Card>
   );
@@ -64,11 +70,11 @@ async function Try({ agents }: { agents: any[] }) {
  * The tool-call paths each agent took in production. A path first seen this window
  * and expected by no test is a case the suites do not cover; one click adds it.
  */
-async function Paths({ agents, agent, days }: { agents: any[]; agent?: string; days?: string }) {
+async function Paths({ agents, proposed, agent, days }: { agents: any[]; proposed: number; agent?: string; days?: string }) {
   if (!agents.length) {
     return (
       <Card>
-        <Empty action={<Link href="/app/start" className="k-btn-primary">Connect an agent</Link>}>No agents yet.</Empty>
+        <NoAgents proposed={proposed} />
       </Card>
     );
   }
@@ -171,47 +177,19 @@ async function Paths({ agents, agent, days }: { agents: any[]; agent?: string; d
 }
 
 async function Attacks({ agents }: { agents: any[] }) {
+  // `agentfox test redteam` (the CLI) checks the same attacks with no model: listed
+  // apart, labelled as that, so its numbers are never read as the test above.
   const campaigns = await safeApi<any>("/api/redteam/campaigns", { campaigns: [] });
-  const list: any[] = campaigns.campaigns || [];
-  const last = list[0];
+  const cli: any[] = (campaigns.campaigns || []).filter((c: any) => !c.summary?.adaptive);
   return (
     <>
-      <Card title="Run attack test" hint="Runs the built-in attack library against the agent's real permissions and rules. A pass means these attacks were stopped, not that every attack would be.">
-        <form action="/api/redteam/campaigns" method="POST" className="k-pills" style={{ gap: 8 }}>
-          <select className="k-select" name="agent" required defaultValue="" aria-label="Agent">
-            <option value="" disabled>Choose an agent</option>
-            {agents.map((a) => (
-              <option key={a.slug} value={a.slug}>{a.name || a.slug}</option>
-            ))}
-          </select>
-          <button type="submit" className="k-btn-primary">Run</button>
-        </form>
-      </Card>
-      {last && (() => {
-        const n = campaignNumbers(last.summary);
-        return (
-          <Grid cols={3}>
-            <Kpi
-              label="Attacks (last run)"
-              value={num(n.ran)}
-              hint={n.controls ? `plus ${n.controls} normal requests: ${n.answered} of ${n.controls} answered` : undefined}
-            />
-            <Kpi
-              label="Stopped"
-              value={num(n.stopped)}
-              hint={n.watching ? `${n.watching} more caught by watching rules: they count as got through until those rules block` : undefined}
-            />
-            <Kpi
-              label="Got through"
-              value={n.ran ? num(n.through) : "—"}
-              tone={n.tone}
-              hint={n.ran ? "Not stopped in live traffic" : "No attack ran"}
-            />
-          </Grid>
-        );
-      })()}
-      <Card title="Past runs" flush>
-        {list.length ? (
+      <AttackRuns agents={agents.map((a) => ({ slug: a.slug, name: a.name }))} />
+      {cli.length ? (
+        <Card
+          title="Checked without a model"
+          hint="From agentfox test redteam: the same attacks, each message and the tool call it is after checked against the agent's rules as live traffic is, with no model. It measures the rules; the test above measures the agent."
+          flush
+        >
           <table className="k-table">
             <thead>
               <tr>
@@ -219,40 +197,26 @@ async function Attacks({ agents }: { agents: any[] }) {
                 <th className="num">Attacks</th>
                 <th className="num">Stopped</th>
                 <th className="num">Got through</th>
-                <th className="tight" title="Share of attacks stopped in live traffic. A catch by a rule that only watches does not count.">Stopped live</th>
-                <th className="num">Normal requests answered</th>
                 <th className="tight">When</th>
               </tr>
             </thead>
             <tbody>
-              {list.map((c) => {
+              {cli.map((c) => {
                 const n = campaignNumbers(c.summary);
                 return (
                   <tr key={c.id}>
                     <td>{c.name}</td>
                     <td className="num">{num(n.ran)}</td>
                     <td className="num">{num(n.stopped)}</td>
-                    <td className="num">
-                      {n.through ? <Pill tone="bad">{n.through}</Pill> : n.ran ? "0" : "—"}
-                    </td>
-                    <td className="tight">
-                      {n.stoppedShare != null ? (
-                        <Pill tone={n.through ? "warn" : "ok"}>{Math.round(n.stoppedShare * 100)}%</Pill>
-                      ) : (
-                        <span className="muted">—</span>
-                      )}
-                    </td>
-                    <td className="num">{n.controls ? `${n.answered} of ${n.controls}` : "—"}</td>
+                    <td className="num">{n.through ? <Pill tone="bad">{n.through}</Pill> : n.ran ? "0" : "—"}</td>
                     <td className="tight muted">{ago(c.created_at)}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-        ) : (
-          <Empty>No attack tests yet.</Empty>
-        )}
-      </Card>
+        </Card>
+      ) : null}
     </>
   );
 }
@@ -405,22 +369,35 @@ function Ci() {
   const { url: gateway, isLoopback } = remoteApiBase();
   return (
     <>
-      <Card title="Block a release when quality drops">
+      <Card
+        title="Block a release when quality drops"
+        hint="Save a run as the baseline, then gate each build on it: the gate fails when a score drops or a case errors."
+      >
         <div className="k-form">
           <CodeSnippet label="Save the current run as the baseline" code="agentfox test baseline RUN_ID --label main" />
-          <CodeSnippet label="In CI: fail on regression" code="agentfox test gate SUITE --baseline RUN_ID" />
           <CodeSnippet
             label={
               isLoopback
-                ? "Or over HTTP (set AGENTFOX_URL in CI to an address of your gateway the runner can reach)"
-                : "Or over HTTP"
+                ? "In CI, with an API key (set AGENTFOX_URL to an address of your gateway the runner can reach). A failed gate answers 412, so --fail-with-body fails the step and still saves the result."
+                : "In CI, with an API key. A failed gate answers 412, so --fail-with-body fails the step and still saves the result."
             }
-            code={`curl -s -X POST "${gateway}/api/eval/gate" \\\n  -H "Authorization: Bearer $AGENTFOX_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"suite": "SUITE", "min_pass_rate": 0.9}'`} />
+            code={`curl --fail-with-body -sS -X POST "${gateway}/api/eval/gate" \\\n  -H "Authorization: Bearer $AGENTFOX_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"suite": "SUITE", "baseline_run_id": "RUN_ID", "min_pass_rate": 0.9}' \\\n  -o gate.json\njq -r .junit gate.json > junit.xml`}
+          />
+          <CodeSnippet
+            label="Or with the CLI, where CI can reach your AgentFox database (AGENTFOX_DATABASE_URL as a secret)"
+            code={`pip install "agentfox[postgres]"\nagentfox test gate SUITE --baseline RUN_ID --junit reports/junit.xml --sarif reports/agentfox.sarif`}
+          />
         </div>
       </Card>
-      <Card title="Attack test in CI">
+      <Card title="Attack test in CI" hint="Exits 1 when an attack gets through. Checked against the agent's rules, with no model.">
         <CodeSnippet code="agentfox test redteam AGENT --adaptive" />
       </Card>
+      <Card title="Scan each pull request" hint="Comments on risky tool combinations, poisoned skills and model calls without guardrails. Static: nothing is run or sent.">
+        <CodeSnippet code={`- uses: actions/checkout@v4\n- uses: architsharm/agentfox@main\n  with:\n    fail-on: trifecta,skills`} />
+      </Card>
+      <p className="k-muted small">
+        <Link href="/docs/test/ci">In CI and in production</Link> walks through each.
+      </p>
     </>
   );
 }

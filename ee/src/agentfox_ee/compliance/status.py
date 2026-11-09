@@ -610,6 +610,25 @@ def latest_statuses(session: Session) -> dict[str, ControlStatus]:
     return out
 
 
+def control_share(controls: int, counts: dict[str, int]) -> dict[str, Any]:
+    """Control posture as one number: working controls out of every control that applies.
+
+    The one definition behind `agentfox report status`, Reports -> Compliance and
+    Reports -> Summary (the dashboard's ``controlShare`` reads these fields). Counted
+    out of the controls *measured* instead, eight of eight measured read as 100% with
+    twenty-nine controls not set up, and the CLI said 74% where the app said 47%.
+    """
+    applies = max(0, controls - counts.get("not_applicable", 0))
+    working = counts.get("effective", 0)
+    measured = working + counts.get("degraded", 0) + counts.get("failing", 0)
+    return {
+        "applies": applies,
+        "working": working,
+        "measured": measured,
+        "share": round(working / applies, 4) if applies else None,
+    }
+
+
 def posture(session: Session, framework: str | None = None) -> dict[str, Any]:
     """Aggregate control posture, optionally scoped to one framework.
 
@@ -642,7 +661,10 @@ def posture(session: Session, framework: str | None = None) -> dict[str, Any]:
         "framework": framework,
         "controls": len(keys),
         "counts": counts,
+        # Working out of measured. Kept for API callers; the one headline figure is
+        # `share` below, and every surface shows that one.
         "effectiveness": round(counts["effective"] / assessed, 4) if assessed else None,
+        **control_share(len(keys), counts),
         "failing_controls": sorted(
             k for k in keys if k in statuses and statuses[k].status == "failing"
         ),

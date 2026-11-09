@@ -14,7 +14,7 @@ You need Python 3.11 or newer.
 2. In your repository, run the command the card shows, with your key and server filled in:
 
    ```bash
-   pip install agentfox
+   pip install -U agentfox
    agentfox init --key nom_api_… --server https://…
    ```
 
@@ -125,7 +125,7 @@ agentfox init
 Setting up AgentFox
   ✓ database ready  sqlite:///…/agentfox.db
   ✓ 44 controls across 7 frameworks  v0.1.0-draft (draft)
-  ✓ 4 policy pack(s) loaded
+  ✓ 4 policy packs loaded
       agent-integrity          observe  recorded, nothing blocked
       baseline                 observe  recorded, nothing blocked
       eu-ai-act-high-risk      observe  recorded, nothing blocked
@@ -381,13 +381,14 @@ never lands in an argument. Every published number was measured under `session`.
 
 ```bash
 agentfox declare tool payments.transfer --impact irreversible
-agentfox permit grant my-agent payments.transfer \
+agentfox permit grant my-agent payments.transfer --yes \
     --limit amount:lt=1000 --max-taint user
 ```
 
 `permit grant` is the only command that widens least privilege, so it prints exactly what it is
-about to allow and asks before it writes, then records the grant in the audit chain. Pass `--yes`
-in scripts. `--max-taint user` means: arguments a person typed are fine, anything that came out of
+about to allow and, without `--yes`, asks before it writes; then it records the grant in the audit
+chain. Leave `--yes` off to be asked; with no terminal to answer at, it grants nothing and says to
+pass `--yes`. `--max-taint user` means: arguments a person typed are fine, anything that came out of
 a document or another tool needs a human. A higher ceiling is respected: within it, the taint rules
 do not overrule the grant. `composition.escalation` still applies, and the command says so.
 
@@ -497,16 +498,15 @@ For the one-page version to forward to whoever signs off, run `agentfox report` 
 `doctor` is the more interesting one, because it grades the configuration rather than the traffic:
 
 ```
-  ✓    database            reachable — 5 agent(s), 11 trace(s)
+  ✓    database            reachable — 5 agents, 11 traces
   ✓    enforcement         17 of 22 decisions enforced
-  i    authentication      DEVELOPMENT auth is active (environment=development, auth_mode=auto):
-                           an /api request with no token acts as the user named in
-                           X-AgentFox-User, or as admin@example.com (an owner, once seeded) —
-                           anyone who can reach this port is any user they name. Fine locally,
-                           unacceptable anywhere else.
+  i    authentication      development: a server started here (`agentfox serve`) answers API
+                           calls without a token, so anyone who can reach this port can act as
+                           its owner. Fine on this machine; set AGENTFOX_AUTH_MODE=token before
+                           anyone else can reach it.
   ✓    secrets             development: the published default secrets are allowed here, and
                            refused (the gateway will not start) in any other environment
-  ✓    containment         11 of 16 tool(s) can act, 16 capability grant(s) — an action outside
+  ✓    containment         11 of 16 tools can act, 16 capability grants — an action outside
                            these is refused whether or not a detector fires
   ✓    detectors           5 running: injection.heuristic, pii.native, safety.lexicon,
                            schema.json, secrets.native

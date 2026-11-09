@@ -158,6 +158,9 @@ class AccessIn(BaseModel):
     #: The tool's risk, when the operator chose one: read, write, high_impact or
     #: irreversible. Absent, an undeclared tool is registered with a cautious guess.
     impact: str | None = None
+    #: When the grant stops matching (`agentfox permit grant --expires-in-days`). Absent
+    #: on an update keeps the grant's expiry; absent on a new grant is never.
+    expires_at: dt.datetime | None = None
 
 
 IMPACTS = ("read", "write", "high_impact", "irreversible")
@@ -208,6 +211,8 @@ def set_access(
         existing.constraints_json = payload.constraints
         if payload.actions is not None:
             existing.actions = payload.actions
+        if payload.expires_at is not None:
+            existing.expires_at = payload.expires_at
         capability, event = existing, "capability.updated"
         session.flush()
     else:
@@ -220,6 +225,7 @@ def set_access(
             requires_approval=payload.requires_approval,
             max_taint=payload.max_taint,
             granted_by=user.email,
+            expires_at=payload.expires_at,
         )
         event = "capability.granted"
     chain.append(
@@ -229,7 +235,7 @@ def set_access(
         actor_id=user.email or user.id,
         subject_type="capability",
         subject_id=capability.id,
-        payload={"agent": slug, **payload.model_dump()},
+        payload={"agent": slug, **payload.model_dump(mode="json")},
     )
     # The agent's open issues about this tool ("tried to X without permission")
     # close themselves now that it is granted, as they do from the issue's own button.

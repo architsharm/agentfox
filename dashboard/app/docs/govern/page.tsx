@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Code, NextSteps, Screenshot, Step, Steps } from "@/components/docs/blocks";
+import { Code, DemoAgentNames, NextSteps, Screenshot, Step, Steps } from "@/components/docs/blocks";
 import { Tab, Tabs } from "@/components/docs/tabs";
 import { SCREENS } from "@/lib/docs/screens";
 import { publicPageMetadata } from "@/lib/site";
@@ -22,11 +22,15 @@ export default function Page() {
         something still cannot do it.
       </p>
 
+      <DemoAgentNames />
+
       <Steps topLevel>
         <Step title="See what an agent may call">
           <p>
             Open an agent and choose <strong>Access</strong>. Each row is a tool it may call, with its
-            risk, its limits, and how often it was used. Any tool not listed is refused.
+            risk, its limits, and how often it was used. Once Tool containment blocks, any tool not
+            listed is refused; while it watches, a call to one is recorded as what it would have
+            stopped.
           </p>
           <Screenshot {...SCREENS.agentAccess} />
         </Step>
@@ -105,7 +109,8 @@ export default function Page() {
       </table></div>
       <p>
         A value copied out of a lower-impact tool&apos;s output into a higher-impact tool is refused
-        outright. If that flow is intended, for example an address from your own CRM, mark the CRM
+        outright once Tool containment blocks (<code>composition.escalation</code>; recorded as
+        would-block while it watches). If that flow is intended, for example an address from your own CRM, mark the CRM
         tool&apos;s output trusted with{" "}
         <Link href="/docs/reference/cli#cmd-declare-tool">agentfox declare tool</Link>.
       </p>

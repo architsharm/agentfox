@@ -78,7 +78,7 @@ def test_a_corpus_can_be_imported_in_one_go(isolated_db, tmp_path):
     )
     result = runner.invoke(app, ["declare", "import-sources", str(manifest)])
     assert result.exit_code == 0
-    assert "3 source(s)" in flat(result.output)
+    assert "3 sources" in flat(result.output)
 
 
 def test_an_sla_without_an_update_time_explains_why_it_reads_stale(isolated_db):

@@ -514,6 +514,12 @@ _KNOWN_SERVERS: tuple[_KnownServer, ...] = (
 _INERT_SERVERS = ("time", "everything", "sequential-thinking", "sequentialthinking", "calculator")
 
 
+#: Shells a config may wrap a launcher in (`/bin/sh -c "npx -y pkg"`), and the
+#: launchers that fetch a package to run.
+_SHELLS = {"sh", "bash", "zsh", "dash"}
+_LAUNCHERS = {"npx", "pnpx", "bunx", "uvx", "pipx", "docker"}
+
+
 @dataclass
 class McpServerDecl:
     """One MCP server as a client config declares it. Nothing here was executed."""
@@ -539,10 +545,36 @@ class McpServerDecl:
         return " ".join([self.command, *self.args]).strip()
 
     @property
+    def effective(self) -> tuple[str, list[str]]:
+        """``(command, args)`` of what actually starts: a shell wrapper
+        (`/bin/sh -c "npx -y @scope/pkg"`) runs the command in its string."""
+        import shlex
+
+        if Path(self.command).name in _SHELLS:
+            for i, arg in enumerate(self.args[:-1]):
+                if arg.startswith("-") and "c" in arg.lstrip("-"):
+                    try:
+                        words = shlex.split(self.args[i + 1])
+                    except ValueError:
+                        break
+                    # `exec npx ...`, `cd x && npx ...`: the first launcher named.
+                    for j, word in enumerate(words):
+                        if Path(word).name in _LAUNCHERS:
+                            rest = []
+                            for w in words[j + 1 :]:
+                                if w in ("&&", "||", ";", "|"):
+                                    break
+                                rest.append(w)
+                            return word, rest
+                    break
+        return self.command, list(self.args)
+
+    @property
     def package(self) -> str:
         """The package the launcher runs (`npx -y @scope/pkg@1.2` -> `@scope/pkg@1.2`)."""
-        launcher = Path(self.command).name
-        positional = [a for a in self.args if not a.startswith("-")]
+        command, args = self.effective
+        launcher = Path(command).name
+        positional = [a for a in args if not a.startswith("-")]
         if launcher in ("npx", "pnpx", "bunx", "uvx", "pipx") and positional:
             return (
                 positional[0]
@@ -560,7 +592,7 @@ class McpServerDecl:
         pkg = self.package
         if not pkg:
             return None
-        launcher = Path(self.command).name
+        launcher = Path(self.effective[0]).name
         if launcher == "docker":
             if "@sha256:" in pkg:
                 return pkg.split("@sha256:")[1][:16]
@@ -853,7 +885,7 @@ def server_hygiene(decl: McpServerDecl) -> list[dict[str, str]]:
                     }
                 )
     elif decl.command and decl.pinned_version is None:
-        launcher = Path(decl.command).name
+        launcher = Path(decl.effective[0]).name
         if launcher in ("npx", "pnpx", "bunx", "uvx", "pipx", "docker"):
             issues.append(
                 {
@@ -974,6 +1006,6 @@ def containment_hint(
     return (
         f"Contain it: `agentfox permit grant {who} {channel} --max-taint user`{where} "
         f"(anything derived from untrusted content needs an approval before it reaches "
-        f'{channel}), or run with `agentfox.auto(mode="observe")` to watch it happen '
-        "without blocking anything."
+        f"{channel}). Under `agentfox.auto()` it is recorded while Tool containment "
+        "watches, and stopped once `agentfox policy enforce tool-containment` makes it block."
     )

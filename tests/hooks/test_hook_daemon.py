@@ -16,6 +16,7 @@ import.
 
 from __future__ import annotations
 
+import os
 import socket
 import struct
 import subprocess
@@ -293,4 +294,41 @@ def test_a_socket_path_the_kernel_will_not_accept_says_so(tmp_path):
 
     with pytest.raises(ProtocolError) as excinfo:
         check_socket_path(Path("/" + "d" * 120) / "agentfoxd.sock")
-    assert "AGENTFOX_STATE_DIR" in str(excinfo.value)
+    # The fix moves only the socket: AGENTFOX_STATE_DIR also moved the database
+    # out from under the hooks, and the hooks then saw no agent and no grant.
+    assert "AGENTFOX_SOCKET" in str(excinfo.value)
+    assert "AGENTFOX_STATE_DIR" not in str(excinfo.value)
+
+
+def test_a_deep_state_root_gets_a_short_private_socket_on_its_own(monkeypatch, tmp_path):
+    """Nobody has to set anything when the state root is too deep for a socket."""
+    from agentfox.hooks.protocol import MAX_SOCKET_PATH, socket_path
+
+    monkeypatch.delenv("AGENTFOX_SOCKET", raising=False)
+    deep = tmp_path / ("d" * 120)
+    path = socket_path(deep)
+    assert len(str(path).encode()) <= MAX_SOCKET_PATH
+    assert path.parent.name == f"agentfox-{os.getuid()}"
+    # Two installations never share one, and the same one always finds its own.
+    assert socket_path(deep) == path
+    assert socket_path(tmp_path / ("e" * 120)) != path
+    # A short state root keeps its socket where it always was.
+    assert socket_path(Path("/s")) == Path("/s/run/agentfoxd.sock")
+
+
+def test_agentfox_socket_moves_only_the_socket(monkeypatch, short_dir):
+    from agentfox.core.config import STATE_ROOT
+    from agentfox.hooks.protocol import socket_path
+
+    before = STATE_ROOT
+    monkeypatch.setenv("AGENTFOX_SOCKET", str(short_dir / "x.sock"))
+    assert socket_path() == short_dir / "x.sock"
+    assert socket_path(before) == short_dir / "x.sock"
+
+
+def test_a_run_dir_owned_by_someone_else_is_refused(monkeypatch, short_dir):
+    run = short_dir / "run"
+    run.mkdir(mode=0o700)
+    monkeypatch.setattr(os, "getuid", lambda: os.stat(run).st_uid + 1)
+    with pytest.raises(PermissionError, match="another user"):
+        ensure_run_dir(run / "d.sock")

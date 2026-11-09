@@ -61,12 +61,18 @@ def ensure_run_dir(path: Path) -> Path:
     """
     directory = path.parent
     if directory.exists():
-        mode = directory.stat().st_mode & 0o777
+        info = directory.stat()
+        mode = info.st_mode & 0o777
+        if hasattr(os, "getuid") and info.st_uid != os.getuid():
+            raise PermissionError(
+                f"{directory} belongs to another user. AgentFox will not put its socket "
+                "in a directory somebody else owns — set AGENTFOX_SOCKET to a path of yours."
+            )
         if mode != 0o700:
             raise PermissionError(
                 f"{directory} exists with mode {mode:o}, not 0700. AgentFox will not widen "
-                "or narrow a directory it did not create — move it aside, or point "
-                "AGENTFOX_STATE_DIR somewhere this process owns."
+                "or narrow a directory it did not create — move it aside, or set "
+                "AGENTFOX_SOCKET to a path this process owns."
             )
         return directory
     directory.mkdir(parents=True, mode=0o700)

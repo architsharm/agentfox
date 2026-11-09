@@ -209,7 +209,7 @@ def test_init_loads_controls_and_policies_watching(isolated_db, tmp_path):
     assert "controls" in output
     assert "baseline observe recorded, nothing blocked" in output
     assert "tool-containment observe recorded, nothing blocked" in output
-    assert "destructive commands" in output
+    assert "destructive commands" in output.lower()
     assert "violations are blocked now" not in output
 
 
@@ -491,3 +491,23 @@ def test_me_returns_the_signed_in_identity(client):
     assert body["email"] == "admin@example.com"
     assert body["org_id"]
     assert "workspace" in body
+
+
+def test_submit_says_what_the_drafts_are_when_they_are_not_the_agents_found(
+    isolated_db, project, monkeypatch
+):
+    """ "Found 41 agents" then "43 draft agents" read as a miscount."""
+    monkeypatch.setenv("AGENTFOX_API_URL", "https://plane.example.internal")
+    monkeypatch.setenv("AGENTFOX_API_TOKEN", "nom_usr_test")
+
+    class _FakeResponse:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"scan_run_id": "scn_test", "summary": {"agents_proposed": ["a", "b", "c"]}}
+
+    monkeypatch.setattr("agentfox.apps.cli.submit.httpx.post", lambda *a, **k: _FakeResponse())
+    result = runner.invoke(app, ["scan", "repo", str(project), "--submit"])
+    out = flat(result.output)
+    assert "3 draft agents (of the" in out and "Agents → Proposed" in out

@@ -7,6 +7,7 @@ import { AreaTabs, REPORTS_TABS } from "@/components/product/AreaTabs";
 import { EnterpriseOnly } from "@/components/product/EnterpriseOnly";
 import { hasFeature } from "@/lib/product/edition";
 import { controlShare } from "@/lib/product/posture";
+import { actorWords } from "@/lib/product/vocab";
 import { PrintButton } from "@/components/product/PrintButton";
 import { NoticeToast } from "@/components/product/NoticeToast";
 
@@ -181,7 +182,7 @@ async function Evidence() {
               {packages.packages.map((p: any) => (
                 <tr key={p.id}>
                   <td>
-                    {p.scope?.agents?.length ? p.scope.agents.join(", ") : "All agents"}
+                    {p.scope?.agents?.filter((a: string) => a && a !== "*").length ? p.scope.agents.filter((a: string) => a !== "*").join(", ") : "All agents"}
                     <span className="sub">
                       {p.scope?.period_from ? `${String(p.scope.period_from).slice(0, 10)} – ${String(p.scope.period_to || "").slice(0, 10)}` : "All time"}
                       {" · "}by {p.requested_by}
@@ -238,7 +239,7 @@ async function Audit() {
                 <tr key={e.seq}>
                   <td className="tight muted">{e.seq}</td>
                   <td className="tight muted">{ago(e.occurred_at)}</td>
-                  <td>{e.actor_id}</td>
+                  <td>{actorWords(e.actor_type, e.actor_id)}</td>
                   <td>{String(e.action).replace(/[._]/g, " ")}</td>
                   <td className="muted">
                     {e.payload?.trace_id ? <Link href={`/app/traces/${e.payload.trace_id}`}>{subjectWords(e.subject_type)}</Link> : subjectWords(e.subject_type)}

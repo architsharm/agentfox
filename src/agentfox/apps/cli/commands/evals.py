@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import typer
+from rich.markup import escape
 from rich.table import Table
 
 from agentfox.apps.cli.commands._shared import _session, console
@@ -61,7 +62,17 @@ def eval_suites() -> None:
     """List the evaluation suites in this deployment."""
     from sqlalchemy import func, select
 
+    from agentfox.apps.cli import account as _account
     from agentfox.core.models import EvalCase, EvalSuite
+
+    remote = _account.use(console)
+    if remote is not None:
+        try:
+            suites = remote.get("/api/eval/suites").get("suites") or []
+        except _account.AccountError as exc:
+            _account.fail(console, exc)
+        _print_suites([(s["key"], s.get("name") or "", s.get("cases", 0)) for s in suites])
+        return
 
     with _session() as session:
         counts = dict(
@@ -73,6 +84,10 @@ def eval_suites() -> None:
             (suite.key, suite.name or "", counts.get(suite.id, 0))
             for suite in session.scalars(select(EvalSuite).order_by(EvalSuite.key))
         ]
+    _print_suites(rows)
+
+
+def _print_suites(rows: list[tuple[str, str, int]]) -> None:
     if not rows:
         console.print("[dim]no evaluation suites — `agentfox admin seed` creates one to try.[/]")
         return
@@ -150,6 +165,8 @@ def _print_eval_summary(suite: str, summary: dict[str, Any], run_id: str | None 
             f"{rate:.0%}" if rate is not None else "—",
         )
     console.print(table)
+    if summary.get("warning"):
+        console.print(f"  [yellow]{escape(str(summary['warning']))}[/]")
 
 
 @eval_app.command("gate")
@@ -212,9 +229,11 @@ def eval_gate(
 
     _print_eval_summary(suite, summary, run_id)
     if junit:
+        junit.parent.mkdir(parents=True, exist_ok=True)  # `reports/` in a fresh CI checkout
         junit.write_text(junit_xml)
         console.print(f"  [dim]JUnit → {junit}[/]")
     if sarif:
+        sarif.parent.mkdir(parents=True, exist_ok=True)
         sarif.write_text(sarif_json)
         console.print(f"  [dim]SARIF → {sarif}[/]")
 

@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import functools
 import logging
 from typing import Any
 
 from agentfox.core.vocab import CAPABILITY_REFUSAL_RULE_IDS, EFFECT_RANK, VERDICT_RANK
+from agentfox.platform.policy.store import fallback_policies
 
 log = logging.getLogger("agentfox.runtime.enforcement")
 
@@ -57,45 +57,10 @@ _FALLBACK_VERSION = _FallbackVersion()
 # rule that looks considered and means nothing.
 
 
-@functools.lru_cache(maxsize=8)
-def _fallback_policies(risk_tier: str | None = None) -> tuple:
-    """The shipped packs for a deployment with nothing bound, forced to observe.
-
-    Cached per tier: this reads YAML off disk and the answer cannot change
-    within a process. Cleared by `_fallback_policies.cache_clear()` in tests
-    that swap the policies directory.
-    """
-    # Shipped packs only, deliberately — not `load_available()`. This is the
-    # path for a deployment that has bound nothing, so the guarantee it makes
-    # has to be the same everywhere; reading a project directory here would
-    # make "what protects an unconfigured deployment" depend on the working
-    # directory of whatever process happened to start, and this result is
-    # cached per tier and would not notice it changing.
-    from agentfox.platform.packs import fallback_policy_packs
-    from agentfox.platform.policy import PolicyDocument, load_from_dir
-
-    by_key = {}
-    wanted: tuple[str, ...] = ()
-    try:
-        # The keys of the policies each fallback pack ships, in fallback order.
-        wanted = tuple(
-            PolicyDocument.from_yaml(path.read_text()).key
-            for pack in fallback_policy_packs(risk_tier)
-            for path in pack.files("policies")
-        )
-        for doc in load_from_dir():
-            if doc.key not in wanted:
-                continue
-            # Every pack ships in observe except tool-containment, which is not
-            # a candidate here. Forcing it makes the guarantee independent of
-            # anyone editing those files.
-            doc.mode = "observe"
-            by_key[doc.key] = doc
-    except Exception as exc:  # pragma: no cover - a broken install, not a code path
-        log.warning("agentfox: could not load the fallback policy: %s", exc)
-    # Ordered by `wanted`, so the set in force is deterministic rather than
-    # whatever order the directory listing happened to produce.
-    return tuple(by_key[k] for k in wanted if k in by_key)
+# Lives with the policy store, so the Policies page (`capabilities/protection/applied`)
+# lists exactly what the enforcer applies; the name here is kept for its callers and
+# for the tests that clear its cache.
+_fallback_policies = fallback_policies
 
 
 #: Which of two verdicts is the stronger claim, for picking between the

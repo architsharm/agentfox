@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { appPageMetadata } from "@/lib/site";
-import { ApiError, api, apiErrorProps } from "@/lib/product/api";
-import { ApiDown, NotFound } from "@/components/ui";
+import { ApiError, api, apiErrorProps, safeApi } from "@/lib/product/api";
+import { ApiDown, NotFound, removedByRetention } from "@/components/ui";
 import {
   ActionPill,
   Card,
@@ -17,7 +17,8 @@ import {
   money,
   when,
 } from "@/components/kit";
-import { SURFACES, TRUST, WOULD, detectorName, outcomeOf, ruleTitle } from "@/lib/product/vocab";
+import { SURFACES, TRUST, WOULD, detectorName, outcomeOf, ruleTitle, sentence } from "@/lib/product/vocab";
+import type { ReactNode } from "react";
 import { NoticeToast } from "@/components/product/NoticeToast";
 import { approvalOutcome } from "@/lib/product/approvals";
 
@@ -78,7 +79,12 @@ export default async function RunDetail({
       <>
         <Header title="Run" back={{ href: "/app/traces", label: "Activity" }} />
         {e instanceof ApiError && e.status === 404 ? (
-          <NotFound what="run" detail={id} back={{ href: "/app/traces", label: "Activity" }} />
+          <NotFound
+            what="run"
+            detail={id}
+            back={{ href: "/app/traces", label: "Activity" }}
+            removedOn={removedByRetention(e.message)}
+          />
         ) : (
           <ApiDown {...apiErrorProps(e)} />
         )}
@@ -145,6 +151,22 @@ export default async function RunDetail({
           ["Checks", `${Math.round(duration)} ms`],
           ...(t.model ? ([["Model", t.model]] as [string, string][]) : []),
           ...(t.cost_usd ? ([["Cost", money(t.cost_usd)]] as [string, string][]) : []),
+          // The issue(s) this run raised, linked: the run page used to stop at the verdict.
+          ...((d.findings || []).length
+            ? ([
+                [
+                  (d.findings || []).length === 1 ? "Issue" : "Issues",
+                  <span key="issues">
+                    {(d.findings || []).map((f: any, i: number) => (
+                      <span key={f.id}>
+                        {i > 0 && ", "}
+                        <Link href={`/app/findings/${encodeURIComponent(f.id)}`}>{sentence(f.title)}</Link>
+                      </span>
+                    ))}
+                  </span>,
+                ],
+              ] as [string, ReactNode][])
+            : []),
         ]}
       />
       <div style={{ height: 14 }} />
@@ -252,8 +274,12 @@ function Steps({ spans }: { spans: any[] }) {
   );
 }
 
-function Checks({ runs, runId }: { runs: any[]; runId: string }) {
+async function Checks({ runs, runId }: { runs: any[]; runId: string }) {
   if (!runs.length) return <Card><Empty>No detectors ran.</Empty></Card>;
+  // What was already marked on this run, newest first: the button shows it stuck.
+  const marks = await safeApi<any>(`/api/guardrails/feedback?trace_id=${encodeURIComponent(runId)}&limit=200`, { feedback: [] });
+  const markOf = (decision: string, detector: string): string | undefined =>
+    (marks.feedback || []).find((f: any) => f.decision_id === decision && f.detector_key === detector)?.label;
   return (
     <Card flush>
       <table className="k-table">
@@ -293,7 +319,15 @@ function Checks({ runs, runId }: { runs: any[]; runId: string }) {
                         {r.findings.length === 1 && <input type="hidden" name="entity_type" value={r.findings[0].entity_type} />}
                         <input type="hidden" name="label" value={label} />
                         <input type="hidden" name="return_to" value={`/app/traces/${runId}?tab=checks`} />
-                        <button type="submit" className="k-btn-ghost">{label === "true_positive" ? "Correct" : "Wrong"}</button>
+                        {markOf(r.decision_id, r.detector) === label ? (
+                          <button type="submit" className="k-btn" aria-pressed="true" disabled>
+                            {label === "true_positive" ? "Marked correct" : "Marked wrong"}
+                          </button>
+                        ) : (
+                          <button type="submit" className="k-btn-ghost" aria-pressed="false">
+                            {label === "true_positive" ? "Correct" : "Wrong"}
+                          </button>
+                        )}
                       </form>
                     ))}
                   </span>

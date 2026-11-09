@@ -70,11 +70,12 @@ RULE_TITLES: dict[str, str] = {
     "answerability.out_of_domain": "Outside its topics (abstained)",
     "approval.redeemed": "Approved by a person",
     "approval.denied": "Denied by a person",
+    "capability.default_deny": "Tools the agent wasn't given",
+    "composition.escalation": "One tool's output driving a riskier tool",
 }
 
 #: Rules raised in process, which the dashboard does not list under these ids.
 _PROCESS_TITLES: dict[str, str] = {
-    "capability.default_deny": "Tools the agent wasn't given",
     "capability.requires_approval": "Actions that need approval",
     "autoguard.fail_closed": "Checks unavailable, so the call was refused",
 }

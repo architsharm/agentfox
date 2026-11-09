@@ -67,6 +67,11 @@ def test_evidence_package_contents(seeded, tmp_path):
     assert manifest["generated_by"] == "aisha@example.com"
     assert manifest["chain_verification"]["valid"] is True
     assert "verify_chain.py" in readme
+    # The README names the key the docs name, scopes in words, and no internal appendix.
+    assert "AGENTFOX_AUDIT_SIGNING_KEY" in readme
+    assert "Agents   : all agents" in readme
+    assert "Appendix" not in readme
+    assert "manifest.sig" in names
 
 
 def test_draft_mappings_included_with_chip(seeded):

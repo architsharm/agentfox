@@ -34,6 +34,13 @@ DEFAULT_SCORERS = ("fuzzy_match", "groundedness", "task_completion", "silent_fai
 #: Scorers that need several generations of the same input.
 _NEEDS_SAMPLES = {"self_consistency", "silent_failure"}
 
+#: Said beside a run scored on the offline `echo` model.
+ECHO_WARNING = (
+    "Scored on the offline echo model, which repeats the prompt: these scores show the "
+    "suite runs, not that your agent answers well. Run it with your real provider and "
+    "model (--provider, --model) to measure quality."
+)
+
 
 class EvalRunner(Protocol):
     name: str
@@ -162,6 +169,11 @@ class NativeEvalRunner:
             outcomes.append(outcome)
 
         run.summary_json = summarise(outcomes, scorer_keys)
+        # Which model answered: the offline `echo` one repeats the prompt, so its scores
+        # (100% grounded, 100% task completion) say the suite runs, nothing about quality.
+        run.summary_json["provider"] = provider.key
+        if provider.key == "echo":
+            run.summary_json["warning"] = ECHO_WARNING
         run.status = "completed"
         run.finished_at = utcnow()
         session.flush()
@@ -279,10 +291,13 @@ def sample_production(
         output = ""
         retrieved: list[str] = []
         tool_calls: list[str] = []
+        asked = ""
         for span in spans:
             attrs = span.get("attributes") or {}
             if span.get("kind") == "llm" and attrs.get("agentfox.output"):
                 output = str(attrs["agentfox.output"])
+            if attrs.get("agentfox.input") and not asked:
+                asked = str(attrs["agentfox.input"])
             if span.get("kind") == "retrieval" and attrs.get("agentfox.content"):
                 retrieved.append(str(attrs["agentfox.content"]))
             if span.get("kind") == "tool":
@@ -293,7 +308,7 @@ def sample_production(
 
         case = EvalCase(
             suite_id=suite.id,
-            input_json={"prompt": trace.intent or ""},
+            input_json={"prompt": asked or trace.intent or ""},
             context_json={"retrieved": retrieved},
             labels=["online"],
             split="production",

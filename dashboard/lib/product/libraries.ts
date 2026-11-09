@@ -19,7 +19,16 @@ export type LibraryRule = {
 };
 
 /** What a library's last "Simulate" found (the simulate route's answer, and `simulation`). */
-export type SimulationResult = { replayed: number; blocked: number; held: number; hidden: number; since_days: number; at?: string };
+export type SimulationResult = {
+  replayed: number;
+  blocked: number;
+  held: number;
+  hidden: number;
+  /** Checks its rules catch that something else already stopped: caught, but no change. */
+  already_stopped?: number;
+  since_days: number;
+  at?: string;
+};
 
 export type LibraryContents = {
   id: string;
@@ -32,7 +41,17 @@ export type LibraryContents = {
 };
 
 /** Where a library stands on the chosen project's agents (`/api/policies/libraries/status`). */
-export type LibraryStatus = { agents: string[]; blocking: boolean; workspace: boolean; outdated?: boolean; outdatedAgents?: string[] };
+export type LibraryStatus = {
+  agents: string[];
+  blocking: boolean;
+  workspace: boolean;
+  outdated?: boolean;
+  outdatedAgents?: string[];
+  /** Tool containment, not applied: its built-in rules (a missing grant, a composed escalation) still watch every agent. */
+  builtIn?: boolean;
+  /** Not applied, but the enforcer applies it watching to an agent nothing else is applied to (the shipped fallback). */
+  fallback?: boolean;
+};
 
 const CHECKS: Record<string, string> = {
   input: "User messages",
@@ -92,7 +111,8 @@ export function simulationSummary(r: SimulationResult): string {
   if (!r.replayed) return `No traffic in the last ${r.since_days} days to replay. Blocking is allowed now; nothing tells you yet what it will stop.`;
   const parts = [`blocked ${r.blocked}`, r.held ? `asked a person about ${r.held}` : "", r.hidden ? `hidden data in ${r.hidden}` : ""].filter(Boolean);
   const last = parts.length > 1 ? ` and ${parts.pop()}` : "";
-  return `Last ${r.since_days} days: would have ${parts.join(", ")}${last} of ${r.replayed} checks.`;
+  const already = r.already_stopped ? ` It also catches ${r.already_stopped} that other rules already stopped.` : "";
+  return `Last ${r.since_days} days: would have ${parts.join(", ")}${last} of ${r.replayed} checks.${already}`;
 }
 
 /** "the agent", "all 3 agents" or "2 of 3 agents" of the project. */
@@ -107,6 +127,8 @@ export function libraryState(st: LibraryStatus, total: number): { text: string; 
   const tone = st.blocking ? "pol-on" : "pol-watch";
   if (st.agents.length) return { text: `On ${whereOn(st.agents.length, total)} · ${mode}${st.outdated ? " · update available" : ""}`, tone };
   if (st.workspace) return { text: `On every agent (workspace) · ${mode}`, tone };
+  if (st.fallback) return { text: "On by default · watching", tone: "pol-watch" };
+  if (st.builtIn) return { text: "Built-in rules only · watching", tone: "pol-watch" };
   return { text: "Not applied", tone: "" };
 }
 

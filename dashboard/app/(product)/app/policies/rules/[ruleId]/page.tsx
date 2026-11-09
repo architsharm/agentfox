@@ -1,3 +1,4 @@
+import { isAdded } from "@/lib/product/proposedSystems";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { appPageMetadata } from "@/lib/site";
@@ -13,9 +14,9 @@ import { Act } from "@/components/kit/Act";
 import { BusinessMode } from "@/components/product/policies/BusinessMode";
 import { LadderEditor } from "@/components/product/policies/LadderEditor";
 import { checksFor, type CheckInfo } from "@/lib/product/checks";
-import { versionNote } from "@/lib/product/policyWords";
+import { businessRuleName, versionNote } from "@/lib/product/policyWords";
 import { RANGE_DAYS, metricsQs, runsHref } from "@/lib/product/observe";
-import { BUSINESS_LIBRARY, businessRule, loadRules, ruleMode, type RuleInfo } from "@/lib/product/rules";
+import { BUSINESS_LIBRARY, businessRule, loadRules, packRuleMode, ruleMode, type RuleInfo } from "@/lib/product/rules";
 import { ensureRange } from "@/lib/product/range";
 import { RangeProvider } from "@/components/kit/RangeContext";
 import { WOULD, categoryLabel, rangeOf, ruleCategory, ruleTitle } from "@/lib/product/vocab";
@@ -46,10 +47,12 @@ export default async function RulePage({ params, searchParams }: { params: Promi
   const range = rangeOf(sp.range);
 
   const custom = ruleId.startsWith("custom.");
-  const [{ packs, rules }, stats, customRules] = await Promise.all([
+  const customKey = custom ? ruleId.slice("custom.".length) : "";
+  const [{ packs, rules }, stats, customRules, defHistory] = await Promise.all([
     loadRules(),
     safeApi<any>(`/api/metrics/rules?${metricsQs({ range })}`, { rules: [] }),
     custom ? safeApi<any>("/api/custom-rules", { rules: [] }) : Promise.resolve({ rules: [] }),
+    custom && tab === "history" ? safeApi<any>(`/api/custom-rules/${encodeURIComponent(customKey)}/history`, { versions: [] }) : Promise.resolve({ versions: [] }),
   ]);
   const own = (customRules.rules || []).find((r: any) => r.rule_id === ruleId);
   const rule = rules.find((r) => r.rule_id === ruleId);
@@ -74,15 +77,22 @@ export default async function RulePage({ params, searchParams }: { params: Promi
         }
         actions={
           <>
-            {/* A rule you wrote is switched on with its library, Your rules. */}
-            {mode !== "enforce" && rule?.packs.some((p) => p.key === "custom") && (
-              <Link className="k-btn-primary" href="/app/policies?tab=libraries&open=custom">
+            {/* A rule you wrote is switched on with its library, Your rules, or on its own
+                when Your rules already blocks and it was added since (it watches until then). */}
+            {mode !== "enforce" && tab !== "tune" && rule?.packs.some((p) => p.key === "custom") && (
+              <Link
+                className="k-btn-primary"
+                href={rule.packs.some((p) => p.key === "custom" && p.mode === "enforce") ? tabHref("tune") : "/app/policies?tab=libraries&open=custom"}
+              >
                 Start blocking
               </Link>
             )}
-            <Link className="k-btn" href={tabHref("tune")}>
-              Change
-            </Link>
+            {/* On its Tune tab already: a Change button beside it would go nowhere. */}
+            {tab !== "tune" && (
+              <Link className="k-btn" href={tabHref("tune")}>
+                Change
+              </Link>
+            )}
           </>
         }
       />
@@ -113,7 +123,7 @@ export default async function RulePage({ params, searchParams }: { params: Promi
                     <tr key={p.key}>
                       <td><Link className="k-name" href={`/app/policies/${encodeURIComponent(p.key)}`}>{p.name}</Link></td>
                       <td className="tight"><ActionPill effect={p.effect} /></td>
-                      <td className="tight">{p.enabled ? <ModePill mode={p.mode} /> : <Pill tone="outline">Off</Pill>}</td>
+                      <td className="tight">{p.enabled ? <ModePill mode={packRuleMode(p)} /> : <Pill tone="outline">Off</Pill>}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -144,14 +154,49 @@ export default async function RulePage({ params, searchParams }: { params: Promi
         </Card>
       )}
 
+      {tab === "history" && custom && (defHistory.versions || []).length > 0 && (
+        <Card title="What it looks for" hint="Each saved version of this rule's words, patterns or condition, and what changed." flush>
+          <table className="k-table">
+            <tbody>
+              {defHistory.versions.map((v: any) => (
+                <tr key={v.version}>
+                  <td>
+                    <span className="k-name">{v.change}</span>
+                    <span className="sub">{definitionText(v.definition)}</span>
+                  </td>
+                  <td className="tight">{v.live ? <Pill tone="ok">Live</Pill> : <Pill tone="outline">v{v.version}</Pill>}</td>
+                  <td className="tight muted">{v.author}</td>
+                  <td className="tight muted">{ago(v.at)}</td>
+                  <td className="tight">
+                    {!v.live && (
+                      <Act
+                        url={`/api/custom-rules/${encodeURIComponent(customKey)}/versions/${v.version}/restore`}
+                        className="k-btn-ghost"
+                        done="Restored"
+                        confirm={`Put version ${v.version} back? It becomes live as a new version; what the rule does when it matches stays as it is now.`}
+                      >
+                        Restore this version
+                      </Act>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
+
       {tab === "history" && (
-        <Card flush>
+        <Card flush title={custom ? "What it does" : undefined} hint={custom ? "Changes to its action, message and blocking, as versions of Your rules." : undefined}>
           {rule ? (
             <table className="k-table">
               <tbody>
                 {packs
                   .filter((p) => rule.packs.some((x) => x.key === p.key))
                   .flatMap((p) => p.versions.map((v: any) => ({ ...v, pack: p, live: v.version === p.boundVersion })))
+                  // For a rule you wrote, its definition's versions are listed above: here
+                  // only the versions that changed this rule's action, message or mode.
+                  .filter((v) => !custom || v.live || versionNote(v.notes).rule === ruleId)
                   .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
                   .map((v) => {
                     // "injection.direct: {'min_score': 0.5}" reads "Sensitivity changed from Medium to High".
@@ -225,7 +270,7 @@ async function Tests({ ruleId, pack, agents }: { ruleId: string; pack?: string; 
       : Promise.resolve({ results: [] }),
     safeApi<any>("/api/agents", { agents: [] }),
   ]);
-  const slugs = Array.from(new Set([...agents, ...(all.agents || []).filter((a: any) => a.status !== "draft").map((a: any) => a.slug)]));
+  const slugs = Array.from(new Set([...agents, ...(all.agents || []).filter(isAdded).map((a: any) => a.slug)]));
   return <RuleTests ruleId={ruleId} results={checked.results || []} agents={slugs} />;
 }
 
@@ -298,7 +343,8 @@ async function BusinessRule({ ruleKey, sp }: { ruleKey: string; sp: SP }) {
   const mode = ruleMode(rule);
   const s = (stats.rules || []).find((r: any) => r.rule_id === ruleId);
   const tabHref = (k: string) => href(path, { tab: k === "overview" ? undefined : k, range: sp.range });
-  const name = b.name && b.name !== b.key ? b.name : ruleTitle(ruleId);
+  // The same name Your rules and the drawer show (businessRuleName), not one per screen.
+  const name = businessRuleName(b);
   return (
     <RangeProvider range={sp.range}>
       <>
@@ -316,9 +362,11 @@ async function BusinessRule({ ruleKey, sp }: { ruleKey: string; sp: SP }) {
           actions={
             <>
               {b.enabled !== false && <BusinessMode ruleKey={ruleKey} mode={b.mode} name={name} />}
-              <Link className="k-btn" href={tabHref("tune")}>
-                Change
-              </Link>
+              {tab !== "tune" && (
+                <Link className="k-btn" href={tabHref("tune")}>
+                  Change
+                </Link>
+              )}
             </>
           }
         />
@@ -401,6 +449,14 @@ async function BusinessRule({ ruleKey, sp }: { ruleKey: string; sp: SP }) {
       </>
     </RangeProvider>
   );
+}
+
+/** A saved definition in a line: "Globex, Initech · user messages, agent replies". */
+function definitionText(d: any): string {
+  const where: Record<string, string> = { input: "user messages", output: "agent replies", tool_args: "tool calls" };
+  const what = d?.kind === "topic" ? d.description || "" : (d?.entries || []).join(", ");
+  const surfaces = (d?.surfaces || []).map((x: string) => where[x] || x).join(", ");
+  return [what.length > 120 ? `${what.slice(0, 117)}…` : what, surfaces].filter(Boolean).join(" · ");
 }
 
 /** "up to 100 USD: allow · above that: ask a person" */

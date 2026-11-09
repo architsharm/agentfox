@@ -7,7 +7,8 @@ import { ApiDown, NotFound, findingTypeInfo } from "@/components/ui";
 import { Card, Header, Meta, Pill, SeverityPill, ago, num } from "@/components/kit";
 import { FindingEvidence } from "@/components/product/FindingEvidence";
 import { FindingActions, type Remedy } from "@/components/product/FindingActions";
-import { sentence } from "@/lib/product/vocab";
+import { ruleTitle, sentence } from "@/lib/product/vocab";
+import type { ReactNode } from "react";
 import { NoticeToast } from "@/components/product/NoticeToast";
 
 export const metadata: Metadata = appPageMetadata("Issue");
@@ -53,7 +54,7 @@ export default async function IssueDetail({
   }
   const names = agentNames((await safeApi<any>("/api/agents", { agents: [] })).agents);
   if (f.evidence?.reason) f = { ...f, evidence: { ...f.evidence, reason: withAgentNames(f.evidence.reason, names) } };
-  const type = findingTypeInfo(f.type);
+  const type = findingTypeInfo(f.type, f.title);
   const st = STATUS[f.status] || { label: f.status, tone: "outline" as const };
   const remedies: Remedy[] = f.remedies || [];
   const hasActions = remedies.some((r) => r.kind === "action");
@@ -75,6 +76,14 @@ export default async function IssueDetail({
         items={[
           ["Agent", f.agent_slug ? <Link href={`/app/projects/${encodeURIComponent(f.agent_slug)}`}>{agentName(names, f.agent_slug)}</Link> : f.subject_id || "—"],
           ["Kind", type.label],
+          // The rule that acted and the run it acted in, linked: a containment issue
+          // used to name neither, so there was no way to get to the rule to tune it.
+          ...(f.evidence?.rule_id
+            ? ([["Rule", <Link key="rule" href={`/app/policies/rules/${encodeURIComponent(f.evidence.rule_id)}`}>{ruleTitle(f.evidence.rule_id)}</Link>]] as [string, ReactNode][])
+            : []),
+          ...(f.evidence?.trace_id
+            ? ([["Run", <Link key="run" href={`/app/traces/${encodeURIComponent(f.evidence.trace_id)}`}>Open the run</Link>]] as [string, ReactNode][])
+            : []),
           ["Times", num(f.occurrences || 1)],
           ["First", ago(f.created_at)],
           ["Last", ago(f.last_seen_at || f.created_at)],

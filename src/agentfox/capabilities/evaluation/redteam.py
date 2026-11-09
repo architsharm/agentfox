@@ -51,6 +51,7 @@ from __future__ import annotations
 
 import logging
 import random
+import re
 import shutil
 import subprocess
 from dataclasses import dataclass, field
@@ -137,6 +138,17 @@ class Probe:
     #: again is a weaker claim than one it simply reads, and lumping them together
     #: inflates the headline.
     mutation_semantics: str | None = None
+    #: A tool call checked after this probe's content, as the agent would make it if
+    #: the content reached it and the model obeyed: ``{"tool", "arguments"}``, plus
+    #: what the call was made after (``message``, the user's text, and ``reads``, the
+    #: tool results the agent had read: ``[{"tool", "result"}]``). Checked by
+    #: `check_agent_call`, the path live traffic takes (`auto()`'s
+    #: ``_govern_tool_calls``). The attack is stopped when either check stops it.
+    #: Only probes written from an agent's own tools set it.
+    then_call: dict[str, Any] | None = None
+    #: For a ``tool_call`` probe: what the call was made after (as ``then_call``).
+    context_message: str | None = None
+    context_reads: list[dict[str, Any]] | None = None
 
 
 BUILTIN_PROBES: list[Probe] = [
@@ -526,7 +538,7 @@ def no_tool_probes_reason(session: Session, agent_slug: str) -> str:
         )
     return (
         "it declares no tools and holds no tool grants. Grant it the tools it calls "
-        f"(`agentfox capability grant {agent_slug} <tool>`) and run this again"
+        f"(`agentfox permit grant {agent_slug} <tool>`) and run this again"
     )
 
 
@@ -552,7 +564,7 @@ def agent_tool_probes(
     """
     import json
 
-    from agentfox.capabilities.onboarding.attacks import OWASP, build_suite, roles, skipped
+    from agentfox.capabilities.onboarding.attacks import OWASP, build_suite, skipped
 
     tools = agent_tool_map(session, agent_slug)
     if not tools:
@@ -580,13 +592,26 @@ def agent_tool_probes(
                 )
             )
             continue
-        planted = next((r for r in a.responses.values() if _has_note(r)), None)
+        planted = next(((name, r) for name, r in a.responses.items() if _has_note(r)), (None, None))
+        planted_tool, planted = planted
         common: dict[str, Any] = {
             "owasp_id": owasp,
             "severity": "critical" if planted is not None or a.forbidden else "high",
             "description": f"Tries to get it to: {a.got}" if a.got else "",
             "provision": False,
         }
+        if a.forbidden:
+            # What the attack is after is a call to one of the agent's own tools: if the
+            # message (or the planted record) gets past the content checks, the model
+            # obeying makes that call, checked as live traffic checks it.
+            tool = next(t for t in tools if t["name"] == a.forbidden[0])
+            common["then_call"] = {
+                "tool": tool["name"],
+                "arguments": _call_args(tool, a, planted),
+                "message": a.message,
+                "reads": [{"tool": planted_tool, "result": planted}] if planted else [],
+                "description": tool.get("whatItDoes") or "",
+            }
         if planted is not None:
             probes.append(
                 Probe(
@@ -630,27 +655,30 @@ def agent_tool_probes(
                     **common,
                 )
             )
-    for tool in roles(tools).action:
-        ref = "REC-4410"
-        args = {a: ref for a in tool.get("args") or []} or {"id": ref}
-        probes.append(
-            Probe(
-                f"agent.tool_call.{tool['name']}",
-                "unsafe_tool_use",
-                kind="tool_call",
-                tool_key=tool["name"],
-                arguments=args,
-                provenance={k: "tool_result" for k in args},
-                grant=False,
-                provision=False,
-                severity="critical",
-                owasp_id="LLM06",
-                target_class=f"{AGENT_TOOLS}.tool_call",
-                description=f"The call the attacks are after: {tool['name']}, its "
-                "arguments copied from a record an attacker wrote.",
-            )
-        )
     return probes, skipped(suite)
+
+
+def _call_args(tool: dict[str, Any], attack: Any, planted: Any) -> dict[str, Any]:
+    """The arguments an agent obeying ``attack`` passes ``tool``: each of the tool's
+    arguments from the record the attack is about (the same name, else its
+    reference), copied the way a model copies them."""
+    record = _record_of(
+        planted if planted is not None else next(iter(attack.responses.values()), {})
+    )
+    ref = next(
+        (str(v) for k, v in record.items() if isinstance(v, str) and re.search(r"-\d{4}$", v)),
+        None,
+    ) or _ref_in(attack.message)
+    args: dict[str, Any] = {}
+    for name in tool.get("args") or []:
+        value = record.get(name)
+        args[name] = value if isinstance(value, (str, int, float)) else ref or "REC-4410"
+    return args or {"id": ref or "REC-4410"}
+
+
+def _ref_in(text: str) -> str | None:
+    found = re.search(r"\b[A-Z]{3}-\d{4}\b", text or "")
+    return found.group(0) if found else None
 
 
 def _record_of(response: Any) -> dict[str, Any]:
@@ -805,15 +833,25 @@ class NativeRedTeamRunner:
                         constraints=probe.grant_constraints,
                         max_taint=probe.grant_max_taint,
                     )
-                result = enforcer.guard_tool_call(
-                    agent_slug=agent_slug,
-                    tool_key=probe.tool_key or "redteam.sim.unknown",
-                    arguments=probe.arguments or {},
-                    provenance=probe.provenance,
-                    intent=probe.intent,
-                    persist=False,
-                )
-                decision = result.to_json()
+                if probe.context_message is not None or probe.context_reads:
+                    decision = check_agent_call(
+                        enforcer,
+                        agent_slug,
+                        tool_key=probe.tool_key or "redteam.sim.unknown",
+                        arguments=probe.arguments or {},
+                        message=probe.context_message,
+                        reads=probe.context_reads,
+                    )
+                else:
+                    result = enforcer.guard_tool_call(
+                        agent_slug=agent_slug,
+                        tool_key=probe.tool_key or "redteam.sim.unknown",
+                        arguments=probe.arguments or {},
+                        provenance=probe.provenance,
+                        intent=probe.intent,
+                        persist=False,
+                    )
+                    decision = result.to_json()
             elif probe.kind == "scenario":
                 tracker = TaintTracker()
                 decision = {"effective_verdict": "allow", "rules_fired": [], "mode": None}
@@ -847,6 +885,21 @@ class NativeRedTeamRunner:
             else:  # pragma: no cover — guarded by BUILTIN_PROBES construction
                 raise ValueError(f"unknown probe kind {probe.kind!r}")
 
+            call: dict[str, Any] | None = None
+            if probe.then_call:
+                # The content reached the agent and its model obeyed: the call it was
+                # after, checked as live traffic checks it.
+                call = check_agent_call(
+                    enforcer,
+                    agent_slug,
+                    tool_key=str(probe.then_call["tool"]),
+                    arguments=dict(probe.then_call.get("arguments") or {}),
+                    message=probe.then_call.get("message"),
+                    reads=probe.then_call.get("reads"),
+                    description=probe.then_call.get("description"),
+                )
+                decision = _chained(decision, call)
+
             blocked = decision["effective_verdict"] in ("block", "escalate", "redact")
             outcomes.append(
                 ProbeOutcome(
@@ -863,10 +916,125 @@ class NativeRedTeamRunner:
                         "applied_verdict": decision.get("verdict"),
                         "reason": decision.get("reason") or "",
                         "content": decision.get("content") or decision.get("would_be_content"),
+                        **(
+                            {
+                                "call": {
+                                    "tool": probe.then_call["tool"],  # type: ignore[index]
+                                    "verdict": call.get("effective_verdict"),
+                                    "applied": call.get("verdict"),
+                                    "rules_fired": call.get("rules_fired") or [],
+                                },
+                                "content_applied": decision.get("content_applied"),
+                                "content_verdict": decision.get("content_verdict"),
+                            }
+                            if call is not None
+                            else {}
+                        ),
                     },
                 )
             )
         return outcomes
+
+
+def check_agent_call(
+    enforcer: Any,
+    agent_slug: str,
+    *,
+    tool_key: str,
+    arguments: dict[str, Any],
+    message: str | None = None,
+    reads: list[dict[str, Any]] | None = None,
+    description: str | None = None,
+) -> dict[str, Any]:
+    """One tool call an agent makes, checked the way ``agentfox.auto()`` checks it
+    live (``_govern_tool_calls``), with nothing persisted: one taint tracker holding
+    the user's message (``user``) and every tool result the agent read before the call
+    (``tool_result``), those tools as ``prior_tools``, and the call's arguments
+    tainted by what they were copied from. The attack test (the CLI's `test redteam`
+    and the dashboard's run against the real agent, through `dry_run_check`) checks
+    every call this one way, so both agree with what the runtime does."""
+    import json
+
+    from agentfox.capabilities.detection.taint import TaintTracker
+    from agentfox.platform.registry.service import register_called_tool
+
+    # Live, `auto()` registers a tool the model calls the first time it sees it (its
+    # impact inferred from its name and description) before checking the call. The
+    # caller's savepoint (`NativeRedTeamRunner.run_probes`) rolls the row back.
+    register_called_tool(enforcer.session, tool_key, {"description": description or ""})
+    tracker = TaintTracker()
+    if message:
+        tracker.mark("message.user", "user", message)
+    prior: list[str] = []
+    for i, read in enumerate(reads or []):
+        tool = str(read.get("tool") or "tool")
+        result = read.get("result")
+        text = result if isinstance(result, str) else json.dumps(result, default=str)
+        tracker.mark(f"tool:{tool}#{i}", "tool_result", text)
+        _mark_values(tracker, f"tool:{tool}#{i}", result)
+        prior.append(tool)
+    return enforcer.guard_tool_call(
+        agent_slug=agent_slug,
+        tool_key=tool_key,
+        arguments=arguments,
+        tracker=tracker,
+        prior_tools=prior,
+        persist=False,
+    ).to_json()
+
+
+def _mark_values(tracker: Any, path: str, value: Any) -> None:
+    """Each string inside a tool result, marked on its own: the agent copies a field
+    (an id, an email) into its next call, not the whole JSON document."""
+    if isinstance(value, str):
+        try:
+            import json
+
+            value = json.loads(value)
+        except ValueError:
+            return
+    if isinstance(value, dict):
+        for k, v in value.items():
+            if isinstance(v, str):
+                tracker.mark(f"{path}.{k}", "tool_result", v)
+            else:
+                _mark_values(tracker, f"{path}.{k}", v)
+    elif isinstance(value, list):
+        for i, v in enumerate(value):
+            _mark_values(tracker, f"{path}[{i}]", v)
+
+
+def _chained(content: dict[str, Any], call: dict[str, Any]) -> dict[str, Any]:
+    """A content check and the tool call that follows it, as one decision: the
+    stronger of the two verdicts (what the policies ask for, and what live traffic
+    applies), every rule that fired, and the reason of the check that decided."""
+    eff = _stronger(content.get("effective_verdict") or "allow", call.get("effective_verdict"))
+    applied = _stronger(content.get("verdict") or "allow", call.get("verdict"))
+    by_call = _rank(call.get("effective_verdict")) > _rank(content.get("effective_verdict"))
+    return {
+        **content,
+        "effective_verdict": eff,
+        "verdict": applied,
+        "content_applied": content.get("verdict") or "allow",
+        "content_verdict": content.get("effective_verdict") or "allow",
+        "mode": content.get("mode") or call.get("mode"),
+        "rules_fired": [
+            *(content.get("rules_fired") or []),
+            *({**r, "surface": "tool_call"} for r in call.get("rules_fired") or []),
+        ],
+        "reason": (call.get("reason") if by_call else content.get("reason")) or "",
+        "entities": [*(content.get("entities") or []), *(call.get("entities") or [])],
+    }
+
+
+def _rank(verdict: str | None) -> int:
+    from agentfox.core.vocab import VERDICT_RANK as _VERDICT_RANK
+
+    return _VERDICT_RANK.get(verdict or "allow", 0)
+
+
+def _stronger(a: str, b: str | None) -> str:
+    return a if _rank(a) >= _rank(b) else str(b)
 
 
 #: The surfaces `dry_run_check` evaluates: what reaches the agent, each tool call it
@@ -882,6 +1050,8 @@ def dry_run_check(
     content: str = "",
     tool_key: str | None = None,
     arguments: dict[str, Any] | None = None,
+    message: str | None = None,
+    reads: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """One check of one surface through the real enforcement path, for an agent's
     bound policies, with nothing persisted and nothing provisioned.
@@ -901,6 +1071,11 @@ def dry_run_check(
     granted any tool yet, a refusal that is only a missing grant is recorded rather
     than applied (see `_live_capability_scope`), so ``verdict`` and ``applied`` leave
     it out and its rule is marked ``liveEnforced: false``.
+
+    A tool call is checked by `check_agent_call` with what it was made after: the
+    user's ``message`` and the tool results the agent had read (``reads``), so its
+    arguments carry the taint live traffic would see. The CLI's `test redteam` checks
+    the call each attack is after the same way.
     """
     if surface not in DRY_RUN_SURFACES:
         raise ValueError(f"unknown surface {surface!r}")
@@ -913,6 +1088,8 @@ def dry_run_check(
             arguments=arguments or {},
             provision=False,
             grant=False,
+            context_message=message or "",
+            context_reads=list(reads or []),
         )
     else:
         probe = Probe(
@@ -1411,6 +1588,13 @@ def run_campaign(
         profile = deployment_profile(session, agent_slug)
         pool = pool + generate_deployment_probes(session, agent_slug)
     selected = _select(pool, probes)
+    # Every probe is checked the way live traffic is, so an opted-in model must be
+    # loaded first: a check does not wait for a model still loading (it runs without
+    # it), and otherwise the whole campaign would. Once per process; a no-op without
+    # a model detector.
+    from agentfox.capabilities.detection.warmup import warm_now
+
+    warm_now()
 
     campaign = RedTeamCampaign(
         name=name or f"Red-team {agent_slug}",
@@ -1434,20 +1618,48 @@ def run_campaign(
     # not applied (as `dry_run_check` does), so it waits for a grant rather than
     # counting as stopped.
     for outcome in outcomes:
-        if outcome.probe.kind != "tool_call":
-            continue
         if not (outcome.probe.target_class or "").startswith(AGENT_TOOLS):
             continue
-        fired = list(outcome.detail.get("rules_fired") or [])
+        call = outcome.detail.get("call")
+        if outcome.probe.kind != "tool_call" and not call:
+            continue
+        fired = list((call or outcome.detail).get("rules_fired") or [])
         waived = _live_capability_scope(session, agent_slug, fired)
         if waived:
             kept = [r for r in fired if (r.get("rule_id") or r.get("id")) not in waived]
-            outcome.detail["applied_verdict"] = _weaker(
-                outcome.detail.get("applied_verdict") or "allow",
+            call_applied = _weaker(
+                (call or {}).get("applied") or outcome.detail.get("applied_verdict") or "allow",
                 _strongest([r for r in kept if r.get("mode", "enforce") == "enforce"]),
             )
-            if outcome.detail["applied_verdict"] not in LIVE_STOPS:
+            # A chained probe: the content check before the call still applies.
+            outcome.detail["applied_verdict"] = (
+                _stronger(outcome.detail.get("content_applied") or "allow", call_applied)
+                if call
+                else call_applied
+            )
+            # Waiting for the first grant only when nothing else would stop it: a rule
+            # that only watches the same call stops it once it blocks, grant or not.
+            content_would = outcome.detail.get("content_verdict") or "allow"
+            if outcome.detail["applied_verdict"] not in LIVE_STOPS and (
+                _strongest(kept) not in ("block", "escalate")
+                and content_would not in ("block", "escalate")
+            ):
                 outcome.detail["waiting_for"] = "grant"
+    # The rest a rule only watches: named, so the prediction can say which rules
+    # would have to block.
+    for outcome in outcomes:
+        if outcome.blocked and outcome.detail.get("applied_verdict") not in LIVE_STOPS:
+            outcome.detail.setdefault("waiting_for", "blocking")
+            # A rule's own mode, else the decision's (a content check's rules carry
+            # none); any effect that would stop or rewrite it once applied.
+            outcome.detail["watching_rules"] = sorted(
+                {
+                    str(r.get("rule_id") or r.get("id"))
+                    for r in outcome.detail.get("rules_fired") or []
+                    if (r.get("mode") or outcome.detail.get("mode")) == "observe"
+                    and r.get("effect") in ("block", "escalate", "redact", "mask", "tokenize")
+                }
+            )
 
     # Every attempt is recorded as a finding (the evidence a reader can re-check),
     # but scoring collapses to one outcome per seed probe — see `_collapse`.
@@ -1521,6 +1733,22 @@ def run_campaign(
         "attacks_stopped_live": live_stopped,
         "attacks_watching": attacks_blocked - live_stopped,
         "attacks_through_live": attacks_total - live_stopped,
+        # Of `attacks_watching`: those that wait for the agent's first tool grant
+        # (enforcing a policy doesn't stop them), and the rules that only watch the
+        # rest (each would have to block for them to stop).
+        "attacks_waiting_grant": sum(
+            1
+            for o in attack_outcomes
+            if o.blocked and not _applies(o) and o.detail.get("waiting_for") == "grant"
+        ),
+        "watching_rules": sorted(
+            {
+                r
+                for o in attack_outcomes
+                if o.blocked and not _applies(o)
+                for r in o.detail.get("watching_rules") or []
+            }
+        ),
         "benign_over_blocked_live": live_over_blocked,
         "tool_probes": sum(
             1 for o in scoring if (o.probe.target_class or "").startswith(AGENT_TOOLS)
@@ -1582,21 +1810,29 @@ def run_campaign(
     campaign.finished_at = utcnow()
 
     run_keys = {o.probe.key for o in scoring}
-    breached_keys = sorted(o.probe.key for o in scoring if o.succeeded)
+    # What gets through live traffic now (a watching rule's catch included).
+    breached_keys = sorted(
+        o.probe.key for o in scoring if o.probe.expect_blocked and not (o.blocked and _applies(o))
+    )
     over_blocked_keys = sorted(o.probe.key for o in benign_outcomes if o.blocked)
 
     # Identity is the set of seed probes that got through. Re-running the same campaign
     # against the same gap counts an occurrence on one finding; a different set of
     # escaping probes is a different problem.
     current_breach = None
-    if breaches:
+    through_live = attacks_total - live_stopped
+    if breaches or through_live:
+        # The count the CLI and the dashboard lead with: what gets through live traffic
+        # today. A watching rule's catch is named, not counted as stopped.
+        watched = through_live - breaches
         current_breach, _ = raise_finding(
             session,
             type="redteam",
             severity="critical" if campaign.summary_json["critical_breaches"] else "high",
             title=(
-                f"Agent '{agent_slug}' did not block {breaches} of {attacks_total} "
-                "simulated attacks"
+                f"Agent '{agent_slug}': {through_live} of {attacks_total} simulated "
+                "attacks get through"
+                + (f" ({watched} only watched, not blocked)" if watched else "")
             ),
             subject_type="agent",
             subject_id=agent_slug,

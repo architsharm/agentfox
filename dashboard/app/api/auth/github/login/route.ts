@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     } catch {
       // No referrer, or not a URL: Connections.
     }
-    const back = from === "/login" ? new URL("/login", origin) : new URL("/app/start?tab=connect", origin);
+    const back = from === "/login" ? new URL("/login", origin) : new URL("/app/settings?tab=connect", origin);
     if (from === "/login") back.searchParams.set("error", NOT_CONFIGURED);
     return NextResponse.redirect(back, 303);
   }

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Callout, Code, Output } from "@/components/docs/blocks";
+import { Callout, Code, NextSteps, Output } from "@/components/docs/blocks";
 import { publicPageMetadata } from "@/lib/site";
 
 export const metadata: Metadata = publicPageMetadata({
@@ -62,7 +62,11 @@ export default function Page() {
             <td><code>uv add agentfox</code></td>
           </tr>
           <tr>
-            <td>As a tool, on the PATH everywhere (needed for Claude Code and Codex hooks)</td>
+            <td>
+              As a tool, on the PATH everywhere. Claude Code and Codex hooks call AgentFox by
+              absolute path, so they work from any of these installs; a tool install keeps them
+              working if you delete the virtual environment.
+            </td>
             <td><code>uv tool install agentfox</code> or <code>pipx install agentfox</code></td>
           </tr>
           <tr>
@@ -132,7 +136,10 @@ python -m spacy download en_core_web_lg   # for pii.presidio, about 400MB`}</Cod
         <code>sentence-transformers/all-MiniLM-L6-v2</code>,{" "}
         <code>ibm-granite/granite-guardian-3.0-2b</code>); the model names are settings. The
         gateway Docker image ships with the permissive ones inside.{" "}
-        <code>agentfox admin detectors list</code> shows what can run here.
+        <code>agentfox admin detectors list</code> shows what can run here. Pulling{" "}
+        <code>injection.classifier</code> fetches two of them, and says so: PIGuard, which
+        it checks with, and the protectai model, a second opinion asked only when PIGuard
+        finds nothing, whose hits are recorded and never blocked on.
       </p>
       <Callout kind="note" title="Enabled but unavailable">
         The <code>detectors</code> line of <code>agentfox doctor</code> lists what is enabled{" "}
@@ -176,6 +183,14 @@ python -m spacy download en_core_web_lg   # for pii.presidio, about 400MB`}</Cod
         to keep them apart. <code>AGENTFOX_DATABASE_URL</code> and{" "}
         <code>AGENTFOX_EVIDENCE_DIR</code> override the two locations one at a time.
       </p>
+      <p>
+        With an account key (<code>AGENTFOX_URL</code> and <code>AGENTFOX_API_KEY</code>, or the{" "}
+        <code>.agentfox/agentfox.env</code> that <code>init --key</code>, <code>up</code> and{" "}
+        <code>login</code> write), the commands that show what the dashboard shows read and write the
+        account instead, and say so on their first line. An explicit{" "}
+        <code>AGENTFOX_DATABASE_URL</code>, or <code>AGENTFOX_LOCAL=1</code>, keeps them on the
+        database.
+      </p>
       <h3 id="postgres">Postgres</h3>
       <p>
         SQLite is fine for one process. For a server or more than one worker, use Postgres
@@ -198,7 +213,7 @@ agentfox init`}</Code>
       <Output>{`Setting up AgentFox
   ✓ database ready  sqlite:////…/agentfox.db
   ✓ 44 controls across 7 frameworks  v0.1.0-draft (draft)
-  ✓ 4 policy pack(s) loaded
+  ✓ 4 policy packs loaded
       agent-integrity          observe  recorded, nothing blocked
       baseline                 observe  recorded, nothing blocked
       eu-ai-act-high-risk      observe  recorded, nothing blocked
@@ -279,18 +294,75 @@ agentfox admin db current`}</Code>
         backup first.
       </p>
 
+      <h2 id="turn-off">Turn it off for a while</h2>
+      <p>
+        Set <code>AGENTFOX_DISABLED=1</code> in the app&apos;s environment and restart it.{" "}
+        <code>agentfox.auto()</code> then patches nothing, checks nothing, stores nothing and
+        sends nothing; it prints one line, <code>agentfox: off (AGENTFOX_DISABLED is set)</code>,
+        so a switch left on is easy to spot. Unset it to turn AgentFox back on. No code change
+        either way.
+      </p>
+      <ul>
+        <li>
+          To keep recording but never refuse a call, use <code>agentfox.auto(mode=&quot;observe&quot;)</code>{" "}
+          instead.
+        </li>
+        <li>
+          To stop one agent everywhere at once, press <strong>Pause</strong> on its page (or{" "}
+          <strong>Stop</strong>, which also records an incident). That refuses its calls until you
+          resume; it does not turn checks off.
+        </li>
+        <li>
+          Coding-agent hooks have no switch: remove them from the settings file (below) to pause
+          them.
+        </li>
+      </ul>
+
       <h2 id="uninstall">Uninstall</h2>
       <p>
-        <code>pip uninstall agentfox</code> removes the code and keeps your data: the database
-        and evidence in the state directory, and each project&apos;s <code>agentfox.toml</code>.
-        The audit chain is evidence, so removing it is a separate step:
+        Uninstalling the package removes the code and keeps your data. Remove each piece you
+        set up, in this order.
       </p>
-      <Code>{`rm -rf ~/.agentfox        # or $AGENTFOX_STATE_DIR / $XDG_DATA_HOME/agentfox
-rm agentfox.toml          # in each project where you ran agentfox init`}</Code>
-      <p>
-        Also remove <code>agentfox.auto()</code> from your entry point, and any hooks written
-        into <code>.claude/settings.json</code> by <code>agentfox admin hooks install --write</code>.
-      </p>
+      <ol>
+        <li>
+          <strong>Your code.</strong> Delete the two lines <code>agentfox up</code> or{" "}
+          <code>init</code> added to your entry point: <code>import agentfox</code> and the{" "}
+          <code>agentfox.auto(…)</code> line marked <code># added by `agentfox up`</code>.
+        </li>
+        <li>
+          <strong>The project folder.</strong> <code>.agentfox/</code> holds{" "}
+          <code>agentfox.env</code> (your account key, if you connected one),{" "}
+          <code>up.json</code> (your <code>up</code> answers) and logs. <code>agentfox.toml</code>{" "}
+          is the project&apos;s settings. <code>agentfox up --with ci</code> wrote{" "}
+          <code>.github/workflows/agentfox.yml</code>; <code>up</code> may also have added an{" "}
+          <code>agentfox</code> entry to <code>.mcp.json</code>.
+        </li>
+        <li>
+          <strong>Coding-agent hooks.</strong> Remove the entries whose command runs{" "}
+          <code>hooks run</code> from <code>.claude/settings.json</code> (or{" "}
+          <code>settings.local.json</code>, or <code>~/.claude/settings.json</code> for{" "}
+          <code>--scope user</code>) and, for Codex, from <code>.codex/hooks.json</code> or{" "}
+          <code>~/.codex/hooks.json</code>. Stop the daemon if it is running:{" "}
+          <code>agentfox admin hooks status</code> says whether it is.
+        </li>
+        <li>
+          <strong>The package.</strong> Whichever way you installed it:{" "}
+          <code>pip uninstall agentfox</code>, <code>uv remove agentfox</code>,{" "}
+          <code>uv tool uninstall agentfox</code> or <code>pipx uninstall agentfox</code>.
+        </li>
+        <li>
+          <strong>Local state.</strong> The database and evidence in the state directory. The
+          audit chain is evidence, so this is a separate, deliberate step.
+        </li>
+        <li>
+          <strong>Your account key.</strong> If you connected an account, revoke the key on{" "}
+          <strong>Settings → API keys</strong>. Deleting <code>agentfox.env</code> does not
+          revoke it.
+        </li>
+      </ol>
+      <Code>{`rm -rf .agentfox agentfox.toml .github/workflows/agentfox.yml   # in each project
+uv tool uninstall agentfox      # or: pip uninstall agentfox / pipx uninstall agentfox
+rm -rf ~/.agentfox              # or $AGENTFOX_STATE_DIR / $XDG_DATA_HOME/agentfox`}</Code>
 
       <h2 id="troubleshooting">Troubleshooting</h2>
       <div className="docs-table" tabIndex={0}><table>
@@ -322,6 +394,14 @@ rm agentfox.toml          # in each project where you ran agentfox init`}</Code>
           </tr>
         </tbody>
       </table></div>
+
+      <NextSteps
+        items={[
+          { href: "/docs/quickstart", label: "Quickstart", why: "connect your first agent" },
+          { href: "/docs/reference/config", label: "Configuration", why: "every setting, with its default" },
+          { href: "/docs/self-host", label: "Self-host", why: "run the gateway and dashboard yourself" },
+        ]}
+      />
     </article>
   );
 }

@@ -387,3 +387,49 @@ def test_a_repos_main_system_is_listed_before_its_one_agent_helpers():
         {"root": "shop", "repos": ["shop"], "members": [1], "updated_at": earlier},
     ]
     assert [p["root"] for p in P._order(out)] == ["triage", "relevance", "shop"]
+
+
+def test_one_agent_can_be_renamed_and_removed_and_the_rest_of_its_project_stays(client):
+    """Duplicates get cleaned up per agent: a display name, and removing one agent."""
+    key = _key(client)
+    _repo_a(client, key)
+    assert client.post("/api/projects/repo-a/approve", headers=ADMIN).status_code == 200
+
+    renamed = client.patch("/api/agents/billing-agent", json={"name": "  Billing  "}, headers=ADMIN)
+    assert renamed.status_code == 200 and renamed.json()["name"] == "Billing"
+    assert renamed.json()["slug"] == "billing-agent"
+    empty = client.patch("/api/agents/billing-agent", json={"name": " "}, headers=ADMIN)
+    assert empty.status_code == 422
+
+    gone = client.delete("/api/agents/billing-agent", headers=ADMIN)
+    assert gone.status_code == 200 and gone.json()["removed"] == ["billing-agent"]
+    assert client.delete("/api/agents/billing-agent", headers=ADMIN).status_code == 404
+    slugs = [a["slug"] for a in client.get("/api/agents", headers=ADMIN).json()["agents"]]
+    assert "billing-agent" not in slugs and "triage-agent" in slugs
+    with session_scope() as s, system_scope("test"):
+        triage = s.scalar(select(Agent).where(Agent.slug == "triage-agent"))
+        assert triage.status == "active"
+    # The project is still connected: its map and its attack tests stay.
+    assert client.get("/api/projects/repo-a/map", headers=ADMIN).status_code == 200
+    assert client.get("/api/onboarding/structure", headers=ADMIN).json()["connected"] is True
+
+
+def test_a_long_proposed_list_can_be_dismissed_at_once(client):
+    key = _key(client)
+    _repo_a(client, key)
+    drafts = [
+        a
+        for a in client.get("/api/agents", headers=ADMIN).json()["agents"]
+        if a["status"] == "draft"
+    ]
+    assert len(drafts) == 2 and all(a["scan_run_id"] is None for a in drafts)
+    out = client.post(
+        "/api/agents/reject", json={"ids": [a["id"] for a in drafts] + ["nope"]}, headers=ADMIN
+    )
+    assert out.status_code == 200 and out.json()["rejected"] == ["billing-agent", "triage-agent"]
+    statuses = {
+        a["slug"]: a["status"] for a in client.get("/api/agents", headers=ADMIN).json()["agents"]
+    }
+    assert statuses["triage-agent"] == "rejected" and statuses["billing-agent"] == "rejected"
+    auditor = as_user("aisha@example.com")
+    assert client.post("/api/agents/reject", json={"ids": []}, headers=auditor).status_code == 403

@@ -187,7 +187,8 @@ nav.side .project-switch-name { font-weight: 500; gap: 3px; }
 nav.side .project-switch-name small { order: 2; font-size: 10px; font-weight: 400; text-transform: lowercase; letter-spacing: 0; color: var(--af-brand); }
 nav.side .project-switch-name small::before { content: "// "; }
 nav.side .project-switch-menu { border-radius: 4px; box-shadow: var(--af-shadow-2); border-color: var(--af-line); font-family: var(--af-mono); }
-nav.side .project-switch-menu { left: 0; right: auto; min-width: 100%; width: max-content; max-width: 280px; }
+/* Fixed to the viewport (see ProjectSwitcher): a min-width of 100% was the whole window wide. */
+nav.side .project-switch-menu { right: auto; min-width: var(--psm-min, 200px); width: max-content; max-width: 280px; }
 nav.side .project-switch-menu button, nav.side .project-switch-filter { border-radius: 3px; font-family: var(--af-mono); font-size: 13px; }
 nav.side .project-switch-menu button small { white-space: nowrap; padding-left: 16px; }
 nav.side .project-switch-menu .project-switch-foot { padding-left: 7px; font-size: 13px; color: var(--af-link); }
@@ -573,6 +574,7 @@ nav.side .project-switch-menu .project-switch-danger { color: var(--af-err); }
 .at-next p { margin: 2px 0 0; font-size: 12.5px; color: var(--af-fg-2); line-height: 1.45; }
 .at-btn { align-self: flex-start; height: 30px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--af-brand); color: #fff; font-family: var(--af-sans); font-size: 12.5px; font-weight: 500; cursor: pointer; }
 .at-btn:disabled { opacity: .55; cursor: default; }
+a.at-btn { display: inline-flex; align-items: center; text-decoration: none; }
 .at-error { margin: 0; font-size: 12.5px; color: var(--af-err); }
 .at-lib { position: absolute; top: 32px; right: 0; z-index: 20; width: min(320px, 100%); display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--af-line-2); border-radius: 10px; background: var(--af-surface); box-shadow: var(--af-shadow-2); }
 .at-lib-search { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; border: 1px solid var(--af-line); border-radius: 7px; color: var(--af-muted); }
@@ -685,6 +687,8 @@ a.gm-add { align-self: flex-start; text-decoration: none; }
 .lib-open:hover { border-color: var(--af-line-2); background: var(--af-subtle); }
 .lib-open:focus-visible { outline: 2px solid var(--af-brand); outline-offset: 2px; }
 .lib-open .lib-actions { cursor: default; }
+.lib-n-btn { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.lib-n-btn:focus-visible { outline: 2px solid var(--af-brand); outline-offset: 2px; border-radius: 2px; }
 .lib-apply { position: relative; display: inline-flex; align-items: center; gap: 4px; }
 .lib-apply-more { padding-inline: 8px; }
 .lib-apply-menu { position: absolute; top: calc(100% + 4px); right: 0; z-index: 5; padding: 6px; border: 1px solid var(--af-line); border-radius: 8px; background: var(--af-surface); box-shadow: 0 6px 20px rgb(0 0 0 / 0.12); white-space: nowrap; }
@@ -890,3 +894,4 @@ a.gm-add { align-self: flex-start; text-decoration: none; }
 .shell .k-row-link tbody tr:hover { background: var(--af-subtle); }
 .shell .k-row-link .k-name::after { content: ""; position: absolute; inset: 0; }
 .shell .k-row-link td a:not(.k-name) { position: relative; z-index: 1; }
+.pending-agents { margin: 0 0 16px; }

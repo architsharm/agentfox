@@ -11,7 +11,9 @@ import {
   controlsLine,
   plainError,
   pollDelay,
+  readyForApp,
   runNote,
+  runRow,
   runState,
   shown,
   wouldStopNote,
@@ -247,8 +249,31 @@ describe("the panel's headline and notes", () => {
     expect(notRunWhy(row({ notRun: 0 }))).toBeNull();
   });
 
+  it("says the not-run lead once, even when the reason carries its own", () => {
+    // Was "20 not run: Not run: it needs a tool that reads records".
+    expect(notRunWhy(row({ notRun: 20, notRunReason: "Not run: it needs a tool that reads records." }))).toBe(
+      "20 not run: it needs a tool that reads records",
+    );
+  });
+
+  it("lists a past run with the panel's numbers", () => {
+    const r = run({ total: 18, gotThrough: 3, stopped: 12, resisted: 3, notRun: 0, errored: 0 }, [
+      row({ gotThrough: 3, stopped: 12, resisted: 3, controls: 4, overBlocked: 1 }),
+    ]);
+    expect(runRow(r)).toMatchObject({ attacks: 18, ran: 18, stopped: 12, through: 3, state: "done" });
+    expect(runRow(r).normal).toBe("3 of 4 normal requests answered, 1 blocked");
+  });
+
   it("shows progress as progress", () => {
     expect(progressText(row({ total: 36, done: 12 }))).toBe("testing 12 of 36");
     expect(progressText(row({ total: 36, done: 36 }))).toBeNull();
+  });
+});
+
+describe("the step after the before/after", () => {
+  it("points at running the app once both runs have finished with basic guardrails on", () => {
+    expect(readyForApp({ beforeRan: true, afterRan: true, basicOn: true, live: false })).toBe(true);
+    expect(readyForApp({ beforeRan: true, afterRan: false, basicOn: true, live: false })).toBe(false);
+    expect(readyForApp({ beforeRan: true, afterRan: true, basicOn: true, live: true })).toBe(false);
   });
 });

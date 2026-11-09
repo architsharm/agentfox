@@ -138,7 +138,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-337 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+348 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -169,6 +169,9 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/detectors/{key}/pull` | Download the model weights this detector loads, in a background job. |
 | `GET` | `/api/health` | Liveness, plus what is currently not being checked. |
 | `GET` | `/api/me` | The signed-in identity, for the account menu. |
+| `GET` | `/api/members` | Everyone in this workspace, owners first. |
+| `POST` | `/api/members` | Add a teammate with a role. Returns a sign-in key for them, shown this once. |
+| `PATCH` | `/api/members/{member_id}` | Change a teammate's role, or deactivate them (their keys stop working with it). |
 | `GET` | `/api/memory` | List Entries |
 | `POST` | `/api/memory/{entry_id}/revoke` | Pull an entry immediately — the concrete fix for 'no way to find and |
 | `POST` | `/api/memory/{entry_id}/verify` | A human vouches for an entry — it stops decaying on the unverified TTL. |
@@ -179,6 +182,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/metrics/rules` | How each rule behaved: fired, stopped something, or only watched. |
 | `GET` | `/api/metrics/summary` | Summary |
 | `GET` | `/api/onboarding` | Install state as a checklist, computed live. |
+| `POST` | `/api/onboarding/agents/{slug}/tests` | Run the attack test of the project this agent is in: the same test as the |
 | `GET` | `/api/onboarding/guardrails` | The setup wizard's suggested guardrails, as a list to show. No test reads them: |
 | `POST` | `/api/onboarding/guardrails` | Saves the wizard's toggles. They change what the wizard shows, nothing else. |
 | `GET` | `/api/onboarding/key` | This user's setup key. Made the first time it is asked for (or after the last |
@@ -191,6 +195,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/onboarding/runner/poll` | Heartbeat, and the next test to run if one is waiting. |
 | `POST` | `/api/onboarding/runner/runs/{run_id}/guard` | Check one surface of one attack against an agent's real policies, persisting nothing. |
 | `POST` | `/api/onboarding/runner/runs/{run_id}/results` | Runner Results |
+| `GET` | `/api/onboarding/runs` | Every attack test the projects' panels ran, latest first (Testing → Attack |
 | `DELETE` | `/api/onboarding/state` | Start over at step 1. The key survives, so a running `agentfox init` stays valid |
 | `GET` | `/api/onboarding/state` | Get State |
 | `PATCH` | `/api/onboarding/state` | Save State |
@@ -213,6 +218,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/agents` | Every agent. An agent whose project was disconnected (status ``removed``) is |
 | `POST` | `/api/agents` | Create Agent |
 | `POST` | `/api/agents/{agent_id}/approve-system` | Approve a proposed agent and every proposed agent it hands work to, in one step. |
+| `DELETE` | `/api/agents/{slug}` | Remove one agent from the dashboard (a duplicate, or one that is gone), the way |
 | `GET` | `/api/agents/{slug}` | Get Agent |
 | `PATCH` | `/api/agents/{slug}` | Update Agent |
 | `GET` | `/api/agents/{slug}/access` | Get Access |
@@ -295,6 +301,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/policies/lint` | Policy lint. `passed` is false when critical/high findings exist. |
 | `POST` | `/api/policies/simulate` | Replay recorded traffic against a candidate policy. |
 | `POST` | `/api/policies/validate` | Validate Policy |
+| `DELETE` | `/api/policies/{key}` | Stop applying an imported policy. Its versions stay, for the audit trail. |
 | `GET` | `/api/policies/{key}` | Get Policy |
 | `GET` | `/api/policies/{key}/canary` | Get Policy Canary |
 | `POST` | `/api/policies/{key}/canary/advance` | Check the candidate cohort's health and advance, hold, or auto-roll-back. |
@@ -329,7 +336,7 @@ from the code. Regenerate after changing any route:
 |---|---|---|
 | `GET` | `/api/eval/annotations/queue` | Eval results a human should look at: score within `band` of the scorer's |
 | `GET` | `/api/eval/drift` | Read-only. Viewing drift persists nothing, so the number of drift findings |
-| `POST` | `/api/eval/gate` | The CI entry point. Non-zero exit maps from ``passed: false``. |
+| `POST` | `/api/eval/gate` | The CI entry point. A gate that fails answers **412** with the same body |
 | `POST` | `/api/eval/online` | Run Online |
 | `POST` | `/api/eval/results/{result_id}/annotate` | Record a human's judgment on a borderline eval result. Requires a note — |
 | `GET` | `/api/eval/runs` | List Runs |
@@ -439,6 +446,7 @@ from the code. Regenerate after changing any route:
 
 | Method | Path | Purpose |
 |---|---|---|
+| `POST` | `/api/agents/reject` | Dismiss several proposed agents at once ("Dismiss all" on a long Proposed list): |
 | `POST` | `/api/agents/{agent_id}/approve` | Approve Agent |
 | `POST` | `/api/agents/{agent_id}/reject` | Reject Agent |
 | `DELETE` | `/api/alerts/slack` | Stop sending this tenant's alerts to its own Slack channel. |
@@ -520,6 +528,8 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/custom-rules/fields` | The arguments a tool is known to take, to suggest as a condition's field. |
 | `POST` | `/api/custom-rules/try` | Match one text against a rule that has not been saved. Records nothing. |
 | `DELETE` | `/api/custom-rules/{key}` | Remove Custom Rule |
+| `GET` | `/api/custom-rules/{key}/history` | Every saved version of a rule's words, patterns or condition, with what changed. |
+| `POST` | `/api/custom-rules/{key}/versions/{version}/restore` | Put an earlier version of a rule's definition back, as a new version. |
 | `GET` | `/api/features` | Get Features |
 | `POST` | `/api/features/checks/{key}` | Switch a check on or off for every project, or for one. Switching on one that |
 | `POST` | `/api/features/protections/{key}` | Set Protection |
@@ -541,6 +551,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/proposals/{proposal_id}/decide` | Approve or reject; an org-level loosening needs two different approvers. |
 | `POST` | `/api/proposals/{proposal_id}/rollback` | Undo an applied or canaried proposal through its applier. |
 | `POST` | `/api/proposals/{proposal_id}/verify` | Record whether an applied change worked; ``verified: false`` rolls it back. |
+| `GET` | `/api/report/summary` | The one-page summary `agentfox report` prints, for this workspace: what ran, |
 | `GET` | `/api/rules/{rule_id}/examples` | Get Examples |
 | `POST` | `/api/rules/{rule_id}/examples` | Post Example |
 | `POST` | `/api/rules/{rule_id}/examples/check` | Check Examples |

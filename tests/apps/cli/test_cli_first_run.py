@@ -328,6 +328,8 @@ def test_report_evidence_without_enterprise_says_what_it_is():
     assert result.exit_code == 2
     assert "AgentFox Enterprise" in result.output
     assert "agentfox report verify" in result.output
+    # agentfox-enterprise is not on PyPI, so the message names the way it installs.
+    assert "pip install agentfox ./ee" in flat(result.output)
 
 
 # ---------------------------------------------------------------------------

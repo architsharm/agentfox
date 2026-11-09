@@ -40,7 +40,10 @@ from agentfox.apps.cli.wizard.command import register as _register_up
 
 app = typer.Typer(
     name="agentfox",
-    help="Agent-native, vendor-neutral governance for AI agents in production.",
+    help="The control plane for AI agents: discover them, govern what they may do, protect "
+    "them at runtime, test them, and prove it.\n\n"
+    "New here? `agentfox scan`, then `agentfox up` (guided setup). With an account key: "
+    "`agentfox init --key …`.",
     no_args_is_help=True,
     add_completion=False,
 )
@@ -81,7 +84,7 @@ from agentfox.core import extensions as _extensions  # noqa: E402
 
 _extensions.collect("cli", app)
 
-# The visible tree (Start · See · Watch · Contain · Prove · Operate) is a layer over
+# The visible tree (Start · Discover · Govern · Protect · Test · Prove · Operate) is a layer over
 # everything registered above: new names for the same callbacks, old names hidden but
 # still working. Keep this the last registration in the module.
 apply_layout(app)

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Callout, Code, NextSteps, Output, TaskTable } from "@/components/docs/blocks";
+import { Callout, Code, DemoAgentNames, NextSteps, Output, TaskTable } from "@/components/docs/blocks";
 import { publicPageMetadata } from "@/lib/site";
 
 export const metadata: Metadata = publicPageMetadata({
@@ -257,23 +257,30 @@ shell.run PolicyViolation [('shell.destructive', 'enforce')]`}</Output>
 
       <h2 id="packs">The shipped packs</h2>
       <p>
-        <code>agentfox init</code> loads <code>baseline</code>, <code>tool-containment</code>{" "}
-        and <code>eu-ai-act-high-risk</code>. <code>coding-agent</code> is loaded only for
+        <code>agentfox init</code> loads <code>agent-integrity</code>, <code>baseline</code>,{" "}
+        <code>eu-ai-act-high-risk</code> and <code>tool-containment</code>, every one watching
+        (<code>observe</code>) until you turn it to blocking with{" "}
+        <code>agentfox policy enforce &lt;key&gt;</code>; a pack someone switched to blocking
+        stays blocking when <code>init</code> or <code>up</code> runs again. In{" "}
+        <code>policy packs</code> the mode is the one the file declares; in{" "}
+        <code>policy list</code> it is the one in force. <code>coding-agent</code> is loaded only for
         agents with coding-agent hooks installed (<code>agentfox admin hooks install</code>,
         see <Link href="/docs/connect/coding-agents">Coding agents</Link>).
       </p>
       <Code>{`agentfox policy packs
 agentfox policy list`}</Code>
       <Output>{`pack                 origin   mode     rules  file
+agent-integrity      shipped  observe  3      …/agentfox/packs/agent-integrity/policies/agent-integrity.yaml
 baseline             shipped  observe  13     …/agentfox/packs/baseline/policies/baseline.yaml
-coding-agent         shipped  observe  5      …/agentfox/packs/coding-agent/policies/coding-agent.yaml
+coding-agent         shipped  observe  10     …/agentfox/packs/coding-agent/policies/coding-agent.yaml
 eu-ai-act-high-risk  shipped  observe  7      …/agentfox/packs/eu-ai-act/policies/eu-ai-act-high-risk.yaml
-tool-containment     shipped  enforce  25     …/agentfox/packs/tool-containment/policies/tool-containment.yaml
+tool-containment     shipped  enforce  26     …/agentfox/packs/tool-containment/policies/tool-containment.yaml
 
 policy               version  mode     rules
+agent-integrity      v1       observe  3
 baseline             v1       observe  13
 eu-ai-act-high-risk  v1       observe  7
-tool-containment     v1       enforce  25`}</Output>
+tool-containment     v1       observe  26`}</Output>
 
       <h3 id="capability-packs">Capability packs</h3>
       <p>
@@ -297,11 +304,21 @@ agentfox policy packs validate .agentfox/packs/payments/chargebacks`}</Code>
       <p>Detection-driven rules on every surface. Ships in observe: read what it would have done, then promote it.</p>
       <PackTable rules={BASELINE} />
 
-      <h3 id="pack-tool-containment">tool-containment: what an agent may do (enforce)</h3>
+      <h3 id="pack-tool-containment">tool-containment: what an agent may do</h3>
       <p>
         Rules about the action and where its arguments came from, which hold when a
-        detector misses. Enforces from <code>agentfox init</code>, and the pack cannot be
-        loaded with <code>control_plane.tamper</code> removed or disabled.
+        detector misses. The file declares <code>enforce</code>, but <code>agentfox init</code>{" "}
+        binds it watching like every pack; <code>agentfox policy enforce tool-containment</code>{" "}
+        starts it blocking. The pack cannot be loaded with <code>control_plane.tamper</code>{" "}
+        removed or disabled.
+      </p>
+      <p id="built-in-containment">
+        Its mode also decides two checks the enforcer makes itself, listed under Tool containment
+        on the Policies page: <code>capability.default_deny</code> (a tool the agent was not
+        granted; <code>agentfox.auto()</code> applies it once the agent holds any grant) and <code>composition.escalation</code> (a value a
+        lower-impact tool returned, used by a tool that changes more). While the pack watches, or
+        where it is not applied, both are recorded as would-block and the call goes through. A
+        limit or &quot;Ask first&quot; a person set on a grant applies at once, whatever the mode.
       </p>
       <PackTable rules={CONTAINMENT} />
       <Callout kind="note" title="injection.in_tool_arguments">
@@ -331,7 +348,10 @@ agentfox policy packs validate .agentfox/packs/payments/chargebacks`}</Code>
         repository. <code>agentfox init</code> (safe to run again) loads it alongside
         the shipped packs, and it travels with the code through review like anything
         else. A file whose <code>key</code> equals a shipped pack&apos;s replaces that
-        pack.
+        pack. It is loaded watching, whatever its <code>mode:</code> says; promote it with{" "}
+        <code>agentfox policy enforce &lt;key&gt;</code>. <code>agentfox init --server</code>{" "}
+        (an account) does not load these files: a setup key only maps the agent, so it lists
+        them and prints the command that loads each one with your account key.
       </p>
       <Code lang="yaml" title=".agentfox/policies/support-desk.yaml">{`key: support-desk
 name: Support desk rules
@@ -388,11 +408,12 @@ agentfox policy lint`}</Code>
   controls: []
   compiles to 73 lines of Rego
 …
-  ✓ 4 policy pack(s) loaded
+  ✓ 5 policy packs loaded
+      agent-integrity          observe  recorded, nothing blocked
       baseline                 observe  recorded, nothing blocked
       eu-ai-act-high-risk      observe  recorded, nothing blocked
-      support-desk             enforce  violations are blocked now
-      tool-containment         enforce  violations are blocked now
+      support-desk             observe  recorded, nothing blocked
+      tool-containment         observe  recorded, nothing blocked
 …
 no policy issues`}</Output>
       <p>
@@ -486,7 +507,11 @@ output: block ['pii.outbound_redact', 'output.card_number']`}</Output>
       <h2 id="grants">Grants and tool declarations</h2>
       <p>
         Default deny is not a rule you write: a tool call with no grant is refused
-        (<code>capability.denied</code>) whatever mode the packs are in. Grants and
+        (<code>capability.denied</code>; under <code>agentfox.auto()</code>, once the agent
+        holds any grant) while{" "}
+        <a href="#pack-tool-containment">tool-containment</a> blocks, and recorded as
+        would-block while it watches or where it is not applied. A limit on a grant, or a
+        grant that requires approval, applies whatever the mode. Grants and
         declarations are the facts the <a href="#pack-tool-containment">containment rules</a>{" "}
         reason over. In the app they are an agent&apos;s <strong>Access</strong> tab.
       </p>
@@ -511,6 +536,8 @@ output: block ['pii.outbound_redact', 'output.card_number']`}</Output>
         declares too.
       </p>
 
+      <DemoAgentNames />
+
       <h3 id="grant-options">permit grant</h3>
       <Code>{`agentfox permit grant support-triage 'billing.*' --limit 'format:in=csv,json' --limit 'rows:lte=5000' --max-taint retrieved --requires-approval --expires-in-days 7 --yes`}</Code>
       <div className="docs-table" tabIndex={0}><table>
@@ -520,7 +547,7 @@ output: block ['pii.outbound_redact', 'output.card_number']`}</Output>
         <tbody>
           <tr><td><code>TOOL</code></td><td>required</td><td>A key or a glob (<code>tickets.*</code>, <code>mcp:github/*</code>, <code>*</code>). When several grants match, the most specific wins.</td></tr>
           <tr><td><code>--limit</code></td><td>none</td><td>Repeatable argument limit; see the operators below.</td></tr>
-          <tr><td><code>--max-taint</code></td><td><code>user</code></td><td>The worst provenance an argument may carry and still run without approval: <code>none</code>, <code>user</code>, <code>retrieved</code>, <code>tool_result</code>, <code>subagent</code>, <code>memory</code>. Above it the call escalates. Within it, the <code>taint.*</code> rules defer to the grant; <code>composition.escalation</code> does not.</td></tr>
+          <tr><td><code>--max-taint</code></td><td><code>memory</code> for a tool that only reads, <code>user</code> for any other (as the dashboard&apos;s Add)</td><td>The worst provenance an argument may carry and still run without approval: <code>none</code>, <code>user</code>, <code>retrieved</code>, <code>tool_result</code>, <code>subagent</code>, <code>memory</code>. Above it the call escalates. Within it, the <code>taint.*</code> rules defer to the grant; <code>composition.escalation</code> does not.</td></tr>
           <tr><td><code>--requires-approval</code></td><td>off</td><td>Every matching call goes to a person first.</td></tr>
           <tr><td><code>--expires-in-days</code></td><td>no expiry</td><td>The grant stops matching after N days.</td></tr>
           <tr><td><code>--action</code></td><td>every action</td><td>Limit the grant to named actions on the tool. Repeatable.</td></tr>
@@ -862,7 +889,12 @@ agentfox policy observe baseline`}</Code>
 baseline → observe`}</Output>
       <p>
         Both are audited. <code>agentfox.auto()</code> in its default mode follows the
-        change with no code change.
+        change with no code change; <code>policy enforce</code> names any{" "}
+        <code>agentfox.auto(..., mode=&quot;observe&quot;)</code> line in the project, which
+        never blocks, and the edit that fixes it. The key can also be a library applied per agent
+        (<code>basic</code>, <code>baseline</code>, <code>tool-containment</code> from the
+        dashboard&apos;s Libraries): every agent&apos;s copy is switched. A shipped pack the
+        workspace never loaded is loaded in that mode.
       </p>
 
       <h3 id="canary">Canary</h3>

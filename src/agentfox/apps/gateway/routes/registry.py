@@ -292,6 +292,8 @@ def _agent_json(agent: Agent, session: Session | None = None) -> dict[str, Any]:
         "project": project_of(agent),
         "status": agent.status,
         "registered": agent.registered,
+        # Why a draft showed up: a repository scan (its run) or, with none, `agentfox init`.
+        "scan_run_id": agent.source_scan_run_id,
         "owned": agent.is_owned,
         "is_seed": agent.is_seed,
         "declared_models": agent.declared_models,
@@ -370,6 +372,8 @@ def get_agent(
 
 
 class AgentUpdate(BaseModel):
+    #: The display name the dashboard shows; the slug (what `auto()` names) never changes.
+    name: str | None = None
     owner_email: str | None = None
     owner_team: str | None = None
     risk_tier: str | None = None
@@ -385,6 +389,10 @@ def update_agent(
 ) -> dict[str, Any]:
     agent = get_agent_or_404(session, slug)
     changes = payload.model_dump(exclude_unset=True)
+    if "name" in changes:
+        changes["name"] = (changes["name"] or "").strip()[:200]
+        if not changes["name"]:
+            raise HTTPException(422, "A name can't be empty.")
     for field, value in changes.items():
         setattr(agent, field, value)
     session.flush()
@@ -398,6 +406,26 @@ def update_agent(
         payload=changes,
     )
     return _agent_json(agent, session)
+
+
+@router.delete("/agents/{slug}")
+def remove_agent(
+    slug: str, session: Session = Depends(db), user: User = Depends(require("registry"))
+) -> dict[str, Any]:
+    """Remove one agent from the dashboard (a duplicate, or one that is gone), the way
+    disconnecting its project removes each of its agents: its guardrails recorded and
+    emptied, its tool permissions revoked, what init declared for it cleared. Its
+    history (traffic, issues, audit) is kept, and `agentfox init` or ``agentfox up``
+    proposes it again. The rest of its project stays."""
+    from agentfox.capabilities.onboarding.projects import remove_agents
+    from agentfox.platform.registry.projects import REMOVED
+
+    agent = get_agent_or_404(session, slug)
+    if agent.status == REMOVED:
+        raise HTTPException(404, f"'{slug}' is already removed")
+    out = remove_agents(session, [agent], subject=slug, actor=user.email or user.id)
+    session.commit()
+    return out
 
 
 @router.get("/agents/{slug}/lineage")
@@ -505,6 +533,10 @@ class ToolIn(BaseModel):
     json_schema: dict[str, Any] = Field(default_factory=dict)
     #: ``untrusted`` | ``trusted``. Omitted leaves an existing tool's declaration as it is.
     output_trust: str | None = None
+    #: ``communication`` (`agentfox declare tool --effect`); "" clears it, omitted keeps it.
+    effect_class: str | None = None
+    #: What a call sets off downstream (`--triggers`). Omitted keeps what is declared.
+    triggers: list[str] | None = None
 
 
 @router.get("/tools")
@@ -520,6 +552,7 @@ def list_tools(
                 "impact": t.impact,
                 "impact_source": impact_source_of(t),
                 "output_trust": t.output_trust or "untrusted",
+                "triggers": list(t.triggers_json or []),
                 "description": t.description,
                 "mcp_server_id": t.mcp_server_id,
             }
@@ -532,10 +565,12 @@ def list_tools(
 def create_tool(
     payload: ToolIn, session: Session = Depends(db), user: User = Depends(require("registry"))
 ) -> dict[str, Any]:
-    from agentfox.core.models import OUTPUT_TRUST_LEVELS
+    from agentfox.core.models import OUTPUT_TRUST_LEVELS, TOOL_EFFECT_CLASSES
 
     if payload.output_trust is not None and payload.output_trust not in OUTPUT_TRUST_LEVELS:
         raise HTTPException(400, f"output_trust must be one of {OUTPUT_TRUST_LEVELS}")
+    if payload.effect_class and payload.effect_class not in TOOL_EFFECT_CLASSES:
+        raise HTTPException(400, f"effect_class must be one of {TOOL_EFFECT_CLASSES}")
     tool = upsert_tool(
         session,
         payload.key,
@@ -545,9 +580,17 @@ def create_tool(
         schema=payload.json_schema,
         description=payload.description,
         output_trust=payload.output_trust,
+        effect_class=payload.effect_class,
         actor=user.email or user.id,
     )
-    return {"key": tool.key, "impact": tool.impact, "output_trust": tool.output_trust}
+    if payload.triggers is not None:
+        tool.triggers_json = payload.triggers
+    return {
+        "key": tool.key,
+        "impact": tool.impact,
+        "output_trust": tool.output_trust,
+        "triggers": list(tool.triggers_json or []),
+    }
 
 
 class McpIn(BaseModel):

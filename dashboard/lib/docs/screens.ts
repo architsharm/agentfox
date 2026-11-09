@@ -31,7 +31,7 @@ export const SCREENS = {
     src: "/docs/screens/scan-terminal.svg",
     alt: "Terminal output of agentfox scan: the agents it found by name, the tools they can reach, and a Next box that says agentfox up.",
     width: 1190,
-    height: 782,
+    height: 758,
   },
   attackTest: {
     src: "/docs/screens/attack-test.png",
@@ -53,9 +53,9 @@ export const SCREENS = {
   },
   yourRules: {
     src: "/docs/screens/your-rules.png",
-    alt: "The Your rules drawer: each rule you wrote with its surfaces and effect, business rules with their mode, and a Start blocking button.",
+    alt: "The Your rules drawer: each rule you wrote, what it checks and what it would do, with Start blocking and Add a rule buttons.",
     width: 1280,
-    height: 1800,
+    height: 1660,
   },
   agentMap: {
     src: "/docs/screens/agent-map.png",
@@ -95,19 +95,19 @@ export const SCREENS = {
   },
   policies: {
     src: "/docs/screens/policies.png",
-    alt: "The Policies page: each rule, the agents it applies to, and whether it watches or blocks.",
+    alt: "The Policies page, Applied rules: the rules on the selected agent, grouped by library, with what each would do and whether it watches or blocks.",
     width: 2440,
     height: 1660,
   },
   ruleDetail: {
     src: "/docs/screens/rule-detail.png",
-    alt: "A library's page: its rules, what each does, and whether it watches or blocks.",
+    alt: "A library opened from Policies, Libraries: its rules, what each checks, what it would do, and a Start blocking button.",
     width: 2440,
     height: 1660,
   },
   addRule: {
     src: "/docs/screens/add-rule.png",
-    alt: "The Add rule form: describe the rule, choose where it applies and what it does.",
+    alt: "The New rule page: what do you want to do, with one card per kind of rule, from blocking words to applying a library.",
     width: 2440,
     height: 1660,
   },
@@ -119,13 +119,13 @@ export const SCREENS = {
   },
   traces: {
     src: "/docs/screens/traces.png",
-    alt: "The Traces page: recent runs with their agent, verdict and duration.",
+    alt: "Activity, Runs tab: recent runs with their agent, what was asked, the outcome and why.",
     width: 2440,
     height: 1660,
   },
   traceDetail: {
     src: "/docs/screens/trace-detail.png",
-    alt: "One trace: each model and tool call in order, the checks it went through, and why it was blocked.",
+    alt: "One run: each step with the checks it went through and why it was blocked, with Adjust rule and Prevent this buttons.",
     width: 2440,
     height: 1660,
   },

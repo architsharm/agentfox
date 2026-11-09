@@ -381,6 +381,7 @@ def _follow_file(ctx: Any, pick: Pick, entry: str, agent: str | None, run: Run) 
         fresh.name = agent
     run.agent = fresh.name
     run.system_tools = fresh.tools if fresh.spec is not None else None
+    run.system_members = fresh.members if fresh.spec is not None else None
     return fresh
 
 
@@ -464,10 +465,37 @@ def _print_scan(ctx: Context) -> None:
     console.print(f"  [dim]{report.files_scanned} files in {escape(ctx.root.resolve().name)}/[/]")
     for label, value in rows:
         console.print(f"  {label:<16}{value}")
+    if machine is not None:
+        # Outside the repository: said, so nobody wonders why home-folder files count.
+        console.print(
+            "  [dim]also read, not changed: the AI tools' settings in your home folder "
+            "(~/.claude, ~/.cursor, …); --skip-machine leaves them out[/]"
+        )
     if machine is not None and (machine.trifectas or flagged or machine.critical):
         console.print(
             "  [dim]details:[/] [cyan]agentfox scan machine[/], [cyan]agentfox scan skills[/]"
         )
+
+
+def _nothing_here(ctx: Context) -> bool:
+    """Whether the scan found nothing `up` could govern in this folder."""
+    report = ctx.report
+    return not (
+        report.agents
+        or report.model_calls
+        or ctx.tool_names
+        or ctx.mcp_names
+        or any(h.in_repo or h.hooked for h in ctx.harnesses)
+    )
+
+
+def _apps(ctx: Any, roots: list[str]) -> int:
+    """How many apps (projects: the nearest `pyproject.toml` or `package.json`) the
+    agent systems rooted at ``roots`` live in."""
+    from agentfox.capabilities.onboarding.mapper import project_name_for
+
+    by_key = {a.key: a for a in ctx.report.agents}
+    return len({project_name_for(ctx.root, by_key[r].file) for r in roots if r in by_key})
 
 
 def _short(where: str) -> str:
@@ -547,7 +575,7 @@ def up(
         help="Skip the user-level MCP configs and skills of the AI tools on this machine.",
     ),
 ) -> None:
-    """Set up AgentFox for this project: scan, choose, and it does the rest.
+    """Guided setup: scan, choose what to cover, and it does the rest.
 
     Asks where AgentFox runs (this machine, your own server, or AgentFox Cloud), what
     to cover (coding agents, your Python agent, the gateway, tools, MCP servers,
@@ -583,6 +611,16 @@ def up(
         ctx = detect(root, machine=not skip_machine)
     _print_scan(ctx)
     saved = ctx.saved
+    if include is None and _nothing_here(ctx):
+        # An empty folder, or one with no agent: setting up a workspace, policies and
+        # a recorded scan of nothing would end in "Done", with nothing governed.
+        console.print(
+            "\n  [yellow]Nothing to set up here[/]: no agent, model call, tool, MCP server "
+            "or coding-agent setup in this folder. Run [cyan]agentfox up[/] in the folder "
+            "that holds your agent (`agentfox scan <path>` shows what it finds), or name "
+            "what to set up with [cyan]--with[/]."
+        )
+        raise typer.Exit(0)
 
     # 2. Where --------------------------------------------------------------------
     _step(2, "Where AgentFox runs")
@@ -600,11 +638,6 @@ def up(
     except TargetError as exc:
         console.print(f"  [red]✗[/] {escape(str(exc))}")
         raise typer.Exit(1) from None
-    if chosen.key == "local" and not dry_run:
-        from agentfox.apps.cli.onboarding import setup_workspace
-
-        setup_workspace(root, saved.get("environment", "development"), brief=True)
-
     # `--agent` names one the scan found (set that one up) or a new name; a saved name
     # is kept. Either way the agent and the tools it is granted are the ones the chosen
     # file runs (see `_pick`), not every agent in the folder.
@@ -624,6 +657,7 @@ def up(
         interactive=interactive,
     )
     run.system_tools = pick.tools if pick.spec is not None else None
+    run.system_members = pick.members if pick.spec is not None else None
     if pick.spec is not None and pick.file:
         run.answers["entry-default"] = pick.file
     edition = run.edition
@@ -666,8 +700,11 @@ def up(
         # The best other first runs, by the key `--agent` takes.
         shown = pick.others[:3]
         how = "pick its file above, or run" if interactive else "run"
+        apps = _apps(ctx, [s["root"] for s in _systems(ctx)])
         console.print(
-            f"  [yellow]{pick.systems} separate agent systems here[/] — setting up "
+            f"  [yellow]{pick.systems} separate agent systems here"
+            + (f", in {apps} apps" if apps > 1 else "")
+            + "[/] — setting up "
             f"[bold]{escape(run.agent)}[/] only"
             + (f" [dim]({escape(pick.file)})[/]" if pick.file else "")
             + f". For another, {how} [cyan]agentfox up --agent <name>[/]: "
@@ -706,6 +743,12 @@ def up(
 
     # 7. Do it --------------------------------------------------------------------
     _step(5, "Setting up")
+    if chosen.key == "local":
+        # After the confirm, not before it: a Ctrl-C or "no" at the plan used to leave
+        # agentfox.toml and the database written for a setup that never happened.
+        from agentfox.apps.cli.onboarding import setup_workspace
+
+        setup_workspace(root, saved.get("environment", "development"), brief=True)
     for component in CATALOGUE:
         if component.key not in picked:
             continue
@@ -735,10 +778,16 @@ def up(
 
     # 8. Summary ------------------------------------------------------------------
     failed = [o for o in run.outcomes if o.status == "failed"]
+    # Named, not counted: "4 set up" did not say of what, and in a folder with no
+    # agent it counted housekeeping as if something had been governed.
+    done = [
+        BY_KEY[key].label.split(" — ")[0] if key in BY_KEY else key
+        for key in dict.fromkeys(o.component for o in run.outcomes if o.status == "done")
+    ]
     lines = [
         f"[bold]{'Done' if not failed else 'Done, with problems'}[/] — "
-        f"{sum(o.status == 'done' for o in run.outcomes)} set up"
-        + (f", [red]{len(failed)} failed[/]" if failed else ""),
+        + (f"set up: {escape(', '.join(done))}" if done else "nothing set up")
+        + (f"; [red]{len(failed)} failed[/]" if failed else ""),
     ]
     if run.running:
         lines.append("\n[bold]Running in the background[/]")
@@ -759,8 +808,7 @@ def up(
         ]
     )
     lines.append("\n[bold]Next[/]")
-    width = min(max(len(cmd) for cmd, _ in steps), 44)
-    lines.extend(f"  [cyan]{escape(cmd):<{width}}[/]  [dim]{escape(why)}[/]" for cmd, why in steps)
+    lines.extend(next_step_lines(steps))
     hidden = [c.label.split(" — ")[0].lower() for c in CATALOGUE if _hidden(c, run)]
     if hidden:
         # Said once, here, rather than as greyed-out options in the first run's list.
@@ -772,6 +820,28 @@ def up(
     console.print(Panel("\n".join(lines), border_style="red" if failed else "green"))
     if failed:
         raise typer.Exit(1)
+
+
+#: Columns a panel line has in an 80-column terminal: the border, padding and indent.
+PANEL_TEXT_WIDTH = 74
+
+
+def next_step_lines(steps: list[tuple[str, str]], width: int = PANEL_TEXT_WIDTH) -> list[str]:
+    """`command  why` rows that never wrap inside a command.
+
+    A row that fits in an 80-column panel stays on one line, the commands aligned. One
+    that does not puts the reason on the line below, so the command is never broken
+    across lines and copy-pastes whole.
+    """
+    column = min(max((len(cmd) for cmd, _ in steps), default=0), 44)
+    out: list[str] = []
+    for cmd, why in steps:
+        if len(cmd) <= column and 2 + column + 2 + len(why) <= width:
+            out.append(f"  [cyan]{escape(cmd):<{column}}[/]  [dim]{escape(why)}[/]")
+        else:
+            out.append(f"  [cyan]{escape(cmd)}[/]")
+            out.append(f"      [dim]{escape(why)}[/]")
+    return out
 
 
 def _first_steps(run: Run) -> list[tuple[str, str]]:
@@ -789,10 +859,17 @@ def _first_steps(run: Run) -> list[tuple[str, str]]:
             script = False
         # `python <file>` only for a file that runs as a script; a graph module or a
         # package entry point is started the way it always was.
+        from agentfox.apps.cli.wizard.components import unwatched_frameworks
+
+        unwatched = unwatched_frameworks(run)
         steps.append(
             (
                 f"python {entry}" if script else "run your app",
-                f'as usual: {entry} now calls auto("{run.agent}"), which records every call',
+                f'as usual: {entry} now calls auto("{run.agent}"), which records every call'
+                if not unwatched
+                else f'as usual: {entry} now calls auto("{run.agent}"); '
+                f"{' and '.join(unwatched)} model calls are not governed by it "
+                "(use the gateway)",
             )
         )
     elif "python-app" in run.picked:

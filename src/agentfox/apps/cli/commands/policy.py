@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import datetime as dt
+import os
+import re
 from pathlib import Path
 
 import typer
+from rich.markup import escape
 from rich.table import Table
 
 from agentfox.apps.cli._style import SEVERITY_COLOUR
@@ -13,7 +16,7 @@ from agentfox.apps.cli.commands._shared import _emit, _session, console
 from agentfox.apps.cli.commands.packs import packs_app
 
 policy_app = typer.Typer(
-    help="Write the rules, try them against recorded traffic, then turn them on.",
+    help="Write rules, try them on recorded traffic, then turn them on.",
     no_args_is_help=True,
 )
 policy_app.add_typer(packs_app, name="packs")
@@ -24,13 +27,44 @@ def policy_list() -> None:
     """List policies and their enforcement mode."""
     from sqlalchemy import select
 
+    from agentfox.apps.cli import account as _account
     from agentfox.core.models import Policy, PolicyVersion
     from agentfox.platform.policy import current_binding
 
+    table = Table(box=None, pad_edge=False)
+    for column in ("policy", "version", "mode", "rules"):
+        table.add_column(column, style="bold" if column == "policy" else None)
+
+    remote = _account.use(console)
+    if remote is not None:
+        try:
+            policies = remote.get("/api/policies").get("policies") or []
+            business = [
+                r["mode"]
+                for r in remote.get("/api/business/rules").get("rules") or []
+                if r.get("enabled")
+            ]
+        except _account.AccountError as exc:
+            _account.fail(console, exc)
+        for policy in policies:
+            if policy.get("latest_version") is None:
+                continue
+            mode = policy.get("mode") or "unbound"
+            shown = policy.get("bound_version") or policy["latest_version"]
+            version = f"v{shown}"
+            if policy.get("bound_version") and policy["bound_version"] != policy["latest_version"]:
+                version += f" [dim](v{policy['latest_version']} saved, not live)[/]"
+            table.add_row(
+                policy["key"],
+                version,
+                f"[green]{mode}[/]" if mode == "enforce" else f"[yellow]{mode}[/]",
+                str(policy.get("rules", 0)),
+            )
+        _business_row(table, business)
+        console.print(table)
+        return
+
     with _session() as session:
-        table = Table(box=None, pad_edge=False)
-        for column in ("policy", "version", "mode", "rules"):
-            table.add_column(column, style="bold" if column == "policy" else None)
         for policy in session.scalars(select(Policy).order_by(Policy.key)):
             latest = session.scalars(
                 select(PolicyVersion)
@@ -55,17 +89,20 @@ def policy_list() -> None:
             )
         # Business rules (approval limits) are rules too, stored apart from the
         # packs; the dashboard counts them in Your rules, so they are counted here.
-        business = _business_modes(session)
-        if business:
-            modes = set(business)
-            mode = modes.pop() if len(modes) == 1 else "mixed"
-            table.add_row(
-                "business rules",
-                "—",
-                f"[green]{mode}[/]" if mode == "enforce" else f"[yellow]{mode}[/]",
-                str(len(business)),
-            )
+        _business_row(table, _business_modes(session))
         console.print(table)
+
+
+def _business_row(table: Table, business: list[str]) -> None:
+    if business:
+        modes = set(business)
+        mode = modes.pop() if len(modes) == 1 else "mixed"
+        table.add_row(
+            "business rules",
+            "—",
+            f"[green]{mode}[/]" if mode == "enforce" else f"[yellow]{mode}[/]",
+            str(len(business)),
+        )
 
 
 def _business_modes(session) -> list[str]:
@@ -102,6 +139,25 @@ def policy_lint(
         raise typer.Exit(1)
     if report["findings"]:
         console.print("\n[green]LINT PASS[/] [dim](advisory findings only)[/]")
+
+
+def _effective_columns(rows: list[dict], width: int) -> dict[str, int]:
+    """Which columns `policy effective` shows, and how wide, for a terminal ``width``.
+
+    Every column but the title is shown whole. The title gets what is left, and is left
+    out when that is too little to read; `overrides` only appears when a rule has one.
+    """
+    names = ["rule", "effect", "mode", "from"]
+    if any(row["overrides"] != "—" for row in rows):
+        names.append("overrides")
+    widths = {n: max([len(n), *(len(str(row[n])) for row in rows)]) for n in names}
+    used = sum(widths.values()) + 2 * len(widths)  # one space either side of each column
+    room = min(48, width - used - 2)
+    columns: dict[str, int] = {"rule": widths["rule"]}
+    if room >= 16:
+        columns["title"] = room
+    columns.update({n: widths[n] for n in names[1:]})
+    return columns
 
 
 def _rule_title(rule: dict) -> str:
@@ -159,16 +215,31 @@ def policy_effective(
     Opacity is what makes layered policy dangerous, so the resolver explains itself.
     Business rules (approval limits) are listed too, from `business`.
     """
+    from agentfox.apps.cli import account as _account
     from agentfox.capabilities.business.store import effective_entries
     from agentfox.platform.policy import effective_for, runtime_environment
 
-    with _session() as session:
-        environment = environment or runtime_environment(session, agent)
-        effective = effective_for(
-            session, agent_slug=agent, environment=environment, team=team, user=user
-        )
-        explanation = effective.explain()
-        explanation["rules"] = [*explanation["rules"], *effective_entries(session, agent)]
+    remote = _account.use(console)
+    if remote is not None:
+        try:
+            explanation = remote.get(
+                "/api/policies/effective",
+                agent=agent,
+                team=team,
+                user=user,
+                environment=environment,
+            )
+        except _account.AccountError as exc:
+            _account.fail(console, exc)
+        environment = explanation.get("environment") or environment or "production"
+    else:
+        with _session() as session:
+            environment = environment or runtime_environment(session, agent)
+            effective = effective_for(
+                session, agent_slug=agent, environment=environment, team=team, user=user
+            )
+            explanation = effective.explain()
+            explanation["rules"] = [*explanation["rules"], *effective_entries(session, agent)]
 
     # Per layer, not one mode for the lot: "mode enforce" whenever any layer
     # enforced read as though every rule listed was enforcing.
@@ -188,29 +259,38 @@ def policy_effective(
     else:
         console.print("  [dim]layers: none[/]\n")
 
+    rows = [
+        {
+            "rule": rule["rule_id"],
+            "title": _rule_title(rule),
+            "effect": rule["effect"],
+            "mode": rule["enforcement"],
+            "from": rule["source"],
+            "overrides": ", ".join(rule["overrides"]) or "—",
+        }
+        for rule in explanation["rules"]
+    ]
+    columns = _effective_columns(rows, console.width)
     table = Table(box=None, pad_edge=False)
-    # The title takes what the id and the four short columns leave of the width.
-    longest = max((len(r["rule_id"]) for r in explanation["rules"]), default=10)
-    title_width = max(10, min(48, console.width - longest - 48))
-    for column in ("rule", "title", "effect", "mode", "from", "overrides"):
-        # One line per rule: the title gives way to the terminal's width, never the id.
+    for column, width in columns.items():
+        # One line per rule, every id, effect and mode whole: only the title gives way
+        # to the terminal's width, and at 80 columns it is left out rather than cut to
+        # "A query …" while the mode read "observ".
         table.add_column(
             column,
             style="bold" if column == "rule" else ("dim" if column == "title" else None),
             no_wrap=True,
             overflow="ellipsis" if column == "title" else "fold",
-            max_width=title_width if column == "title" else None,
+            min_width=None if column == "title" else width,
+            max_width=width if column == "title" else None,
         )
-    for rule in explanation["rules"]:
-        table.add_row(
-            rule["rule_id"],
-            _rule_title(rule),
-            rule["effect"],
-            rule["enforcement"],
-            rule["source"],
-            ", ".join(rule["overrides"]) or "—",
-        )
+    for row in rows:
+        table.add_row(*(row[column] for column in columns))
     console.print(table)
+    if "title" not in columns and rows:
+        console.print(
+            "  [dim]rule titles are left out at this width; a wider terminal shows them[/]"
+        )
 
     if explanation["rejected"]:
         console.print("\n[bold yellow]rejected layer rules[/]")
@@ -228,20 +308,64 @@ def policy_effective(
 
 @policy_app.command("simulate")
 def policy_simulate(
-    file: Path = typer.Option(..., "--file", "-f", help="Candidate policy YAML."),
-    agent: str | None = None,
-    since_days: int = 30,
-    limit: int = 1000,
+    key: str | None = typer.Argument(
+        None,
+        help="A policy already loaded (`agentfox policy list`): replay its live version, "
+        "the simulation `policy enforce` needs before it blocks. Or give --file.",
+    ),
+    file: Path | None = typer.Option(None, "--file", "-f", help="Candidate policy YAML."),
+    agent: str | None = typer.Option(None, "--agent", help="Replay one agent's traffic only."),
+    since_days: int = typer.Option(30, "--since-days", help="How far back to replay."),
+    limit: int = typer.Option(1000, "--limit", help="The most recorded calls to replay."),
 ) -> None:
-    """Replay recorded traffic against a candidate policy.
+    """Replay recorded traffic against a candidate policy, or a loaded one by key.
 
     Exits non-zero when the change would newly block production traffic, so it can
-    gate a policy PR the same way `eval gate` gates a code PR.
+    gate a policy PR the same way `agentfox test gate` gates a code PR.
     """
+    from agentfox.apps.cli import account as _account
     from agentfox.platform.policy import PolicyDocument, record_simulation, simulate
 
-    candidate = PolicyDocument.from_yaml(file.read_text())
+    if (key is None) == (file is None):
+        raise typer.BadParameter("give a policy key or --file, not both", param_hint="KEY")
+    if file is not None and not file.is_file():
+        console.print(f"[red]No policy file at {escape(str(file))}.[/] Pass the YAML to simulate.")
+        raise typer.Exit(2)
+    remote = _account.use(console)
+    if remote is not None:
+        try:
+            body = file.read_text() if file is not None else _live_body(remote, key or "")
+            result = remote.post(
+                "/api/policies/simulate",
+                {"body": body, "agent": agent, "since_days": since_days, "limit": limit},
+            )
+        except _account.AccountError as exc:
+            _account.fail(console, exc)
+        name = key or PolicyDocument.from_yaml(body).key
+        newly = {
+            k: result.get(k) or [] for k in ("newly_blocked", "newly_escalated", "newly_allowed")
+        }
+        _print_simulation(
+            name,
+            result.get("replayed", 0),
+            result.get("unchanged", 0),
+            newly,
+            bool(result.get("risky")),
+        )
+        return
+
+    if file is not None:
+        try:
+            PolicyDocument.from_yaml(file.read_text())
+        except Exception as exc:  # noqa: BLE001 - any parse or schema error, said in one line
+            why = escape(str(exc))[:200]
+            console.print(f"[red]{escape(str(file))} isn't a policy AgentFox can read:[/] {why}")
+            raise typer.Exit(2) from None
     with _session() as session:
+        if file is not None:
+            candidate = PolicyDocument.from_yaml(file.read_text())
+        else:
+            candidate = PolicyDocument.from_yaml(_local_live_body(session, key or ""))
         diff = simulate(
             session,
             candidate,
@@ -250,16 +374,77 @@ def policy_simulate(
             limit=limit,
         )
         record_simulation(session, candidate, diff, run_by="cli")
+    _print_simulation(
+        candidate.key,
+        diff.replayed,
+        diff.unchanged,
+        {
+            "newly_blocked": diff.newly_blocked,
+            "newly_escalated": diff.newly_escalated,
+            "newly_allowed": diff.newly_allowed,
+        },
+        diff.risky,
+    )
 
-    console.print(f"[bold]{candidate.key}[/] simulated against {diff.replayed} decisions")
-    console.print(f"  unchanged        {diff.unchanged}")
-    console.print(f"  newly blocked    [red]{len(diff.newly_blocked)}[/]")
-    console.print(f"  newly escalated  [yellow]{len(diff.newly_escalated)}[/]")
-    console.print(f"  newly allowed    [green]{len(diff.newly_allowed)}[/]")
+
+def _unknown_policy(key: str, known: list[str]) -> None:
+    # "unknown policy" with no list leaves the reader guessing at a key they have
+    # never seen written down.
+    console.print(f"[red]unknown policy '{key}'[/]")
+    if known:
+        console.print(f"  known policies: {', '.join(sorted(known))}")
+        console.print("  [dim]`agentfox policy list` shows each one's mode.[/]")
+    else:
+        console.print("  no policies loaded yet. Run `agentfox init` to load the shipped packs.")
+    raise typer.Exit(1)
+
+
+def _live_body(remote, key: str) -> str:
+    """The YAML of the version of ``key`` in force on the account (newest when unbound)."""
+    from agentfox.apps.cli.account import AccountError
+
+    try:
+        policy = remote.get(f"/api/policies/{key}")
+    except AccountError as exc:
+        if exc.status != 404:
+            raise
+        _unknown_policy(key, [p["key"] for p in remote.get("/api/policies").get("policies") or []])
+    return policy.get("live_body") or policy.get("body") or ""
+
+
+def _local_live_body(session, key: str) -> str:
+    from sqlalchemy import select
+
+    from agentfox.core.models import Policy, PolicyVersion
+    from agentfox.platform.policy import current_binding
+
+    policy = session.scalar(select(Policy).where(Policy.key == key))
+    if policy is None:
+        _unknown_policy(key, [p.key for p in session.scalars(select(Policy))])
+    _binding, bound = current_binding(session, policy.id)
+    version = (
+        bound
+        or session.scalars(
+            select(PolicyVersion)
+            .where(PolicyVersion.policy_id == policy.id)
+            .order_by(PolicyVersion.version.desc())
+        ).first()
+    )
+    return version.body if version else ""
+
+
+def _print_simulation(
+    name: str, replayed: int, unchanged: int, newly: dict[str, list], risky: bool
+) -> None:
+    console.print(f"[bold]{name}[/] simulated against {replayed} decisions")
+    console.print(f"  unchanged        {unchanged}")
+    console.print(f"  newly blocked    [red]{len(newly['newly_blocked'])}[/]")
+    console.print(f"  newly escalated  [yellow]{len(newly['newly_escalated'])}[/]")
+    console.print(f"  newly allowed    [green]{len(newly['newly_allowed'])}[/]")
     for label, colour, records in (
-        ("would block", "red", diff.newly_blocked),
-        ("would escalate", "yellow", diff.newly_escalated),
-        ("would allow", "green", diff.newly_allowed),
+        ("would block", "red", newly["newly_blocked"]),
+        ("would escalate", "yellow", newly["newly_escalated"]),
+        ("would allow", "green", newly["newly_allowed"]),
     ):
         for record in records[:10]:
             why = (record["reasons"] or [""])[0] or (
@@ -272,7 +457,7 @@ def policy_simulate(
             )
         if len(records) > 10:
             console.print(f"    [dim]… and {len(records) - 10} more {label}[/]")
-    if diff.risky:
+    if risky:
         console.print(
             "\n[bold red]This change would block production traffic. "
             "Review before promoting to enforce.[/]"
@@ -283,8 +468,86 @@ def policy_simulate(
 
 @policy_app.command("enforce")
 def policy_enforce(key: str) -> None:
-    """Promote a policy from observe to enforce."""
+    """Promote a policy from observe to enforce.
+
+    KEY is a policy key (`agentfox policy list`) or a library applied per agent
+    (`basic`, `tool-containment`): every agent's copy of it is switched.
+    """
     _set_mode(key, "enforce")
+    _warn_observe_lines(Path.cwd())
+
+
+#: Directories never searched for `agentfox.auto(...)` lines: installs and VCS.
+_SKIP_DIRS = {".git", ".venv", "venv", "env", "node_modules", "site-packages", "__pycache__"}
+
+
+def observe_lines(root: Path, limit: int = 5000) -> list[tuple[Path, int, str]]:
+    """The `agentfox.auto(..., mode="observe")` lines under ``root``: (file, line
+    number, line). Such a line never raises, whatever the policies' modes, so
+    `policy enforce` changes nothing for that process. Earlier versions of
+    `agentfox up` wrote it."""
+    found: list[tuple[Path, int, str]] = []
+    seen = 0
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS and not d.startswith(".")]
+        for name in filenames:
+            if not name.endswith(".py"):
+                continue
+            seen += 1
+            if seen > limit:
+                return found
+            path = Path(dirpath) / name
+            try:
+                text = path.read_text(errors="ignore")
+            except OSError:
+                continue
+            if "agentfox.auto(" not in text:
+                continue
+            lines = text.splitlines()
+            # Calls in the code, not mentions in a comment or a docstring.
+            for number in _observe_calls(text):
+                found.append((path, number, lines[number - 1].strip()))
+    return found
+
+
+def _observe_calls(text: str) -> list[int]:
+    """Line numbers of `agentfox.auto(..., mode="observe")` calls in this source."""
+    import ast
+
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        return []
+    return sorted(
+        node.lineno
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "auto"
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "agentfox"
+        and any(
+            k.arg == "mode" and isinstance(k.value, ast.Constant) and k.value.value == "observe"
+            for k in node.keywords
+        )
+    )
+
+
+def _warn_observe_lines(root: Path) -> None:
+    """Say which `auto(mode="observe")` lines keep blocking off, and the edit."""
+    from rich.markup import escape
+
+    for path, number, line in observe_lines(root):
+        try:
+            where = path.relative_to(root)
+        except ValueError:
+            where = path
+        fixed = re.sub(r""",?\s*mode\s*=\s*["']observe["']""", "", line).replace("(,", "(")
+        console.print(
+            f"[yellow]{escape(str(where))}:{number} calls agentfox.auto with "
+            f'mode="observe", which never blocks whatever the policies say.[/] '
+            f"For this to take effect there, change the line to: [cyan]{escape(fixed)}[/]"
+        )
 
 
 @policy_app.command("observe")
@@ -296,25 +559,57 @@ def policy_observe(key: str) -> None:
 def _set_mode(key: str, mode: str) -> None:
     from sqlalchemy import select
 
+    from agentfox.apps.cli import account as _account
     from agentfox.core.models import Policy
     from agentfox.platform.ledger import chain
     from agentfox.platform.policy import set_mode
 
+    remote = _account.use(console)
+    if remote is not None:
+        _account_set_mode(remote, key, mode)
+        return
+
     with _session() as session:
         binding = set_mode(session, key, mode)
         if binding is None:
-            # "unknown policy" with no list leaves the reader guessing at a key they
-            # have never seen written down.
-            known = sorted(p.key for p in session.scalars(select(Policy)))
-            console.print(f"[red]unknown policy '{key}'[/]")
-            if known:
-                console.print(f"  known policies: {', '.join(known)}")
-                console.print("  [dim]`agentfox policy list` shows each one's mode.[/]")
-            else:
-                console.print(
-                    "  no policies loaded yet. Run `agentfox init` to load the shipped packs."
+            # A library applied per agent (the dashboard's Libraries, `basic` the basic
+            # guardrails) lives in one copy per agent, `agent.<slug>.<key>`: switch
+            # them all, so the command the docs and `auto()` give works there too.
+            copies = sorted(
+                k
+                for k in session.scalars(select(Policy.key).where(Policy.key.like("agent.%")))
+                if k.count(".") >= 2 and k.split(".", 2)[2] == key
+            )
+            for copy in copies:
+                set_mode(session, copy, mode)
+                chain.append(
+                    session,
+                    f"policy.mode_{mode}",
+                    actor_type="user",
+                    actor_id="cli",
+                    subject_type="policy",
+                    subject_id=copy,
+                    payload={"mode": mode, "library": key},
                 )
-            raise typer.Exit(1)
+                console.print(f"[green]{copy}[/] → [bold]{mode}[/]")
+            if copies:
+                return
+            # A shipped pack this workspace never loaded (a workspace set up from the
+            # dashboard has the per-agent libraries instead): load it in that mode.
+            from agentfox.platform.policy import load_available, save_policy
+
+            shipped = next((d for d in load_available() if d.key == key), None)
+            if shipped is not None:
+                save_policy(
+                    session,
+                    shipped,
+                    author="cli",
+                    notes="loaded by agentfox policy",
+                    bind_mode=mode,
+                )
+                binding = set_mode(session, key, mode)
+        if binding is None:
+            _unknown_policy(key, [p.key for p in session.scalars(select(Policy))])
         chain.append(
             session,
             f"policy.mode_{mode}",
@@ -325,6 +620,46 @@ def _set_mode(key: str, mode: str) -> None:
             payload={"mode": mode},
         )
     console.print(f"[green]{key}[/] → [bold]{mode}[/]")
+
+
+def _account_set_mode(remote, key: str, mode: str) -> None:
+    """Change the mode on the account, through the route the dashboard uses: blocking
+    needs a recorded simulation of exactly the rules that would block, as Start
+    blocking does in the dashboard (`policy simulate <key>` records one)."""
+    from agentfox.apps.cli.account import AccountError, fail
+
+    try:
+        changed = remote.post(f"/api/policies/{key}/mode", {"mode": mode})
+    except AccountError as exc:
+        if exc.status == 404:
+            try:
+                known = [p["key"] for p in remote.get("/api/policies").get("policies") or []]
+            except AccountError:
+                known = []
+            # A library applied per agent lives in one copy per agent
+            # (`agent.<slug>.<key>`): switch them all, as the local path does.
+            copies = sorted(
+                k
+                for k in known
+                if k.startswith("agent.") and k.count(".") >= 2 and k.split(".", 2)[2] == key
+            )
+            if not copies:
+                _unknown_policy(key, known)
+            for copy in copies:
+                _account_set_mode(remote, copy, mode)
+            return
+        if exc.status == 409 and mode == "enforce":
+            console.print(
+                f"[yellow]{key} has not been simulated yet[/], so it is still watching. "
+                "Blocking needs a replay of recent traffic first, as in the dashboard:"
+            )
+            console.print(f"  agentfox policy simulate {key}")
+            console.print(f"  agentfox policy enforce {key}")
+            raise typer.Exit(1) from None
+        fail(console, exc)
+    console.print(
+        f"[green]{key}[/] → [bold]{changed.get('mode', mode)}[/]  [dim]in your account[/]"
+    )
 
 
 @policy_app.command("validate")

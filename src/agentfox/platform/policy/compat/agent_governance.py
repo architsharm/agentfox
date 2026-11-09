@@ -69,6 +69,19 @@ POINT_SURFACE = {
     "post_tool_call": "tool_result",
 }
 TEXT_SURFACES = ("input", "output", "tool_args", "tool_result")
+#: A rule with no `stage` whose condition reads one of these is about that surface:
+#: "output contains 'IBAN'" is about the reply, not a tool call's arguments.
+FIELD_SURFACE = {
+    "output": "output",
+    "response": "output",
+    "output.text": "output",
+    "output.content": "output",
+    "input": "input",
+    "prompt": "input",
+    "query": "input",
+    "input.text": "input",
+    "input.body": "input",
+}
 
 #: Their rule action -> our effect. `allow` is handled separately.
 ACTION_EFFECT = {
@@ -611,6 +624,17 @@ def _literal(text: str) -> tuple[Any, bool] | None:
     return None if re.match(rf"^{_PATH}$", text) else (text, False)
 
 
+def _field_surface(condition: str) -> str | None:
+    """The one surface a condition's text fields name, if it names exactly one."""
+    fields = re.findall(
+        r"(?<![\w.'\"])([a-z_]+(?:\.[a-z_]+)?)"
+        r"(?=\s*(?:==|!=|\s(?:contains|startswith|endswith|matches|in)\b))",
+        condition,
+    )
+    said = {FIELD_SURFACE[f] for f in fields if f in FIELD_SURFACE}
+    return said.pop() if len(said) == 1 else None
+
+
 def _field_kind(path: str) -> tuple[str, str, list[str]]:
     """(kind, argument path, notes) for a context field."""
     if path in TOOL_FIELDS:
@@ -843,6 +867,10 @@ def _rules_yaml(data: dict[str, Any], out: Translation) -> None:
             continue
         if surface not in stage_surfaces:
             stage_surfaces.append(surface)
+        # With no stage, a condition on the reply or the user's message is about that
+        # surface; the stage's default (a tool call) only stands for the default deny.
+        if "stage" not in raw and (said := _field_surface(str(raw.get("condition") or ""))):
+            surface = said
         try:
             drafts = _rule_drafts(raw, item)
         except Untranslatable as exc:

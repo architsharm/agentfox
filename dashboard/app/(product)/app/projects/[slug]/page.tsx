@@ -1,3 +1,4 @@
+import { RemoveAgent } from "@/components/product/agent/RemoveAgent";
 import type { Metadata } from "next";
 import { NoticeToast } from "@/components/product/NoticeToast";
 import Link from "next/link";
@@ -679,6 +680,10 @@ function Settings({ a }: { a: any }) {
       <Card title="Details">
         <form action={action} method="POST" className="k-form">
           <div className="k-field">
+            <label htmlFor="s-name">Name</label>
+            <input id="s-name" className="k-input" name="name" required maxLength={200} defaultValue={a.name || a.slug} />
+          </div>
+          <div className="k-field">
             <label htmlFor="s-purpose">Purpose</label>
             <input id="s-purpose" className="k-input" name="purpose" defaultValue={a.purpose || ""} placeholder="Answers billing questions from account history" />
           </div>
@@ -717,6 +722,9 @@ function Settings({ a }: { a: any }) {
             <tr><td className="muted">First seen</td><td>{ago(a.first_seen_at)}</td></tr>
           </tbody>
         </table>
+      </Card>
+      <Card title="Remove this agent" hint="For a duplicate, or an agent that no longer exists. The rest of its project stays.">
+        <RemoveAgent slug={a.slug} name={a.name || a.slug} />
       </Card>
     </>
   );

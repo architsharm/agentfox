@@ -10,7 +10,7 @@ import { businessWouldStop } from "@/lib/product/libraries";
  * gate as a library or pack: Start blocking first replays the last 7 days of calls
  * through the rule and says what it would have held, then a second Start blocking
  * confirms. The gateway refuses to enforce without that recorded simulation.
- * Switching back to watching asks first, as a pack's does.
+ * Going back to watching asks first, as a pack's does.
  */
 export function BusinessMode({ ruleKey, mode, name }: { ruleKey: string; mode: string | null; name: string }) {
   const router = useRouter();
@@ -33,8 +33,8 @@ export function BusinessMode({ ruleKey, mode, name }: { ruleKey: string; mode: s
 
   if (mode === "enforce")
     return (
-      <Act url={`${base}/mode`} body={{ mode: "observe" }} className="k-btn" done="Watching" confirm={`Switch ${name} to watching? It will record the calls it would hold, and hold nothing.`}>
-        Switch to watching
+      <Act url={`${base}/mode`} body={{ mode: "observe" }} className="k-btn" done="Watching" confirm={`Put ${name} back to watching? It will record the calls it would hold, and hold nothing.`}>
+        Back to watching
       </Act>
     );
 
@@ -49,6 +49,7 @@ export function BusinessMode({ ruleKey, mode, name }: { ruleKey: string; mode: s
           <span>
             Last {sim.since_days ?? 7} days: <strong>{businessWouldStop(sim)}</strong> would have been held
             {sim.replayed ? ` of ${sim.replayed} calls` : " (no calls to replay yet)"}
+            {sim.counts?.already_stopped ? `; it also catches ${sim.counts.already_stopped} that something else already stopped` : ""}
           </span>
           <button
             className="k-btn-primary"

@@ -122,6 +122,27 @@ def test_a_retry_of_a_denied_call_is_refused_with_the_denial(seeded):
     assert seeded.get(ApprovalRequest, approval_id).status == "denied"
 
 
+def test_a_denied_call_retried_without_the_approval_id_stays_denied(seeded):
+    """`auto()` cannot present the approval id: its plain retry of the denied call is
+    refused for the denial's window, not filed as a new approval to decide again."""
+    fox, approval_id = _held(seeded)
+    resolve_approval(seeded, approval_id, False, "usr_test", "not this customer")
+    before = len(seeded.scalars(select(ApprovalRequest)).all())
+    with fox.session(intent="email the customer their receipt") as s:
+        with pytest.raises(PolicyViolation) as refused:
+            s.guard_tool("email.send", dict(EMAIL), provenance=USER_PROVENANCE)
+    assert refused.value.result.rules_fired[0]["rule_id"] == "approval.denied"
+    assert len(seeded.scalars(select(ApprovalRequest)).all()) == before
+
+    # Once the window has passed, the call is a new question for a person.
+    seeded.get(ApprovalRequest, approval_id).expires_at = utcnow() - dt.timedelta(minutes=1)
+    seeded.flush()
+    with fox.session(intent="email the customer their receipt") as s:
+        with pytest.raises(ApprovalRequired) as held:
+            s.guard_tool("email.send", dict(EMAIL), provenance=USER_PROVENANCE)
+    assert held.value.approval_id != approval_id
+
+
 def test_a_denial_does_not_cover_a_different_call(seeded):
     """Other arguments are not what was denied: they are held for a person as usual."""
     fox, approval_id = _held(seeded)

@@ -137,14 +137,14 @@ export function ImportPolicyFormat() {
         <div className="k-pills" style={{ gap: 8, flexWrap: "wrap" }}>
           <span className="k-pill k-pill-ok">Imported</span>
           {done.policies.map((p: any) => (
-            <span key={p.key} className="k-pill">
-              {p.key} · v{p.version} · {p.mode === "enforce" ? "blocking (new version waits)" : "watching"}
-            </span>
+            <a key={p.key} className="k-pill" href={`/app/policies/${encodeURIComponent(p.key)}`}>
+              {p.name || p.key} · {p.mode === "enforce" ? "blocking (new version waits)" : "watching"}
+            </a>
           ))}
           {done.patterns.length > 0 && <span className="k-pill">{n(done.patterns.length, "text pattern")}</span>}
           {done.untranslatable.length > 0 && <span className="k-pill k-pill-warn">{n(done.untranslatable.length, "rule")} not translated</span>}
         </div>
-        <p className="muted">Imported policies watch and record. Simulate them on recorded traffic before you start blocking.</p>
+        <p className="muted">Imported policies watch and record. Open one to see what it would have stopped, then start blocking or remove it.</p>
         <div className="k-pills" style={{ gap: 8 }}>
           <a className="k-btn" href="/app/policies">
             See policies

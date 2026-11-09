@@ -89,7 +89,10 @@ def test_up_sets_up_a_project_locally(project):
     assert not (project / ".github").exists()
     # Python agent: one line, before the client import.
     text = (project / "main.py").read_text()
-    assert 'agentfox.auto("support-bot", mode="observe")' in text
+    # No `mode=`: the policies' modes decide, so `agentfox policy enforce …` (the next
+    # step `up` suggests) is all it takes to start blocking.
+    assert 'agentfox.auto("support-bot")  # added by `agentfox up`' in text
+    assert "mode=" not in text
     assert text.index("agentfox.auto(") < text.index("from openai import")
     # Answers saved for the next run.
     saved = json.loads((project / ".agentfox" / "up.json").read_text())
@@ -118,6 +121,32 @@ def test_up_sets_up_a_project_locally(project):
                 assert binding.mode == "observe", policy.key
 
 
+def test_running_up_again_keeps_a_policy_someone_switched_to_blocking(project):
+    """Re-running `up` (Watch first) only adds what is new: it used to put every
+    blocking pack back to watching ("changed agent-integrity, baseline, …")."""
+    from agentfox.core.db import session_scope
+    from agentfox.platform.policy import set_mode
+
+    assert _up(str(project), "--yes").exit_code == 0
+    with session_scope() as session:
+        set_mode(session, "tool-containment", "enforce")
+    result = _up(str(project), "--yes")
+    assert result.exit_code == 0, result.output
+    assert "kept blocking: tool-containment" in " ".join(result.output.split())
+    assert "(changed" not in result.output
+    # …and it does not suggest starting what already blocks.
+    assert "policy enforce tool-containment" not in result.output
+
+    from sqlalchemy import select
+
+    from agentfox.core.models import Policy
+    from agentfox.platform.policy import current_binding
+
+    with session_scope() as session:
+        policy = session.scalar(select(Policy).where(Policy.key == "tool-containment"))
+        assert current_binding(session, policy.id)[0].mode == "enforce"
+
+
 def test_running_up_again_changes_nothing_new(project):
     assert _up(str(project), "--yes").exit_code == 0
     before = (project / "main.py").read_text()
@@ -144,6 +173,39 @@ def test_a_declared_tool_is_never_overwritten_by_a_guess(project):
     with session_scope() as session:
         tool = session.scalar(select(Tool).where(Tool.key == "lookup_order"))
         assert tool.impact == "write"
+
+
+@pytest.mark.parametrize("answer", ["no", "ctrl-c"])
+def test_stopping_at_the_plan_writes_nothing(project, monkeypatch, answer):
+    """Answering no to "Set this up?", or pressing Ctrl-C there, used to leave
+    agentfox.toml and the database behind: the workspace was set up before the plan."""
+    import types
+
+    from agentfox.apps.cli.wizard import command
+
+    class AtThePlan(Interactive):
+        def _ask(self, prompt: str, *, secret: bool = False) -> str:
+            return ""  # every question takes its recommended answer
+
+        def confirm(self, question: str, default: bool = True) -> bool:
+            if question != "Set this up?":
+                return default
+            if answer == "ctrl-c":
+                raise KeyboardInterrupt
+            return False
+
+    monkeypatch.setattr(command, "Interactive", AtThePlan)
+    monkeypatch.setattr(
+        command, "sys", types.SimpleNamespace(stdin=types.SimpleNamespace(isatty=lambda: True))
+    )
+    result = runner.invoke(
+        app, ["up", str(project), "--no-start", "--target", "local", "--skip-machine"]
+    )
+    assert result.exit_code in (0, 1, 130), result.output
+    assert "Plan" in result.output
+    assert not (project / "agentfox.toml").exists()
+    assert not (project / ".agentfox").exists()
+    assert "agentfox.auto" not in (project / "main.py").read_text()
 
 
 def test_dry_run_changes_nothing(project):
@@ -385,7 +447,8 @@ def test_up_connects_to_cloud_and_keeps_the_key_out_of_git(project, cloud):
     # existing declaration left alone.
     assert "OPENAI_BASE_URL=https://gw.acme.test/v1" in env.read_text()
     assert cloud.tools == {"lookup_order": "write", "refund_payment": "irreversible"}
-    assert cloud.modes["tool-containment"] == "observe"
+    # Watch first never downgrades: the account's blocking policy stays blocking.
+    assert cloud.modes == {"baseline": "observe", "tool-containment": "enforce"}
     # Declared and granted to the agent the gateway calls as, so its own tools are not
     # refused by default-deny on its first call.
     assert cloud.grants["support-bot"] == {"lookup_order", "refund_payment"}
@@ -847,3 +910,33 @@ def test_up_adds_auto_to_a_framework_agent_with_no_direct_model_call(tmp_path):
     result = _up(str(root), "--yes")
     assert result.exit_code == 0, result.output
     assert "agentfox.auto(" in (root / "main.py").read_text()
+
+
+def test_next_steps_keep_each_command_on_one_line_at_80_columns():
+    """A long `command  why` row used to wrap inside the command, so copy-paste broke."""
+    from rich.console import Console
+    from rich.panel import Panel
+
+    from agentfox.apps.cli.wizard.command import next_step_lines
+
+    steps = [
+        ("agentfox doctor", "is everything configured the way you think?"),
+        (
+            "agentfox policy enforce tool-containment",
+            "start blocking the tool calls an agent was not given",
+        ),
+        ("agentfox up", "again any time — answers are in .agentfox/up.json"),
+    ]
+    console = Console(width=80, record=True, file=open("/dev/null", "w"))  # noqa: SIM115
+    console.print(Panel("\n".join(next_step_lines(steps))))
+    text = console.export_text()
+    for cmd, _why in steps:
+        assert any(cmd in line for line in text.splitlines()), (cmd, text)
+
+
+def test_the_summary_names_what_was_set_up(project):
+    result = _up(str(project), "--yes", "--target", "local", "--skip-machine")
+    assert result.exit_code == 0, result.output
+    flat = " ".join(result.output.split())
+    assert "set up:" in flat
+    assert "Your Python agent" in flat

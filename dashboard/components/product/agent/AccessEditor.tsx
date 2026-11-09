@@ -87,6 +87,8 @@ export function AccessEditor({
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<string>("");
   const [adding, setAdding] = useState(prefill || "");
+  // Asked in place, not with the browser's own dialog: the row (or "*", Allow all) being confirmed.
+  const [confirming, setConfirming] = useState<string>("");
   const granted = new Set(capabilities.map((c) => c.tool_key));
   const base = `/api/agents/${encodeURIComponent(slug)}/access`;
 
@@ -103,7 +105,7 @@ export function AccessEditor({
     }
   };
   const remove = async (c: Cap) => {
-    if (!window.confirm(`Remove ${c.tool?.name || c.tool_key}? The agent will be refused this tool.`)) return;
+    setConfirming("");
     setBusy(c.tool_key);
     try {
       await callJson(`${base}/${encodeURIComponent(c.id)}`, "DELETE");
@@ -131,7 +133,8 @@ export function AccessEditor({
                   className="k-btn"
                   disabled={!!busy}
                   onClick={async () => {
-                    if (!window.confirm(`Allow all ${tried.length} tools? Each can be changed or removed below.`)) return;
+                    if (confirming !== "*") return setConfirming("*");
+                    setConfirming("");
                     setBusy("*");
                     setError("");
                     try {
@@ -146,8 +149,13 @@ export function AccessEditor({
                     }
                   }}
                 >
-                  Allow all
+                  {confirming === "*" ? `Allow all ${tried.length}: confirm` : "Allow all"}
                 </button>
+                {confirming === "*" && (
+                  <button className="k-btn-ghost" onClick={() => setConfirming("")}>
+                    Cancel
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -312,9 +320,21 @@ export function AccessEditor({
                       {unused.includes(c.id) ? <span className="k-pill k-pill-outline">Unused</span> : ago(c.usage.last_used)}
                     </td>
                     <td className="tight" style={{ paddingRight: 16 }}>
-                      <button className="k-btn-ghost" onClick={() => remove(c)} aria-label={`Remove ${c.tool_key}`}>
-                        Remove
-                      </button>
+                      {confirming === c.id ? (
+                        <span className="k-pills" role="alertdialog" aria-label={`Remove ${c.tool_key}`}>
+                          <span className="muted">Refuse this tool from now on?</span>
+                          <button className="k-btn-danger" disabled={!!busy} onClick={() => remove(c)}>
+                            Remove
+                          </button>
+                          <button className="k-btn-ghost" onClick={() => setConfirming("")}>
+                            Cancel
+                          </button>
+                        </span>
+                      ) : (
+                        <button className="k-btn-ghost" onClick={() => setConfirming(c.id)} aria-label={`Remove ${c.tool_key}`}>
+                          Remove
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

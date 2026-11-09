@@ -17,5 +17,5 @@ export default async function IntegrationsRedirect({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  return legacyTabRedirect(searchParams, "/app/start", "connect");
+  return legacyTabRedirect(searchParams, "/app/settings", "connect");
 }

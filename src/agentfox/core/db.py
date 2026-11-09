@@ -130,6 +130,22 @@ def _build_engine() -> Engine:
     return engine
 
 
+def sqlite_write_lock(session: Session) -> None:
+    """On SQLite, start the session's transaction holding the write lock
+    (``BEGIN IMMEDIATE``). No-op elsewhere.
+
+    A transaction that reads before it writes inside a savepoint (``begin_nested``
+    starts a deferred transaction on SQLite) can't upgrade its read snapshot to a
+    writer once another connection has committed: SQLite fails it at once with
+    "database is locked" instead of waiting out the busy timeout. Taking the lock
+    first makes it wait its turn. Call it at the start of a transaction (after a
+    commit), before anything else runs in it."""
+    from sqlalchemy import text
+
+    if session.get_bind().dialect.name == "sqlite":
+        session.execute(text("BEGIN IMMEDIATE"))
+
+
 _PROBE_ENGINE: Engine | None = None
 
 

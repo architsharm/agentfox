@@ -87,8 +87,8 @@ export AGENTFOX_API_KEY=nom_api_…`}</Code>
       <p>
         A stopped call returns HTTP 400 with the rule&apos;s message. A call that needs approval carries
         an <code>approval_id</code>; once someone approves it, the same call sent again goes through
-        once. Content rules start in Watch, so you see what they would stop first; tool access applies
-        from the start.
+        once. Every library starts in Watch, tool access included, so you see what it would stop first;
+        switch one to Block when its decisions look right.
       </p>
 
       <h2>If AgentFox is down</h2>

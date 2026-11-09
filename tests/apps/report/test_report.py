@@ -105,6 +105,21 @@ def test_inventory_and_combinations(summary):
     assert "support-triage" in combos or "payments-ops" in combos
 
 
+def test_an_unregistered_agent_is_not_also_under_management(seeded):
+    """One agent read as '1 under management' and '1 running without being registered'."""
+    from agentfox.apps.report.summary import _headline
+    from agentfox.core.models import Agent
+
+    for agent in seeded.query(Agent).all():
+        agent.registered = False
+    seeded.flush()
+    data = build_summary(seeded)
+    count = data["inventory"]["agent_count"]
+    headline = _headline(data)
+    assert headline.startswith(f"0 agents under management, {count} found running without")
+    assert "(s)" not in headline and "(s)" not in render_markdown(data)
+
+
 def test_feedback_is_counted(summary):
     assert summary["feedback"].get("false_positive") == 1
     assert "Marked wrong (false positive): 1" in render_markdown(summary)
@@ -141,7 +156,7 @@ def test_cli_report_md_and_html(tmp_path):
         seed(session)
     result = runner.invoke(app, ["report", "--since", "7d"])
     assert result.exit_code == 0, result.output
-    assert result.output.startswith("# AgentFox summary")
+    assert result.stdout.startswith("# AgentFox summary")
 
     out = tmp_path / "summary.html"
     result = runner.invoke(app, ["report", "--format", "html", "--out", str(out)])

@@ -181,7 +181,7 @@ export function CreateKey({ done }: { done: boolean }) {
         <button type="button" className={done ? "k-btn" : "k-btn-primary"} onClick={create} disabled={busy}>
           {busy ? "Creating…" : done ? "Create another key" : "Create API key"}
         </button>
-        <Link href="/app/start?tab=tokens" className="k-btn-ghost">
+        <Link href="/app/settings?tab=tokens" className="k-btn-ghost">
           Manage keys
         </Link>
       </div>

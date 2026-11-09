@@ -50,6 +50,7 @@ from agentfox.apps.gateway.routes import custom_rules as custom_rule_routes
 from agentfox.apps.gateway.routes import features as feature_routes
 from agentfox.apps.gateway.routes import imports as import_routes
 from agentfox.apps.gateway.routes import library as library_routes
+from agentfox.apps.gateway.routes import members as member_routes
 from agentfox.apps.gateway.routes import metrics as metrics_routes
 from agentfox.apps.gateway.routes import onboarding_flow as onboarding_flow_routes
 from agentfox.apps.gateway.routes import platform_hooks as platform_hook_routes
@@ -571,6 +572,7 @@ def create_app() -> FastAPI:
     app.include_router(protection_routes.router)
     app.include_router(rule_example_routes.router)
     app.include_router(workspace_routes.router)
+    app.include_router(member_routes.router)
     app.include_router(platform_hook_routes.router)
     app.include_router(platform_hook_routes.admin_router)
     # Unauthenticated by design (see playground.py's module docstring) — the only

@@ -44,6 +44,15 @@ export AGENTFOX_AUDIT_SIGNING_KEY="$(openssl rand -hex 32)"`}</Code>
           <Code>{`docker compose -f deploy/docker-compose.yml up -d`}</Code>
         </Step>
 
+        <Step title="Load the policies and controls">
+          <p>
+            The gateway creates its tables when it starts. <code>init</code> also loads the control
+            catalog and the shipped policy packs, every one watching, so they show on Policies. It is
+            safe to run again.
+          </p>
+          <Code>{`docker compose -f deploy/docker-compose.yml exec gateway agentfox init --path /tmp`}</Code>
+        </Step>
+
         <Step title="Create the first owner">
           <p>No demo data is loaded. This creates you as owner and prints a token, once.</p>
           <Code>{`docker compose -f deploy/docker-compose.yml exec gateway \\
@@ -53,8 +62,13 @@ export AGENTFOX_AUDIT_SIGNING_KEY="$(openssl rand -hex 32)"`}</Code>
         <Step title="Sign in">
           <p>
             Open <code>http://localhost:3000/login</code>, choose{" "}
-            <strong>Self-hosted? Sign in with an API token</strong> and paste the token. Signing out
-            revokes it.
+            <strong>Self-hosted? Sign in with an API token</strong> and paste the token. You land on
+            Agents, with the setup card. The browser gets a session of its own: signing out ends that
+            session and never revokes the token you pasted, so the CLI and your app keep working.
+          </p>
+          <p>
+            To add a teammate, open <strong>Settings → Members</strong>, enter their email and a role,
+            and send them the sign-in key it shows once (it works for 7 days).
           </p>
         </Step>
 
@@ -91,6 +105,17 @@ agentfox serve --host 0.0.0.0 --port 8080`}</Code>
         on Linux, with scheduled jobs, use the{" "}
         <a href="https://github.com/architsharm/agentfox/blob/main/docs/deployment/systemd.md">systemd guide</a>.
       </p>
+
+      <h2 id="health">Health checks</h2>
+      <p>
+        Point a load balancer or uptime probe at <code>GET /health</code> on the gateway (the same answer
+        is at <code>/api/health</code>). It needs no sign-in and returns 200 with{" "}
+        <code>&quot;status&quot;: &quot;ok&quot;</code> while the process is serving, plus the running{" "}
+        <code>version</code>. <code>governance_healthy</code> is <code>false</code> when too many recent
+        checks were answered without a detector they should have run (for example, one keeps timing
+        out); alert on that rather than restart, since the process itself is fine.
+      </p>
+      <Code>{`curl -s http://localhost:8080/health`}</Code>
 
       <h2 id="upgrade">Upgrades</h2>
       <p>

@@ -33,4 +33,4 @@ def test_blocks_by_watching_rules_are_said_as_such(seeded):
     seeded.commit()
     out = _flat(runner.invoke(app, ["test", "redteam", "support-triage", "--allow-escapes"]).output)
     assert "only by rules that watch" in out
-    assert "caught by rules that only watch" in out
+    assert "would stop" in out  # the column of attacks only watching rules caught

@@ -204,3 +204,33 @@ def test_a_control_added_by_an_upgrade_reaches_a_workspace_with_the_old_catalog(
     assert client.get("/api/controls/NOM-RTG-14").status_code == 200
     keys = {c["key"] for c in client.get("/api/controls").json()["controls"]}
     assert "NOM-RTG-14" in keys
+
+
+def test_control_evidence_marks_runs_removed_by_retention(session):
+    """A decision outlives its run; the control page must not link the dead run."""
+    import datetime as dt
+
+    from agentfox_ee.compliance.reviews import rule_activity
+
+    from agentfox.capabilities.compliance.retention import purge, set_policy
+    from agentfox.core.models import Decision, Trace, utcnow
+
+    old = utcnow() - dt.timedelta(days=40)
+    session.add(Trace(id="tr_gone", agent_slug="a", started_at=old))
+    session.add(Trace(id="tr_kept", agent_slug="a", started_at=utcnow()))
+    for tid, when in (("tr_gone", old), ("tr_kept", utcnow())):
+        session.add(
+            Decision(
+                trace_id=tid,
+                created_at=when,
+                verdict="block",
+                rules_fired_json=[{"rule_id": "r1", "controls": ["NOM-RTG-01"]}],
+            )
+        )
+    session.flush()
+    set_policy(session, "traces", 30, actor="dana@example.com", reason="test")
+    run = purge(session, trigger="manual", requested_by="dana@example.com")
+
+    runs = {r["trace_id"]: r for r in rule_activity(session, "NOM-RTG-01", {"r1"})["runs"]}
+    assert runs["tr_gone"]["removed_on"] == run.finished_at.date().isoformat()
+    assert runs["tr_kept"]["removed_on"] is None

@@ -109,7 +109,7 @@ export const WORKS_WITH = [
   "OpenAI Agents SDK",
   "CrewAI",
   "AutoGen",
-  "Google ADK",
+  "Google ADK (via the gateway)",
   "MCP",
   "LiteLLM",
 ];

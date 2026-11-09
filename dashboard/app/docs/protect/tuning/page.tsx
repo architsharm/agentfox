@@ -25,7 +25,7 @@ export default function Page() {
       <Steps topLevel>
         <Step title="Find the blocked run">
           <p>
-            Open <strong>Traces</strong> and the run that was blocked. The run shows each check, what it
+            Open <strong>Activity</strong> and the run that was blocked. The run shows each check, what it
             found and why the call was stopped.
           </p>
           <Screenshot {...SCREENS.traceDetail} />

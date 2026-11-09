@@ -17,7 +17,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from agentfox.apps.gateway.deps import current_user, db, require
@@ -25,6 +25,8 @@ from agentfox.capabilities.compliance import retention as retention_svc
 from agentfox.capabilities.detection.tuning import explain_recorded
 from agentfox.core.models import (
     AuditEntry,
+    Decision,
+    Finding,
     LegalHold,
     RetentionPolicy,
     Trace,
@@ -133,6 +135,14 @@ def get_trace(
 ) -> dict[str, Any]:
     detail = full_trace(session, trace_id, explain=explain_recorded)
     if detail is None:
+        # Decisions can outlive their run; if one still names it, say the run was
+        # removed by retention rather than that it never existed.
+        first = session.scalar(
+            select(func.min(Decision.created_at)).where(Decision.trace_id == trace_id)
+        )
+        removed = retention_svc.removed_runs(session, {trace_id: first}) if first else {}
+        if trace_id in removed:
+            raise HTTPException(404, f"removed by retention on {removed[trace_id]}")
         raise HTTPException(404, "unknown trace")
     detail["links"] = [
         {
@@ -145,7 +155,28 @@ def get_trace(
         }
         for link in links_for(session, trace_id)
     ]
+    detail["findings"] = _findings_for_trace(session, trace_id, detail)
     return detail
+
+
+def _findings_for_trace(
+    session: Session, trace_id: str, detail: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """The issues this run raised, so the run page can link them.
+
+    An issue names its run in ``evidence.trace_id`` (or is about the run itself). Only
+    issues raised since the run began can have come from it, which bounds the scan.
+    """
+    started = (detail.get("trace") or {}).get("started_at")
+    query = select(Finding).order_by(Finding.created_at.desc()).limit(500)
+    if started:
+        query = query.where(Finding.created_at >= dt.datetime.fromisoformat(str(started)))
+    return [
+        {"id": f.id, "title": f.title, "type": f.type, "severity": f.severity, "status": f.status}
+        for f in session.scalars(query)
+        if (f.subject_type == "trace" and f.subject_id == trace_id)
+        or (f.evidence_json or {}).get("trace_id") == trace_id
+    ][:10]
 
 
 # ---------------------------------------------------------------------------
@@ -178,6 +209,32 @@ def verify_chain(
 ) -> dict[str, Any]:
     result = chain.verify_range(session, start_seq, end_seq)
     return {**result.to_json(), "stats": chain.chain_stats(session)}
+
+
+@router.get("/report/summary")
+def report_summary(
+    since: str = "7d",
+    agent: list[str] = Query(default_factory=list),
+    format: str = Query("md", pattern="^(md|markdown|html)$"),
+    session: Session = Depends(db),
+    _user: User = Depends(current_user),
+) -> dict[str, Any]:
+    """The one-page summary `agentfox report` prints, for this workspace: what ran,
+    what was stopped and why, what is only watched. ``text`` is Markdown or HTML."""
+    from agentfox.apps.report.summary import (
+        build_summary,
+        parse_since,
+        render_html,
+        render_markdown,
+    )
+
+    try:
+        window = parse_since(since)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    data = build_summary(session, agents=list(agent), since=window)
+    text = render_html(data) if format == "html" else render_markdown(data)
+    return {"format": "html" if format == "html" else "md", "text": text}
 
 
 @router.post("/audit/checkpoint", status_code=201)
@@ -377,10 +434,12 @@ def place_hold(
     hold = LegalHold(scope_json=payload.scope, reason=payload.reason, placed_by=user.email)
     session.add(hold)
     session.flush()
+    # "operator", like a retention change: both decide what the purge may remove, and
+    # the audit log named the same person "operator" for one and "user" for the other.
     chain.append(
         session,
         "legal_hold.placed",
-        actor_type="user",
+        actor_type="operator",
         actor_id=user.email or user.id,
         subject_type="legal_hold",
         subject_id=hold.id,
@@ -390,6 +449,7 @@ def place_hold(
 
 
 class LegalHoldRelease(BaseModel):
+    #: Required: releasing lets the purge delete what the hold preserved.
     reason: str = ""
 
 
@@ -406,16 +466,22 @@ def release_hold(
         raise HTTPException(404, "no such legal hold")
     if hold.released_at is not None:
         raise HTTPException(409, "this hold was already released")
+    reason = (payload.reason if payload else "").strip()
+    if not reason:
+        # One click used to release a hold, with nothing on the record to say why.
+        raise HTTPException(
+            400, "releasing a legal hold lets the purge delete what it kept; give a reason"
+        )
     hold.released_at = dt.datetime.now(dt.UTC)
     session.flush()
     chain.append(
         session,
         "legal_hold.released",
-        actor_type="user",
+        actor_type="operator",
         actor_id=user.email or user.id,
         subject_type="legal_hold",
         subject_id=hold.id,
-        payload={"reason": (payload.reason if payload else "").strip()},
+        payload={"reason": reason},
     )
     return {"id": hold.id, "released_at": _iso(hold.released_at)}
 

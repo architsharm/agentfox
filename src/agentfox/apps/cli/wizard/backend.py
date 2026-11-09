@@ -127,20 +127,18 @@ class Local:
         declared_tools: list[str] | None = None,
         project: str | None = None,
     ) -> None:
-        from sqlalchemy import select
 
-        from agentfox.core.models import Agent
         from agentfox.platform.identity import ensure_identity
         from agentfox.platform.registry.service import (
+            find_agent,
             fold_duplicate_drafts,
             register_agent,
-            slugify,
         )
 
         with self._session() as session:
             # Adopting what is there (a draft the scan proposed for this code, or the
             # agent an earlier `up` registered): its risk tier and purpose, as set.
-            existing = session.scalar(select(Agent).where(Agent.slug == slugify(slug)))
+            existing = find_agent(session, slug)
             tools = (
                 list(dict.fromkeys([*(existing.declared_tools or []), *(declared_tools or [])]))
                 if existing

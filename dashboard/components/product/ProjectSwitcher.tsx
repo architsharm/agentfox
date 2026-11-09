@@ -3,22 +3,15 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
-import { MAP_PROJECT_COOKIE, NEW_PROJECT, PROJECT_COOKIE_AGE, defaultProject } from "@/lib/product/project";
+import { MAP_PROJECT_COOKIE, NEW_PROJECT, PROJECT_COOKIE_AGE, defaultProject, disconnectedBy, type ProjectRow } from "@/lib/product/project";
 
-/** A project: one repository `agentfox init` mapped, and how many agents are in it. */
-export type ProjectOption = {
-  project: string;
-  agents: number;
-  slugs?: string[];
-  members?: { status?: string }[];
-  /** The root agent's name, and the repositories the members were mapped from. */
-  name?: string;
-  repos?: string[];
-};
+/** A project: one repository `agentfox init` mapped (or a system no repository holds), and how many agents its map draws. */
+export type ProjectOption = ProjectRow;
 
 /** What a person calls a project: its repository when it came from one, else the root
  *  agent's name. `project` stays the key every route takes. */
 export function projectLabel(p: ProjectOption): string {
+  if (p.repo) return p.repo;
   if (p.repos?.length === 1) return p.repos[0];
   return p.name || p.project;
 }
@@ -76,7 +69,13 @@ export function ProjectSwitcher({ projects, current }: { projects: ProjectOption
     router.refresh();
   };
 
-  // Disconnect: its agents leave the dashboard; `agentfox init` brings it back as new.
+  // Disconnect: exactly the agents the dialog names leave the dashboard; `agentfox init` proposes them again.
+  const leaving = here ? disconnectedBy(here) : [];
+  const staying = here ? (here.members ?? []).filter((m) => !leaving.some((l) => l.slug === m.slug) && !["removed", "rejected"].includes(m.status ?? "")) : [];
+  const names = (list: { slug: string; name?: string }[]) => {
+    const all = list.map((m) => m.name || m.slug);
+    return all.length > 5 ? `${all.slice(0, 5).join(", ")} and ${all.length - 5} more` : all.join(", ");
+  };
   const disconnect = async () => {
     if (!here) return;
     setBusy(true);
@@ -139,8 +138,12 @@ export function ProjectSwitcher({ projects, current }: { projects: ProjectOption
           {here && confirming && (
             <div className="project-switch-confirm" role="alertdialog" aria-label={`Disconnect ${projectLabel(here)}`}>
               <p>
-                <b>Disconnect {projectLabel(here)}?</b> Its {agents(here.agents)} leave the dashboard and lose their guardrails and tool
-                permissions. Past traffic and issues are kept. Run <code>agentfox init</code> again to bring it back as new.
+                <b>Disconnect {projectLabel(here)}?</b>{" "}
+                {leaving.length === 1 ? "This agent leaves" : `These ${leaving.length} agents leave`} Agents and the map: {names(leaving)}.{" "}
+                {leaving.length === 1 ? "Its" : "Their"} guardrails are emptied (and kept, to put back later) and {leaving.length === 1 ? "its" : "their"} tool
+                permissions revoked. Past traffic and issues are kept.
+                {staying.length > 0 && ` ${names(staying)} ${staying.length === 1 ? "is" : "are"} from another repository and ${staying.length === 1 ? "stays" : "stay"}.`}{" "}
+                Run <code>agentfox init</code> in the repository again to propose {leaving.length === 1 ? "it" : "them"} again.
               </p>
               {error && <p className="project-switch-error" role="alert">{error}</p>}
               <div>

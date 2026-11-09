@@ -324,7 +324,7 @@ from agentfox.platform.identity.operators import create_operator, issue_token
 
 init_db()
 email = sys.argv[1]
-with system_scope("agentfox up: first operator"), session_scope() as session:
+with system_scope("agentfox up: first operator", routine=True), session_scope() as session:
     user = session.scalar(select(User).where(User.email == email))
     if user is None:
         user = create_operator(session, email, role="owner")

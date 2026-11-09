@@ -210,7 +210,9 @@ def recover_stuck(
         bind_session(session, org_id)
         stuck = list(session.scalars(query))
     else:
-        with system_scope("cron backstop: recovering jobs stuck in running across every tenant"):
+        with system_scope(
+            "cron backstop: recovering jobs stuck in running across every tenant", routine=True
+        ):
             stuck = list(session.scalars(query))
     for job in stuck:
         bind_session(session, job.org_id)
@@ -271,7 +273,7 @@ def run_pending(
         bind_session(session, org_id)
         jobs = list(session.scalars(query))
     else:
-        with system_scope("cron backstop: running pending jobs across every tenant"):
+        with system_scope("cron backstop: running pending jobs across every tenant", routine=True):
             jobs = list(session.scalars(query))
     finished = 0
     for job in jobs:

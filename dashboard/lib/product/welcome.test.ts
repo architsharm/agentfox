@@ -19,7 +19,9 @@ describe("upCommand", () => {
   it("answers every question up would ask", () => {
     const cmd = upCommand({ ...base, siteUrl: "https://agentfox.internal.example" });
     expect(cmd).toContain("AGENTFOX_API_KEY=af_123");
-    expect(cmd).toContain(`uvx ${INSTALL_SPEC} up`);
+    expect(cmd.split("\n")[0]).toBe(`pip install -U ${INSTALL_SPEC}`);
+    expect(cmd).toContain("agentfox up --target");
+    expect(cmd).not.toContain("uvx");
     expect(cmd).toContain("--target self-hosted --api-url https://api.example.com --mode observe --yes");
   });
 

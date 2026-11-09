@@ -212,3 +212,19 @@ def test_every_role_including_the_auditor_can_read_it(client):
         response = client.get("/api/coverage/threats", headers=as_user(who))
         assert response.status_code == 200, who
         assert response.json()["scored"] > 0
+
+
+def test_rules_count_toward_threats_before_the_catalog_was_ever_loaded(seeded):
+    """Open core: nothing loaded the control catalog, so every rule's controls mapped
+    to no threat and `agentfox report summary` said every OWASP threat was a gap while
+    those rules were firing."""
+    from agentfox.core.models import Control, FrameworkMapping
+
+    with_catalog = {t["id"]: t["status"] for t in coverage(seeded)["threats"]}
+    seeded.query(FrameworkMapping).delete()
+    seeded.query(Control).delete()
+    seeded.flush()
+
+    without = {t["id"]: t["status"] for t in coverage(seeded)["threats"]}
+    assert without == with_catalog
+    assert any(s in ("observing", "enforcing") for s in without.values())

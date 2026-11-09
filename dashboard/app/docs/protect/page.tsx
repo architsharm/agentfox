@@ -57,12 +57,19 @@ export default function Page() {
               <p>
                 Press <strong>Simulate</strong> to replay recent traffic as if the rules blocked, then{" "}
                 <strong>Start blocking</strong>. Start blocking stays unavailable until a simulation of
-                exactly these rules has run. <strong>Switch to watching</strong> undoes it.
+                exactly these rules has run. <strong>Back to watching</strong> undoes it.
               </p>
             </Tab>
             <Tab label="CLI">
               <Code>{`agentfox policy list
-agentfox policy enforce baseline`}</Code>
+agentfox policy enforce basic              # the basic guardrails, on every agent they are applied to
+agentfox policy enforce tool-containment   # Tool containment
+agentfox policy observe basic              # back to watching`}</Code>
+              <p>
+                A library applied in the app is one copy per agent; the command switches every copy. On a
+                workspace set up with <code>agentfox up</code>, the content library is{" "}
+                <code>baseline</code>.
+              </p>
             </Tab>
           </Tabs>
         </Step>
@@ -70,16 +77,26 @@ agentfox policy enforce baseline`}</Code>
 
       <h2>What is on by default</h2>
       <ul>
-        <li>Tool access blocks from the start: a tool the agent was not given is refused.</li>
+        <li>
+          Tool containment watches until you switch it to Block: a tool the agent was not given, and a tool that changes something driven by untrusted content or by another
+          tool&apos;s output, are recorded as what they would have stopped. Its built-in checks are
+          listed under Tool containment in Applied rules and follow its mode.
+        </li>
+        <li>
+          Destructive commands (<code>rm -rf ~/</code>, <code>DROP TABLE</code>) and turning AgentFox
+          off are refused from the start, and so is anything a person set on a grant: a limit, or Ask
+          first.
+        </li>
         <li>
           The basic guardrails stop prompt attacks and hide personal data and secrets in replies. On an
           agent with real traffic they watch first.
         </li>
       </ul>
 
-      <h2>Change a rule for one agent</h2>
+      <h2 id="one-agent">Change a rule for one agent</h2>
       <p>
-        Open a rule and press <strong>Change</strong>. Under <strong>Applies to</strong>, choose{" "}
+        Open a rule and press <strong>Change</strong> (its <strong>Tune</strong> tab). Under{" "}
+        <strong>Applies to</strong>, choose{" "}
         <strong>Every agent</strong> or <strong>Only some agents</strong>, then the action or the
         sensitivity. AgentFox checks the change against the last 7 days before you press{" "}
         <strong>Apply</strong>. One agent can always be stricter than the workspace; looser only where

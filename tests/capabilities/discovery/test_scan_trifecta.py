@@ -212,8 +212,16 @@ def test_the_support_bot_is_a_lethal_trifecta_in_plain_english(support_bot):
     assert "can send email (send_email)" in code.detail
     assert "An instruction hidden in a web page could send customer data out." in code.detail
     assert "agentfox permit grant" in code.evidence["fix"]
-    assert 'agentfox.auto(mode="observe")' in code.evidence["fix"]
+    assert "agentfox policy enforce tool-containment" in code.evidence["fix"]
     assert code.evidence["exfiltration"][0] == "send_email"
+
+
+def test_the_next_step_counts_trifecta_places_in_words(support_bot):
+    report = scan(support_bot)
+    step = report.next_step()
+    assert "place(s)" not in step
+    n = len(report.trifectas)
+    assert (f"{n} places" if n != 1 else "1 place") in step
 
 
 def test_mcp_servers_in_one_config_form_their_own_trifecta(support_bot):

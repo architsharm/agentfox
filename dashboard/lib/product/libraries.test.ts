@@ -32,6 +32,13 @@ describe("libraryState", () => {
     expect(libraryState({ ...base, agents: ["a"] }, 1).text).toBe("On the agent · watching");
   });
 
+  it("says Tool containment's built-in rules watch where it is not applied", () => {
+    expect(libraryState({ ...base, builtIn: true }, 2)).toEqual({ text: "Built-in rules only · watching", tone: "pol-watch" });
+    expect(libraryState({ ...base, builtIn: false, agents: ["a"], blocking: true }, 1).text).toBe("On the agent · blocking");
+    // The shipped fallback the enforcer applies where nothing else is.
+    expect(libraryState({ ...base, fallback: true }, 2)).toEqual({ text: "On by default · watching", tone: "pol-watch" });
+  });
+
   it("says when it was applied workspace-wide", () => {
     expect(libraryState({ ...base, workspace: true, blocking: true }, 2)).toEqual({ text: "On every agent (workspace) · blocking", tone: "pol-on" });
   });
@@ -44,6 +51,11 @@ describe("simulationSummary", () => {
     );
     expect(simulationSummary({ replayed: 9, blocked: 0, held: 0, hidden: 0, since_days: 7 })).toBe("Last 7 days: would have blocked 0 of 9 checks.");
     expect(simulationSummary({ replayed: 0, blocked: 0, held: 0, hidden: 0, since_days: 30 })).toMatch(/^No traffic in the last 30 days/);
+  });
+  it("says what it catches that other rules already stopped, instead of hiding it", () => {
+    expect(simulationSummary({ replayed: 26, blocked: 0, held: 0, hidden: 0, already_stopped: 4, since_days: 30 })).toBe(
+      "Last 30 days: would have blocked 0 of 26 checks. It also catches 4 that other rules already stopped.",
+    );
   });
 });
 

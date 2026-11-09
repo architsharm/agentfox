@@ -48,6 +48,10 @@ class SimulationDiff:
     #: hidden data (redact, mask, tokenize) with it enforcing: the other half of "what
     #: changes if I enforce this?" for a pack that hides rather than stops.
     would_hide: list[dict[str, Any]] = field(default_factory=list)
+    #: Calls the candidate's own rules would stop or hold that something else (another
+    #: pack, a grant, a limit) already stopped or held: caught, but changing nothing.
+    #: Without it a library whose catches were all already blocked read "0 of 26".
+    already_stopped: list[dict[str, Any]] = field(default_factory=list)
     #: Distinct runs (traces) the replayed checks belong to: what a person calls a
     #: request. One user message is several checks (input, each tool, output).
     runs: set[str] = field(default_factory=set)
@@ -69,6 +73,7 @@ class SimulationDiff:
             "newly_escalated": self.newly_escalated,
             "would_stop": self.would_stop[:50],
             "would_hide": self.would_hide[:50],
+            "already_stopped": self.already_stopped[:50],
             "counts": {
                 "newly_blocked": len(self.newly_blocked),
                 "newly_allowed": len(self.newly_allowed),
@@ -76,6 +81,7 @@ class SimulationDiff:
                 "would_stop": len(self.would_stop),
                 "own_would_stop": len(own),
                 "would_hide": len(self.would_hide),
+                "already_stopped": len(self.already_stopped),
             },
         }
 
@@ -155,6 +161,9 @@ def simulate(
     decisions = list(session.scalars(query))
 
     own_rules = _OwnRules(session, candidate.key)
+    # A rule that only watches (`Rule.watch`) is replayed as watching: it would
+    # still not stop anything, so it is not credited with doing so.
+    watching = {r.id for r in doc.rules if r.watch}
     diff = SimulationDiff()
     for decision in decisions:
         diff.replayed += 1
@@ -172,7 +181,15 @@ def simulate(
         old_effective = _effective_of(decision)
         replaced = own_rules.rule_ids(decision)
         kept = [r for r in (decision.rules_fired_json or []) if r.get("rule_id") not in replaced]
-        new_effective = effective_verdict_of(new.effective_verdict, kept)
+        candidate_effect = (
+            new.effective_verdict
+            if not watching
+            else effective_verdict_of(
+                doc.default_effect,
+                [f.to_json() for f in new.rules_fired if f.rule_id not in watching],
+            )
+        )
+        new_effective = effective_verdict_of(candidate_effect, kept)
         fired_before = {
             str(r.get("rule_id"))
             for r in (decision.rules_fired_json or [])
@@ -193,7 +210,7 @@ def simulate(
             "no_longer_fires": sorted(fired_before - set(fired_now)),
             # What the candidate's own rules asked for, without the other packs: a
             # pack is only credited with stopping what its own rules stop.
-            "own": new.effective_verdict,
+            "own": candidate_effect,
         }
 
         applied = (decision.verdict or "allow").lower()
@@ -201,6 +218,8 @@ def simulate(
             diff.would_stop.append(record)
         elif new.redactions and applied not in ("block", "escalate", *_HIDING):
             diff.would_hide.append(record)
+        if candidate_effect in ("block", "escalate") and applied in ("block", "escalate"):
+            diff.already_stopped.append(record)
 
         if new_effective == old_effective:
             diff.unchanged += 1
@@ -289,7 +308,11 @@ def rules_fingerprint(doc: PolicyDocument) -> str:
         {
             "default_effect": doc.default_effect,
             "scope": doc.scope,
-            "rules": [rule.model_dump() for rule in doc.rules],
+            # `watch` only when set, so versions simulated before it existed still match.
+            "rules": [
+                {k: v for k, v in rule.model_dump().items() if k != "watch" or v}
+                for rule in doc.rules
+            ],
         },
         sort_keys=True,
         default=str,

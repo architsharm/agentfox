@@ -14,6 +14,8 @@ type Applied = {
   all: boolean;
   agents: { slug: string; name: string }[];
   libraries: string[];
+  /** Applied by the enforcer itself (Tool containment's missing-grant and composed-escalation checks): no rule page to open. */
+  builtIn?: boolean;
 };
 
 const DOES: Record<string, string> = { block: "Blocks", escalate: "Asks a person", redact: "Hides", mask: "Hides", tokenize: "Hides", allow: "Watches" };
@@ -55,7 +57,10 @@ export async function AppliedRules({
   project: string | null;
   projectAgents: string[];
 }) {
-  const data = await safeApi<{ agents: number; rules: Applied[] }>("/api/policies/applied", { agents: 0, rules: [] });
+  const data = await safeApi<{ agents: number; rules: Applied[] } | null>("/api/policies/applied", null);
+  // A failed read is not "0 rules": saying so beside a library that blocks is the
+  // contradiction this page must never show.
+  if (!data) return <Empty>Couldn&apos;t load the rules in force right now. Reload the page to try again.</Empty>;
   // Only this project's agents: a rule counts here where it reaches one of them, and
   // "all agents" means all of this project's.
   const mine = new Set(projectAgents);
@@ -136,7 +141,11 @@ export async function AppliedRules({
                   const d = does(r);
                   return (
                     <li key={r.id}>
-                      <Link href={`/app/policies/rules/${encodeURIComponent(r.id)}?tab=tune${agent ? `&agent=${encodeURIComponent(agent)}` : ""}`} className="pol-row">
+                      <Link
+                        href={r.builtIn ? "/app/policies?tab=libraries" : `/app/policies/rules/${encodeURIComponent(r.id)}?tab=tune${agent ? `&agent=${encodeURIComponent(agent)}` : ""}`}
+                        className="pol-row"
+                        title={r.builtIn ? "Built into Tool containment: it blocks where that library blocks" : undefined}
+                      >
                         <span className="pol-name">{ruleTitle(r.id, r.description)}</span>
                         <span className={`pol-does pol-${d.tone}`}>
                           {d.text}

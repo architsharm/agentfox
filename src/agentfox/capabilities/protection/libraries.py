@@ -38,6 +38,9 @@ OWN = "Set for this agent"
 #: The id the basic guardrails go by in the library routes.
 BASIC_ID = "basic"
 
+#: The library the enforcer's own containment facts belong to.
+CONTAINMENT_ID = "tool-containment"
+
 #: How far back a library's copies are replayed by :func:`simulate_library`; the
 #: same default as ``POST /api/policies/simulate``.
 SIMULATE_DAYS = 30
@@ -402,6 +405,7 @@ def simulate_library(
                 if len(row["examples"]) < 5:
                     row["examples"].append(record)
         seen["hide"].update(r["decision_id"] for r in diff.would_hide)
+        seen.setdefault("already", set()).update(r["decision_id"] for r in diff.already_stopped)
         row["policies"].append(
             {
                 "key": copy.key,
@@ -415,7 +419,15 @@ def simulate_library(
         seen = acted[slug]
         held = seen["escalate"] - seen["block"]
         hidden = seen["hide"] - seen["block"] - held
-        out.append({**row, "blocked": len(seen["block"]), "held": len(held), "hidden": len(hidden)})
+        out.append(
+            {
+                **row,
+                "blocked": len(seen["block"]),
+                "held": len(held),
+                "hidden": len(hidden),
+                "already_stopped": len(seen.get("already", set())),
+            }
+        )
     return {
         "library": pack_id,
         "since_days": since_days,
@@ -424,6 +436,7 @@ def simulate_library(
         "blocked": sum(r["blocked"] for r in out),
         "held": sum(r["held"] for r in out),
         "hidden": sum(r["hidden"] for r in out),
+        "already_stopped": sum(r["already_stopped"] for r in out),
     }
 
 
@@ -444,6 +457,8 @@ def library_status(session: Any, pack_id: str, slugs: list[str]) -> dict[str, An
             "workspace": False,
             "outdated": False,
             "outdatedAgents": [],
+            "builtIn": False,
+            "fallback": False,
         }
     on: list[str] = []
     outdated: list[str] = []
@@ -475,7 +490,40 @@ def library_status(session: Any, pack_id: str, slugs: list[str]) -> dict[str, An
         "blocking": bool(modes) and all(m == "enforce" for m in modes),
         "outdated": bool(outdated),
         "outdatedAgents": outdated,
+        # Tool containment's own facts (a missing grant, a composed escalation) are
+        # applied by the enforcer on every agent, applied library or not; where the
+        # library is not applied they watch (`platform.policy.containment_mode`).
+        "builtIn": pack_id == CONTAINMENT_ID and not on and not workspace,
+        # The shipped fallback: with nothing bound for an agent, the enforcer applies
+        # this library's policies watching (`platform.policy.fallback_policies`).
+        "fallback": not on and not workspace and _on_by_default(session, pack_id, slugs),
     }
+
+
+def _on_by_default(session: Any, pack_id: str, slugs: list[str]) -> bool:
+    """Whether the enforcer applies this library's policies to one of these agents as
+    the fallback for an agent nothing is bound for."""
+    from sqlalchemy import select
+
+    from agentfox.core.models import Agent
+    from agentfox.platform.policy import (
+        fallback_policies,
+        policies_in_force,
+        runtime_environment,
+    )
+
+    if pack_id == BASIC_ID:
+        return False
+    keys = {doc.key for doc in (_library_docs(pack_id) or ("", []))[1]}
+    for slug in slugs:
+        tier = session.scalar(select(Agent.risk_tier).where(Agent.slug == slug))
+        if not keys & {doc.key for doc in fallback_policies(tier)}:
+            continue
+        skipped: list[Any] = []
+        environment = runtime_environment(session, slug)
+        if not policies_in_force(session, slug, environment, skipped=skipped) and not skipped:
+            return True
+    return False
 
 
 #: Runs recorded within this long of the newest one count as the same "Simulate".
@@ -521,8 +569,12 @@ def last_simulation(session: Any, pack_id: str, slugs: list[str]) -> dict[str, A
             if record.get("own") in ("block", "escalate"):
                 acted[record["own"]].add(record.get("decision_id"))
         acted["hide"].update(r.get("decision_id") for r in diff.get("would_hide") or [])
-    blocked = held = hidden = 0
+        acted.setdefault("already", set()).update(
+            r.get("decision_id") for r in diff.get("already_stopped") or []
+        )
+    blocked = held = hidden = already = 0
     for acted in seen.values():
+        already += len(acted.get("already", set()))
         held_here = acted["escalate"] - acted["block"]
         blocked += len(acted["block"])
         held += len(held_here)
@@ -533,6 +585,7 @@ def last_simulation(session: Any, pack_id: str, slugs: list[str]) -> dict[str, A
         "blocked": blocked,
         "held": held,
         "hidden": hidden,
+        "already_stopped": already,
         "at": newest.isoformat(),
         "run_by": runs[0].run_by,
     }

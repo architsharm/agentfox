@@ -27,4 +27,15 @@ describe("Cmd-K index", () => {
     expect(match(index, "injection.direct")[0].group).toBe("Rule");
     expect(match(index, "nothing like this")).toEqual([]);
   });
+
+  it("finds test suites, controls and evidence packs", () => {
+    const more = buildIndex({
+      suites: [{ key: "refunds", name: "Refund regressions" }],
+      controls: [{ key: "NOM-AUD-02", title: "Tamper-evident audit log" }],
+      evidence: [{ id: "evp_1", scope: { agents: ["*"], period_from: "2026-10-01T00:00:00Z", period_to: "2026-11-01T00:00:00Z" } }],
+    });
+    expect(match(more, "refund")[0]).toMatchObject({ group: "Test suite", href: "/app/evals/refunds" });
+    expect(match(more, "NOM-AUD-02")[0]).toMatchObject({ group: "Control", href: "/app/compliance/controls/NOM-AUD-02" });
+    expect(match(more, "evidence")[0]).toMatchObject({ label: "Evidence pack: all agents", href: "/app/reports?tab=evidence" });
+  });
 });

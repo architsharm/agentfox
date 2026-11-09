@@ -81,3 +81,52 @@ export function memberRelation(relation: string | null): string {
       return "Delegated to";
   }
 }
+
+/** An agent as GET /api/agents lists it, for the helpers below. */
+type Listed = { status?: string; scan_run_id?: string | null; project?: string | null; name?: string; slug: string };
+
+/** Proposed: found in code (a scan or `agentfox init`), waiting for someone to add it. */
+export const isProposed = (a: Listed) => a.status === "draft";
+
+/**
+ * An agent in the workspace: anything but a proposal, a dismissed proposal or a
+ * disconnected agent. Every page that lists or counts agents uses this, so Agents,
+ * Testing, Issues and Policies agree on how many there are.
+ */
+export const isAdded = (a: Listed) => !["draft", "rejected", "removed"].includes(a.status ?? "");
+
+/** Where a proposal came from, for its row: a repository scan, or `agentfox init` in a repo. */
+export function proposedSource(a: Listed): string {
+  if (a.scan_run_id) return "Found by a repo scan";
+  return a.project && a.project !== a.slug ? `Found by agentfox init in ${a.project}` : "Found by agentfox init";
+}
+
+/** What a page with no agents says: point at the ones waiting under Proposed, when there are some. */
+export function noAgents(proposed: number): { text: string; action: string; href: string } {
+  if (proposed > 0)
+    return {
+      text: `No agents added yet. ${proposed === 1 ? "1 agent is" : `${proposed} agents are`} waiting under Proposed: add ${proposed === 1 ? "it" : "them"} to see ${proposed === 1 ? "it" : "them"} here.`,
+      action: `Review ${proposed} proposed`,
+      href: "/app/projects?tab=proposed",
+    };
+  return { text: "No agents yet. Run agentfox init where your agents live and they show up here.", action: "Connect an agent", href: "/app/map" };
+}
+
+/** Proposed rows matching a search: name, slug, repository or framework. */
+export function searchProposed<A extends Listed & { framework?: string | null }>(agents: A[], q: string): A[] {
+  const s = q.trim().toLowerCase();
+  if (!s) return agents;
+  return agents.filter((a) => [a.name, a.slug, a.project, a.framework].some((v) => v && v.toLowerCase().includes(s)));
+}
+
+/** Proposed rows by the repository (or scan) they came from, biggest first; unnamed last. */
+export function byRepo<A extends Listed>(agents: A[]): { repo: string | null; agents: A[] }[] {
+  const groups = new Map<string | null, A[]>();
+  for (const a of agents) {
+    const k = a.project && a.project !== a.slug ? a.project : null;
+    groups.set(k, [...(groups.get(k) ?? []), a]);
+  }
+  return [...groups.entries()]
+    .map(([repo, list]) => ({ repo, agents: list }))
+    .sort((x, y) => (x.repo === null ? 1 : y.repo === null ? -1 : y.agents.length - x.agents.length || x.repo.localeCompare(y.repo)));
+}

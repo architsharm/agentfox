@@ -4,7 +4,8 @@
  */
 export function detailText(detail: unknown): string {
   if (!detail) return "";
-  if (typeof detail === "string") return detail;
+  // "simulate first: …" reads as a sentence on screen: "Simulate first: …".
+  if (typeof detail === "string") return /^[a-z]/.test(detail) ? detail.charAt(0).toUpperCase() + detail.slice(1) : detail;
   if (Array.isArray(detail))
     return detail
       .map((d: any) => {

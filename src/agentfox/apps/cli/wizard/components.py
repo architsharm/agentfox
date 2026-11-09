@@ -94,6 +94,9 @@ class Run:
     #: scan found them; None when the scan found no agent to scope them to (then every
     #: tool in the repository is the agent's).
     system_tools: list[str] | None = None
+    #: The agents of that system (scan keys), same None rule: an agent another uses as
+    #: a tool is declared for this agent only when it is one of them.
+    system_members: list[str] | None = None
     _edition: Edition | None = field(default=None, repr=False)
 
     @property
@@ -262,7 +265,7 @@ def _register(run: Run) -> None:
     agent instead of beside it, see ``registry.service.propose_from_scan``), its
     framework, the tools it is handed (what `agentfox test redteam` attacks through),
     and the repository `agentfox init` maps it from. Development: it runs here."""
-    from agentfox.capabilities.onboarding.mapper import _project_name
+    from agentfox.capabilities.onboarding.mapper import _project_name, project_name_for
     from agentfox.platform.registry.service import slugify
 
     spec = next((a for a in run.ctx.report.agents if slugify(a.name or a.key) == run.agent), None)
@@ -276,7 +279,12 @@ def _register(run: Run) -> None:
         framework=spec.framework if spec is not None else None,
         name=(f"{_scan_label(run)}/{spec.name or slugify(spec.key)}" if spec is not None else None),
         declared_tools=list(dict.fromkeys(tools)) or None,
-        project=_project_name(run.ctx.root),
+        # Its app's name (nearest pyproject), as `init` and a submitted scan group it.
+        project=(
+            project_name_for(run.ctx.root, spec.file)
+            if spec is not None
+            else _project_name(run.ctx.root)
+        ),
     )
 
 
@@ -517,7 +525,11 @@ def _python_ask(run: Run) -> None:
     first = preferred if preferred in files else (files[0] if files else None)
     choices = [Choice(f, f, "starts your agent" if f == first else "") for f in files]
     choices.append(Choice("none", "Don't edit my code", "show the line to add instead"))
-    default = run.ctx.saved.get("entry_point") or first or "none"
+    # The agent being set up decides the file: a saved answer is another run's (in a
+    # monorepo, another app's entry file), used only when this run picked none.
+    default = (preferred if preferred in files else None) or (
+        run.ctx.saved.get("entry_point") or first or "none"
+    )
     if default not in {c.key for c in choices}:
         default = choices[0].key
     run.answers["python-app"] = run.prompter.select(
@@ -526,12 +538,44 @@ def _python_ask(run: Run) -> None:
 
 
 def _auto_lines(run: Run) -> str:
-    mode = ', mode="observe"' if run.mode == "observe" else ""
-    return f'import agentfox\n\nagentfox.auto("{run.agent}"{mode})  # added by `agentfox up`\n'
+    # No `mode=` whatever the choice: the policies' modes decide (`auto()`'s default
+    # "policy" mode), so "Watch first" watches and `agentfox policy enforce <key>`
+    # starts blocking with nothing to edit. `mode="observe"` would never raise
+    # whatever the policies say, which made that suggested next step a no-op.
+    return f'import agentfox\n\nagentfox.auto("{run.agent}")  # added by `agentfox up`\n'
+
+
+def unwatched_frameworks(run: Run) -> list[str]:
+    """The frameworks of the agent being set up (or, when the scan found none for it,
+    of the repository) whose model calls `auto()` cannot see (see
+    `autoguard.environment.UNPATCHED_FRAMEWORKS`)."""
+    from agentfox.capabilities.discovery.agents import UNPATCHED_FRAMEWORKS
+    from agentfox.platform.registry.service import slugify
+
+    mine = {
+        a.framework
+        for a in run.ctx.report.agents
+        if slugify(a.name or a.key) == run.agent or a.key == run.agent
+    }
+    found = mine or set(run.ctx.report.frameworks)
+    return sorted(f for f in found if f in UNPATCHED_FRAMEWORKS)
+
+
+def _unwatched_warning(run: Run) -> None:
+    from agentfox.capabilities.discovery.agents import UNPATCHED_FRAMEWORKS
+
+    for framework in unwatched_frameworks(run):
+        run.say(
+            f"[yellow]{framework}'s model calls are NOT governed by auto()[/] — it calls "
+            f"its model through {UNPATCHED_FRAMEWORKS[framework]}, which auto() does not "
+            "patch. Route them through the gateway instead: "
+            "[cyan]agentfox up --with gateway[/]"
+        )
 
 
 def _python_apply(run: Run) -> None:
     _register(run)
+    _unwatched_warning(run)
     choice = run.answers.get("python-app", "none")
     block = _auto_lines(run)
     if choice == "none":
@@ -638,7 +682,9 @@ def _own_tools(run: Run) -> list[str]:
     examples does not hand one agent the tools of seventeen others."""
     if run.system_tools is None:
         return run.ctx.tool_names
-    return [n for n in run.ctx.tool_names if n in set(run.system_tools)]
+    # Every tool the system is handed, a library tool with no definition here
+    # (`SerperDevTool()`) included: the plan said "2 tools of its own", so 2 are declared.
+    return sorted(set(run.system_tools))
 
 
 def _inferred(run: Run) -> dict[str, str]:
@@ -691,7 +737,13 @@ def _tools_apply(run: Run) -> None:
     # and declared and granted here it is never "tried without permission" on a route
     # that cannot tell (the gateway). It reaches nothing itself; the sub-agent's own
     # tools are declared above and decided on their own.
-    subagents = {n: c for n, c in run.ctx.agent_tools.items() if n not in impacts}
+    members = None if run.system_members is None else set(run.system_members)
+    subagents = {
+        n: c
+        for n, c in run.ctx.agent_tools.items()
+        if n not in impacts and (members is None or c in members)
+    }
+    tools_added = added
     for name, child in subagents.items():
         try:
             if run.target.backend.declare_tool(
@@ -717,7 +769,14 @@ def _tools_apply(run: Run) -> None:
     risky = sorted(n for n, i in impacts.items() if i in ("high_impact", "irreversible"))
     run.done(
         "tools",
-        f"declared {plural(added, 'tool')}"
+        # Tools and the sub-agents it calls as tools, counted apart: "3 tools" for one
+        # tool and two `AgentTool(sub-agent)` read as three things it can do.
+        f"declared {plural(tools_added, 'tool')}"
+        + (
+            f" and {plural(added - tools_added, 'sub-agent')} it calls as tools"
+            if added > tools_added
+            else ""
+        )
         + (f", kept {kept} already declared" if kept else "")
         + granted
         + (f" — {len(risky)} irreversible/high-impact: {', '.join(risky[:5])}" if risky else ""),
@@ -1229,7 +1288,8 @@ BY_KEY = {c.key: c for c in CATALOGUE}
 def _apply_declared_modes(run: Run) -> None:
     """ "Shipped defaults": each pack in the mode it declares. A new workspace starts
     every pack watching (`setup_workspace`); this is the choice that makes tool
-    containment block, the one pack that declares enforce."""
+    containment block, the one pack that declares enforce. Only ever upgrades: a pack
+    someone switched to blocking stays blocking (see `apply_mode`)."""
     from agentfox.platform.policy import load_available
 
     try:
@@ -1241,7 +1301,7 @@ def _apply_declared_modes(run: Run) -> None:
     changed = []
     for key, mode in sorted(modes.items()):
         want = declared.get(key, mode)
-        if want == mode:
+        if want == mode or want != "enforce":
             continue
         try:
             run.target.backend.set_policy_mode(key, want)
@@ -1259,7 +1319,14 @@ def _apply_declared_modes(run: Run) -> None:
 
 
 def apply_mode(run: Run) -> None:
-    """Put the policies in the chosen safety mode."""
+    """Put the policies in the chosen safety mode.
+
+    Never downgrades. A pack that blocks was switched to blocking by a person
+    (`agentfox policy enforce`, Start blocking, or an earlier "enforce" here), and
+    running `up` again, which only adds what is new, must not quietly put it back to
+    watching. New packs are bound watching (`setup_workspace`); "Watch first" leaves
+    every mode as it is, the other two choices only turn blocking on. Demoting is
+    `agentfox policy observe <key>`."""
     if run.mode == "defaults":
         _apply_declared_modes(run)
         return
@@ -1271,22 +1338,25 @@ def apply_mode(run: Run) -> None:
         return
     changed, refused = [], []
     for key, mode in sorted(modes.items()):
-        if mode == want:
+        if mode == want or want == "observe":
             continue
         try:
             run.target.backend.set_policy_mode(key, want)
             changed.append(key)
         except BackendError as exc:
             refused.append(f"{key} ({exc})")
-    verb = "recorded, not blocked yet" if want == "observe" else "every policy blocks"
-    run.done(
-        "mode",
-        f"{plural(len(modes), 'policy')} in {want} — {verb}"
-        + (f" [dim](changed {', '.join(changed)})[/]" if changed else ""),
-    )
+    blocking = sorted(k for k, m in modes.items() if m == "enforce" or k in changed)
+    if want == "observe":
+        watching = len(modes) - len(blocking)
+        text = f"{plural(watching, 'policy')} watching — recorded, not blocked yet"
+        if blocking:
+            text += f"; kept blocking: {', '.join(blocking)}"
+    else:
+        text = f"{plural(len(modes), 'policy')} in enforce — every policy blocks"
+    run.done("mode", text + (f" [dim](changed {', '.join(changed)})[/]" if changed else ""))
     for item in refused:
         run.failed("mode", item)
-    if want == "observe":
+    if want == "observe" and "tool-containment" not in blocking:
         run.later_steps.append(
             (
                 "agentfox policy enforce tool-containment",

@@ -23,7 +23,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from agentfox.apps.cli._style import match_id, print_unknown_agent, short_id
+from agentfox.apps.cli._style import match_id, plural, print_unknown_agent
 
 console = Console()
 
@@ -51,6 +51,19 @@ def _session():
 
     init_db()
     return session_scope()
+
+
+def _default_taint(tool: str) -> str:
+    """The provenance a grant allows when none is given: the same as the tools found in
+    an agent's code get when it is added (``registry.service.grant_found_tools``), so a
+    grant means the same from the CLI as from the dashboard."""
+    from sqlalchemy import select
+
+    from agentfox.core.models import Tool
+
+    with _session() as session:
+        impact = session.scalar(select(Tool.impact).where(Tool.key == tool))
+    return "memory" if impact == "read" else "user"
 
 
 def _parse_limit(raw: str) -> tuple[str, Any]:
@@ -173,6 +186,76 @@ def _audit(session, kind: str, capability, payload: dict[str, Any]) -> None:
     )
 
 
+def _account_agent(remote, agent: str) -> dict[str, Any]:
+    """The account's agent named ``agent``, or an unknown-agent message naming the real ones."""
+    from agentfox.apps.cli.account import AccountError, fail
+
+    try:
+        return remote.get(f"/api/agents/{agent}")
+    except AccountError as exc:
+        if exc.status != 404:
+            fail(console, exc)
+    try:
+        known = sorted(a["slug"] for a in remote.get("/api/agents").get("agents") or [])
+    except AccountError:
+        known = []
+    console.print(f"[red]unknown agent '{agent}'[/] in your account")
+    if known:
+        console.print(f"  known agents: {', '.join(known)}")
+    raise typer.Exit(1)
+
+
+def _account_grants(remote, agent: str | None) -> list[dict[str, Any]]:
+    """Every grant the account holds (``GET /api/agents/{slug}/access``), in the rows
+    `permit list` prints."""
+    from agentfox.apps.cli.account import AccountError, fail
+    from agentfox.core.models import utcnow
+
+    try:
+        if agent:
+            _account_agent(remote, agent)
+            slugs = [agent]
+        else:
+            slugs = [a["slug"] for a in remote.get("/api/agents").get("agents") or []]
+        now = utcnow().isoformat()
+        rows = []
+        for slug in slugs:
+            for grant in remote.get(f"/api/agents/{slug}/access").get("capabilities") or []:
+                expires_at = grant.get("expires_at")
+                rows.append(
+                    {
+                        "id": grant["id"],
+                        "agent": slug,
+                        "tool_key": grant["tool_key"],
+                        "actions": list(grant.get("actions") or ["*"]),
+                        "constraints": dict(grant.get("constraints") or {}),
+                        "max_taint": grant.get("max_taint"),
+                        "requires_approval": grant.get("requires_approval"),
+                        "granted_by": grant.get("granted_by"),
+                        "expires_at": expires_at,
+                        "expired": bool(expires_at and expires_at <= now),
+                    }
+                )
+    except AccountError as exc:
+        fail(console, exc)
+    return sorted(rows, key=lambda r: (r["tool_key"], r["agent"]))
+
+
+def _account_find_grant(remote, typed: str) -> dict[str, Any]:
+    matches = [r for r in _account_grants(remote, None) if match_id(typed, r["id"])]
+    exact = [r for r in matches if r["id"] == typed]
+    if exact or len(matches) == 1:
+        return (exact or matches)[0]
+    if not matches:
+        console.print(f"[red]unknown capability '{typed}'[/]")
+        console.print("  List the real ids with `agentfox permit list`.")
+        raise typer.Exit(1)
+    console.print(f"[red]'{typed}' matches {len(matches)} grants.[/] Name one of them in full:")
+    for match in matches:
+        console.print(f"    {match['id']}  [dim]{match['tool_key']}[/]")
+    raise typer.Exit(1)
+
+
 @capability_app.command("grant")
 def capability_grant(
     agent: str = typer.Argument(..., help="Agent slug, e.g. payments-ops."),
@@ -192,11 +275,12 @@ def capability_grant(
         help="Argument limit, repeatable. path=value, or path:op=value — "
         "for example --limit amount:lt=1000 --limit currency:in=USD,EUR.",
     ),
-    max_taint: str = typer.Option(
-        "user",
+    max_taint: str | None = typer.Option(
+        None,
         "--max-taint",
         help="Worst provenance an argument may carry and still go through without "
-        f"an approval. One of: {', '.join(TAINT_LEVELS)}.",
+        f"an approval. One of: {', '.join(TAINT_LEVELS)}. Default, as the dashboard's "
+        "Add: 'memory' (anything) for a tool that only reads, 'user' for any other.",
     ),
     requires_approval: bool = typer.Option(
         False,
@@ -223,6 +307,8 @@ def capability_grant(
     """
     from agentfox.core.models import utcnow
 
+    if max_taint is None:
+        max_taint = _default_taint(tool)
     if max_taint not in TAINT_LEVELS:
         console.print(
             f"[red]unknown provenance level '{max_taint}'[/]. Use one of: {', '.join(TAINT_LEVELS)}"
@@ -238,10 +324,17 @@ def capability_grant(
         utcnow() + dt.timedelta(days=expires_in_days) if expires_in_days is not None else None
     )
 
+    from agentfox.apps.cli import account as _account
+
+    remote = _account.use(console)
     # Resolve the agent before describing the grant: telling someone what is about to
     # happen and then failing on the name they typed wastes the confirmation.
-    with _session() as session:
-        principal = _resolve_identity(session, agent).principal
+    if remote is not None:
+        _account_agent(remote, agent)
+        principal = f"agent:{agent}"
+    else:
+        with _session() as session:
+            principal = _resolve_identity(session, agent).principal
 
     console.print(f"[bold]Grant[/] {tool} to [bold]{agent}[/]  [dim]{principal}[/]")
     console.print(f"  actions        {', '.join(actions)}")
@@ -254,11 +347,42 @@ def capability_grant(
         f"  expires        {expires_at.isoformat(timespec='seconds') if expires_at else 'never'}"
     )
     _explain_taint_ceiling(tool, max_taint)
-    if not yes and not typer.confirm(
-        "\nThis widens what the agent may do. Grant it?", default=False
-    ):
+    try:
+        confirmed = yes or typer.confirm(
+            "\nThis widens what the agent may do. Grant it?", default=False
+        )
+    except typer.Abort:
+        # No answer to read (a script, CI, stdin closed): the prompt used to end in a
+        # bare "Aborted.", which says nothing about granting without a person there.
+        console.print(
+            "\n[yellow]nothing granted[/]: no answer to the prompt. "
+            "Pass --yes to grant without asking (scripts and CI)."
+        )
+        raise typer.Exit(1) from None
+    if not confirmed:
         console.print("[yellow]nothing granted[/]")
         raise typer.Exit(1)
+
+    if remote is not None:
+        try:
+            granted = remote.post(
+                f"/api/agents/{agent}/access",
+                {
+                    "tool_key": tool,
+                    "actions": actions,
+                    "constraints": constraints,
+                    "requires_approval": requires_approval,
+                    "max_taint": max_taint,
+                    "expires_at": expires_at.isoformat() if expires_at else None,
+                },
+            )
+        except _account.AccountError as exc:
+            _account.fail(console, exc)
+        capability_id = granted["id"]
+        verb = "updated" if granted.get("event") == "capability.updated" else "granted"
+        console.print(f"\n[green]{verb}[/] [bold]{capability_id}[/]  [dim]in your account[/]")
+        _grant_next_steps(agent, capability_id)
+        return
 
     from agentfox.platform.identity import grant_capability
 
@@ -293,6 +417,10 @@ def capability_grant(
         )
 
     console.print(f"\n[green]granted[/] [bold]{capability_id}[/]  [dim]{principal}[/]")
+    _grant_next_steps(agent, capability_id)
+
+
+def _grant_next_steps(agent: str, capability_id: str) -> None:
     _next_steps(
         [
             (
@@ -316,7 +444,13 @@ def capability_list(
     """What each agent is allowed to do. Anything not listed here is refused."""
     from sqlalchemy import select
 
+    from agentfox.apps.cli import account as _account
     from agentfox.core.models import Agent, Capability, Identity, as_aware, utcnow
+
+    remote = _account.use(console, quiet=as_json)
+    if remote is not None:
+        _print_grants(_account_grants(remote, agent), agent, as_json)
+        return
 
     with _session() as session:
         identities = {i.id: i for i in session.scalars(select(Identity))}
@@ -344,7 +478,10 @@ def capability_list(
                     "expired": bool(expires_at and expires_at <= now),
                 }
             )
+    _print_grants(rows, agent, as_json)
 
+
+def _print_grants(rows: list[dict[str, Any]], agent: str | None, as_json: bool) -> None:
     if as_json:
         console.print_json(json.dumps(rows, default=str))
         return
@@ -379,7 +516,8 @@ def capability_list(
             conditions.append(f"before {row['expires_at'][:10]}")
         actions = ", ".join(row["actions"])
         tool = row["tool_key"] if actions == "*" else f"{row['tool_key']} [{actions}]"
-        cells = [f"[dim]{short_id(row['id'])}[/]"]
+        # The whole id: `permit revoke` takes it as shown.
+        cells = [f"[dim]{row['id']}[/]"]
         if show_agent:
             cells.append(row["agent"])
         cells.extend([tool, "; ".join(conditions)])
@@ -388,7 +526,7 @@ def capability_list(
 
     expired = [r for r in rows if r["expired"]]
     console.print(
-        f"\n  [dim]{len(rows)} grant(s)"
+        f"\n  [dim]{plural(len(rows), 'grant')}"
         + (f", {len(expired)} past their expiry and no longer matched" if expired else "")
         + ". Anything not listed is refused by default.[/]"
     )
@@ -410,8 +548,29 @@ def capability_revoke(
     """Withdraw a grant. The agent's calls to that tool are refused from now on."""
     from sqlalchemy import select
 
+    from agentfox.apps.cli import account as _account
     from agentfox.core.models import Agent, Identity
     from agentfox.platform.identity import revoke_capability
+
+    remote = _account.use(console)
+    if remote is not None:
+        grant = _account_find_grant(remote, capability_id)
+        console.print(
+            f"[bold]Revoke[/] {grant['tool_key']} from [bold]{grant['agent']}[/]  "
+            f"[dim]{grant['id']}[/]"
+        )
+        console.print(f"  argument limits {_describe_constraints(grant['constraints'])}")
+        if not yes and not typer.confirm(
+            "\nCalls to this tool will be refused. Revoke it?", default=False
+        ):
+            console.print("[yellow]nothing revoked[/]")
+            raise typer.Exit(1)
+        try:
+            remote.delete(f"/api/agents/{grant['agent']}/access/{grant['id']}")
+        except _account.AccountError as exc:
+            _account.fail(console, exc)
+        console.print(f"\n[green]revoked[/] {grant['tool_key']} from [bold]{grant['agent']}[/]")
+        return
 
     with _session() as session:
         capability = _find_capability(session, capability_id)

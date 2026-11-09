@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/mark.webp" width="72" alt="" />
+<img src="https://raw.githubusercontent.com/architsharm/agentfox/main/docs/assets/mark.webp" width="72" alt="" />
 
 # AgentFox
 
@@ -11,7 +11,7 @@ Open source. Attack-test your own agent in about three minutes, then watch the s
 get stopped. Works with the OpenAI Agents SDK, LangGraph, LangChain, CrewAI, AutoGen,
 OpenAI, Anthropic, LiteLLM, MCP servers, Claude Code and Codex.
 
-[![CI](https://github.com/architsharm/agentfox/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/architsharm/agentfox/actions/workflows/ci.yml) [![Licence](https://img.shields.io/badge/licence-Apache--2.0-2f6feb.svg)](LICENSE) [![Python](https://img.shields.io/badge/python-3.11%2B-2f6feb.svg)](pyproject.toml) [![PyPI](https://img.shields.io/pypi/v/agentfox.svg?color=2f6feb)](https://pypi.org/project/agentfox/) [![Playground](https://img.shields.io/badge/playground-no%20account-c23600.svg)](https://useagentfox.com/playground)
+[![CI](https://github.com/architsharm/agentfox/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/architsharm/agentfox/actions/workflows/ci.yml) [![Licence](https://img.shields.io/badge/licence-Apache--2.0-2f6feb.svg)](https://github.com/architsharm/agentfox/blob/main/LICENSE) [![Python](https://img.shields.io/badge/python-3.11%2B-2f6feb.svg)](https://github.com/architsharm/agentfox/blob/main/pyproject.toml) [![PyPI](https://img.shields.io/pypi/v/agentfox.svg?color=2f6feb)](https://pypi.org/project/agentfox/) [![Playground](https://img.shields.io/badge/playground-no%20account-c23600.svg)](https://useagentfox.com/playground)
 
 **[▶ Try it in the browser, no account](https://useagentfox.com/playground)** &nbsp;·&nbsp; [Docs](https://useagentfox.com/docs) &nbsp;·&nbsp; [Benchmarks](https://useagentfox.com/benchmark) &nbsp;·&nbsp; [Discussions](https://github.com/architsharm/agentfox/discussions)
 
@@ -23,7 +23,7 @@ If AgentFox is useful to you, a ⭐ helps other people find it.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/hero-dark.webp" />
-  <img src="docs/assets/hero-light.webp" alt="Four tool calls from one agent. Three are allowed; payments.transfer is refused by capability.denied, with the reason shown." />
+  <img src="https://raw.githubusercontent.com/architsharm/agentfox/main/docs/assets/hero-light.webp" alt="Four tool calls from one agent. Three are allowed; payments.transfer is refused by capability.denied, with the reason shown." />
 </picture>
 
 ## What it does
@@ -60,7 +60,7 @@ Python 3.11 or newer.
    real happens.
 3. Press **Add N agents to AgentFox**. The attack test starts by itself and shows, per kind of
    attack, how many got through.
-4. Press **Add and test again**. Basic guardrails go on and the same attacks run again, so you
+4. Press **Turn on basic guardrails and test again**. Basic guardrails go on and the same attacks run again, so you
    see the before and after side by side, including how many normal requests were still
    answered.
 5. Add the one line `init` prints (`agentfox.auto("<agent>")`) and run your app. Its calls show
@@ -83,8 +83,16 @@ agentfox test redteam <agent>    # attack-test it
 LangGraph, LangChain, CrewAI, AutoGen, pydantic-ai and the OpenAI Agents SDK. The name is the
 agent that file runs (a crew or swarm takes its project's name), shown before anything changes
 so you can edit it. In a folder of separate examples it sets up one, with only that agent's
-tools, and says how to pick another (`agentfox up --agent <name>`). It starts in watch mode and
-changes nothing else by default: coding-agent hooks, the GitHub workflow and the local API are
+tools, and says how to pick another (`agentfox up --agent <name>`); in a monorepo that edits
+the picked agent's own app, and `scan`, `up`, `init` and `auto()` all name one agent the same
+way (`FinancialPlannerAgent` is `financial-planner-agent` everywhere). `auto()` does not see
+the model calls of Google ADK (google-genai) or smolagents (huggingface_hub); `up` says so,
+and routes them through the gateway with `--with gateway`. It starts in watch mode:
+every library records what it would have stopped and stops nothing (destructive commands such as
+`rm -rf ~/` and tampering with AgentFox aside). Turn blocking on one library at a time when its
+decisions look right: `agentfox policy enforce tool-containment` for tool calls,
+`agentfox policy enforce baseline` for prompt attacks, personal data and secrets. `up` changes
+nothing else by default: coding-agent hooks, the GitHub workflow and the local API are
 `--with coding-agents`, `--with ci` and `--with view`. Everything stays on your machine; a pip
 install has no web dashboard (`agentfox findings` is the terminal view), which comes with
 AgentFox Cloud or the self-hosted stack.
@@ -109,11 +117,18 @@ export AGENTFOX_URL=https://…
 export AGENTFOX_API_KEY=nom_api_…
 ```
 
-With these set (or `.agentfox/agentfox.env`, or `agentfox.auto(server=…, key=…)`),
-every check `agentfox.auto()` makes goes to your account's gateway and the calls appear
-on the dashboard. Without a key it checks and records locally. Every OpenAI, Anthropic,
-LiteLLM and LangChain call in the process is checked, and every tool call in a response
-is checked before your code can run it; a refused one raises `agentfox.Blocked`.
+Or run `agentfox login`, which checks the key and saves both in `.agentfox/agentfox.env`
+(as `agentfox init --key` and `agentfox up` do). With a key set, every check
+`agentfox.auto()` makes goes to your account's gateway and the calls appear on the
+dashboard, and the CLI reads and writes the same account: `findings`, `agents list`,
+`permit`, `declare`, `policy`, `report` and `test suites` show what the dashboard shows,
+and each says on its first line which it is using (`Account: https://… (workspace …)` or
+`Local: ~/.agentfox/agentfox.db`). `agentfox doctor` checks the server and the key. Without
+a key everything checks and records locally. Every OpenAI, Anthropic, LiteLLM and
+LangChain call in the process is checked, and every tool call in a response is checked
+before your code can run it; a refused one raises `agentfox.Blocked`. Coding-agent hooks
+record on this machine; `AGENTFOX_LOCAL=1 agentfox findings` reads them in a project
+connected to an account.
 
 ### Other ways in
 
@@ -128,7 +143,7 @@ is checked before your code can run it; a refused one raises `agentfox.Blocked`.
   does this by default. The hooks call AgentFox by absolute path, so they work from a
   virtualenv install too.
 - **Behind a LiteLLM proxy:** one block in the proxy's `config.yaml` checks every agent
-  behind it ([guide](https://useagentfox.com/docs/guides/litellm)).
+  behind it ([guide](https://useagentfox.com/docs/connect/litellm)).
 - **Look around first:** `agentfox init && agentfox demo`. `init` creates a SQLite database
   and loads 44 controls and the policy packs in about a second; `demo` runs a thirteen-step
   walkthrough in about five, in a database of its own (`~/.agentfox/demo.db`), so your
@@ -154,7 +169,13 @@ Any language can ask the gateway about one call before running it:
 
 ```bash
 agentfox serve                              # gateway + control-plane API on 127.0.0.1:8080
+# in a second terminal:
 agentfox admin users create you@example.com --token   # first operator + API token, shown once
+export AGENTFOX_API_KEY=…                   # the token it printed
+
+agentfox declare tool payments.transfer --impact irreversible
+agentfox permit grant payments-ops payments.transfer --yes
+agentfox policy enforce tool-containment    # watching until now: start blocking
 
 curl -s -X POST http://localhost:8080/v1/guard/tool_call \
   -H "Authorization: Bearer $AGENTFOX_API_KEY" -H "Content-Type: application/json" \
@@ -169,21 +190,23 @@ curl -s -X POST http://localhost:8080/v1/guard/tool_call \
 ```
 
 The recipient came from a tool result, so the transfer waits for a human. Flip `"to"` to
-`"user"` and the same call returns `allow`. Once a person approves it
+`"user"` and the same call returns `allow`. Before `policy enforce`, Tool containment only
+watches: the same call returns `allow` with `"effective_verdict": "escalate"`, what it would
+have done. Once a person approves it
 (`agentfox permit approvals approve apr_…`), the same call with `"approval_id"` added runs, once.
 Pointed at `/v1` as an OpenAI or Anthropic base URL, the gateway proxies model calls too, and a held
 one returns HTTP 428 with its `approval_id`.
 LangGraph, MCP, Claude Code hooks, the SDK and the
 full command set are in the [website guides](https://useagentfox.com/docs) and the
-[product tour](docs/product-tour.md).
+[product tour](https://github.com/architsharm/agentfox/blob/main/docs/product-tour.md).
 
 ## Tracking without anyone running a command
 
-A scan is a snapshot. Connect a GitHub repository, a hosted API's OpenAPI document or an MCP server
+A scan is a snapshot. With AgentFox Enterprise (Cloud or self-hosted), connect a GitHub repository, a hosted API's OpenAPI document or an MCP server
 once and AgentFox keeps re-checking it: every few hours, and on every push once the GitHub webhook
 is registered. What changed since the last run becomes a finding, and the finding closes itself
 when the condition clears. Setup and every finding type:
-[Monitor connected sources](https://useagentfox.com/docs/guides/monitoring).
+[Keep re-checking connected sources](https://useagentfox.com/docs/discover#monitoring).
 
 ## What we measured
 
@@ -198,30 +221,30 @@ with **every detector switched off**.
 
 | Evidence | Result |
 |---|---|
-| [Containment under total detector bypass](benchmarks/containment/README.md) | **8/8 attacks contained with zero detector signal**; 4/4 legitimate calls still allowed |
-| [AgentDojo, replayed end to end](benchmarks/agentdojo/README.md): 97 user tasks and 949 attack pairs, with argument provenance inferred from the real tool outputs | **588/588 attack pairs contained** with session-level taint, but only **24/97 benign tasks (24.7% [17.2, 34.2]) run without escalating to a human**. Per-argument taint: 37/97 benign tasks, 527/588 attack pairs contained. Taking provenance from the benchmark's own labels gives 97/97 and 588/588; that is an upper bound, not a measurement |
+| [Containment under total detector bypass](https://github.com/architsharm/agentfox/blob/main/benchmarks/containment/README.md) | **8/8 attacks contained with zero detector signal**; 4/4 legitimate calls still allowed |
+| [AgentDojo, replayed end to end](https://github.com/architsharm/agentfox/blob/main/benchmarks/agentdojo/README.md): 97 user tasks and 949 attack pairs, with argument provenance inferred from the real tool outputs | **588/588 attack pairs contained** with session-level taint, but only **24/97 benign tasks (24.7% [17.2, 34.2]) run without escalating to a human**. Per-argument taint: 37/97 benign tasks, 527/588 attack pairs contained. Taking provenance from the benchmark's own labels gives 97/97 and 588/588; that is an upper bound, not a measurement |
 
 The cost is benign utility: when provenance is inferred, a legitimate action that copies a
 value out of a tool output looks the same as an attack, and it is escalated.
 
 **Optionally, detection gets better.** The judgment tiers are off by default; with them on,
 agentfox catches 160/165 of the injection payloads that defeated our own pattern detectors, at
-94.7% precision against the [NotInject](benchmarks/generalization/data/README.md) over-defense
-set. [What each tier is worth, and what it costs](benchmarks/judgment/README.md).
+94.7% precision against the [NotInject](https://github.com/architsharm/agentfox/blob/main/benchmarks/generalization/data/README.md) over-defense
+set. [What each tier is worth, and what it costs](https://github.com/architsharm/agentfox/blob/main/benchmarks/judgment/README.md).
 
 ## Where we are still improving
 
 Detection is the layer we trust least, so we publish its numbers.
 
 - The default injection stack (heuristic plus the PIGuard classifier) has a held-out recall of
-  **68.3%**, at 100% precision ([REPORT.md](benchmarks/REPORT.md)). It needs
+  **68.3%**, at 100% precision ([REPORT.md](https://github.com/architsharm/agentfox/blob/main/benchmarks/REPORT.md)). It needs
   `agentfox[classifiers]` and the model weights, which the Docker image ships; without them the
   heuristic runs alone, and its held-out injection recall is **16.7%**; the startup warning and
   `agentfox doctor` say so.
 - On NotInject, 339 benign prompts built to trip keyword guardrails, the classifier flags
   11.5% (39/339) at the level an enforcing policy acts on (PIGuard alone), and 41% (140/339)
   counting the advisory backstop hits that observe mode records.
-- An [adaptive attacker](benchmarks/adaptive/README.md) that reads our verdict and retries gets
+- An [adaptive attacker](https://github.com/architsharm/agentfox/blob/main/benchmarks/adaptive/README.md) that reads our verdict and retries gets
   **74% of the attacks we catch through within 50 attempts**, measured against the
   heuristic-only stack that was the default until October 2026.
 - The deterministic answerability classifier abstains on 57/676 contested questions; with a
@@ -230,7 +253,7 @@ Detection is the layer we trust least, so we publish its numbers.
   is more precise than us: **81.8% against our 66.7%** on the same 20 cases, though of the 10
   attacks among them we catch all 10 and it catches 9. That run predates October 2026, while the
   backstop model's hits still counted toward a block
-  ([agent_security](benchmarks/agent_security/README.md)).
+  ([agent_security](https://github.com/architsharm/agentfox/blob/main/benchmarks/agent_security/README.md)).
 - On AgentDojo, per-argument taint misses 61 of 702 attacker write calls; session-level taint
   misses none of them and escalates three in four benign tasks.
 - The default stack reaches 86.4% and 98.4% recall on two independent datasets (SPML and
@@ -247,20 +270,20 @@ Treat every detection number as a speed bump that raises attacker cost, never as
 - **Compliance mappings are DRAFT**, not reviewed by counsel, and labelled so in every export.
 - **No live IdP or SSO.** Multi-tenancy is enforced at the session within one deployment, and only text is inspected.
 
-Live per-capability status, computed by probe: [docs/status.md](docs/status.md).
+Live per-capability status, computed by probe: [docs/status.md](https://github.com/architsharm/agentfox/blob/main/docs/status.md).
 
 ## Documentation
 
 | | |
 |---|---|
 | [Website docs](https://useagentfox.com/docs) | Install, guides for every integration, and the CLI, API and config reference |
-| [Getting started](docs/getting-started.md) | The short path, then a linear first hour ending with your own agent governed |
-| [Product tour](docs/product-tour.md) | The reference view: every integration surface, commands by task, the demo output, self-hosting |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | The domain model, a tool call traced through the code, and the code map |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Setup in three commands, `just ci`, and the conventions |
-| [docs/](docs/README.md) | Design, threat model, requirements and how the numbers were measured |
-| [Benchmarks](benchmarks/README.md) | Every number above, with the script that reproduces it |
-| [SECURITY.md](SECURITY.md) | Report a vulnerability privately; please not in a public issue |
+| [Getting started](https://github.com/architsharm/agentfox/blob/main/docs/getting-started.md) | The short path, then a linear first hour ending with your own agent governed |
+| [Product tour](https://github.com/architsharm/agentfox/blob/main/docs/product-tour.md) | The reference view: every integration surface, commands by task, the demo output, self-hosting |
+| [ARCHITECTURE.md](https://github.com/architsharm/agentfox/blob/main/ARCHITECTURE.md) | The domain model, a tool call traced through the code, and the code map |
+| [CONTRIBUTING.md](https://github.com/architsharm/agentfox/blob/main/CONTRIBUTING.md) | Setup in three commands, `just ci`, and the conventions |
+| [docs/](https://github.com/architsharm/agentfox/blob/main/docs/README.md) | Design, threat model, requirements and how the numbers were measured |
+| [Benchmarks](https://github.com/architsharm/agentfox/blob/main/benchmarks/README.md) | Every number above, with the script that reproduces it |
+| [SECURITY.md](https://github.com/architsharm/agentfox/blob/main/SECURITY.md) | Report a vulnerability privately; please not in a public issue |
 
 Questions and ideas go to [Discussions](https://github.com/architsharm/agentfox/discussions);
 bugs to [Issues](https://github.com/architsharm/agentfox/issues/new/choose). New contributors:
@@ -268,13 +291,13 @@ start with a [good first issue](https://github.com/architsharm/agentfox/labels/g
 
 ## Licence
 
-The open core is [Apache-2.0](LICENSE): the SDKs, the gateway and CLI, enforcement and
+The open core is [Apache-2.0](https://github.com/architsharm/agentfox/blob/main/LICENSE): the SDKs, the gateway and CLI, enforcement and
 containment, every detector and validator, custom rules, policy packs, the benchmarks and the
 dashboard. It runs on its own, with no licence key and no limit on agents.
 
-[AgentFox Enterprise](ee/README.md) (`ee/`) adds what an organisation needs to govern many
+[AgentFox Enterprise](https://github.com/architsharm/agentfox/blob/main/ee/README.md) (`ee/`) adds what an organisation needs to govern many
 agents and prove it: compliance status against EU AI Act, ISO 42001, SOC 2 and NIST AI RMF,
 auditor evidence packages, fleet monitoring with alerts, and checks against your own access
-control. It is source-available under the [Business Source License 1.1](ee/LICENSE): free in
+control. It is source-available under the [Business Source License 1.1](https://github.com/architsharm/agentfox/blob/main/ee/LICENSE): free in
 production for one workspace with up to four agents, and **each release becomes Apache-2.0
 three years after it ships**. It is included on AgentFox Cloud.

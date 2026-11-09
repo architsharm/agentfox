@@ -91,6 +91,18 @@ def test_capability_grant_asks_before_widening_what_an_agent_may_do():
     assert all(row["tool_key"] != "payments.transfer" for row in _json(listed.output))
 
 
+def test_capability_grant_with_no_one_to_answer_says_to_pass_yes():
+    """In a script or CI the prompt reads end-of-input. It used to end in a bare
+    "Aborted."; it says what to do instead."""
+    _seed()
+    result = runner.invoke(app, ["permit", "grant", "support-triage", "payments.transfer"])
+    assert result.exit_code == 1
+    out = flat(result.output)
+    assert "nothing granted" in out
+    assert "--yes" in out
+    assert "Aborted" not in out
+
+
 def test_capability_grant_is_recorded_in_the_audit_chain():
     """Every other state-changing command in this CLI appends to the chain; a grant
     widens authority, so it is the last one that should be exempt."""
@@ -648,3 +660,60 @@ def test_scan_names_each_agent_it_found_even_when_there_is_one(tmp_path):
     assert "support" in output and "LangGraph" in output
     assert "Start watching these 1 agent" not in output  # the count reads naturally
     assert "agentfox up" in output
+
+
+def test_permit_grant_defaults_to_what_the_dashboard_grants():
+    """The dashboard's "Add" allows a read tool whatever its arguments came from and
+    anything else for what the user typed; `permit grant` defaulted to "user" for all."""
+    from agentfox.core.db import session_scope
+    from agentfox.platform.registry.service import upsert_tool
+
+    _seed()
+    with session_scope() as session:
+        upsert_tool(session, "kb.search", impact="read")
+        upsert_tool(session, "payments.refund", impact="irreversible")
+    for tool in ("kb.search", "payments.refund"):
+        result = runner.invoke(app, ["permit", "grant", "support-triage", tool, "--yes"])
+        assert result.exit_code == 0, result.output
+    listed = {
+        r["tool_key"]: r for r in _json(runner.invoke(app, ["permit", "list", "--json"]).output)
+    }
+    assert listed["kb.search"]["max_taint"] == "memory"
+    assert listed["payments.refund"]["max_taint"] == "user"
+    table = runner.invoke(app, ["permit", "list", "support-triage"], terminal_width=200)
+    assert listed["kb.search"]["id"] in table.output  # the whole id, as revoke takes it
+
+
+def test_doctor_says_local_auth_in_plain_words():
+    """A user who never started a server read "DEVELOPMENT auth … X-AgentFox-User …
+    admin@example.com"; the local line says what it means for them."""
+    checks = {c["check"]: c for c in _json(runner.invoke(app, ["doctor", "--json"]).output)}
+    detail = checks["authentication"]["detail"]
+    assert "X-AgentFox-User" not in detail
+    assert "admin@example.com" not in detail
+    assert "AGENTFOX_AUTH_MODE=token" in detail
+
+
+def test_doctor_flags_tool_impacts_up_guessed():
+    """`agentfox up` declares the tools it finds with a guessed impact and says doctor
+    will flag them until someone confirms each one."""
+    from agentfox.core.db import session_scope
+    from agentfox.platform.registry.service import upsert_tool
+
+    with session_scope() as session:
+        upsert_tool(
+            session,
+            "refund_payment",
+            name="refund_payment",
+            impact="irreversible",
+            description="",
+            impact_source="inferred",
+            actor="agentfox up",
+        )
+    checks = {c["check"]: c for c in _json(runner.invoke(app, ["doctor", "--json"]).output)}
+    assert checks["tool impacts"]["state"] == "warn"
+    assert "refund_payment" in checks["tool impacts"]["detail"]
+
+    runner.invoke(app, ["declare", "tool", "refund_payment", "--impact", "irreversible"])
+    checks = {c["check"]: c for c in _json(runner.invoke(app, ["doctor", "--json"]).output)}
+    assert "tool impacts" not in checks

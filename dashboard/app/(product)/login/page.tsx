@@ -64,21 +64,15 @@ function MicrosoftMark() {
 }
 
 /**
- * The measurement on the brand wall.
- *
- * It is the same experiment the home page leads its proof section with, and the
- * same figures, because a visitor who followed a link from there and is now
- * deciding whether to hand over a GitHub identity should meet the claim they
- * already read rather than a second, different one. The benign-task cost of that
- * containment (24 of 97 ran without a person) is stated on the benchmark page, where
- * it has its context; on a sign-in card it read as the product failing. The source is
- * benchmarks/agentdojo/results/inferred_provenance_summary.json and
- * benchmarks/adaptive/results/adaptive_summary.json; both ratios are bound in
- * benchmarks/claims.yaml and checked by scripts/check/claims.py, which also fails if a retired AgentDojo figure reappears.
+ * What the brand wall shows: the agent map, with the kind of decisions AgentFox
+ * makes on it arriving one at a time. The cards are illustrative examples of
+ * real verdict types (the same ones the home page's hero art uses), not data,
+ * so there is no number here to keep in step with a benchmark.
  */
-const PROOF: [string, string][] = [
-  ["588 of 588", "attack pairs contained"],
-  ["37 of 37", "attacks that got past the detector, still stopped before they acted"],
+const VERDICTS: { tone: "block" | "hold" | "allow"; label: string; head: string; detail: string }[] = [
+  { tone: "block", label: "Blocked", head: "email.send", detail: "tool never granted" },
+  { tone: "hold", label: "Sent to a person", head: "refund.issue", detail: "over the $500 limit" },
+  { tone: "allow", label: "Allowed", head: "crm.lookup", detail: "granted, read only" },
 ];
 
 /**
@@ -195,18 +189,23 @@ export default async function Login({
 
       <aside className="auth-wall" aria-label="What AgentFox does">
         <div className="auth-wall-inner">
-          <h2>Guardrails that don&apos;t block your real customers</h2>
-          <p>
-            The headline results from our <Link href="/benchmark">security benchmarks</Link>: AgentDojo&apos;s attack pairs,
-            and an attacker who rewrites each attack after seeing our verdict.
-          </p>
-          <div className="auth-stats">
-            {PROOF.map(([n, label]) => (
-              <div key={label} className="auth-stat">
-                <b>{n}</b>
-                <span>{label}</span>
-              </div>
-            ))}
+          <h2>See every agent. Stop what it shouldn&apos;t do.</h2>
+          <div className="auth-shot" aria-hidden="true">
+            <div className="auth-shot-bar">
+              <i /><i /><i />
+              <span className="auth-live">Live</span>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/product/login-map.png" alt="" width={793} height={782} />
+            <div className="auth-verdicts">
+              {VERDICTS.map((v, i) => (
+                <div key={v.head} className={`auth-verdict is-${v.tone}`} style={{ animationDelay: `${i * 3}s` }}>
+                  <span className="auth-verdict-label">{v.label}</span>
+                  <b>{v.head}</b>
+                  <span>{v.detail}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </aside>

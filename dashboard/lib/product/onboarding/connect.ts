@@ -29,3 +29,34 @@ export function isFreshConnection(baseline: Baseline | null, live: Live): boolea
   if (live.connectedAt) return !baseline.at || live.connectedAt > baseline.at;
   return !baseline.connected;
 }
+
+/** GET /api/onboarding/structure, as the "add what init found" prompt reads it. */
+export type Arrival = {
+  connected: boolean;
+  connectedAt?: string | null;
+  structure: { project?: string | null };
+  /** The reported agents that are still drafts: proposed, not added yet. */
+  pending?: { slug: string; name: string }[];
+};
+
+/** What the prompt asks about: one init report, named by its project and time. */
+export type PendingPrompt = { key: string; project: string | null; agents: { slug: string; name: string }[] };
+
+/**
+ * The agents `agentfox init` found that still wait to be added, unless this report
+ * was dismissed. The prompt stays (on every page, across reloads) until they are
+ * added or it is dismissed; a later init (another repository, or the same one run
+ * again) asks again.
+ */
+export function pendingPrompt(live: Arrival | null, dismissed: string[]): PendingPrompt | null {
+  if (!live?.connected || !live.pending?.length) return null;
+  const project = live.structure?.project ?? null;
+  const key = `${project ?? ""}@${live.connectedAt ?? ""}`;
+  if (dismissed.includes(key)) return null;
+  return { key, project, agents: live.pending };
+}
+
+/** "Add 3 agents to AgentFox" / "Add Shop Agent to AgentFox". */
+export function addLabel(agents: { name: string }[]): string {
+  return agents.length === 1 ? `Add ${agents[0].name} to AgentFox` : `Add ${agents.length} agents to AgentFox`;
+}

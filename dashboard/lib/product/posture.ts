@@ -12,6 +12,12 @@
 export type Posture = {
   controls?: number;
   counts?: Record<string, number | undefined>;
+  /** Computed by the gateway (`control_share` in ee compliance/status.py), the same
+   * function `agentfox report status` prints from. Used when present. */
+  applies?: number;
+  working?: number;
+  measured?: number;
+  share?: number | null;
 };
 
 export function controlShare(p: Posture | null | undefined): {
@@ -22,6 +28,16 @@ export function controlShare(p: Posture | null | undefined): {
   share: number | null;
 } {
   const c = p?.counts || {};
+  if (typeof p?.applies === "number" && typeof p?.working === "number") {
+    return {
+      working: p.working,
+      applies: p.applies,
+      measured: p.measured ?? p.working + (c.degraded || 0) + (c.failing || 0),
+      notSetUp: c.not_implemented || 0,
+      share: p.share ?? (p.applies ? p.working / p.applies : null),
+    };
+  }
+  // An older gateway without those fields: the same definition, computed here.
   const applies = Math.max(0, (p?.controls || 0) - (c.not_applicable || 0));
   const working = c.effective || 0;
   const measured = working + (c.degraded || 0) + (c.failing || 0);

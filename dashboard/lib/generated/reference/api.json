@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 337,
+ "count": 348,
  "routes": [
   {
    "method": "GET",
@@ -1057,6 +1057,39 @@
   },
   {
    "method": "POST",
+   "path": "/api/agents/reject",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Dismiss several proposed agents at once (\"Dismiss all\" on a long Proposed list): the same state change and ledger entry as dismissing each. Ids that are not drafts are skipped.",
+   "description": "Dismiss several proposed agents at once (\"Dismiss all\" on a long Proposed list):\nthe same state change and ledger entry as dismissing each. Ids that are not drafts\nare skipped.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "DraftIds",
+    "fields": [
+     {
+      "name": "ids",
+      "type": "array",
+      "required": true,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "POST",
    "path": "/api/agents/{agent_id}/approve",
    "section": "agents",
    "audience": "operator",
@@ -1143,6 +1176,35 @@
    "body": null
   },
   {
+   "method": "DELETE",
+   "path": "/api/agents/{slug}",
+   "section": "agents",
+   "audience": "operator",
+   "summary": "Remove one agent from the dashboard (a duplicate, or one that is gone), the way disconnecting its project removes each of its agents: its guardrails recorded and emptied, its tool permissions revoked, what init declared for it cleared. Its history (traffic, issues, audit) is kept, and `agentfox init` or ``agentfox up`` proposes it again. The rest of its project stays.",
+   "description": "Remove one agent from the dashboard (a duplicate, or one that is gone), the way\ndisconnecting its project removes each of its agents: its guardrails recorded and\nemptied, its tool permissions revoked, what init declared for it cleared. Its\nhistory (traffic, issues, audit) is kept, and `agentfox init` or ``agentfox up``\nproposes it again. The rest of its project stays.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
    "method": "GET",
    "path": "/api/agents/{slug}",
    "section": "agents",
@@ -1201,6 +1263,12 @@
    "body": {
     "model": "AgentUpdate",
     "fields": [
+     {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
      {
       "name": "owner_email",
       "type": "string",
@@ -1325,6 +1393,12 @@
      },
      {
       "name": "impact",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "expires_at",
       "type": "string",
       "required": false,
       "description": ""
@@ -3405,6 +3479,12 @@
       "type": "string",
       "required": false,
       "description": ""
+     },
+     {
+      "name": "tool",
+      "type": "string",
+      "required": false,
+      "description": ""
      }
     ]
    }
@@ -4493,6 +4573,70 @@
   },
   {
    "method": "GET",
+   "path": "/api/custom-rules/{key}/history",
+   "section": "custom-rules",
+   "audience": "operator",
+   "summary": "Every saved version of a rule's words, patterns or condition, with what changed.",
+   "description": "Every saved version of a rule's words, patterns or condition, with what changed.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/custom-rules/{key}/versions/{version}/restore",
+   "section": "custom-rules",
+   "audience": "operator",
+   "summary": "Put an earlier version of a rule's definition back, as a new version.",
+   "description": "Put an earlier version of a rule's definition back, as a new version.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "version",
+     "in": "path",
+     "required": true,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
    "path": "/api/detectors",
    "section": "detectors",
    "audience": "operator",
@@ -5431,8 +5575,8 @@
    "path": "/api/eval/gate",
    "section": "eval",
    "audience": "operator",
-   "summary": "The CI entry point. Non-zero exit maps from ``passed: false``.",
-   "description": "The CI entry point. Non-zero exit maps from ``passed: false``.",
+   "summary": "The CI entry point. A gate that fails answers **412** with the same body (``passed: false``, the regressions, JUnit and SARIF), so ``curl --fail`` and any HTTP client fail the build on it. It answered 200 with ``passed: false``, and the snippet's ``curl -s`` passed every build.",
+   "description": "The CI entry point. A gate that fails answers **412** with the same body\n(``passed: false``, the regressions, JUnit and SARIF), so ``curl --fail`` and any\nHTTP client fail the build on it. It answered 200 with ``passed: false``, and the\nsnippet's ``curl -s`` passed every build.",
    "params": [
     {
      "name": "authorization",
@@ -6560,6 +6704,12 @@
     },
     {
      "name": "status",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "trace_id",
      "in": "query",
      "required": false,
      "type": null
@@ -8012,6 +8162,113 @@
   },
   {
    "method": "GET",
+   "path": "/api/members",
+   "section": "members",
+   "audience": "operator",
+   "summary": "Everyone in this workspace, owners first.",
+   "description": "Everyone in this workspace, owners first.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/members",
+   "section": "members",
+   "audience": "operator",
+   "summary": "Add a teammate with a role. Returns a sign-in key for them, shown this once.",
+   "description": "Add a teammate with a role. Returns a sign-in key for them, shown this once.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "MemberIn",
+    "fields": [
+     {
+      "name": "email",
+      "type": "string",
+      "required": true,
+      "description": ""
+     },
+     {
+      "name": "role",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "PATCH",
+   "path": "/api/members/{member_id}",
+   "section": "members",
+   "audience": "operator",
+   "summary": "Change a teammate's role, or deactivate them (their keys stop working with it).",
+   "description": "Change a teammate's role, or deactivate them (their keys stop working with it).",
+   "params": [
+    {
+     "name": "member_id",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "MemberUpdate",
+    "fields": [
+     {
+      "name": "role",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "active",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
    "path": "/api/memory",
    "section": "memory",
    "audience": "operator",
@@ -8696,6 +8953,35 @@
    "body": null
   },
   {
+   "method": "POST",
+   "path": "/api/onboarding/agents/{slug}/tests",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "Run the attack test of the project this agent is in: the same test as the agent page's panel, against the real agent through its `agentfox init`.",
+   "description": "Run the attack test of the project this agent is in: the same test as the\nagent page's panel, against the real agent through its `agentfox init`.",
+   "params": [
+    {
+     "name": "slug",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
    "method": "GET",
    "path": "/api/onboarding/guardrails",
    "section": "onboarding",
@@ -8828,13 +9114,19 @@
    "section": "onboarding",
    "audience": "operator",
    "summary": "The project's first test (as it was) and its latest one with the basic guardrails, whether those are on (``basicOn``: watching or blocking; ``basicEnforcing``: blocking), and whether this project's `agentfox init` is connected (only it can run a test).",
-   "description": "The project's first test (as it was) and its latest one with the basic\nguardrails, whether those are on (``basicOn``: watching or blocking;\n``basicEnforcing``: blocking), and whether this project's `agentfox init` is\nconnected (only it can run a test).",
+   "description": "The project's first test (as it was) and its latest one with the basic\nguardrails, whether those are on (``basicOn``: watching or blocking;\n``basicEnforcing``: blocking), and whether this project's `agentfox init` is\nconnected (only it can run a test).\n\n``agent`` (a slug): each run as that agent saw it, its own attacks and results\nonly. The test covers every agent in the project; an agent's page shows its own.",
    "params": [
     {
      "name": "project",
      "in": "path",
      "required": true,
      "type": "string"
+    },
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
     },
     {
      "name": "authorization",
@@ -9022,6 +9314,18 @@
       "type": "object",
       "required": false,
       "description": ""
+     },
+     {
+      "name": "message",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "reads",
+      "type": "array",
+      "required": false,
+      "description": ""
      }
     ]
    }
@@ -9070,6 +9374,41 @@
      }
     ]
    }
+  },
+  {
+   "method": "GET",
+   "path": "/api/onboarding/runs",
+   "section": "onboarding",
+   "audience": "operator",
+   "summary": "Every attack test the projects' panels ran, latest first (Testing → Attack tests). ``agent`` (a slug): only the runs that tested it, each as it saw it.",
+   "description": "Every attack test the projects' panels ran, latest first (Testing → Attack\ntests). ``agent`` (a slug): only the runs that tested it, each as it saw it.\n\nThere used to be two attack tests that didn't know about each other: the agent\npanel's, which sends the attacks to the real agent, and a different built-in one\nbehind Testing's Run button with its own numbers. Testing now lists these runs and\nstarts the same test (``POST /agents/{slug}/tests``).",
+   "params": [
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "limit",
+     "in": "query",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
   },
   {
    "method": "DELETE",
@@ -10107,6 +10446,35 @@
    }
   },
   {
+   "method": "DELETE",
+   "path": "/api/policies/{key}",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Stop applying an imported policy. Its versions stay, for the audit trail.",
+   "description": "Stop applying an imported policy. Its versions stay, for the audit trail.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
    "method": "GET",
    "path": "/api/policies/{key}",
    "section": "policies",
@@ -10451,6 +10819,12 @@
      },
      {
       "name": "overridable",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "watch",
       "type": "boolean",
       "required": false,
       "description": ""
@@ -11648,6 +12022,47 @@
   },
   {
    "method": "GET",
+   "path": "/api/report/summary",
+   "section": "report",
+   "audience": "operator",
+   "summary": "The one-page summary `agentfox report` prints, for this workspace: what ran, what was stopped and why, what is only watched. ``text`` is Markdown or HTML.",
+   "description": "The one-page summary `agentfox report` prints, for this workspace: what ran,\nwhat was stopped and why, what is only watched. ``text`` is Markdown or HTML.",
+   "params": [
+    {
+     "name": "since",
+     "in": "query",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "agent",
+     "in": "query",
+     "required": false,
+     "type": "array"
+    },
+    {
+     "name": "format",
+     "in": "query",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
    "path": "/api/retention",
    "section": "retention",
    "audience": "operator",
@@ -12580,6 +12995,18 @@
      {
       "name": "output_trust",
       "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "effect_class",
+      "type": "string",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "triggers",
+      "type": "array",
       "required": false,
       "description": ""
      }

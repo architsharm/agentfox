@@ -1,3 +1,4 @@
+import { isAdded } from "@/lib/product/proposedSystems";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -255,7 +256,7 @@ async function PerformanceTab({ sp }: { sp: SP }) {
   const totals = firedRows.reduce((t, x) => ({ fires: t.fires + x.s.fires, enforced: t.enforced + x.s.enforced, watched: t.watched + x.s.watched }), { fires: 0, enforced: 0, watched: 0 });
 
   // Coverage: for each agent, is each area enforced, only watched, or uncovered?
-  const live = (agents.agents || []).filter((a: any) => a.status !== "draft");
+  const live = (agents.agents || []).filter(isAdded);
   const effective = await Promise.all(live.map((a: any) => safeApi<any>(`/api/policies/effective?agent=${encodeURIComponent(a.slug)}`, { rules: [] })));
   const cats = CATEGORIES.filter((c) => rules.some((r) => ruleCategory(r.rule_id) === c.key));
   const cell = (rs: any[], cat: string) => {

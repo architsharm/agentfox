@@ -61,10 +61,12 @@ Modes — who decides whether a call is refused in-process:
   exactly when the *enforced* verdict stops the call, i.e. when the gateway would have
   refused it. The shipped ``baseline`` pack is in observe mode, so adding the import
   blocks nothing; ``agentfox policy enforce baseline`` is the one step that starts
-  blocking, with no second knob to find here. Tool calls follow the same rule, with
-  one carve-out: capability default-deny raises only once the agent holds at least
-  one capability grant (see `_govern_tool_calls`), because before that it would
-  refuse every tool an existing app has.
+  blocking, with no second knob to find here. Tool calls follow the same rule:
+  Tool containment's checks, capability default-deny included, block only while the
+  tool-containment pack does (``agentfox policy enforce tool-containment``), with one
+  carve-out: default-deny raises only once the agent holds at least one capability
+  grant (see `_govern_tool_calls`), because before that it would refuse every tool an
+  existing app has.
 * ``"observe"`` — never raise. A library-level safety valve: every decision is still
   recorded, and what *would* have been blocked is logged and counted.
 * ``"enforce"`` — strict: raise whenever the *effective* verdict (what the policies
@@ -290,6 +292,11 @@ class AutoState:
     #: The account this process reports to (`remote.Remote`), or None when it enforces
     #: against the local database. See `agentfox.frameworks.autoguard.remote`.
     remote: Any = None
+    #: What is wrong with the account, said in the banner: a rejected key or an
+    #: unreachable server. None when it answered (or there is none).
+    remote_problem: str | None = None
+    #: The account whose key was refused, when this process fell back to local.
+    remote_rejected: str | None = None
 
     @property
     def active(self) -> bool:
@@ -323,8 +330,10 @@ class AutoState:
         (``AGENTFOX_VERBOSE=1`` prints it instead)."""
         patched = [p.library for p in self.patches if p.patched]
         head = f"AgentFox is governing '{self.agent}' in {self.mode} mode ({self.environment})"
-        if self.remote is not None:
+        if self.remote is not None and not self.remote_problem:
             head += f", reporting to your AgentFox account at {self.remote.url}"
+        elif self.remote_rejected:
+            head += ", locally: NOT reporting to your account"
         # Line two: what is covered, and anything that is not, said plainly.
         gaps = [
             f"{framework} calls are NOT governed (none of "
@@ -346,7 +355,10 @@ class AutoState:
         if self.policies_bound == 0:
             what += " No policy bound: the baseline applies, in observe (`agentfox init`)."
         what += " `agentfox findings` shows what it saw; AGENTFOX_VERBOSE=1 for details."
-        return "\n".join([head + ".", "  " + "; ".join([covered, *gaps]), "  " + what])
+        lines = [head + ".", "  " + "; ".join([covered, *gaps]), "  " + what]
+        if self.remote_problem:
+            lines.append(self.remote_problem)
+        return "\n".join(lines)
 
     def summary(self) -> str:
         """One paragraph a developer reads once and never again."""
@@ -358,7 +370,9 @@ class AutoState:
         lines = [
             f"AgentFox is governing '{self.agent}' in {self.mode} mode ({self.environment}).",
         ]
-        if self.remote is not None:
+        if self.remote_problem:
+            lines.append(self.remote_problem)
+        elif self.remote is not None:
             lines.append(
                 f"Every check goes to your AgentFox account at {self.remote.url}; "
                 "the calls show up on its dashboard."
@@ -454,7 +468,8 @@ class AutoState:
                 "(baseline ships in observe) record what they would have blocked; "
                 "enforce-mode policies, the kill switch and budget caps raise "
                 "agentfox.Blocked — for a tool call too. A tool outside the agent's "
-                "capability grants raises once it has at least one grant. "
+                "capability grants raises once it has at least one grant and "
+                "tool-containment blocks (`agentfox policy enforce tool-containment`). "
                 "`agentfox policy enforce baseline` is the one step that starts "
                 "blocking content."
             )
@@ -511,7 +526,7 @@ def _record_turn(
         log.debug("agentfox: turn capture skipped: %s", exc)
 
 
-from agentfox.core.vocab import ATTACK_TEST_ENV  # noqa: E402 - re-exported
+from agentfox.core.vocab import ATTACK_TEST_ENV, DISABLED_ENV  # noqa: E402 - re-exported
 
 
 class _SkipLocalSetup(Exception):
@@ -1092,10 +1107,20 @@ def _describe_tool_refusal(
             "capability grant yet"
         )
     untrusted = [m for m in marks if m.trust == "untrusted"]
+    # A value copied out of another tool's result is what a composed escalation is
+    # about, even from a tool whose output is trusted: say where it came from rather
+    # than "no argument came from untrusted content" beside a refusal for exactly that.
+    copied = [m for m in marks if m.propagated_from]
     if untrusted:
         parts = [
             f"{m.path} from {m.source.replace('_', ' ')}{_describe_origin(m.propagated_from)}"
             for m in untrusted
+        ]
+        message += ". Argument provenance: " + "; ".join(parts)
+    elif copied:
+        parts = [
+            f"{m.path} copied from a tool result{_describe_origin(m.propagated_from)}"
+            for m in copied
         ]
         message += ". Argument provenance: " + "; ".join(parts)
     elif marks or tool_call.arguments:
@@ -1190,6 +1215,25 @@ def _govern_tool_calls(
             )
             if not note and (result.blocked or result.escalated):
                 note = f"auto() is in {state.mode} mode; recorded, not applied in-process"
+            elif not note:
+                # Nothing applied it: every rule that would refuse the call watches.
+                watching = sorted(
+                    {
+                        str(r.get("rule_id"))
+                        for r in _stopping_rules(result)
+                        if r.get("mode") == "observe"
+                    }
+                )
+                note = "recorded, not applied: " + (
+                    f"{', '.join(watching)} only watch"
+                    + (
+                        " (no capability grant exists for this agent yet)"
+                        if set(watching) & _CAPABILITY_REFUSAL_RULE_IDS and has_grants is False
+                        else ""
+                    )
+                    if watching
+                    else "the rules that would refuse it only watch"
+                )
 
         # One `tool` span per call, alongside the decision. The decision records what
         # the enforcer decided; this records what actually happened in this process,
@@ -2859,13 +2903,14 @@ def auto(
 
     * ``"policy"`` (default) — the policies decide: `Blocked` is raised exactly when
       the enforced verdict stops the call (an enforce-mode policy, the kill switch,
-      quarantine or a hard budget cap) — what the gateway would refuse. The shipped
-      detector packs observe, so model traffic is not refused until
-      ``agentfox policy enforce baseline``, and a new workspace starts tool
-      containment watching too (``agentfox policy enforce tool-containment`` starts
-      it blocking). A tool the agent was not given (once it holds any grant), a
-      destructive statement and the kill switch are refused whatever the packs'
-      modes. Start with ``mode="observe"`` to see what would be refused first.
+      quarantine or a hard budget cap) — what the gateway would refuse. A new
+      workspace starts every pack watching, so nothing is refused until you say so:
+      ``agentfox policy enforce tool-containment`` starts Tool containment blocking
+      (a tool the agent was not granted, once it holds any grant; an untrusted or
+      tool-derived argument to a tool that changes something), and
+      ``agentfox policy enforce baseline`` the content guardrails. A limit or "Ask
+      first" a person set on a grant, a destructive statement and the kill switch
+      apply whatever the packs' modes.
     * ``"observe"`` — never raise; would-have-blocked is logged and counted.
     * ``"enforce"`` — strict: raise whenever the effective verdict blocks, even for a
       policy still in observe. For tests and CI.
@@ -2901,6 +2946,15 @@ def auto(
         return AutoState(agent=agent or default_agent_slug(), mode=mode, environment="test")
     if tool_refusals not in ("message", "raise"):
         raise ValueError("tool_refusals must be 'message' (default) or 'raise'")
+    if os.environ.get(DISABLED_ENV, "").strip().lower() in ("1", "true", "yes"):
+        # The off switch: nothing patched, checked, stored or sent. One line, so a
+        # switch left on by mistake is visible rather than silent.
+        if not quiet:
+            print(  # noqa: T201 - the point is to be seen
+                f"agentfox: off ({DISABLED_ENV} is set); calls are not checked or recorded.",
+                file=sys.stderr,
+            )
+        return AutoState(agent=agent or default_agent_slug(), mode=mode, environment="off")
 
     settings = get_settings()
     state = AutoState(
@@ -2915,6 +2969,15 @@ def auto(
     from agentfox.frameworks.autoguard import remote as _remote
 
     state.remote = _remote.configured(server, key)
+    if state.remote is not None:
+        # Asked once, before the banner says where checks go: a rejected key used to
+        # print "reporting to your AgentFox account" and then let every call through
+        # unchecked. Refused, the process governs itself with the local database
+        # instead and says so; unreachable, it keeps trying the account.
+        state.remote_problem = state.remote.check()
+        if state.remote_problem and "rejected your AgentFox key" in state.remote_problem:
+            state.remote_rejected = state.remote.url
+            state.remote = None
 
     try:
         if state.remote is not None:
@@ -2984,7 +3047,8 @@ def auto(
 def _report_at_exit() -> None:  # pragma: no cover - process teardown
     if _STATE and _STATE.calls_governed:
         print(
-            f"agentfox: governed {_STATE.calls_governed} model call(s). "
+            f"agentfox: governed {_STATE.calls_governed} model "
+            f"call{'' if _STATE.calls_governed == 1 else 's'}. "
             f"Run `agentfox findings` to see what it found.",
             file=sys.stderr,
         )

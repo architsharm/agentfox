@@ -10,18 +10,18 @@ import { ValidatorFields, paramsFor, rawFrom, useValidators, validatorReady } fr
 import type { ValidatorValue } from "@/components/product/policies/ValidatorFields";
 import { keptRuleFields, keptWithin } from "@/lib/product/resave";
 import { AgentScope, type ScopeAgent } from "@/components/product/policies/AgentScope";
-import { defaultRuleScope } from "@/lib/product/policyWords";
+import { defaultRuleScope, ruleEntries } from "@/lib/product/policyWords";
 
 type Kind = "terms" | "patterns" | "topic" | "allow" | "sequence" | "condition" | "validator";
 
-const KINDS: { key: Kind; label: string; placeholder: string }[] = [
-  { key: "terms", label: "Words", placeholder: "Globex\nInitech" },
-  { key: "patterns", label: "Patterns", placeholder: "ACC-\\d{6}" },
-  { key: "topic", label: "Topic to avoid", placeholder: "Medical diagnosis, symptoms, treatment" },
-  { key: "allow", label: "Allowed topics", placeholder: "Orders, shipping, returns, billing" },
-  { key: "sequence", label: "Sequence", placeholder: "" },
-  { key: "condition", label: "Value check", placeholder: "" },
-  { key: "validator", label: "Built-in check", placeholder: "" },
+const KINDS: { key: Kind; label: string; placeholder: string; name: string }[] = [
+  { key: "terms", label: "Words", placeholder: "Globex\nInitech", name: "Competitor mentions" },
+  { key: "patterns", label: "Patterns", placeholder: "ACC-\\d{6}", name: "Internal account numbers" },
+  { key: "topic", label: "Topic to avoid", placeholder: "Medical diagnosis, symptoms, treatment", name: "No medical advice" },
+  { key: "allow", label: "Allowed topics", placeholder: "Orders, shipping, returns, billing", name: "Only order questions" },
+  { key: "sequence", label: "Sequence", placeholder: "", name: "No email after reading customer data" },
+  { key: "condition", label: "Value check", placeholder: "", name: "Refunds over 500" },
+  { key: "validator", label: "Built-in check", placeholder: "", name: "System prompt leaks" },
 ];
 
 const CHECKS: { key: string; label: string }[] = [
@@ -36,12 +36,6 @@ const ACTIONS: { effect: string; label: string; only?: Kind[] }[] = [
   { effect: "redact", label: "Mask", only: ["terms", "patterns", "condition"] },
   { effect: "allow", label: "Log only" },
 ];
-
-const lines = (s: string) =>
-  s
-    .split(/\n|,/)
-    .map((x) => x.trim())
-    .filter(Boolean);
 
 const slug = (s: string) =>
   s
@@ -136,7 +130,8 @@ export function CustomRule({
   const [tried, setTried] = useState<null | { matched: boolean; matches: any[]; observed?: unknown[] }>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [saved, setSaved] = useState<null | { ruleId: string; mode: string }>(null);
+  const [asking, setAsking] = useState(false);
+  const [saved, setSaved] = useState<null | { ruleId: string; mode: string; packMode: string }>(null);
 
   const isTopic = kind === "topic" || kind === "allow";
   const spec = (): Record<string, unknown> => {
@@ -162,8 +157,8 @@ export function CustomRule({
         surfaces: checks.filter((c) => !checkInfo || checkInfo.surfaces.includes(c)),
       };
     if (isTopic)
-      return { ...base, kind: "topic", polarity: kind === "allow" ? "allow" : "deny", description: entries.trim(), examples: lines(examples), surfaces: checks };
-    return { ...base, kind, entries: lines(entries), surfaces: checks };
+      return { ...base, kind: "topic", polarity: kind === "allow" ? "allow" : "deny", description: entries.trim(), examples: ruleEntries("examples", examples), surfaces: checks };
+    return { ...base, kind, entries: ruleEntries(kind, entries), surfaces: checks };
   };
 
   const pickKind = (k: Kind) => {
@@ -199,7 +194,7 @@ export function CustomRule({
 
   const remove = () =>
     run(async () => {
-      if (!initial || !window.confirm(`Delete "${initial.name}"? It stops checking traffic now.`)) return;
+      if (!initial) return;
       await callJson(`/api/custom-rules/${encodeURIComponent(initial.key)}`, "DELETE");
       router.push("/app/policies");
     });
@@ -212,7 +207,7 @@ export function CustomRule({
         message: ["block", "escalate"].includes(effect) ? message.trim() : "",
         on_block: effect === "block" && reask ? "reask" : "refuse",
       });
-      setSaved({ ruleId: out.rule.rule_id, mode: out.policy.mode });
+      setSaved({ ruleId: out.rule.rule_id, mode: out.mode || out.policy.mode, packMode: out.policy.mode });
       router.refresh();
     });
 
@@ -223,12 +218,18 @@ export function CustomRule({
           <span className="k-pill k-pill-ok">
             {editing ? "Saved" : "Added"} · {saved.mode === "enforce" ? "enforcing" : "watching"}
           </span>
-          {saved.mode !== "enforce" && (
-            // New rules join the Your rules library, watching; it is switched on there.
-            <Link className="k-btn-primary" href="/app/policies?tab=libraries&open=custom">
-              Start blocking in Your rules
-            </Link>
-          )}
+          {saved.mode !== "enforce" &&
+            (saved.packMode === "enforce" ? (
+              // Your rules already blocks: this one rule is started from its own page.
+              <Link className="k-btn-primary" href={`/app/policies/rules/${encodeURIComponent(saved.ruleId)}?tab=tune`}>
+                Start blocking this rule
+              </Link>
+            ) : (
+              // New rules join the Your rules library, watching; it is switched on there.
+              <Link className="k-btn-primary" href="/app/policies?tab=libraries&open=custom">
+                Start blocking in Your rules
+              </Link>
+            ))}
           <Link className="k-btn" href={`/app/policies/rules/${encodeURIComponent(saved.ruleId)}`}>
             Open rule
           </Link>
@@ -258,8 +259,8 @@ export function CustomRule({
       : kind === "condition"
         ? conditionReady(cond)
         : kind === "validator"
-          ? validatorReady(checkInfo, check.params)
-          : entries.trim());
+          ? validatorReady(checkInfo, check.params) && checks.length > 0
+          : entries.trim() && checks.length > 0);
   const surfaces = kind === "condition" ? [cond.surface] : checks;
   const toolSample = kind === "condition" && (cond.surface === "tool_args" || cond.surface === "tool_result");
   const read = (tried?.observed || []).map((v) => (typeof v === "string" ? v : JSON.stringify(v))).join(", ");
@@ -276,13 +277,13 @@ export function CustomRule({
 
       {!editing && (
         <p className="k-help">
-          A saved rule starts by watching: it records what it would do and stops nothing until you start blocking with Your rules.
+          A saved rule starts by watching: it records what it would do and stops nothing until you start blocking it.
         </p>
       )}
 
       <div className="k-field">
         <label htmlFor="cr-name">Name</label>
-        <input id="cr-name" className="k-input" maxLength={200} value={name} onChange={(e) => setName(e.target.value)} placeholder="Competitor mentions" />
+        <input id="cr-name" className="k-input" maxLength={200} value={name} onChange={(e) => setName(e.target.value)} placeholder={KINDS.find((k) => k.key === kind)?.name} />
       </div>
 
       {kind === "condition" ? (
@@ -353,7 +354,7 @@ export function CustomRule({
       ) : (
         <>
           <div className="k-field">
-            <label htmlFor="cr-entries">{isTopic ? "Topics" : kind === "patterns" ? "Patterns, one per line" : "Words, one per line"}</label>
+            <label htmlFor="cr-entries">{isTopic ? "Topics" : kind === "patterns" ? "Patterns, one per line" : "Words, one per line or separated by commas"}</label>
             <textarea
               id="cr-entries"
               className={`k-input${kind === "patterns" ? " k-mono" : ""}`}
@@ -417,17 +418,17 @@ export function CustomRule({
         </>
       )}
 
-      {kind !== "sequence" && (
+      {(
         <div className="k-field">
           <label htmlFor="cr-sample">Try it</label>
           <div className="k-pills" style={{ gap: 8 }}>
             <input
               id="cr-sample"
-              className={`k-input${toolSample ? " k-mono" : ""}`}
+              className={`k-input${toolSample || kind === "sequence" ? " k-mono" : ""}`}
               style={{ flex: 1, minWidth: 240 }}
               value={sample}
               onChange={(e) => setSample(e.target.value)}
-              placeholder={toolSample ? '{"amount": 750}' : "Paste a message"}
+              placeholder={kind === "sequence" ? `${after.trim() || "crm.lookup"} -> ${then.trim() || "email.send"} {"to": "someone@gmail.com"}` : toolSample ? '{"amount": 750}' : "Paste a message"}
             />
             <button className="k-btn" disabled={busy || !ready || !sample.trim()} onClick={tryIt}>
               Try
@@ -437,23 +438,39 @@ export function CustomRule({
                 {tried.matched ? (hit && kind !== "condition" ? `Matches “${hit}”` : "Matches") : "No match"}
               </span>
             )}
-            {tried?.matched && kind === "validator" && tried.matches[0]?.reason && <span className="muted">{tried.matches[0].reason}</span>}
+            {tried?.matched && (kind === "validator" || kind === "sequence") && tried.matches[0]?.reason && <span className="muted">{tried.matches[0].reason}</span>}
             {tried && kind === "condition" && <span className="muted">{read ? `Read ${read}` : "Field not found"}</span>}
           </div>
         </div>
       )}
 
       {error && <div className="error" role="alert">{error}</div>}
+      {/* A rule saved with no place to check ran on a default nobody chose. */}
+      {!checks.length && !["sequence", "condition"].includes(kind) && (
+        <p className="k-help">Choose where to check: user messages, agent replies or tool calls.</p>
+      )}
       <div>
         <div className="k-pills" style={{ gap: 8 }}>
           <button className="k-btn-primary" disabled={busy || !ready} onClick={save}>
             {busy ? "Saving…" : editing ? "Save changes" : "Save rule"}
           </button>
-          {editing && (
-            <button className="k-btn-danger" disabled={busy} onClick={remove}>
-              Delete rule
-            </button>
-          )}
+          {editing &&
+            // Asked in the page, not with window.confirm (which some browsers suppress).
+            (asking ? (
+              <span className="k-act-confirm" role="alertdialog" aria-label={`Delete ${initial!.name}?`}>
+                <span>Delete “{initial!.name}”? It stops checking traffic now.</span>
+                <button className="k-btn-danger" disabled={busy} onClick={remove}>
+                  Delete rule
+                </button>
+                <button className="k-btn-ghost" onClick={() => setAsking(false)}>
+                  Cancel
+                </button>
+              </span>
+            ) : (
+              <button className="k-btn-danger" disabled={busy} onClick={() => setAsking(true)}>
+                Delete rule
+              </button>
+            ))}
         </div>
       </div>
     </div>

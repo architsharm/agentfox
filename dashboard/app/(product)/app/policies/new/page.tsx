@@ -1,3 +1,4 @@
+import { isAdded } from "@/lib/product/proposedSystems";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { appPageMetadata } from "@/lib/site";
@@ -41,6 +42,11 @@ export default async function NewRule({ searchParams }: { searchParams: Promise<
     <>
       <Header back={{ href: "/app/policies", label: "Policies" }} title={sp.agent ? `New rule for ${sp.agent}` : "New rule"} />
       <Tabs items={tabs.map((t) => ({ ...t, href: href("/app/policies/new", { ...keep, from: t.key }) }))} active={tab} />
+      {DOCS[tab] && (
+        <p className="k-help">
+          <Link href={DOCS[tab].href}>{DOCS[tab].label}</Link>
+        </p>
+      )}
       {tab === "run" && sp.run && <FromRun id={sp.run} />}
       {tab === "describe" && <Describe agent={sp.agent} agents={scopeAgents} />}
       {tab === "custom" && (
@@ -58,6 +64,14 @@ export default async function NewRule({ searchParams }: { searchParams: Promise<
     </>
   );
 }
+
+/** Each way to add a rule, with the docs page that explains it. */
+const DOCS: Record<string, { href: string; label: string }> = {
+  custom: { href: "/docs/protect/custom-rules", label: "How your own rules work" },
+  describe: { href: "/docs/protect/custom-rules#limits", label: "How approval limits work" },
+  import: { href: "/docs/protect/custom-rules#import", label: "What can be imported, with an example file" },
+  packs: { href: "/docs/protect", label: "How libraries work" },
+};
 
 /** The same library cards, drawer and scope as Policies → Libraries: the project's agents first. */
 async function PacksTab() {
@@ -135,7 +149,7 @@ async function FromRun({ id }: { id: string }) {
 
 async function ToolAccess({ agent }: { agent?: string }) {
   const agents = await safeApi<any>("/api/agents", { agents: [] });
-  const list = (agents.agents || []).filter((a: any) => a.status !== "draft" && (!agent || a.slug === agent));
+  const list = (agents.agents || []).filter((a: any) => isAdded(a) && (!agent || a.slug === agent));
   return (
     <Card flush>
       {list.length ? (
@@ -194,7 +208,7 @@ const GOALS: { title: string; text: string; to: Record<string, string> | string 
   { title: "Stop a risky sequence", text: "After reading customer data, never email outside.", to: { from: "custom", kind: "sequence" } },
   { title: "Use a built-in check", text: "System prompt leaks, risky SQL, unsafe HTML, fuzzy word lists, LLM judges…", to: { from: "custom", kind: "validator" } },
   { title: "Apply a library", text: "Basic guardrails, prompt attacks, EU AI Act…", to: { from: "packs" } },
-  { title: "Bring rules you already have", text: "From Guardrails AI, or a workspace file.", to: { from: "import" } },
+  { title: "Bring rules you already have", text: "From Guardrails AI, or agent-governance YAML or a policy manifest.", to: { from: "import" } },
 ];
 
 function Start({ agent, surfaces }: { agent?: string; surfaces?: string }) {
@@ -225,6 +239,9 @@ function Start({ agent, surfaces }: { agent?: string; surfaces?: string }) {
           </Link>
         ))}
       </div>
+      <p className="k-help">
+        <Link href="/docs/protect/custom-rules">How rules work: watch, then start blocking</Link>
+      </p>
     </>
   );
 }

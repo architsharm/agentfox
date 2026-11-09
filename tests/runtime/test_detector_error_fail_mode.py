@@ -185,7 +185,9 @@ def test_an_error_under_fail_open_is_recorded_like_a_timeout(session, monkeypatc
     runs = session.query(DetectorRun).filter_by(detector_key="fm.boom").all()
     assert [r.status for r in runs] == ["error"]
     findings = session.query(Finding).filter_by(type="budget_breach", status="open").all()
-    assert [f.title for f in findings] == ["Detector 'fm.boom' degraded on input: error"]
+    assert [f.title for f in findings] == [
+        "Detector 'fm.boom' degraded on input: error (it failed: detector backend unavailable)"
+    ]
     assert findings[0].evidence_json["degradation"] == {
         "fm.boom": "error: detector backend unavailable"
     }

@@ -186,6 +186,25 @@ _EXTRA_LEXICAL: list[tuple[re.Pattern[str], str, float]] = [
 
 
 # --- 1. Lexical signals ----------------------------------------------------
+#: What an exfiltration instruction takes: what the agent holds and its user would not
+#: hand over themselves. Its own context (system prompt, instructions, the
+#: conversation, memory), secrets, and data in bulk or about other people. Written from
+#: that definition, not from any benchmark's rows: a user's own "send the report to
+#: Bob" is not here on purpose, because directing your own data is not an attack.
+_HELD_DATA = (
+    r"system\s+prompt|(?:your|the|its|hidden|original)\s+(?:instructions|prompt|rules)"
+    r"|conversation|chat(?:\s+(?:history|log|transcript))?|(?:message|chat)\s+history"
+    r"|(?:previous|prior|earlier|above)\s+(?:messages?|conversation|context)"
+    r"|context(?:\s+window)?|memor(?:y|ies)"
+    r"|credentials?|passwords?|passwd|secrets?|(?:api|access|private|ssh|secret)[\s_-]?keys?"
+    r"|(?:(?:auth|access|session|bearer)[\s_-]?)?tokens?|cookies?|env(?:ironment)?\s+variables"
+    r"|(?:all|every|entire|full|whole)\b.{0,20}?\b(?:data|records|files|emails|messages"
+    r"|contacts|customers?|users?|database|inbox|history)"
+    r"|(?:customer|user|client|patient|employee)s?\s+(?:data|list|records|database"
+    r"|details|information)"
+    r"|everything"
+)
+
 #: What an override is an override *of*. One list, shared by the "ignore" and
 #: "disregard" patterns, because the failure it fixes was the two lists drifting: neither
 #: had `restrictions` or `constraints`, so "Ignore prior restrictions" and "Disregard
@@ -436,9 +455,16 @@ _LEXICAL: list[tuple[re.Pattern[str], str, float]] = [
         0.7,
     ),
     (
+        # Exfiltration is moving data the agent holds to somewhere else. Naming a
+        # recipient is not that: "Send an email to john@example.com" is the task an
+        # email agent exists for, and matching it blocked real customers. So on every
+        # surface the instruction must name what is taken (`_HELD_DATA`); a bare
+        # "send … to <address>" counts only in content the agent pulled in
+        # (`_SEND_ANYWHERE`, untrusted surfaces), where no instruction belongs.
         re.compile(
-            r"\b(?:send|email|post|upload|exfiltrate|forward)\b.{0,40}?"
-            r"\b(?:to|at)\s+(?:https?://|[\w.\-]+@)",
+            r"\bexfiltrate\b.{0,60}?\b(?:to|at)\s+(?:https?://|[\w.\-]+@)"
+            r"|\b(?:send|email|post|upload|forward|copy|leak|transmit)\b.{0,30}?"
+            r"\b(?:" + _HELD_DATA + r")\b.{0,30}?\b(?:to|at)\s+(?:https?://|[\w.\-]+@)",
             re.I,
         ),
         "INJECTION.EXFILTRATION",
@@ -491,6 +517,20 @@ _LEXICAL: list[tuple[re.Pattern[str], str, float]] = [
 _PATTERNS: list[tuple[re.Pattern[str], str, float, frozenset[str] | None]] = [
     (pattern, entity, score, opening_literals(pattern))
     for pattern, entity, score in _LEXICAL + _EXTRA_LEXICAL
+]
+
+#: "Send … to <address or URL>" with nothing said about what: an ordinary request from
+#: a user, and an injection when it sits in a document, a web page or a tool's output
+#: the agent read. Matched only there (an untrusted surface or provenance), and only
+#: when the stricter exfiltration pattern above did not already match.
+_SEND_ANYWHERE = re.compile(
+    r"\b(?:send|email|post|upload|exfiltrate|forward)\b.{0,40}?"
+    r"\b(?:to|at)\s+(?:https?://|[\w.\-]+@)",
+    re.I,
+)
+_UNTRUSTED_PATTERNS: list[tuple[re.Pattern[str], str, float, frozenset[str] | None]] = [
+    *_PATTERNS,
+    (_SEND_ANYWHERE, "INJECTION.EXFILTRATION", 0.75, opening_literals(_SEND_ANYWHERE)),
 ]
 
 #: A token of 24+ letters and digits: long enough to be a phrase written without
@@ -598,7 +638,13 @@ class InjectionHeuristicDetector(BaseDetector):
             )
 
         lowered = [LoweredText(view.text) for view in views]
-        for pattern, entity, base_score, literals in _PATTERNS:
+        untrusted = bool(boost)  # untrusted provenance or a retrieved/tool-result surface
+        found: set[str] = set()
+        for pattern, entity, base_score, literals in (
+            _UNTRUSTED_PATTERNS if untrusted else _PATTERNS
+        ):
+            if pattern is _SEND_ANYWHERE and entity in found:
+                continue
             for view, low in zip(views, lowered, strict=True):
                 if not low.may_match(literals):
                     continue
@@ -610,6 +656,7 @@ class InjectionHeuristicDetector(BaseDetector):
                 if key in seen:
                     continue
                 seen.add(key)
+                found.add(entity)
                 atlas = ATLAS_JAILBREAK if "JAILBREAK" in entity or "PERSONA" in entity else ATLAS
                 # Content that had to be de-obfuscated before it matched is more
                 # suspicious than content that matched as written, not less.

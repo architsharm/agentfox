@@ -15,7 +15,9 @@ import { safeApi } from "@/lib/product/api";
 import { DEFAULT_WAIT_MINUTES, minutesLabel, onExpiry, waitMinutes, type Approval } from "@/lib/product/approvals";
 
 export async function HeldCallBox({ waiting }: { waiting: Approval[] }) {
-  const slack = await safeApi<any>("/api/alerts/slack", { configured: false });
+  // `missing`: no Slack alerts on this deployment (they are Enterprise); the Alerts tab
+  // would only show the Enterprise notice, so the line says so instead of linking there.
+  const slack = await safeApi<any>("/api/alerts/slack", { configured: false, missing: true });
   // Sent to the tenant's channel or the deployment's, when messages may leave at all.
   const told = Boolean((slack.configured && slack.enabled !== false) || slack.deployment_channel) && slack.egress_allowed !== false;
   const carried = waiting.map(waitMinutes).find((m): m is number => m !== null);
@@ -33,6 +35,11 @@ export async function HeldCallBox({ waiting }: { waiting: Approval[] }) {
               {told ? (
                 <>
                   Your <Link href="/app/settings?tab=alerts">Slack channel</Link>, and they wait here.
+                </>
+              ) : slack.missing ? (
+                <>
+                  Nobody is notified. Held calls wait here. Posting them to Slack is part of{" "}
+                  <Link href="/docs/govern/approvals">AgentFox Enterprise</Link>.
                 </>
               ) : (
                 <>

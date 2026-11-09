@@ -86,6 +86,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from agentfox.core import naming
+
 #: How a parent hands work to a child, strongest claim first: when the same pair is
 #: related twice (a crew member that is also the manager's delegate), the first wins.
 #:
@@ -305,6 +307,10 @@ class _Raw:
     evidence: str = ""
     #: An ``as_tool`` child -> the tool name the code gives it (``tool_name=``).
     child_tools: dict[Ref, str] = field(default_factory=dict)
+    #: The import-resolved constructor or base class (``agents.agent.Agent`` for
+    #: ``from agents.agent import Agent``): when a module of the repository's own
+    #: defines it, the framework label is not the package's.
+    origin: str | None = None
 
 
 class _Deferred(ast.expr):
@@ -381,6 +387,9 @@ class _FileResult:
     #: is a tool only when some file defines a function by it (else it is a list
     #: or a parameter, and naming a tool after it would invent one).
     functions: set[str] = field(default_factory=set)
+    #: Every module-level class this file defines: a constructor imported from a
+    #: module of the repository's own is its class, not a framework's.
+    classes: set[str] = field(default_factory=set)
     #: Local name -> (module, name) it was imported as (``from .tools import TOOLS``,
     #: relative imports made absolute), and local name -> (module, "") for
     #: ``import a.b as c``: how a name two modules define is followed to the one this
@@ -526,6 +535,9 @@ _GENERIC_STEMS = {
 }
 
 #: Variable names that say nothing about which agent they hold.
+#: Attributes a class keeps its built agent in, which say nothing about the agent.
+_HOLDER_VARS = {"graph", "agent", "app", "executor", "agent_executor", "runnable", "chain"}
+
 _GENERIC_VARS = {"agent", "agents", "pipeline", "options", "opts", "config", "team", "workflow"}
 
 #: Directories and file names that hold tests, mocks and fixtures. Code there builds
@@ -801,6 +813,44 @@ def wrapped_tool(call: ast.Call, imported: set[str]) -> tuple[str, str | None] |
     return (name, fn_name) if name else None
 
 
+def tool_class(node: ast.ClassDef) -> tuple[str, str, list[str]] | None:
+    """``(tool name, description, argument names)`` for a tool written as a class: a
+    subclass of a ``*Tool`` base (``class FileWriteTool(Tool)``, LangChain's
+    ``BaseTool``) that names itself, in its body (``name = "file_write"``) or in its
+    constructor (``super().__init__(name="file_write", ...)``). An agent handed
+    ``FileWriteTool()`` calls it by that name. None for anything else."""
+    bases = [_path(b).rsplit(".", 1)[-1] for b in node.bases]
+    if not any(b.endswith("Tool") for b in bases if b):
+        return None
+    fields: dict[str, ast.AST] = {}
+    args: list[str] = []
+    for stmt in node.body:
+        if isinstance(stmt, ast.Assign):
+            for target in stmt.targets:
+                if isinstance(target, ast.Name):
+                    fields.setdefault(target.id, stmt.value)
+        elif isinstance(stmt, ast.AnnAssign) and stmt.value is not None:
+            if isinstance(stmt.target, ast.Name):
+                fields.setdefault(stmt.target.id, stmt.value)
+        elif isinstance(stmt, ast.FunctionDef | ast.AsyncFunctionDef):
+            if stmt.name == "__init__":
+                for sub in ast.walk(stmt):
+                    if (
+                        isinstance(sub, ast.Call)
+                        and isinstance(sub.func, ast.Attribute)
+                        and sub.func.attr == "__init__"
+                    ):
+                        for kw in sub.keywords:
+                            if kw.arg:
+                                fields.setdefault(kw.arg, kw.value)
+            elif stmt.name in ("execute", "run", "_run", "arun", "_arun", "__call__"):
+                args = args or _fn_info(stmt)[1]
+    name = _str(fields.get("name"))
+    if not name:
+        return None
+    return name, _str(fields.get("description")) or ast.get_docstring(node) or "", args
+
+
 def _dict_fields(node: ast.AST | None) -> dict[str, ast.AST]:
     if not isinstance(node, ast.Dict):
         return {}
@@ -958,6 +1008,11 @@ class _Extractor:
             if isinstance(stmt, ast.FunctionDef | ast.AsyncFunctionDef):
                 self.out.exported.add(stmt.name)
                 self.out.functions.add(stmt.name)
+            elif isinstance(stmt, ast.ClassDef):
+                self.out.classes.add(stmt.name)
+                if (made := tool_class(stmt)) is not None:
+                    self.out.tool_defs.setdefault(stmt.name, made[0])
+                    self.out.tool_info.setdefault(made[0], (made[1], made[2]))
         self._walk_scope(self.tree.body, cls=None)
 
     def _module_level(self) -> None:
@@ -1052,6 +1107,9 @@ class _Extractor:
             return None, None
         if isinstance(node, ast.Call):
             return self._chat_model(node), None
+        if isinstance(node, ast.Attribute) and _path(node.value) == "self":
+            # `self.model = ChatOpenAI(model=...)`, then `create_react_agent(self.model)`.
+            return (self.models.get(node.attr) or None), None
         if isinstance(node, ast.BoolOp | ast.IfExp):
             sides = node.values if isinstance(node, ast.BoolOp) else [node.body, node.orelse]
             found = {m for side in sides if (m := self.model_of(side)[0])}
@@ -1245,6 +1303,7 @@ class _Extractor:
                 var=var,
                 cls=cls,
             )
+            raw.origin = qual or None
             raw.name = self._name(node, role, var, cls)
             raw.named = raw.name is not None and raw.name not in (var, cls)
             raw.instructions = self.resolve_str(_kw(node, *_INSTRUCTION_KW))
@@ -1345,6 +1404,7 @@ class _Extractor:
                 cls=node.name,
                 confidence="high" if known else "low",
                 evidence=f"class {node.name}({', '.join(b for b in bases if b)})",
+                origin=None if known else next(iter(origins), None),
             )
             raw.attr, raw.attr_kind = node.name, "factory"
             for sub in ast.walk(node):
@@ -1512,7 +1572,14 @@ class _Extractor:
             # variable says nothing, so the file (or its directory) names the agent.
             stem, parent = Path(self.rel).stem, Path(self.rel).parent.name
             return parent if stem in _GENERIC_STEMS and parent else stem
-        return self._label(_kw(call, "name")) or var
+        named = self._label(_kw(call, "name"))
+        if named:
+            return named
+        if cls and var in _HOLDER_VARS and role in ("react_agent", "lc_agent", "lc_init"):
+            # `self.graph = create_react_agent(...)` inside `class CurrencyAgent`: the
+            # class is the agent; `graph` only says where it keeps it.
+            return cls
+        return var
 
     # -- pass C: tools and children -----------------------------------------
 
@@ -1571,6 +1638,10 @@ class _Extractor:
                     # running them in order.
                     relation = "delegates" if process.endswith("hierarchical") else "member"
                     raw.children.extend((m, relation) for m in members)
+                    if relation == "delegates" and raw.model is None:
+                        # The manager CrewAI makes runs on `manager_llm`: the model
+                        # the crew itself calls to decide who works next.
+                        raw.model, raw.model_var = self.model_of(_kw(call, "manager_llm"))
             elif role == "autogen_agent":
                 for label in _strings(_kw(call, "handoffs")):
                     raw.children.append((("label", label), "handoff"))
@@ -1622,6 +1693,18 @@ class _Extractor:
         file is read, so wiring in its own module counts too. Hand-offs added this way
         are added to the agent's, never instead of them."""
         for node in ast.walk(self.tree):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "clone"
+                and _kw(node, "name") is None
+            ):
+                # The Agents SDK's `writer.clone(tools=[a.as_tool(...)])`: the same agent,
+                # under the same name, handed more tools or agents. Read as more of it.
+                for kw in node.keywords:
+                    if kw.arg in ("tools", "handoffs"):
+                        self._extend(node.func.value, kw.arg, kw.value, node.lineno)
+                continue
             owner: ast.AST | None = None
             attr = ""
             value: ast.AST | None = None
@@ -1646,29 +1729,34 @@ class _Extractor:
                 value = args[0] if node.func.attr == "extend" else ast.List(elts=[args[0]])
             if owner is None or value is None:
                 continue
-            ref = self._ref(owner) if isinstance(owner, ast.Name | ast.Attribute) else None
-            if ref is None or ref[0] != "var":
-                continue
-            if ref[1] not in self.out.vars and ref[1] not in self.imported:
-                # Neither an agent of this file nor a name imported into it: some other
-                # object with a `tools` list, not an agent elsewhere that shares a name.
-                continue
-            change = _Raw(
-                idx=self.next_idx,
-                framework="",
-                kind="change",
-                file=self.rel,
-                line=getattr(node, "lineno", 0),
-                dropped=True,
-                extends=ref,
-            )
-            self.next_idx += 1
-            if attr == "handoffs":
-                self._handoffs(change, value)
-            else:
-                self._tools(change, value)
-            if change.children or change.tools:
-                self.out.raws.append(change)
+            self._extend(owner, attr, value, getattr(node, "lineno", 0))
+
+    def _extend(self, owner: ast.AST, attr: str, value: ast.AST, line: int) -> None:
+        """Record ``value`` as more ``attr`` ("tools" or "handoffs") of the agent
+        ``owner`` names, joined to it once every file is read."""
+        ref = self._ref(owner) if isinstance(owner, ast.Name | ast.Attribute) else None
+        if ref is None or ref[0] != "var":
+            return
+        if ref[1] not in self.out.vars and ref[1] not in self.imported:
+            # Neither an agent of this file nor a name imported into it: some other
+            # object with a `tools` list, not an agent elsewhere that shares a name.
+            return
+        change = _Raw(
+            idx=self.next_idx,
+            framework="",
+            kind="change",
+            file=self.rel,
+            line=line,
+            dropped=True,
+            extends=ref,
+        )
+        self.next_idx += 1
+        if attr == "handoffs":
+            self._handoffs(change, value)
+        else:
+            self._tools(change, value)
+        if change.children or change.tools:
+            self.out.raws.append(change)
 
     # -- pass E: what other files may look up by name ------------------------
 
@@ -1728,6 +1816,14 @@ class _Extractor:
             return (left or [expr.left]) + (right or [expr.right])
         if isinstance(expr, ast.Name) and expr.id in self.lists:
             return self._sequence(self.lists[expr.id], depth + 1)
+        if (
+            isinstance(expr, ast.Attribute)
+            and _path(expr.value) == "self"
+            and expr.attr in self.lists
+        ):
+            # `self.tools = [get_rate]` then `create_react_agent(llm, tools=self.tools)`
+            # in a class that builds its agent: the list the class keeps.
+            return self._sequence(self.lists[expr.attr], depth + 1)
         if isinstance(expr, ast.Name) and len(self.bound_calls.get(expr.id, ())) == 1:
             # `tools = build_tools(kit)` then `tools=tools`: what that helper of this
             # file returns. Bound to anything else, the name is left as it was.
@@ -1892,8 +1988,10 @@ class _Extractor:
                 if name and (path in _TOOL_CONSTRUCTORS or last in _TOOL_CONSTRUCTORS):
                     raw.tools.append(("name", name))
                 elif last:
-                    # `SerperDevTool()` — a library tool, named by its class.
-                    raw.tools.append(("name", last))
+                    # `SerperDevTool()` — a library tool, named by its class; or a
+                    # tool class of the repository's own, by the name it gives itself
+                    # (`tool_class`), resolved once every file is read.
+                    raw.tools.append(("var", last))
             elif isinstance(elt, ast.Name) and elt.id in self.out.agent_tool_vars:
                 # `math_tool = AgentTool(math_agent)`, passed by name.
                 self._tool_elements(raw, [self.out.agent_tool_vars[elt.id]])
@@ -2059,6 +2157,28 @@ _FRAMEWORK_LABELS = {
     "autogen_agentchat": "AutoGen",
     "google": "Google ADK",
 }
+
+
+#: Frameworks (by the label above) whose model calls `agentfox.auto()` does not see,
+#: and the client they reach the model through by default, which it does not patch:
+#: Google ADK calls Gemini through google-genai, smolagents' default model goes through
+#: huggingface_hub. `agentfox up` and `agentfox init` say so instead of promising that
+#: `auto()` records every call; the gateway route governs them.
+UNPATCHED_FRAMEWORKS: dict[str, str] = {
+    "Google ADK": "google-genai",
+    "smolagents": "huggingface_hub",
+}
+
+#: What a repository's own agent class talks to, by the package its module imports,
+#: first match wins: the label of an agent built on a local ``Agent`` class.
+_LOCAL_AGENT_PROVIDERS = (
+    ("a2a", "A2A"),
+    ("anthropic", "Anthropic SDK"),
+    ("openai", "OpenAI SDK"),
+    ("litellm", "LiteLLM"),
+    ("google.genai", "Google GenAI"),
+    ("mcp", "MCP"),
+)
 
 
 def _framework_label(root: str) -> str:
@@ -2415,7 +2535,9 @@ class AgentCollector:
         if not _HINT.search(source):
             # No framework here, but a plain module of functions another file turns
             # into tools (`function_tool(tools.get_ticket)`): keep what each says.
-            if suffix == ".py" and ("def " in source or Path(rel).stem == "__init__"):
+            if suffix == ".py" and (
+                "def " in source or "class " in source or Path(rel).stem == "__init__"
+            ):
                 self._functions_only(source, rel)
             return
         if suffix == ".py":
@@ -2446,6 +2568,7 @@ class AgentCollector:
             or result.func_info
             or result.functions
             or result.imports
+            or result.classes
         ):
             self.files.append(result)
 
@@ -2465,7 +2588,18 @@ class AgentCollector:
                 doc, args = _fn_info(stmt)
                 if doc or args:
                     result.func_info.setdefault(stmt.name, (doc, args))
-        if result.func_info or result.functions or result.imports:
+            elif isinstance(stmt, ast.ClassDef):
+                result.classes.add(stmt.name)
+                if (made := tool_class(stmt)) is not None:
+                    result.tool_defs.setdefault(stmt.name, made[0])
+                    result.tool_info.setdefault(made[0], (made[1], made[2]))
+        if (
+            result.tool_defs
+            or result.func_info
+            or result.functions
+            or result.imports
+            or result.classes
+        ):
             self.files.append(result)
 
     def finish(self) -> tuple[list[AgentSpec], list[AgentEdge]]:
@@ -2694,7 +2828,37 @@ class _Linker:
         self.raws[raw.idx] = raw
         return raw
 
+    def _local_framework(self, raw: _Raw) -> str | None:
+        """The label for an agent whose constructor or base class is the repository's
+        own (``from agents.agent import Agent`` with an ``agents/agent.py`` here, or
+        ``class Orchestrator(BaseAgent)`` from a local ``a2a_mcp`` package): the
+        provider or protocol that module, or the agent's own file, talks to; "custom"
+        when neither says. None when the module is not the repository's."""
+        module, _, name = (raw.origin or "").rpartition(".")
+        if not module:
+            return None
+        own = self.file_of.get(raw.idx)
+        local = [
+            f
+            for f in self.modules.get(module) or []
+            if f is not own and (name in f.classes or name in f.functions or name in f.imports)
+        ]
+        if not local:
+            return None
+        for f in [local[0], *([own] if own else [])]:
+            roots = {module.split(".")[0] for module, _name in f.imports.values()}
+            dotted = {module for module, _name in f.imports.values()}
+            for prefix, label in _LOCAL_AGENT_PROVIDERS:
+                if prefix in roots or any(d.startswith(f"{prefix}.") for d in dotted):
+                    return label
+        return "custom"
+
     def run(self) -> tuple[list[AgentSpec], list[AgentEdge]]:
+        for raw in self.raws.values():
+            if (local := self._local_framework(raw)) is not None:
+                raw.framework = local
+                raw.confidence = "medium" if raw.confidence == "high" else raw.confidence
+                raw.default_model = False  # no framework default: its own class picks
         for raw in self.raws.values():
             if raw.name and raw.extends is None:
                 self.labels[_slug(raw.name)].add(raw.idx)
@@ -2989,17 +3153,11 @@ class _Linker:
         return out
 
 
-_SLUG = re.compile(r"[^a-z0-9-]+")
-#: Word boundaries inside a CamelCase name: `GameBuilderCrew`, `LLMAgent`.
-_CAMEL = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
-
-
 def _slug(value: str) -> str:
-    """The key form of a name the code gives: lower case, words joined by hyphens,
-    whether the code wrote them `snake_case`, `CamelCase` or as a sentence, so
-    `GameBuilderCrew`, `game_builder_crew` and "Game builder crew" are one key."""
-    words = _CAMEL.sub("-", (value or "").strip())
-    return _SLUG.sub("-", words.lower()).strip("-") or "agent"
+    """The key form of a name the code gives (:func:`agentfox.core.naming.slug`, the one
+    the registry and `auto()` use too): `GameBuilderCrew`, `game_builder_crew` and
+    "Game builder crew" are one key."""
+    return naming.slug(value)
 
 
 def agent_key(name: str, file: str, taken: set[str]) -> str:

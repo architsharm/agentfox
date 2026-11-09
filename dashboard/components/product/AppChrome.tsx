@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { NewProjectPage, gateOpen } from "@/components/product/NewProjectGate";
+import { PendingAgents } from "@/components/product/onboarding/PendingAgents";
 
 /**
  * The sidebar and topbar around every `/app` page — except the ones that are
@@ -18,6 +19,7 @@ export function AppChrome({
   topbar,
   banner,
   newProject,
+  signedIn = false,
   children,
 }: {
   side: React.ReactNode;
@@ -26,6 +28,8 @@ export function AppChrome({
   banner?: React.ReactNode;
   /** A project is being added (see NEW_PROJECT): pages show their empty state and the connection card. */
   newProject?: { server: string; first: boolean; github?: boolean } | null;
+  /** Signed in: ask to add what `agentfox init` found until it is added (PendingAgents). */
+  signedIn?: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname() || "";
@@ -43,6 +47,7 @@ export function AppChrome({
         {topbar}
         <main id="main">
           {showBanner && banner}
+          {signedIn && <PendingAgents hidden={Boolean(newProject && !gateOpen(pathname))} />}
           {newProject && !gateOpen(pathname) ? <NewProjectPage server={newProject.server} first={newProject.first} github={newProject.github} /> : children}
         </main>
       </div>

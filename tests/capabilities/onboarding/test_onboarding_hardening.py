@@ -67,7 +67,10 @@ def test_the_setup_key_is_stored_hashed_and_shown_once(client):
     first = client.get("/api/onboarding/key", headers=ADMIN).json()
     raw = first["value"]
     assert raw.startswith("nom_api_") and first["createdNow"] is True
-    assert first["prefix"] == raw[: len(first["prefix"])] and first["expiresAt"]
+    assert first["prefix"] == raw[: len(first["prefix"])]
+    # The app runs on this key (init writes it to .agentfox/agentfox.env): it does not
+    # lapse after a month; it ends when rotated or revoked.
+    assert first["expiresAt"] is None
 
     again = client.get("/api/onboarding/key", headers=ADMIN).json()
     assert again["value"] is None and again["createdNow"] is False
@@ -179,6 +182,17 @@ def test_connect_proposes_new_agents_as_drafts_without_grants(client):
     agent = client.get("/api/agents/shop-agent", headers=ADMIN).json()
     assert agent["status"] == "active"
     assert {"get_order", "refund", "escalate"} <= set(agent["declared_tools"])
+
+
+def test_the_structure_lists_the_agents_still_waiting_to_be_added(client):
+    """The dashboard keeps asking to add what init found, on any page, until someone
+    does: ``pending`` is the reported agents that are still drafts."""
+    key = _key(client)
+    assert _connect(client, key).status_code == 200
+    got = client.get("/api/onboarding/structure", headers=ADMIN).json()
+    assert got["pending"] == [{"slug": "shop-agent", "name": "Shop Agent"}]
+    assert client.post("/api/projects/shop/approve", headers=ADMIN).status_code == 200
+    assert client.get("/api/onboarding/structure", headers=ADMIN).json()["pending"] == []
 
 
 def test_approving_a_project_needs_the_registry_role(client):

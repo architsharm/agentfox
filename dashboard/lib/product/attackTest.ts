@@ -247,8 +247,36 @@ export function headline(before: Run | null | undefined, after: Run | null | und
 export function notRunWhy(row: ByType | undefined): string | null {
   const n = row?.notRun ?? 0;
   if (!row || !n) return null;
-  const why = plainError(row.notRunReason);
+  // The reason may still carry its own "Not run:" lead (an older server): said once.
+  const why = plainError(row.notRunReason)?.replace(/^not run:\s*/i, "");
   return why ? `${n} not run: ${why.replace(/\.$/, "")}` : `${n} not run`;
+}
+
+/**
+ * One past run as Testing → Attack tests lists it: the same numbers the agent page's
+ * panel shows for that run (attacks that reached a verdict, how many got through, how
+ * many were stopped), the normal requests, and what wasn't run.
+ */
+export function runRow(run: Run): {
+  attacks: number;
+  ran: number;
+  stopped: number;
+  through: number;
+  notRun: number;
+  errored: number;
+  normal: string | null;
+  state: RunState;
+} {
+  return {
+    attacks: run.total,
+    ran: ran(run),
+    stopped: run.stopped ?? run.byType.reduce((n, t) => n + (t.stopped ?? 0), 0),
+    through: gotThroughOf(run),
+    notRun: run.notRun ?? run.byType.reduce((n, t) => n + (t.notRun ?? 0), 0),
+    errored: run.errored ?? run.byType.reduce((n, t) => n + (t.errored ?? 0), 0),
+    normal: controlsLine(run),
+    state: runState(run),
+  };
 }
 
 /**
@@ -355,4 +383,13 @@ export function pollDelay(tests: Tests | null, project: string, idlePolls: numbe
   if (tests.connectedProject !== project) return null;
   if (idlePolls >= IDLE_POLLS) return null;
   return tests.runnerConnected ? WAIT_MS : IDLE_MS;
+}
+
+/**
+ * After the before/after pair (no guardrails, then basic guardrails) has finished, the
+ * panel's next step is the app itself: add `auto()`, run it, watch Activity. Nothing
+ * pointed there before, so the first wow ended on a number.
+ */
+export function readyForApp(o: { beforeRan: boolean; afterRan: boolean; basicOn: boolean; live: boolean }): boolean {
+  return o.beforeRan && o.afterRan && o.basicOn && !o.live;
 }

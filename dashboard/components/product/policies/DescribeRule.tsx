@@ -50,6 +50,8 @@ export function DescribeRule({ agent, tools = [], agents = [] }: { agent?: strin
   const [scope, setScope] = useState(defaultRuleScope(agent, choices));
   const [names, setNames] = useState<Record<string, string>>({});
   const [text, setText] = useState("");
+  // The tool the limit is for, picked from the agent's own: no code names to remember.
+  const [tool, setTool] = useState("");
   const [result, setResult] = useState<any>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -59,7 +61,7 @@ export function DescribeRule({ agent, tools = [], agents = [] }: { agent?: strin
     setBusy(true);
     setError("");
     try {
-      setResult(await callJson("/api/business/compile", "POST", { text: source, agent: scope || agent }));
+      setResult(await callJson("/api/business/compile", "POST", { text: source, agent: scope || agent, tool: tool || undefined }));
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -101,6 +103,29 @@ export function DescribeRule({ agent, tools = [], agents = [] }: { agent?: strin
           </p>
         </div>
       </div>
+      {tools.length > 0 && (
+        <div className="k-field">
+          <label htmlFor="dr-tool">Tool it limits</label>
+          <select
+            id="dr-tool"
+            className="k-select"
+            style={{ maxWidth: 360 }}
+            value={tool}
+            disabled={busy}
+            onChange={(e) => {
+              setTool(e.target.value);
+              setResult(null);
+            }}
+          >
+            <option value="">Work it out from the sentence</option>
+            {tools.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       {choices.length > 0 && <AgentScope agents={choices} value={scope} onChange={(v) => { setScope(v); setResult(null); }} disabled={busy} id="dr-scope" />}
       <div className="k-pills" style={{ gap: 8 }}>
         <button className={result ? "k-btn" : "k-btn-primary"} disabled={busy || !text.trim()} onClick={() => compile()}>

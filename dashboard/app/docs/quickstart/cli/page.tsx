@@ -49,6 +49,13 @@ agentfox scan`}</Code>
             hooks, no GitHub workflow, no background processes. Add them with{" "}
             <code>--with coding-agents</code>, <code>--with ci</code> or <code>--with view</code>.
           </p>
+          <p>
+            Besides the repository, <code>up</code> reads (never changes) the MCP and skill
+            settings of the AI tools on this machine, such as <code>~/.claude</code> and{" "}
+            <code>~/.cursor</code>, and says so. <code>--skip-machine</code> leaves them out.{" "}
+            <code>agentfox.auto()</code> does not see the model calls of Google ADK or smolagents;
+            for those, <code>up</code> says so and offers the gateway instead.
+          </p>
         </Step>
 
         <Step title="Run your app">
@@ -66,24 +73,43 @@ agentfox scan`}</Code>
           </p>
         </Step>
 
+        <Step title="Start blocking, one library at a time">
+          <Code>{`agentfox policy enforce tool-containment   # tool calls
+agentfox policy enforce baseline           # prompt attacks, personal data, secrets`}</Code>
+          <p>
+            When what it would have stopped is what you want stopped, turn that library to blocking.
+            Your app picks it up on its next call, with no code change. Running <code>up</code> again
+            never turns it back. <code>agentfox policy observe &lt;library&gt;</code> goes back to
+            watching.
+          </p>
+        </Step>
+
         <Step title="Attack-test it">
           <Code>{`agentfox test redteam <agent>`}</Code>
           <p>
-            Runs the attack probes against the agent&apos;s configuration: prompt injection, data
-            exfiltration, destructive actions. <code>up</code> prints the command with your
-            agent&apos;s name filled in.
+            Writes attacks from the agent&apos;s own tools (unsafe tool use, prompt injection, data
+            leaks, jailbreaks) and checks each one the way live traffic checks it: the message,
+            then the tool call it is after. No model runs, so it measures your rules, not how
+            your model answers; the dashboard&apos;s attack test sends the same attacks to the real
+            agent. <code>up</code> prints the command with your agent&apos;s name filled in.
           </p>
         </Step>
       </Steps>
 
       <h2>Connect to an account later</h2>
       <p>
-        <Link href="/login">Sign in</Link> (that creates your workspace), press <strong>Create a key</strong> on the Agents page, and
-        run the <code>init</code> command from the card in the same repository. It saves the key in{" "}
+        <Link href="/login">Sign in</Link> (that creates your workspace), press <strong>Create a key</strong> on
+        Get started, and run the <code>init</code> command from the card in the same repository, or{" "}
+        <code>agentfox login</code> from the terminal. Either saves the key in{" "}
         <code>.agentfox/agentfox.env</code>, and from then on your app&apos;s calls go to your account
-        and show up on the dashboard. The <Link href="/docs/quickstart">Quickstart</Link> walks through
-        it. To set the key another way, see <Link href="/docs/connect/python#key">where auto() finds the key</Link>.
+        and show up on the dashboard. The CLI uses the same account: <code>findings</code>,{" "}
+        <code>agents list</code>, <code>permit</code>, <code>declare</code>, <code>policy</code>,{" "}
+        <code>report</code> and <code>test suites</code> read and write it, and each prints which it
+        uses. <code>agentfox doctor</code> checks the key. The{" "}
+        <Link href="/docs/quickstart">Quickstart</Link> walks through it. To set the key another way,
+        see <Link href="/docs/connect/python#key">where auto() finds the key</Link>.
       </p>
+      <Code>{`agentfox login --server <gateway address from Get started>`}</Code>
 
       <h2>If something goes wrong</h2>
       <div className="docs-table" tabIndex={0}><table>

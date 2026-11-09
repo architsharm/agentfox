@@ -22,7 +22,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from agentfox.apps.cli._style import print_unknown_agent
+from agentfox.apps.cli._style import plural, print_unknown_agent
 
 console = Console()
 
@@ -264,29 +264,51 @@ def sources_import(
                 deprecated=item.get("deprecated", False),
             )
             written += 1
-    console.print(f"[green]✓[/] registered {written} source(s) from {file.name}")
+    console.print(f"[green]✓[/] registered {plural(written, 'source')} from {file.name}")
 
 
 def sources_list(as_json: bool = typer.Option(False, "--json")) -> None:
     """Every registered source, worst tier first."""
     from sqlalchemy import select
 
+    from agentfox.apps.cli import account as _account
     from agentfox.capabilities.grounding.provenance import TIER_RANK, freshness_breach
     from agentfox.core.models import SourceRecord
 
-    with _session() as session:
+    remote = _account.use(console, quiet=as_json)
+    if remote is not None:
+        try:
+            records = remote.get("/api/sources").get("sources") or []
+        except _account.AccountError as exc:
+            _account.fail(console, exc)
         rows = [
             {
-                "key": r.key,
-                "tier": r.tier,
-                "owner": r.owner or "—",
-                "domain": r.domain or "—",
-                "deprecated": r.deprecated,
-                "stale": bool(freshness_breach(r)),
-                "unknown_age": bool(r.freshness_sla_hours and r.updated_at_source is None),
+                "key": r["key"],
+                "tier": r.get("tier"),
+                "owner": r.get("owner") or "—",
+                "domain": r.get("domain") or "—",
+                "deprecated": bool(r.get("deprecated")),
+                "stale": bool(r.get("stale")),
+                "unknown_age": bool(
+                    r.get("freshness_sla_hours") and not r.get("updated_at_source")
+                ),
             }
-            for r in session.scalars(select(SourceRecord))
+            for r in records
         ]
+    else:
+        with _session() as session:
+            rows = [
+                {
+                    "key": r.key,
+                    "tier": r.tier,
+                    "owner": r.owner or "—",
+                    "domain": r.domain or "—",
+                    "deprecated": r.deprecated,
+                    "stale": bool(freshness_breach(r)),
+                    "unknown_age": bool(r.freshness_sla_hours and r.updated_at_source is None),
+                }
+                for r in session.scalars(select(SourceRecord))
+            ]
     rows.sort(key=lambda r: (-TIER_RANK.get(r["tier"], 9), r["key"]))
 
     if as_json:
@@ -420,7 +442,7 @@ def escalation_scan(
             f"qualified at turn {record['first_qualifying_turn']} · {triggers}"
         )
     if apply and result.get("sla_breached"):
-        console.print(f"  [red]{len(result['sla_breached'])} hand-off(s) past their SLA[/]")
+        console.print(f"  [red]{plural(len(result['sla_breached']), 'hand-off')} past their SLA[/]")
     if result["missed"] and not apply:
         console.print(
             "\n  [dim]Read-only. Re-run with --apply to raise findings and retroactive "
@@ -520,7 +542,7 @@ def entitlement_report(days: int = typer.Option(7, "--days")) -> None:
     console.print(
         f"[bold]{report['requests']}[/] request(s) checked · "
         f"{report.get('requests_withholding', 0)} withheld something · "
-        f"{report['principals']} principal(s) · "
+        f"{plural(report['principals'], 'principal')} · "
         f"[{colour}]{ratio:.1%}[/] of retrieved content was withheld"
     )
     for reason, count in report["reasons"].items():

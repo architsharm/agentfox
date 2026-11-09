@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Code, NextSteps, Screenshot, Step, Steps } from "@/components/docs/blocks";
-import { Tab, Tabs } from "@/components/docs/tabs";
+import { NextSteps, Screenshot, Step, Steps } from "@/components/docs/blocks";
 import { SCREENS } from "@/lib/docs/screens";
 import { publicPageMetadata } from "@/lib/site";
 
@@ -61,20 +60,20 @@ export default function Page() {
 
         <Step title="See past runs">
           <p>
-            <strong>Testing → Attack tests</strong> runs the library against any agent and lists
-            every past run: attacks tried, stopped, got through.
+            <strong>Testing → Attack tests</strong> lists every run of this test, for every
+            project, with the same numbers as the agent&apos;s panel: attacks, stopped, got
+            through, and the normal requests. Choose an agent and press <strong>Run</strong> to
+            run its project&apos;s test again (its <code>agentfox init</code> must be running).
+            An agent&apos;s page shows that agent&apos;s own attacks.
           </p>
           <Screenshot {...SCREENS.testing} />
-          <Tabs>
-            <Tab label="In the app">
-              <p>
-                Choose an agent under <strong>Run attack test</strong> and press <strong>Run</strong>.
-              </p>
-            </Tab>
-            <Tab label="CLI">
-              <Code>{`agentfox test redteam support-triage`}</Code>
-            </Tab>
-          </Tabs>
+          <p>
+            Without a dashboard, <code>agentfox test redteam &lt;agent&gt;</code> checks the
+            same attacks against the agent&apos;s rules with no model: each message, then the
+            tool call it is after, as live traffic checks them. It measures your rules; the
+            test above measures the agent. Its runs are listed apart, under{" "}
+            <strong>Checked without a model</strong>.
+          </p>
         </Step>
       </Steps>
 

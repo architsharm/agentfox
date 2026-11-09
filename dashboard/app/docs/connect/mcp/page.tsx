@@ -66,9 +66,10 @@ export default function Page() {
         <Step title="Grant the tools each agent may call">
           <p>
             MCP tools are named <code>mcp:&lt;server&gt;/&lt;tool&gt;</code>, so two servers&apos;{" "}
-            <code>search</code> tools stay apart. A tool nobody granted is refused.
+            <code>search</code> tools stay apart. A tool nobody granted is refused once Tool
+            containment blocks.
           </p>
-          <Code>{`agentfox permit grant research-bot mcp:github/search_issues`}</Code>
+          <Code>{`agentfox permit grant <agent> mcp:github/search_issues --yes   # your agent's name`}</Code>
           <p>
             Grant a whole server with <code>mcp:github/*</code> only if every tool on it should be
             callable. You can also grant from the agent&apos;s <strong>Access</strong> tab; see{" "}

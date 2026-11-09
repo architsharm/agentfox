@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Cards } from "@/components/docs/blocks";
+import { Cards, NextSteps } from "@/components/docs/blocks";
 import { publicPageMetadata } from "@/lib/site";
 
 export const metadata: Metadata = publicPageMetadata({
   title: "Pick your stack",
   description:
-    "Which page to follow to connect your agent to AgentFox: Python, LangGraph, LiteLLM, MCP, Claude Code and Codex, voice and hosted platforms, or any language over HTTP.",
+    "Which page to follow to connect your agent to AgentFox: Python, the OpenAI Agents SDK, CrewAI, AutoGen, LangGraph, LiteLLM, MCP, Claude Code and Codex, voice and hosted platforms, TypeScript, or any language over HTTP.",
   path: "/docs/connect",
 });
 
@@ -27,6 +27,21 @@ export default function Page() {
             href: "/docs/connect/python",
             title: "Python apps",
             text: "One line, agentfox.auto(), for OpenAI, Anthropic, LiteLLM, LangChain and CrewAI.",
+          },
+          {
+            href: "/docs/connect/python#openai-agents",
+            title: "OpenAI Agents SDK",
+            text: "auto() covers its model and tool calls; govern() hands a refusal back to the model.",
+          },
+          {
+            href: "/docs/connect/python#frameworks",
+            title: "CrewAI",
+            text: "auto() checks its model calls and its tools where they run.",
+          },
+          {
+            href: "/docs/connect/python#frameworks",
+            title: "AutoGen",
+            text: "auto() checks it through the OpenAI or Anthropic client it calls the model with.",
           },
           {
             href: "/docs/connect/langgraph",
@@ -54,10 +69,23 @@ export default function Page() {
             text: "Vapi, Retell, Copilot Studio and AgentCore.",
           },
           {
+            href: "/docs/connect/typescript",
+            title: "TypeScript",
+            text: "@agentfox/sdk: check messages, answers and tool calls from your code.",
+          },
+          {
             href: "/docs/connect/http",
             title: "Any language (HTTP)",
             text: "Point your model calls at the AgentFox proxy, or ask the guard API.",
           },
+        ]}
+      />
+
+      <NextSteps
+        items={[
+          { href: "/docs/connect/python", label: "Python apps", why: "the one line most agents need" },
+          { href: "/docs/govern", label: "Tool access", why: "once connected, limit what it may call" },
+          { href: "/docs/protect", label: "Guardrails", why: "turn on checks for what it reads and says" },
         ]}
       />
     </article>

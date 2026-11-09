@@ -67,6 +67,8 @@ export default async function RunDetail({
       {run.summary?.scorers && (
         <>
           <h2>Summary</h2>
+          {/* The offline echo model repeats the prompt: 100% grounded proves nothing. */}
+          {run.summary.warning ? <p className="sub"><span className="tag warn">echo model</span> {run.summary.warning}</p> : null}
           <Panel title={`${run.mode} · ${run.summary.cases} cases`}>
             <table>
               <thead>

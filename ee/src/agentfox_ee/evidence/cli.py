@@ -4,6 +4,7 @@ Enterprise (BSL 1.1, see ee/LICENSE)."""
 from __future__ import annotations
 
 import datetime as dt
+from pathlib import Path
 
 import typer
 
@@ -62,11 +63,18 @@ def evidence_export(
     since_days: int = 30,
     control: list[str] = typer.Option(None, "--control", help="Repeatable; default all."),
     requested_by: str = "cli",
+    out: Path | None = typer.Option(
+        None,
+        "--out",
+        help="Where to write the zip: a file path, or a directory to put it in. "
+        "Default: the evidence directory under the state dir.",
+    ),
 ) -> None:
     """Build an auditor-ready evidence package."""
     from agentfox_ee.evidence import package as evidence
 
     period_from, period_to = _evidence_period(from_, to, since_days)
+    target_file = out if out is not None and out.suffix == ".zip" else None
     with _session() as session:
         package = evidence.build(
             session,
@@ -75,12 +83,18 @@ def evidence_export(
             period_from=period_from,
             period_to=period_to,
             requested_by=requested_by,
+            output_dir=(target_file.parent if target_file else out),
         )
-        path = package.path
+        path = Path(package.path or "")
+        if target_file is not None and path != target_file:
+            path = path.replace(target_file)
+            package.path = str(path)
         counts = package.manifest_json["counts"]
         valid = package.chain_verification_json.get("valid")
 
-    console.print(f"[green]evidence package[/] {path}")
+    console.print("[green]evidence package[/]")
+    # Printed bare so a long path is never wrapped across lines, and can be copied.
+    typer.echo(str(path))
     covered_to = period_to or dt.datetime.now(dt.UTC)
     console.print(f"  period                   {period_from:%Y-%m-%d} → {covered_to:%Y-%m-%d}")
     for key, value in counts.items():

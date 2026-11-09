@@ -16,6 +16,7 @@ from typing import Any
 import httpx
 from rich.console import Console
 
+from agentfox.apps.cli._style import plural
 from agentfox.capabilities.discovery.repo import ScanReport
 from agentfox.core.config import env
 
@@ -111,9 +112,19 @@ def maybe_submit_report(
         return
 
     summary = result.get("summary", {})
+    proposed = len(summary.get("agents_proposed", []))
+    found = len(getattr(report, "agents", []) or [])
+    # "Found 41 agents" above and "43 draft agents" here read as a miscount: say what
+    # the drafts are when the two differ.
+    why = (
+        f" [dim](of the {found} agents found, those not already added, plus one per "
+        "folder with model calls outside any agent)[/]"
+        if proposed != found
+        else ""
+    )
     console.print(
         f"[green]Submitted.[/] scan [bold]{result.get('scan_run_id')}[/] — "
-        f"{len(summary.get('agents_proposed', []))} draft agent(s), "
+        f"{plural(proposed, 'draft agent')}{why}, "
         f"{len(summary.get('policies_proposed', []))} proposed polic(ies) — "
-        "review them in the dashboard."
+        "review them in the dashboard under Agents → Proposed."
     )

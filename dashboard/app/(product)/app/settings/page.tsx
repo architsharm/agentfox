@@ -14,6 +14,8 @@ import { SlackForm } from "@/ee/SlackForm";
 import { CodeSnippet } from "@/components/product/start/CodeSnippet";
 import { publicApiBase } from "@/lib/env";
 import { FeaturesEditor } from "@/components/product/features/FeaturesEditor";
+import { ConnectTab, TokensTab } from "@/components/product/settings/Connections";
+import { MembersTab } from "@/components/product/settings/Members";
 import {
   AdvancedJudges,
   AdvancedNav,
@@ -22,20 +24,33 @@ import {
   type AdvancedSection,
 } from "@/components/product/policies/advanced";
 
-export const metadata: Metadata = appPageMetadata("Settings");
+export async function generateMetadata({ searchParams }: { searchParams: Promise<{ tab?: string }> }): Promise<Metadata> {
+  const { tab } = await searchParams;
+  const label = SETTINGS_TABS.find((t) => t.key === (tab || "connect"))?.label;
+  return appPageMetadata(label ? `Settings · ${label}` : "Settings");
+}
 export const dynamic = "force-dynamic";
 
 /**
- * Settings is one sidebar row over several pages that share a tab bar. Its own
- * URL holds the Alerts, Detection and Retention tabs; without a tab it lands on the
- * first one, Connections.
+ * Settings is one sidebar row over several pages that share a tab bar. Its own URL
+ * holds Connections (the default), API keys, Members, Detection, Alerts and
+ * Retention; Verified sources and Data access are pages of their own under the same bar.
  */
 export default async function Settings({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; sec?: string; agent?: string; review_notice?: string; review_error?: string }>;
+  searchParams: Promise<{
+    tab?: string;
+    sec?: string;
+    agent?: string;
+    review_notice?: string;
+    review_error?: string;
+    scan_run_id?: string;
+    hosted_scan_run_id?: string;
+    scan_error?: string;
+  }>;
 }) {
-  const { tab, sec, agent, review_notice, review_error } = await searchParams;
+  const { tab = "connect", sec, agent, review_notice, review_error, scan_run_id, hosted_scan_run_id, scan_error } = await searchParams;
   // Checks was a Settings tab that only linked to Policies; it lives there now.
   if (tab === "checks") redirect("/app/policies?tab=checks");
   // Retention and Detection hold plain form posts (retention, legal holds, purge,
@@ -43,7 +58,23 @@ export default async function Settings({
   const toast = <NoticeToast notice={review_notice} error={review_error} />;
   if (tab === "retention") return <>{toast}<RetentionTab /></>;
   if (tab === "detection") return <>{toast}<DetectionTab sec={sec} agent={agent} /></>;
-  if (tab !== "alerts") redirect("/app/start?tab=connect");
+  if (tab === "connect" || tab === "tokens" || tab === "members") {
+    return (
+      <>
+        {toast}
+        <Header title="Settings" />
+        <AreaTabs tabs={SETTINGS_TABS} active={tab} />
+        {tab === "connect" ? (
+          <ConnectTab scanRunId={scan_run_id} hostedScanRunId={hosted_scan_run_id} scanError={scan_error} />
+        ) : tab === "tokens" ? (
+          <TokensTab />
+        ) : (
+          <MembersTab />
+        )}
+      </>
+    );
+  }
+  if (tab !== "alerts") redirect("/app/settings?tab=connect");
   if (!(await hasFeature("monitoring"))) {
     return (
       <>

@@ -48,8 +48,9 @@ agentfox permit approvals approve apr_… -r "Finance asked for it"`}</Code>
           </Tabs>
           <p>
             Approving lets exactly one call through: the same agent, tool and arguments, when the agent
-            tries again within 30 minutes. Different arguments are held again. Denying sticks: a retry of
-            the denied call that presents its approval id is blocked, with your reason.
+            tries again within 30 minutes. Different arguments are held again. Denying sticks: the same
+            call retried within 30 minutes (same agent, tool and arguments) is blocked with your reason,
+            whether or not it presents the approval id, so it is not asked again.
           </p>
         </Step>
       </Steps>

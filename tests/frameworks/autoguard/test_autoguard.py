@@ -238,6 +238,36 @@ def test_an_untouched_app_becomes_governed(app_db, fake_openai, capsys):
     assert state().calls_governed == 1
 
 
+@pytest.mark.parametrize("value", ["1", "true", "YES"])
+def test_agentfox_disabled_turns_auto_off_without_a_code_change(
+    app_db, fake_openai, capsys, monkeypatch, value
+):
+    """The documented off switch: nothing patched, checked or recorded, and one line
+    on stderr so a switch left on by mistake is not silent."""
+    monkeypatch.setenv("AGENTFOX_DISABLED", value)
+    client, calls = fake_openai
+    returned = auto(agent="switched-off")
+
+    assert returned.started is False
+    assert returned.patches == []
+    assert "AGENTFOX_DISABLED" in capsys.readouterr().err
+    response = client().create(model="gpt-4o", messages=[{"role": "user", "content": "hi"}])
+    assert response.choices[0].message.content == "hello back"
+    assert len(calls) == 1
+    assert state() is None or state().calls_governed == 0
+
+    from agentfox.core.db import session_scope
+
+    with session_scope() as session:
+        assert session.query(Trace).count() == 0
+        assert session.query(Agent).filter_by(slug="switched-off").count() == 0
+
+
+def test_agentfox_disabled_off_values_leave_auto_on(app_db, fake_openai, monkeypatch):
+    monkeypatch.setenv("AGENTFOX_DISABLED", "0")
+    assert auto(agent="support-triage", quiet=True).started is True
+
+
 def test_the_governed_call_leaves_a_trace_and_decisions(app_db, fake_openai):
     client, _calls = fake_openai
     auto(agent="support-triage", quiet=True)

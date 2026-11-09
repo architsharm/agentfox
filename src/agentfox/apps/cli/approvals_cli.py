@@ -89,6 +89,50 @@ def _slugs(session) -> dict[str, str]:
     return {a.id: a.slug for a in session.scalars(select(Agent))}
 
 
+def _account_rows(remote, status: str) -> list[dict[str, Any]]:
+    """The account's approvals (``GET /api/approvals``) as the rows this module prints."""
+    from agentfox.apps.cli.account import AccountError, fail
+
+    try:
+        body = remote.get("/api/approvals", status="" if status == "all" else status)
+        slugs = {a["id"]: a["slug"] for a in remote.get("/api/agents").get("agents") or []}
+    except AccountError as exc:
+        fail(console, exc)
+    return [
+        {
+            "id": a["id"],
+            "agent": slugs.get(a.get("agent_id") or "", a.get("agent_id")),
+            "tool": a.get("tool"),
+            "arguments": a.get("arguments") or {},
+            "reason": a.get("reason"),
+            "status": a.get("status"),
+            "requested_at": a.get("requested_at"),
+            "expires_at": a.get("expires_at"),
+            "trace_id": a.get("trace_id"),
+            "decision_id": a.get("decision_id"),
+            "rationale": a.get("rationale"),
+            "resolver": a.get("resolver"),
+        }
+        for a in body.get("approvals") or []
+    ]
+
+
+def _account_find(remote, typed: str) -> dict[str, Any]:
+    rows = _account_rows(remote, "all")
+    exact = [r for r in rows if r["id"] == typed]
+    matches = exact or [r for r in rows if match_id(typed, r["id"])]
+    if len(matches) == 1:
+        return matches[0]
+    if not matches:
+        console.print(f"[red]unknown approval '{typed}'[/]")
+        console.print("  List them with `agentfox permit approvals list --status all`.")
+        raise typer.Exit(1)
+    console.print(f"[red]'{typed}' matches {len(matches)} approvals.[/] Name one in full:")
+    for match in matches:
+        console.print(f"    {match['id']}  [dim]{match['tool']}[/]")
+    raise typer.Exit(1)
+
+
 #: Below this many columns `list` prints one block per approval instead of a table.
 WIDE = 120
 
@@ -118,13 +162,19 @@ def approvals_list(
         raise typer.BadParameter(
             f"choose one of {', '.join(APPROVAL_STATUSES)} or all", param_hint="--status"
         )
-    with _session() as session:
-        expire_stale_approvals(session)
-        slugs = _slugs(session)
-        query = select(ApprovalRequest).order_by(ApprovalRequest.requested_at.desc())
-        if status != "all":
-            query = query.where(ApprovalRequest.status == status)
-        rows = [_row(a, slugs) for a in session.scalars(query)]
+    from agentfox.apps.cli import account as _account
+
+    remote = _account.use(console, quiet=as_json)
+    if remote is not None:
+        rows = _account_rows(remote, status)
+    else:
+        with _session() as session:
+            expire_stale_approvals(session)
+            slugs = _slugs(session)
+            query = select(ApprovalRequest).order_by(ApprovalRequest.requested_at.desc())
+            if status != "all":
+                query = query.where(ApprovalRequest.status == status)
+            rows = [_row(a, slugs) for a in session.scalars(query)]
     if agent:
         rows = [r for r in rows if r["agent"] == agent]
 
@@ -178,11 +228,16 @@ def approvals_show(
     as_json: bool = typer.Option(False, "--json", help="Machine-readable output for scripts."),
 ) -> None:
     """One approval in full: the call, its arguments, why it was held, and the decision."""
+    from agentfox.apps.cli import account as _account
     from agentfox.platform.identity import expire_stale_approvals
 
-    with _session() as session:
-        expire_stale_approvals(session)
-        row = _row(_find(session, approval_id), _slugs(session))
+    remote = _account.use(console, quiet=as_json)
+    if remote is not None:
+        row = _account_find(remote, approval_id)
+    else:
+        with _session() as session:
+            expire_stale_approvals(session)
+            row = _row(_find(session, approval_id), _slugs(session))
     if as_json:
         console.print_json(json.dumps(row, default=str))
         return
@@ -201,11 +256,40 @@ def approvals_show(
         console.print(f"  decided by {row['resolver'] or '—'}: {row['rationale'] or ''}")
 
 
+def _local_actor() -> str:
+    """Who is at this terminal, for the audit record when `--as` is not given: the git
+    identity (an email, as the dashboard records), else the login name. Never "cli",
+    which said where a decision was made but not who made it."""
+    import getpass
+    import shutil
+    import subprocess
+
+    git = shutil.which("git")
+    if git:
+        try:
+            email = subprocess.run(
+                [git, "config", "user.email"], capture_output=True, text=True, timeout=2
+            ).stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            email = ""
+        if email:
+            return email
+    try:
+        return getpass.getuser()
+    except Exception:  # no login name (a container): say where, at least
+        return "cli"
+
+
 def _decide(approval_id: str, approved: bool, rationale: str, actor: str | None) -> None:
+    from agentfox.apps.cli import account as _account
     from agentfox.platform.identity import ApprovalAlreadyDecided, resolve_approval
     from agentfox.platform.ledger import chain
 
-    who = actor or "cli"
+    remote = _account.use(console)
+    if remote is not None:
+        _account_decide(remote, approval_id, approved, rationale, actor)
+        return
+    who = actor or _local_actor()
     with _session() as session:
         approval = _find(session, approval_id)
         if approval.status != "pending":
@@ -244,12 +328,51 @@ def _decide(approval_id: str, approved: bool, rationale: str, actor: str | None)
         raise typer.Exit(1)
 
 
+def _account_decide(
+    remote, approval_id: str, approved: bool, rationale: str, actor: str | None
+) -> None:
+    """Decide on the account: the key's owner is who decided, as in the dashboard."""
+    from agentfox.apps.cli.account import AccountError, fail
+
+    row = _account_find(remote, approval_id)
+    if row["status"] != "pending":
+        console.print(f"[yellow]{row['id']} is already {row['status']}[/]; nothing was changed.")
+        raise typer.Exit(1)
+    if actor:
+        console.print(
+            f"  [dim]--as is not used on an account: the decision is recorded as "
+            f"{remote.me().get('email') or 'the key owner'}.[/]"
+        )
+    verb = "approve" if approved else "deny"
+    try:
+        decided = remote.post(f"/api/approvals/{row['id']}/{verb}", {"rationale": rationale})
+    except AccountError as exc:
+        if exc.status == 409:
+            console.print(f"[yellow]{exc}[/]; nothing was changed.")
+            raise typer.Exit(1) from None
+        fail(console, exc)
+    status = decided.get("status", "")
+    colour = {"approved": "green", "denied": "yellow"}.get(status, "red")
+    console.print(f"[{colour}]{status}[/] {row['id']}")
+    if status == "approved":
+        console.print(
+            f"  The agent's retry with approval_id={row['id']} runs once"
+            + (
+                f", until {row['expires_at'][:16].replace('T', ' ')} UTC."
+                if row["expires_at"]
+                else "."
+            )
+        )
+
+
 @approvals_app.command("approve")
 def approvals_approve(
     approval_id: str = typer.Argument(..., help="Approval id, or a unique end of one."),
     rationale: str = typer.Option("", "--rationale", "-r", help="Why, for the audit record."),
     actor: str | None = typer.Option(
-        None, "--as", help="Who is deciding (an email), for the audit record."
+        None,
+        "--as",
+        help="Who is deciding (an email), for the audit record. Default: your git email.",
     ),
 ) -> None:
     """Let the held call run once: the same agent, tool and arguments, when retried."""
@@ -261,10 +384,12 @@ def approvals_deny(
     approval_id: str = typer.Argument(..., help="Approval id, or a unique end of one."),
     rationale: str = typer.Option("", "--rationale", "-r", help="Why, for the audit record."),
     actor: str | None = typer.Option(
-        None, "--as", help="Who is deciding (an email), for the audit record."
+        None,
+        "--as",
+        help="Who is deciding (an email), for the audit record. Default: your git email.",
     ),
 ) -> None:
-    """Refuse the held call. A retry of it presenting this approval is blocked, with your reason."""
+    """Refuse the held call. The same call retried within 30 minutes is blocked, with why."""
     _decide(approval_id, False, rationale, actor)
 
 

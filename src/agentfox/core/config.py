@@ -338,8 +338,9 @@ class Settings(BaseSettings):
     degraded_warn_min_checks: int = 20
     #: How long a held call waits for a person before it is denied (fails closed).
     approval_ttl_minutes: int = 30
-    #: How long an onboarding setup key (`agentfox init --key`, ``afi_…``) stays valid
-    #: after it is made or rotated. 0 means it never expires.
+    #: How long an older onboarding setup key (``afi_…``) stays valid after it is
+    #: made. 0 means it never expires. The workspace key the setup card makes now
+    #: (``nom_api_…``, which the app runs on) never expires; rotate or revoke it.
     onboarding_key_ttl_days: int = 30
     #: What a tool call's provenance is, for the taint rules
     #: (`taint.irreversible_tool` and friends). The one setting that decides it.

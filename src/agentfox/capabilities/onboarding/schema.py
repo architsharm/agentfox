@@ -139,9 +139,16 @@ class GuardCheck(BaseModel):
     content: str = Field(default="", max_length=50_000)
     tool: str | None = Field(default=None, max_length=_ID)
     arguments: dict[str, Any] = Field(default_factory=dict)
+    #: For a tool_call: what the call was made after, so its arguments carry the taint
+    #: live traffic would see. The user's message, and the results of the tools the
+    #: agent called before in the same attack (``[{"tool", "result"}]``).
+    message: str | None = Field(default=None, max_length=50_000)
+    reads: list[dict[str, Any]] = Field(default_factory=list, max_length=50)
 
     @model_validator(mode="after")
     def _fits(self) -> GuardCheck:
         if len(json.dumps(self.arguments, default=str)) > 20_000:
             raise ValueError("arguments is too large")
+        if len(json.dumps(self.reads, default=str)) > 100_000:
+            raise ValueError("reads is too large")
         return self

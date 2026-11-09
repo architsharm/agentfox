@@ -109,6 +109,7 @@ def _command(cmd: Any, path: list[str]) -> dict[str, Any]:
             if not getattr(p, "hidden", False) and p.name not in ("help",)
         ],
         "default_subcommand": _str_or_none(getattr(cmd, "default_command", None)),
+        "enterprise": _is_enterprise(cmd),
         "commands": [],
     }
     if is_group(cmd):
@@ -118,7 +119,23 @@ def _command(cmd: Any, path: list[str]) -> dict[str, Any]:
             if sub is None or getattr(sub, "hidden", False):
                 continue
             node["commands"].append(_command(sub, [*path, name]))
+        # A group is Enterprise when everything in it is (`scan monitors`, `admin catalog`).
+        node["enterprise"] = bool(node["commands"]) and all(
+            c["enterprise"] for c in node["commands"]
+        )
     return node
+
+
+def _is_enterprise(cmd: Any) -> bool:
+    """True for a command the open-core wheel does not have: one AgentFox Enterprise
+    (``agentfox_ee``) registers, or the stub the open core puts in its place."""
+    from agentfox.apps.cli.layout import ENTERPRISE_ONLY
+
+    callback = getattr(cmd, "callback", None)
+    if callback is None:
+        return False
+    module = getattr(callback, "__module__", "") or ""
+    return module.split(".")[0] == "agentfox_ee" or bool(getattr(callback, ENTERPRISE_ONLY, False))
 
 
 def build_cli() -> dict[str, Any]:

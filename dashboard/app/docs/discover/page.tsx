@@ -90,12 +90,41 @@ agentfox scan --fail --no-submit`}</Code>
       <h2>What the scan reads</h2>
       <ul>
         <li>Python, TypeScript and JavaScript. Agents in the OpenAI and Anthropic SDKs, LangGraph, LangChain, CrewAI, AutoGen and Google ADK, and who hands work to whom.</li>
+        <li>
+          Agents a class builds (<code>self.tools = [...]</code>, then <code>create_react_agent(tools=self.tools)</code>),
+          an Agents SDK <code>agent.clone(tools=[other.as_tool()])</code>, a hierarchical crew&apos;s{" "}
+          <code>manager_llm</code>, and an agent built on your own <code>Agent</code> class, labelled by the SDK it
+          calls rather than by the package name.
+        </li>
+        <li>
+          Tools written as <code>Tool</code> subclasses that name themselves, and MCP servers your repository serves
+          (<code>FastMCP(&quot;name&quot;)</code>).
+        </li>
         <li>MCP servers from <code>.mcp.json</code>, Cursor, Claude Code and Claude Desktop configs.</li>
         <li>
           Not tools built at runtime, for example loaded from a database. Agents that send traffic show
           up anyway, marked unregistered.
         </li>
       </ul>
+
+      <h2 id="monitoring">Keep re-checking connected sources (Enterprise)</h2>
+      <p>
+        A scan is a snapshot. With AgentFox Enterprise (Cloud, or the self-hosted Enterprise stack), a
+        GitHub repository, a hosted API&apos;s OpenAPI document or an MCP server you connect in{" "}
+        <strong>Settings → Connections</strong> is re-checked every few hours, and on every push once
+        the GitHub webhook is registered. What changed since the last run becomes an issue (a new
+        lethal trifecta, a model call that lost its governance, a new tool or destructive endpoint, an
+        MCP server whose tools drifted), and the issue closes itself when the condition clears.
+        <strong> Settings → Alerts</strong> lists what is watched, with <strong>Run now</strong> and{" "}
+        <strong>Pause</strong>.
+      </p>
+      <Code>{`agentfox scan monitors list                      # what is watched, last outcome, next run
+agentfox scan monitors add github_repo acme/bot  # or created for you when you connect one
+agentfox admin jobs run-due                      # self-hosted: put this on cron`}</Code>
+      <p>
+        With the open-source package alone, <code>agentfox scan monitors</code> says it is not
+        installed. Run the scan on every pull request instead, with the GitHub Action above.
+      </p>
 
       <h2>If something goes wrong</h2>
       <div className="docs-table" tabIndex={0}><table>

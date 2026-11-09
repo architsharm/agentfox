@@ -31,6 +31,7 @@ from sqlalchemy.orm import Session
 from agentfox import __version__
 from agentfox.capabilities.detection.tuning import explain_recorded
 from agentfox.core.config import get_settings
+from agentfox.core.crypto import key_fingerprint
 from agentfox.core.models import (
     Agent,
     ApprovalRequest,
@@ -58,14 +59,29 @@ Stdlib only. Run from inside the extracted package:
 
     python3 verify_chain.py
 
-Re-derives every entry digest and the chain linkage from audit_entries.json and
-checks the signed checkpoints if a key is supplied via AGENTFOX_AUDIT_KEY.
+Without a key it checks that the package is internally consistent:
+  1. every file listed in manifest.json is present and matches its SHA-256, and no
+     file is in the package that the manifest does not list;
+  2. every audit entry's payload digest and entry digest re-derive from its contents
+     (v2 entries also cover who acted and on what: actor and subject);
+  3. the entries link into one chain: no gaps (deletion), no broken prev_digest
+     (insertion or reordering), no v1 entry after a v2 one.
+
+Anyone who edits a file can also rewrite manifest.json and recompute the chain, so a
+keyless pass proves consistency, not origin. Set AGENTFOX_AUDIT_SIGNING_KEY to the
+operator's audit signing key (AGENTFOX_AUDIT_KEY is accepted too) to also check:
+  4. manifest.sig, the signature over manifest.json, which covers every file;
+  5. each signed checkpoint in audit_checkpoints.json, and that the entry it anchors
+     still has the digest that was signed.
 Several keys may be given, comma-separated, for a chain that spans a key rotation.
 Exit code 0 = intact, 1 = tampered.
 """
-import hashlib, hmac, json, os, sys
+import datetime, hashlib, hmac, json, os, sys
 
 GENESIS = "0" * 64
+V2_TAG = "agentfox.audit.v2"
+# The manifest and its signature cannot list themselves.
+UNLISTED = {"manifest.json", "manifest.sig"}
 
 def canonical(obj):
     return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str)
@@ -73,18 +89,50 @@ def canonical(obj):
 def sha256(text):
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
-def main():
-    entries = sorted(json.load(open("audit_entries.json")), key=lambda r: r["seq"])
-    try:
-        checkpoints = json.load(open("audit_checkpoints.json"))
-    except FileNotFoundError:
-        checkpoints = []
-    if not entries:
-        print("no entries to verify")
-        return 0
+def file_sha256(path):
+    with open(path, "rb") as fh:
+        return hashlib.sha256(fh.read()).hexdigest()
 
-    breaks, prev = [], GENESIS if entries[0]["seq"] == 1 else None
-    expected = entries[0]["seq"]
+def utc_iso(value):
+    moment = datetime.datetime.fromisoformat(value)
+    if moment.tzinfo:
+        moment = moment.astimezone(datetime.timezone.utc)
+    return moment.isoformat()
+
+def sign(key, text):
+    return hmac.new(key.encode(), text.encode(), hashlib.sha256).hexdigest()
+
+def entry_digest(row, version, subject_digest):
+    if version >= 2:
+        return sha256(canonical([
+            V2_TAG, int(row["seq"]), utc_iso(row["occurred_at"]),
+            row.get("actor_type") or "", row.get("actor_id") or "", row["action"],
+            row.get("subject_type") or "", subject_digest,
+            row["payload_digest"], row["prev_digest"],
+        ]))
+    return sha256("%s|%s|%s|%s|%s" % (
+        row["seq"], utc_iso(row["occurred_at"]), row["action"],
+        row["payload_digest"], row["prev_digest"]))
+
+def check_manifest(breaks):
+    try:
+        manifest = json.load(open("manifest.json"))
+    except FileNotFoundError:
+        breaks.append(("-", "manifest_missing", "manifest.json is missing"))
+        return
+    listed = manifest.get("files") or {}
+    for name, meta in sorted(listed.items()):
+        if not os.path.isfile(name):
+            breaks.append(("-", "file_missing", "%s is listed in the manifest but missing" % name))
+        elif file_sha256(name) != meta.get("sha256"):
+            breaks.append(("-", "file_mismatch", "%s does not match its manifest SHA-256" % name))
+    for name in sorted(os.listdir(".")):
+        if os.path.isfile(name) and name not in listed and name not in UNLISTED:
+            breaks.append(("-", "file_unlisted", "%s is not in the manifest" % name))
+
+def check_chain(entries, breaks):
+    prev = GENESIS if entries[0]["seq"] == 1 else None
+    expected, seen_v2 = entries[0]["seq"], False
     for row in entries:
         seq = row["seq"]
         if seq != expected:
@@ -93,61 +141,102 @@ def main():
             )
             expected = seq
         expected += 1
-        # A scoped package withholds the payload of entries about other agents; the
-        # entry digest below still covers its payload digest, so linkage is checked.
-        # A withheld row must really carry no payload, or the flag would hide an edit.
-        if row.get("payload_withheld") and row.get("payload") is None:
+        # A scoped package withholds the payload (and subject id) of entries about
+        # other agents; the entry digest still covers their digests, so linkage is
+        # checked. A withheld row must really carry no payload, or the flag would hide
+        # an edit.
+        withheld = bool(row.get("payload_withheld"))
+        if withheld and row.get("payload") is None:
             pass
         elif sha256(canonical(row.get("payload") or {})) != row["payload_digest"]:
             breaks.append((seq, "payload_mismatch", "payload does not match its digest"))
-        recomputed = sha256("%s|%s|%s|%s|%s" % (
-            seq, row["occurred_at"], row["action"], row["payload_digest"], row["prev_digest"]))
-        if recomputed != row["digest"]:
+        version = int(row.get("digest_version") or 1)
+        subject_digest = ""
+        if version >= 2:
+            seen_v2 = True
+            if withheld and row.get("subject_id") is None:
+                subject_digest = row.get("subject_digest") or ""
+            else:
+                subject_digest = sha256(row.get("subject_id") or "")
+                if row.get("subject_digest") not in (None, subject_digest):
+                    breaks.append((seq, "subject_mismatch", "subject does not match its digest"))
+        elif seen_v2:
+            breaks.append((seq, "version_downgrade", "a v1 entry after a v2 entry"))
+        if entry_digest(row, version, subject_digest) != row["digest"]:
             breaks.append((seq, "digest_mismatch", "entry digest does not match its contents"))
         if prev is not None and row["prev_digest"] != prev:
             breaks.append((seq, "prev_mismatch", "broken linkage - insertion or reordering"))
         prev = row["digest"]
 
-    # AGENTFOX_AUDIT_KEY, else the operator's own signing-key variable, since that is
-    # the one already set.
+def check_signatures(keys, entries, checkpoints, breaks):
+    try:
+        sig = json.load(open("manifest.sig"))
+    except FileNotFoundError:
+        breaks.append(("-", "manifest_unsigned", "manifest.sig is missing"))
+    else:
+        body = file_sha256("manifest.json") if os.path.isfile("manifest.json") else ""
+        given = str(sig.get("signature", ""))
+        if not any(hmac.compare_digest(sign(k, body), given) for k in keys):
+            breaks.append(("-", "manifest_signature", "manifest signature mismatch"))
+    by_seq = {r["seq"]: r for r in entries}
+    last = entries[-1]["seq"] if entries else 0
+    for cp in checkpoints:
+        given = str(cp.get("signature", ""))
+        if not any(hmac.compare_digest(sign(k, cp["digest"]), given) for k in keys):
+            breaks.append((cp["seq"], "checkpoint_signature", "checkpoint signature mismatch"))
+        elif cp["seq"] not in by_seq and cp["seq"] > last:
+            breaks.append(
+                (cp["seq"], "checkpoint_digest", "a checkpoint names an entry past the end")
+            )
+        elif cp["seq"] in by_seq and by_seq[cp["seq"]]["digest"] != cp["digest"]:
+            breaks.append(
+                (cp["seq"], "checkpoint_digest", "history rewritten under a checkpoint")
+            )
+
+def main():
+    breaks = []
+    check_manifest(breaks)
+    entries = sorted(json.load(open("audit_entries.json")), key=lambda r: r["seq"])
+    try:
+        checkpoints = json.load(open("audit_checkpoints.json"))
+    except FileNotFoundError:
+        checkpoints = []
+    if entries:
+        check_chain(entries, breaks)
+
+    # The operator's signing-key variable, else the short name older packages named.
     key = next(
         (
             os.environ[name]
-            for name in (
-                "AGENTFOX_AUDIT_KEY",
-                "AGENTFOX_AUDIT_SIGNING_KEY",
-            )
+            for name in ("AGENTFOX_AUDIT_SIGNING_KEY", "AGENTFOX_AUDIT_KEY")
             if os.environ.get(name)
         ),
         None,
     )
-    if key:
-        # Several keys, comma-separated, for a chain that spans a key rotation: a
-        # checkpoint is genuine if any of them signed it.
-        keys = [k.strip() for k in key.split(",") if k.strip()]
-        by_seq = {r["seq"]: r for r in entries}
-        for cp in checkpoints:
-            sigs = [
-                hmac.new(k.encode(), cp["digest"].encode(), hashlib.sha256).hexdigest()
-                for k in keys
-            ]
-            if not any(hmac.compare_digest(sig, cp.get("signature", "")) for sig in sigs):
-                breaks.append((cp["seq"], "checkpoint_signature", "checkpoint signature mismatch"))
-            elif cp["seq"] in by_seq and by_seq[cp["seq"]]["digest"] != cp["digest"]:
-                breaks.append(
-                    (cp["seq"], "checkpoint_digest", "history rewritten under a checkpoint")
-                )
-    else:
-        print("note: AGENTFOX_AUDIT_KEY not set - checkpoint signatures not verified")
+    keys = [k.strip() for k in (key or "").split(",") if k.strip()]
+    if keys:
+        check_signatures(keys, entries, checkpoints, breaks)
 
-    print("entries checked: %d (seq %d..%d)"
-          % (len(entries), entries[0]["seq"], entries[-1]["seq"]))
+    if entries:
+        print("entries checked: %d (seq %d..%d)"
+              % (len(entries), entries[0]["seq"], entries[-1]["seq"]))
+    else:
+        print("no audit entries in this package")
+    print("files checked against manifest.json")
+    if keys:
+        print("manifest signature and %d checkpoint(s) checked" % len(checkpoints))
     if breaks:
         print("CHAIN INVALID - %d break(s):" % len(breaks))
         for seq, kind, detail in breaks:
             print("  seq %s  %s: %s" % (seq, kind, detail))
         return 1
     print("CHAIN INTACT")
+    if not keys:
+        print(
+            "note: AGENTFOX_AUDIT_SIGNING_KEY not set - the manifest signature and "
+            "checkpoints were not verified, so this proves the package is consistent, "
+            "not that it is unaltered. Set the key to check both."
+        )
     return 0
 
 if __name__ == "__main__":
@@ -233,6 +322,18 @@ def build(
         )
     )
     seqs = [e.seq for e in audit_entries]
+    # Anchor the newest entry in the package under a signed checkpoint. Without one, a
+    # package built between the every-N-entries checkpoints carries an unkeyed tail
+    # that anyone could recompute after editing it.
+    if audit_entries:
+        head = audit_entries[-1]
+        anchored = session.scalar(
+            select(AuditCheckpoint.id)
+            .where(AuditCheckpoint.org_id == head.org_id, AuditCheckpoint.seq == head.seq)
+            .limit(1)
+        )
+        if anchored is None:
+            chain.write_checkpoint(session, head)
     checkpoints = list(
         session.scalars(
             select(AuditCheckpoint)
@@ -562,6 +663,20 @@ def build(
         },
     }
     files["manifest.json"] = json.dumps(manifest, indent=2, default=str)
+    # The manifest's hashes only mean something if the manifest cannot be rewritten
+    # along with the files, so it is signed with the audit signing key, the key the
+    # checkpoints use. verify_chain.py checks it when given that key.
+    signing_key = settings.audit_signing_key
+    files["manifest.sig"] = json.dumps(
+        {
+            "algorithm": "HMAC-SHA256 over the hex SHA-256 of manifest.json",
+            "key_id": key_fingerprint(signing_key),
+            "signature": chain.sign(
+                hashlib.sha256(files["manifest.json"].encode()).hexdigest(), signing_key
+            ),
+        },
+        indent=2,
+    )
 
     record = EvidencePackage(
         scope_json=scope,
@@ -595,6 +710,12 @@ def build(
     return record
 
 
+def _scope_words(values: list[str], everything: str) -> str:
+    """A scope list for a reader: the wildcard "*" reads as "all agents"."""
+    named = [v for v in values if v and v != "*"]
+    return ", ".join(named) if named else everything
+
+
 def _readme(
     scope: dict[str, Any],
     verification: chain.VerificationResult,
@@ -613,9 +734,9 @@ below is the machine-readable record that page is built from.
 
 Scope
 -----
-Agents   : {", ".join(scope["agents"])}
+Agents   : {_scope_words(scope["agents"], "all agents")}
 Period   : {scope["period_from"]} .. {scope["period_to"]}
-Controls : {", ".join(scope["controls"])}
+Controls : {_scope_words(scope["controls"], "all controls")}
 
 Contents
 --------
@@ -643,6 +764,7 @@ framework_mappings.json  Control-to-framework mappings, reviewed and draft alike
 risk_assessments.json    Per-agent risk classification and residual risk.
 agents.json              The agent inventory in scope.
 manifest.json            SHA-256 of every file above, plus provenance.
+manifest.sig             Signature over manifest.json with the audit signing key.
 
 Independent verification
 ------------------------
@@ -650,10 +772,21 @@ Do not take our word for the chain. Run, from this directory:
 
     python3 verify_chain.py
 
-It uses only the Python standard library and re-derives every digest from the
-exported rows. To verify the signed checkpoints as well, set AGENTFOX_AUDIT_KEY
-to the checkpoint signing key -- held by the
-operator, outside the application database -- before running it.
+It uses only the Python standard library. Without a key it checks that:
+  * every file in manifest.json is present and matches its SHA-256, and no
+    unlisted file was added;
+  * every audit entry's digest re-derives from its contents, including who acted
+    and on what (actor and subject) for entries with "digest_version": 2 (older
+    entries cover time, action and payload only);
+  * the entries form one unbroken chain (no deletion, insertion or reordering).
+
+A keyless pass proves the package is consistent, not that nobody altered it: whoever
+edits a file can rewrite manifest.json too. To check that, set
+AGENTFOX_AUDIT_SIGNING_KEY to the operator's audit signing key (held outside the
+application database; ask the operator for it separately) and run it again. It
+then also checks manifest.sig and every signed checkpoint. The newest entry in this
+package is always under a checkpoint. Use your own copy of verify_chain.py if you do
+not trust the one in the package.
 
 Our verification result: chain {status}
   entries checked : {verification.entries_checked}
@@ -669,7 +802,8 @@ Important limitations
   completed compliance review (only rows chip-labeled 'REVIEWED' have). Draft
   mappings are engineering drafts produced from framework texts and are not legal
   advice — do not present them to an auditor as a completed regulatory claim
-  without first running them through the review gate (Appendix B §B.6).
+  until a named reviewer signs them off (Compliance -> Record a review, or
+  `agentfox report review-packet`).
 * Control status is computed from observed telemetry for the stated period. A
   control reported 'effective' means its evidence sources were present and its
   rule passed over this scope — not that the control is effective in general.

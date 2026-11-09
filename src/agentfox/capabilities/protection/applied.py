@@ -2,7 +2,10 @@
 
 Worked out from each agent's effective policy (`effective_for`), so it is what the
 engine would actually run: workspace libraries, rules set for one agent, and an
-agent's changes to a workspace rule all count, each where it really applies.
+agent's changes to a workspace rule all count, each where it really applies. So do
+the two things the enforcer applies without a binding: the shipped fallback when
+nothing is bound for an agent, and its own containment facts (a missing grant, a
+composed escalation), listed under Tool containment in that library's mode.
 """
 
 from __future__ import annotations
@@ -13,10 +16,85 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.capabilities.protection.libraries import BASIC, STARTER, library_of
+from agentfox.capabilities.protection.libraries import BASIC, STARTER, library_of, library_titles
 from agentfox.core.models import Agent, Policy
-from agentfox.platform.policy import effective_for
+from agentfox.platform.policy import (
+    containment_mode,
+    effective_for,
+    fallback_policies,
+    policies_in_force,
+    runtime_environment,
+)
 from agentfox.platform.registry.projects import GONE
+
+#: The pack whose library the enforcer's own containment facts belong to.
+CONTAINMENT_POLICY = "tool-containment"
+
+#: The containment facts the enforcer adds itself, beside any pack rule: each blocks
+#: while Tool containment blocks and is recorded as would-block while it watches
+#: (`platform.policy.containment_mode`). A pack rule of the same meaning
+#: (`capability.denied`) stands in for the first when it is in force.
+BUILT_IN = (
+    (
+        "capability.default_deny",
+        "A tool the agent was not granted is refused.",
+        "capability.denied",
+    ),
+    (
+        "composition.escalation",
+        "A value a lower-impact tool returned is used by a tool that changes more.",
+        None,
+    ),
+)
+
+
+def _in_force(session: Session, agent: Agent) -> list[dict[str, Any]]:
+    """What the enforcer evaluates for this agent, rule by rule, in the shape of
+    `EffectivePolicy.explain()["rules"]`: its packs in force (in the environment
+    the runtime resolves it in), else the shipped fallback the enforcer applies
+    when nothing is bound, and the containment facts it adds itself."""
+    environment = runtime_environment(session, agent.slug)
+    effective = effective_for(session, agent_slug=agent.slug, environment=environment).explain()
+    rules = list(effective["rules"])
+    skipped: list[Any] = []
+    bound = policies_in_force(session, agent.slug, environment, skipped=skipped)
+    if not bound and not skipped:
+        # `Enforcer._evaluate_policies`: nothing bound is not nothing checked.
+        bound = [
+            (doc, None, None)
+            for doc in fallback_policies(agent.risk_tier)
+            if doc.matches_scope(agent.slug, environment)
+        ]
+        rules += [
+            {
+                "rule_id": rule.id,
+                "description": rule.description or "",
+                "effect": rule.effect,
+                "enforcement": "observe",
+                "policy": doc.key,
+                "level": "org",
+            }
+            for doc, _v, _b in bound
+            for rule in doc.rules
+            if rule.enabled
+        ]
+    mode = containment_mode(bound)
+    present = {r["rule_id"] for r in rules}
+    for rule_id, description, stood_in_by in BUILT_IN:
+        if rule_id in present or (stood_in_by and stood_in_by in present):
+            continue
+        rules.append(
+            {
+                "rule_id": rule_id,
+                "description": description,
+                "effect": "block",
+                "enforcement": mode,
+                "policy": CONTAINMENT_POLICY,
+                "level": "org",
+                "built_in": True,
+            }
+        )
+    return rules
 
 
 def applied_rules(session: Session) -> dict[str, Any]:
@@ -31,9 +109,16 @@ def applied_rules(session: Session) -> dict[str, Any]:
         session.scalars(select(Agent).where(Agent.status.not_in(GONE)).order_by(Agent.name))
     )
     names = {p.key: p.name or p.key for p in session.scalars(select(Policy))}
+    # A rule of your own limited to some agents is in force on those only, not on
+    # every agent the `custom` pack is bound to (custom_store.scoped_rules).
+    from agentfox.capabilities.detection.custom_store import scoped_rules
+
+    only = scoped_rules(session)
     rows: dict[str, dict[str, Any]] = {}
     for agent in agents:
-        for r in effective_for(session, agent_slug=agent.slug).explain()["rules"]:
+        for r in _in_force(session, agent):
+            if r["rule_id"] in only and agent.slug not in only[r["rule_id"]]:
+                continue
             row = rows.setdefault(
                 r["rule_id"],
                 {
@@ -56,6 +141,9 @@ def applied_rules(session: Session) -> dict[str, Any]:
             )
             key = r.get("policy") or ""
             lib = library_of(r["rule_id"], key, r.get("level") or "", names.get(key, ""))
+            if r.get("built_in"):
+                lib = library_titles().get(CONTAINMENT_POLICY, lib)
+                row["built_in"] = True
             row["libraries"][lib] = lib
 
     # Business rules (an approval limit written in New rule, a library's ladders) are
@@ -95,6 +183,8 @@ def applied_rules(session: Session) -> dict[str, Any]:
                 "all": n == len(agents),
                 "agents": row["agents"],
                 "libraries": sorted(row["libraries"].values()),
+                # Added by the enforcer itself, not by a rule someone can open.
+                "builtIn": bool(row.get("built_in")),
             }
         )
     out.sort(key=lambda r: (r["mode"] != "enforce", not r["all"], r["libraries"], r["id"]))

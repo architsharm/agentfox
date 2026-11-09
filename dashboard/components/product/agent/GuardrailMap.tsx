@@ -331,7 +331,11 @@ function GuardEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, tar
           >
             {on ? <Mark size={15} /> : <span className="gm-mark-plus" aria-hidden>+</span>}
             <span className="gm-rail-name">{data.title}</span>
-            {on && n ? <span className="gm-rail-count">{n}</span> : null}
+            {on && n ? (
+              <span className="gm-rail-count" title={`${n} ${n === 1 ? "rule" : "rules"} on this step`}>
+                {n}
+              </span>
+            ) : null}
           </button>
         </EdgeLabelRenderer>
       )}
@@ -1072,10 +1076,10 @@ function StagePanel({ stage, map, catalog, back }: { stage: Stage; map: AgentMap
 
 // --- guide (nothing selected) -----------------------------------------------------
 
-function Guide({ project, paused }: { project: string; paused?: string | null }) {
+function Guide({ project, agent, agentName, paused }: { project: string; agent?: string; agentName?: string; paused?: string | null }) {
   return (
     <div className="gm-panel gm-guide">
-      <AttackTests project={project} paused={paused} />
+      <AttackTests project={project} agent={agent} agentName={agentName} paused={paused} />
 
       <section className="gm-more-agents">
         <h4>Add more agents</h4>
@@ -1288,7 +1292,7 @@ function Panel({
     // The attack test sends real calls: none get through while an agent here is paused.
     const halted = Object.entries(facts || {}).find(([, f]) => isHalted(f.state));
     const paused = halted ? `${halted[0] === slug ? map.agent.name || slug : halted[0]} is ${stateLabel(halted[1].state).toLowerCase()}: resume it to run the attack test` : null;
-    return <Guide project={project} paused={paused} />;
+    return <Guide project={project} agent={slug} agentName={map.agent.name || slug} paused={paused} />;
   }
   const limits = Object.entries(tl.limits || {});
   return (
@@ -1451,7 +1455,7 @@ function Legend() {
       ))}
       <span className="gm-legend-sep" aria-hidden />
       <span className="gm-legend-kind">
-        <Mark size={16} /> Rail with guardrails
+        <Mark size={16} /> Rail with guardrails (number: how many rules)
       </span>
       <span className="gm-legend-kind">
         <span className="gm-legend-plus" aria-hidden>+</span> Rail, none yet

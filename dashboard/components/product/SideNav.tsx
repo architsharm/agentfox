@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { NavIcon } from "@/components/product/NavIcons";
 import { ProjectSwitcher, type ProjectOption } from "@/components/product/ProjectSwitcher";
 import { WORKSPACE_NAV, type NavGroup, type NavItem } from "@/lib/product/nav";
-import { MAP_PROJECT_COOKIE, PROJECT_COOKIE_AGE, projectInPath } from "@/lib/product/project";
+import { MAP_PROJECT_COOKIE, NEW_PROJECT, PROJECT_COOKIE_AGE, projectInPath, switcherOptions } from "@/lib/product/project";
 
 export type { NavItem };
 
@@ -34,8 +34,8 @@ function parse(href: string): Pattern {
  * only when the page has those values; on a page below the pattern's path the
  * query is not asked for (an issue's own page is still Issues). A bare path
  * matches its subtree, unless another row claims the page's query on that same
- * path — so "Get started" (/app/start) and "Settings" (/app/start?tab=connect)
- * never light up together, nor Canvas and Activity. `/app` is the prefix of
+ * path — so a row with a query and the bare row on that path
+ * never light up together. `/app` is the prefix of
  * everything, so it only ever matches exactly.
  */
 export function SideNav({ projects, initial }: { projects: ProjectOption[]; initial: string | null }) {
@@ -44,9 +44,13 @@ export function SideNav({ projects, initial }: { projects: ProjectOption[]; init
   // The Map follows the project in its URL, else the one last chosen.
   // On an agent's page, the switcher shows that agent's project when it is one.
   const inPath = projectInPath(pathname);
+  // One row per repository, as the map draws it (see switcherOptions).
+  const options = switcherOptions(projects);
+  const optionOf = (key: string | null) => (key ? (options.find((p) => p.project === key || p.slugs?.includes(key))?.project ?? null) : null);
   // An agent's page belongs to that agent's project (several agents can share one).
-  const opened = inPath ? (projects.find((p) => p.project === inPath || p.slugs?.includes(inPath))?.project ?? null) : null;
-  const current = (pathname === "/app/map" && searchParams.get("project")) || opened || initial;
+  const opened = optionOf(inPath);
+  const asked = pathname === "/app/map" ? searchParams.get("project") : null;
+  const current = optionOf(asked) || asked || opened || (initial === NEW_PROJECT ? initial : optionOf(initial) || initial);
   // Opening a project's page is choosing it: every other page follows, and a project
   // still being added is left.
   const router = useRouter();
@@ -71,7 +75,7 @@ export function SideNav({ projects, initial }: { projects: ProjectOption[]; init
 
   return (
     <>
-      <ProjectSwitcher projects={projects} current={current} />
+      <ProjectSwitcher projects={options} current={current} />
       {nav.map(({ group, items }) => (
         <div key={group || "root"}>
           {group && <div className="group">{group}</div>}

@@ -14,7 +14,7 @@ import httpx
 from rich.console import Console
 from rich.table import Table
 
-from agentfox.capabilities.onboarding.attacks import build_suite, suite_size
+from agentfox.capabilities.onboarding.attacks import ATTACK_TYPES, build_suite, suite_size
 from agentfox.capabilities.onboarding.mapper import map_repository
 
 POLL_SECONDS = 2.0
@@ -186,8 +186,22 @@ def report(api: Any, console: Console, root: Path, server: str, key: str) -> dic
         connected = api.post(
             "/runner/connect", {"structure": structure, "project": mapped.get("project")}
         )
+    except ApiError as exc:
+        if exc.status in (401, 403):
+            # Reached, and refused: "couldn't reach" sent people to check the network.
+            console.print(
+                f"[red]{server} rejected this key ({exc.status}).[/red] It is wrong, revoked "
+                "or expired, or its owner may not add agents. Make a new one in the "
+                "dashboard: Get started → Create a key, then run this again."
+            )
+        else:
+            console.print(f"[red]AgentFox at {server} refused the connection:[/red] {exc}")
+        raise SystemExit(1) from exc
     except (httpx.HTTPError, RuntimeError) as exc:
-        console.print(f"[red]Couldn't reach AgentFox at {server}:[/red] {exc}")
+        console.print(
+            f"[red]Couldn't reach AgentFox at {server}[/red] ({type(exc).__name__}). "
+            "Check the address (--server) and your network."
+        )
         raise SystemExit(1) from exc
     if structure["agents"]:
         console.print(
@@ -202,6 +216,8 @@ def report(api: Any, console: Console, root: Path, server: str, key: str) -> dic
                 **a,
                 "file": (local.get(a.get("name")) or {}).get("file"),
                 "attr": attrs.get((local.get(a.get("name")) or {}).get("id")),
+                "framework": a.get("framework")
+                or (local.get(a.get("name")) or {}).get("framework"),
             }
             for a in connected.get("registered") or []
         ]
@@ -212,6 +228,7 @@ def report(api: Any, console: Console, root: Path, server: str, key: str) -> dic
             "[yellow]●[/yellow] Connected, but no agents were found, so there is nothing "
             "to set up yet. Fix that (see below), then run this again."
         )
+    _say_project_policies(console, root, server)
     if structure["agents"] and structure["tools"]:
         # Found what it was looking for: the full list of shapes would bury the result.
         console.print(
@@ -221,6 +238,30 @@ def report(api: Any, console: Console, root: Path, server: str, key: str) -> dic
     else:
         _print_missing_help(console)
     return mapped
+
+
+def _say_project_policies(console: Console, root: Path, server: str = "$AGENTFOX_URL") -> None:
+    """Policy files kept in the repo are not sent: a setup key maps the agent and
+    cannot change what is in force. Without a word they were silently ignored, a
+    policy that does nothing while the docs say `init` loads it."""
+    from agentfox.platform.policy import project_policy_dir
+
+    directory = project_policy_dir(root)
+    files = sorted(directory.glob("*.y*ml")) if directory.is_dir() else []
+    if not files:
+        return
+    names = ", ".join(f.name for f in files[:3]) + (" …" if len(files) > 3 else "")
+    console.print(
+        f"[yellow]●[/yellow] {len(files)} policy file(s) in .agentfox/policies ({names}) "
+        "were not loaded into your account: a setup key only maps the agent. Load each "
+        "one with your account key; it starts watching:"
+    )
+    console.print(
+        f"    [cyan]jq -Rs '{{body: .}}' .agentfox/policies/{files[0].name} | curl -s -X POST "
+        f'{server.rstrip("/")}/api/policies -H "Authorization: Bearer $AGENTFOX_API_KEY" '
+        '-H "Content-Type: application/json" -d @-[/cyan]',
+        soft_wrap=True,
+    )
 
 
 def _poll_forever(
@@ -282,7 +323,9 @@ def connect_live_traffic(
 
     if not key.startswith(API_KEY_PREFIX):
         return None  # an older setup key cannot send traffic
-    write_env(root, {"AGENTFOX_URL": server.rstrip("/"), "AGENTFOX_API_KEY": key})
+    write_env(
+        root, {"AGENTFOX_URL": server.rstrip("/"), "AGENTFOX_API_KEY": key}, by="agentfox init"
+    )
 
     entry = _entry_file(root, registered)
     if entry is None:
@@ -315,6 +358,16 @@ def connect_live_traffic(
             )
         except EOFError:
             answer = "n"
+    from agentfox.capabilities.discovery.agents import UNPATCHED_FRAMEWORKS
+
+    for framework in sorted(
+        {a.get("framework") for a in registered if a.get("framework") in UNPATCHED_FRAMEWORKS}
+    ):
+        console.print(
+            f"[yellow]{framework}'s model calls are NOT governed by auto()[/yellow]: it "
+            f"calls its model through {UNPATCHED_FRAMEWORKS[framework]}, which auto() does "
+            "not patch. Route them through the gateway instead (`agentfox up --with gateway`)."
+        )
     if answer.startswith("y"):
         insert_auto(path, block)
         console.print(
@@ -349,8 +402,39 @@ def _entry_file(root: Path, registered: list[dict[str, Any]]) -> tuple[Path, str
         runs = bool(guard and name and re.search(rf"\b{re.escape(name)}\b", text[guard.end() :]))
         return (not runs, not guard)
 
-    path, slug, _attr = sorted(candidates, key=rank)[0]
+    ranked = sorted(candidates, key=rank)
+    path, slug, attr = ranked[0]
+    if rank(ranked[0])[0]:
+        # No agent's own file runs it: the file that does is the entry point the
+        # project runs (`main.py`, the manager that calls `Runner.run`), in the same
+        # app: the one that imports the agent's module. `auto()` goes there, not into
+        # the module that only defines the agent.
+        from agentfox.capabilities.onboarding.project_files import entry_points
+
+        for entry in entry_points(root):
+            text = entry.read_text(errors="ignore")
+            for file, agent_slug, agent_attr in ranked:
+                if entry == file:
+                    return entry, agent_slug
+                # Its own app only: an entry beside or above the agent's folder.
+                if file.parent.is_relative_to(entry.parent) and _imports(
+                    text, file.stem, agent_attr
+                ):
+                    return entry, agent_slug
     return path, slug
+
+
+def _imports(text: str, module: str, attr: str | None) -> bool:
+    """Whether ``text`` imports the module ``module`` (``from .agents.planner_agent
+    import planner_agent``, ``import planner_agent``), or ``attr`` from anywhere."""
+    name = re.escape(module)
+    stem = re.compile(rf"^\s*(?:from\s+[\w.]*\b{name}\s+import|import\s+[\w.]*\b{name}\b)", re.M)
+    if stem.search(text):
+        return True
+    if attr and attr.isidentifier():
+        imported = re.findall(r"^\s*from\s+[\w.]+\s+import\s+(\([^)]*\)|[^\n]*)", text, re.M)
+        return any(re.search(rf"\b{re.escape(attr)}\b", group) for group in imported)
+    return False
 
 
 def _print_coverage(console: Console, mapped: dict[str, Any]) -> None:
@@ -358,7 +442,8 @@ def _print_coverage(console: Console, mapped: dict[str, Any]) -> None:
     from agentfox.capabilities.discovery.repo import SUPPORTED_LANGUAGES
 
     s = mapped["structure"]
-    n_agents, n_tools = len(s["agents"]), len(s["tools"])
+    # Tools, not tool assignments: one tool two agents are handed is one tool.
+    n_agents, n_tools = len(s["agents"]), len({t["name"] for t in s["tools"]})
     n_handoffs = sum(len(a.get("handsOffTo") or []) for a in s["agents"])
     read = mapped.get("read", 0)
     console.print(
@@ -545,10 +630,32 @@ def _guards(api: _Api, run_id: str, structure: dict[str, Any], drivers: dict[str
             continue
 
         def guard(surface: str, payload: dict[str, Any], slug: str = slug) -> Verdict:
-            return Verdict.from_json(api.post(path, {"agent": slug, "surface": surface, **payload}))
+            body = {"agent": slug, "surface": surface, **payload}
+            return Verdict.from_json(_retrying(lambda: api.post(path, body)))
 
         guards[agent["id"]] = guard
     return guards
+
+
+#: Waits before each retry of a check the server couldn't answer just then (its
+#: database busy, a restart): a few tries, then the attack is reported errored.
+GUARD_RETRIES = (0.25, 0.75, 2.0)
+
+
+def _retrying(send: Any) -> Any:
+    """``send()``, tried again after a retryable failure: a 429/502/503/504 or the
+    connection dropping. Anything else, or the last failure, is raised."""
+    for wait in (*GUARD_RETRIES, None):
+        try:
+            return send()
+        except ApiError as exc:
+            if wait is None or exc.status not in (429, 502, 503, 504):
+                raise
+        except httpx.TransportError:
+            if wait is None:
+                raise
+        time.sleep(wait)
+    raise AssertionError("unreachable")  # pragma: no cover
 
 
 def _run_job(
@@ -572,20 +679,33 @@ def _run_job(
     out = _Results(api, run_id)
     drivers = _drivers(console, root, mapped, structure, loaded)
     guards = _guards(api, run_id, structure, drivers) if checked else None
-    # An agent that won't run at all: its reason once, not once per attack (they are
-    # still reported to the server, each with the reason).
+    # What won't run, each reason once with how many attacks it covers (they are still
+    # reported to the server, each with the reason): an agent that can't be run, and a
+    # set that doesn't apply to an agent's tools. Printed per attack, a three-agent
+    # project gave ~30 identical "NOT RUN" lines.
     refused: dict[str, int] = {}
+    summarized = {
+        a.id for a in suite if a.skip or (drivers.get(a.agent_id) and drivers[a.agent_id].refuse)
+    }
     for a in suite:
         d = drivers.get(a.agent_id)
-        if d is not None and d.refuse and not a.skip:
-            refused[d.refuse] = refused.get(d.refuse, 0) + 1
+        if a.control:
+            continue
+        if d is not None and d.refuse:
+            # The agent can't be run at all: that is the reason for all its sets.
+            refused[d.refuse] = refused.get(d.refuse, 0) + (0 if a.skip else 1)
+        elif a.skip:
+            name = ATTACK_TYPES.get(a.type, a.type)
+            refused[f"{name} for {a.agent_name}: {a.skip.removeprefix('Not run: ')}"] = 0
     for reason, n in refused.items():
         if "couldn't load" not in reason:  # already said, with how to fix it
-            console.print(f"  {TAGS['not_run']}  {reason} ({n} attack{'s' if n != 1 else ''})")
+            count = f" ({n} attack{'s' if n != 1 else ''})" if n else ""
+            console.print(f"  {TAGS['not_run']}  {reason.removeprefix('Not run: ')}{count}")
 
     lock = threading.Lock()
     stats = {"done": 0, "through": 0, "ran": 0}
     errors: list[str] = []
+    said: set[str] = set()
     stop = threading.Event()
 
     def pump() -> None:
@@ -601,7 +721,14 @@ def _run_job(
                 stats["ran"] += 1
                 if r.get("error"):
                     errors.append(r["error"])
-        if r.get("outcome") == "not_run" and r.get("reason") in refused:
+        if r.get("outcome") == "not_run":
+            # Said once above (or, for one found only while running, once here).
+            why = str(r.get("reason") or r.get("sentence") or "")
+            with lock:
+                fresh = why not in said
+                said.add(why)
+            if fresh and r.get("id") not in summarized:
+                console.print(f"  {TAGS['not_run']}  {why.removeprefix('Not run: ')}")
             return
         tag = TAGS.get(r.get("outcome", ""), "")
         console.print(f"  {stats['done']:>3}/{len(suite)}  {tag}  {r['sentence']}")

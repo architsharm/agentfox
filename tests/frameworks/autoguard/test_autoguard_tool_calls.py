@@ -441,9 +441,22 @@ def test_strict_enforce_mode_raises_and_names_the_tool_the_rule_and_the_source(f
         assert session.query(Decision).filter(Decision.surface == "tool_args").count() == 1
 
 
+def _containment(mode: str) -> None:
+    """Bind the shipped tool-containment pack (Tool containment) in ``mode``."""
+    from agentfox.core.config import get_settings
+    from agentfox.platform.policy import load_from_dir, save_policy
+
+    with _db() as session:
+        for document in load_from_dir(get_settings().policies_dir):
+            if document.key == "tool-containment":
+                save_policy(session, document, author="test", bind_mode=mode)
+
+
 def test_policy_mode_enforces_default_deny_once_the_agent_has_a_grant(fake_openai):
     """The first capability grant is what switches least privilege on for an agent
-    — after that, a tool outside its grants is refused, as `guard_tool` refuses it."""
+    — after that, while Tool containment blocks, a tool outside its grants is
+    refused, as `guard_tool` refuses it."""
+    _containment("enforce")
     _grant("support-bot", "read_customer_record")
     client, script, _calls = fake_openai
     script.append(_openai_response(_openai_tool_call("c1", "issue_refund", {"order": "o-1"})))
@@ -703,3 +716,61 @@ def test_a_declared_intent_lets_a_granted_untainted_irreversible_call_run(fake_o
         client().create(model="gpt-4o", messages=[{"role": "user", "content": "hi"}], tools=TOOLS)
         is reply
     )
+
+
+def test_a_missing_grant_only_watches_while_tool_containment_watches(fake_openai):
+    """Watch mode means one thing: with Tool containment watching, a tool outside the
+    agent's grants is recorded as would-block and the call goes through."""
+    _containment("observe")
+    _grant("support-bot", "read_customer_record")
+    client, script, _calls = fake_openai
+    reply = _openai_response(_openai_tool_call("c1", "issue_refund", {"order": "o-1"}))
+    script.append(reply)
+    governed = auto(agent="support-bot", quiet=True)
+
+    response = client().create(
+        model="gpt-4o", messages=[{"role": "user", "content": "hi"}], tools=TOOLS
+    )
+    assert response is reply
+    assert governed.calls_blocked == 0
+    assert governed.would_have_blocked == 1
+    with _db() as session:
+        decision = session.query(Decision).filter(Decision.surface == "tool_args").one()
+        assert decision.verdict == "allow"
+        denials = [
+            r
+            for r in decision.rules_fired_json
+            if r["rule_id"] in ("capability.denied", "capability.default_deny")
+        ]
+        assert denials and all(r["mode"] == "observe" for r in denials)
+
+
+def test_a_composed_escalation_says_where_the_argument_was_copied_from():
+    """A refusal by `composition.escalation` is about a value copied out of another
+    tool's result. Saying "No argument came from untrusted content" beside it (the
+    source tool's output being trusted) contradicted the refusal."""
+    from agentfox.capabilities.detection.taint import TaintMark
+    from agentfox.frameworks.autoguard import _describe_tool_refusal
+    from agentfox.frameworks.autoguard.tool_calls import _ToolCall
+    from agentfox.runtime.enforcement.result import EnforcementResult
+
+    result = EnforcementResult(
+        verdict="block",
+        effective_verdict="block",
+        rules_fired=[
+            {
+                "rule_id": "composition.escalation",
+                "effect": "block",
+                "mode": "enforce",
+                "reason": "lookup_invoice's output flows into pay_vendor",
+            }
+        ],
+    )
+    marks = [
+        TaintMark("vendor", "tool_result", trust="trusted", propagated_from="tool:lookup_invoice#2")
+    ]
+    text = _describe_tool_refusal(
+        _ToolCall("pay_vendor", {"vendor": "v-1"}), result, marks, applied=True
+    )
+    assert "No argument came from untrusted content" not in text
+    assert "vendor copied from a tool result (the result of lookup_invoice" in text

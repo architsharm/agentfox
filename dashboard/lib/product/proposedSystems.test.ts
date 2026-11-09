@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { drawnSubagents, linkActivity, parentLabel, relationLabel, type MapLink } from "./guardrailMap";
-import { groupProposed, memberRelation, type ProposedAgent } from "./proposedSystems";
+import { byRepo, groupProposed, isAdded, memberRelation, noAgents, proposedSource, searchProposed, type ProposedAgent } from "./proposedSystems";
 
 function agent(slug: string, children: [string, string][] = []): ProposedAgent {
   return { id: `id-${slug}`, slug, children: children.map(([s, relation]) => ({ slug: s, relation })) };
@@ -79,5 +79,48 @@ describe("sub-agents on the map", () => {
     expect(shown.map((s) => s.slug)).toEqual(["s8", "s7", "s6", "s5", "s4"]);
     expect(rest).toBe(4);
     expect(drawnSubagents(subs.slice(0, 6), 6)).toEqual({ shown: [...subs.slice(0, 6)].reverse(), rest: 0 });
+  });
+});
+
+describe("one count of agents everywhere", () => {
+  const all = [
+    { slug: "a", status: "active" },
+    { slug: "b", status: "draft", project: "shop" },
+    { slug: "c", status: "rejected" },
+    { slug: "d", status: "shadow" },
+    { slug: "e", status: "removed" },
+  ];
+  it("adds active and shadow agents, never proposals, dismissed or disconnected ones", () => {
+    expect(all.filter(isAdded).map((a) => a.slug)).toEqual(["a", "d"]);
+  });
+  it("points an empty page at Proposed when agents wait there", () => {
+    expect(noAgents(3).href).toBe("/app/projects?tab=proposed");
+    expect(noAgents(3).text).toContain("3 agents are waiting under Proposed");
+    expect(noAgents(0).href).toBe("/app/map");
+  });
+});
+
+describe("where a proposal came from", () => {
+  it("says init, not a repo scan, for an agent init proposed", () => {
+    expect(proposedSource({ slug: "planner", project: "travel" })).toBe("Found by agentfox init in travel");
+    expect(proposedSource({ slug: "planner", scan_run_id: "r1", project: "travel" })).toBe("Found by a repo scan");
+  });
+});
+
+describe("a long Proposed list", () => {
+  const rows = [
+    { slug: "a", name: "Planner", project: "mono", framework: "crewai" },
+    { slug: "b", name: "Writer", project: "mono" },
+    { slug: "c", name: "Currency", project: "a2a" },
+    { slug: "d", name: "Loose" },
+  ];
+  it("searches by name, repo and framework", () => {
+    expect(searchProposed(rows, "plan").map((a) => a.slug)).toEqual(["a"]);
+    expect(searchProposed(rows, "A2A").map((a) => a.slug)).toEqual(["c"]);
+    expect(searchProposed(rows, "crew").map((a) => a.slug)).toEqual(["a"]);
+    expect(searchProposed(rows, " ")).toHaveLength(4);
+  });
+  it("groups by repository, biggest first", () => {
+    expect(byRepo(rows).map((g) => [g.repo, g.agents.length])).toEqual([["mono", 2], ["a2a", 1], [null, 1]]);
   });
 });

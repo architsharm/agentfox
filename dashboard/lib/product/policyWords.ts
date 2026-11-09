@@ -134,6 +134,8 @@ function changeWords(field: string, after: unknown, before: unknown): string {
       return after === "reask" ? "On a blocked answer: ask the model to fix it" : "On a blocked answer: refuse";
     case "overridable":
       return after ? "Agents may now loosen this rule" : "Agents may no longer loosen this rule";
+    case "watch":
+      return after ? "Back to watching" : "Started blocking";
     default:
       return `${field.replace(/_/g, " ")} changed`;
   }
@@ -192,6 +194,17 @@ export function suggestedLadderName(def: { tool?: string | null; unit?: string |
 }
 
 /**
+ * A limit's name after its bands or tool change. A name the product suggested ("Approval
+ * above $1,000 on pay_vendor") is said again from the new bands, so it never names the
+ * old amount; a name the person wrote is theirs and stays.
+ */
+export function ladderNameAfterEdit(name: string, before: Parameters<typeof suggestedLadderName>[0], after: Parameters<typeof suggestedLadderName>[0], key?: string): string {
+  const typed = name.trim();
+  if (!typed || typed === key || typed === suggestedLadderName(before)) return suggestedLadderName(after);
+  return typed;
+}
+
+/**
  * The sentences of what was written that compiled to nothing. A sentence that became
  * the allow band ("Transfers up to $100 run automatically") is used, so it is not
  * listed even when the compiler reports it as ignored.
@@ -216,4 +229,19 @@ export function unusedSentences(ignored: string[], rules: { definition?: { bands
 export function defaultRuleScope(agent: string | undefined, agents: { slug: string }[]): string {
   if (agent) return agent;
   return agents.length === 1 ? agents[0].slug : "";
+}
+
+// --- a rule's entries -----------------------------------------------------------------------
+
+/**
+ * The entries typed into a words or patterns rule. Words may be one per line or
+ * separated by commas ("Globex, Initech"). Anything else (a pattern, an example
+ * question) is one per line only: a comma is part of the regex (`\b\d{8,12}\b`), so splitting on it would save two broken
+ * halves and Try it would test something else than what runs.
+ */
+export function ruleEntries(kind: string, text: string): string[] {
+  return text
+    .split(kind === "terms" ? /\n|,/ : /\n/)
+    .map((x) => x.trim())
+    .filter(Boolean);
 }

@@ -57,11 +57,16 @@ export default function Page() {
             If you call the model yourself, ask AgentFox before each tool runs. Say where each argument
             came from, so an id copied out of a web page is treated differently from one the user typed.
           </p>
-          <Code>{`curl -s http://localhost:8080/v1/guard/tool_call -H 'Content-Type: application/json' \\
+          <Code>{`curl -s http://localhost:8080/v1/guard/tool_call \\
+  -H "Authorization: Bearer $AGENTFOX_API_KEY" -H 'Content-Type: application/json' \\
   -d '{"agent": "support-triage", "tool": "tickets.close",
        "arguments": {"ticket_id": "T-4411"}, "provenance": {"ticket_id": "user"}}'`}</Code>
           <p>
-            This route always answers <strong>200</strong>, even for a refusal. Read{" "}
+            Use your agent&apos;s name for <code>support-triage</code>. Until the agent is granted
+            the tool (its <strong>Access</strong> tab, or{" "}
+            <code>agentfox permit grant &lt;agent&gt; tickets.close --yes</code>), the answer is a
+            refusal from default-deny. This route always answers <strong>200</strong>, even for a
+            refusal. Read{" "}
             <code>verdict</code>: run the tool only on <code>allow</code>. On <code>escalate</code>, wait
             for the <code>approval_id</code> to be decided. On <code>block</code>, do not run it.
           </p>
@@ -69,8 +74,8 @@ export default function Page() {
 
         <Step title="See it in the app">
           <p>
-            Each request appears on the agent&apos;s <strong>Activity</strong> tab and on{" "}
-            <strong>Traces</strong>, with the rule that decided it.
+            Each request appears on the agent&apos;s <strong>Activity</strong> tab and on the
+            workspace&apos;s <strong>Activity</strong> page, with the rule that decided it.
           </p>
         </Step>
       </Steps>

@@ -670,6 +670,7 @@ def test_json_and_submission_payload_carry_the_structure(tmp_path):
             "framework": "OpenAI Agents SDK",
             "kind": "agent",
             "top_dir": "bots",
+            "app": tmp_path.name,
         },
         {
             "key": "a",
@@ -677,6 +678,7 @@ def test_json_and_submission_payload_carry_the_structure(tmp_path):
             "framework": "OpenAI Agents SDK",
             "kind": "agent",
             "top_dir": "bots",
+            "app": tmp_path.name,
         },
     ]
     assert payload["agent_edges"] == [{"parent": "a", "child": "b", "relation": "handoff"}]
