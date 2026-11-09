@@ -487,6 +487,27 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
   .lp-test { padding: 24px; }
   .lp-test-foot { flex-direction: column; align-items: stretch; }
 }
+/* Home page, phones only: the primary CTA pinned to the bottom once the hero's
+   buttons are off screen (StickyCta in components/lp/client.tsx). The page gets
+   the bar's height as bottom padding on the footer, so nothing ends up under it. */
+.lp-sticky-cta { display: none; }
+@media (max-width: 640px) {
+  .lp-sticky-cta {
+    display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+    padding: 12px var(--lp-gutter) calc(12px + env(safe-area-inset-bottom));
+    background: color-mix(in srgb, var(--af-bg) 88%, transparent); backdrop-filter: blur(12px);
+    border-top: 1px solid var(--lp-hair);
+    transform: translateY(100%); visibility: hidden;
+    transition: transform 200ms var(--af-ease), visibility 0s linear 200ms;
+  }
+  .lp-sticky-cta[data-shown] { transform: none; visibility: visible; transition: transform 200ms var(--af-ease); }
+  .lp-sticky-cta .lp-btn { width: 100%; justify-content: center; }
+  .lp:has(.lp-sticky-cta) .lp-foot { padding-bottom: calc(69px + env(safe-area-inset-bottom)); }
+}
+@media (max-width: 640px) and (prefers-reduced-motion: reduce) {
+  .lp-sticky-cta, .lp-sticky-cta[data-shown] { transition: none; }
+}
+
 /* The narrowest phones (320-400px): brand, GitHub, theme, Docs and the menu are
    376px wide at the 640px spacing, so on a 320px screen the menu button, the only
    way to Benchmark and Sign in there, was pushed off the edge and clipped. */

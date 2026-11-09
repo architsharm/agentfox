@@ -2,6 +2,7 @@
 
 /** Small client pieces for the landing pages: a copy chip, and scroll reveal. */
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 export function CopyChip({ text, wide = false }: { text: string; wide?: boolean }) {
@@ -94,6 +95,38 @@ export function ThemeButton() {
         <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4" />
       </svg>
     </button>
+  );
+}
+
+/**
+ * The home page's primary call to action, pinned to the bottom of a phone screen
+ * (lp.css shows it at 640px and under) once the hero's own buttons have scrolled
+ * away, and hidden again whenever they, or the closing section's buttons, are back in
+ * view, so the same button is never on screen twice. Hidden until this runs, so
+ * without JavaScript the page is exactly as before.
+ */
+export function StickyCta({ href, children }: { href: string; children: React.ReactNode }) {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const targets = document.querySelectorAll(".lp-hero .lp-actions, .lp-cta .lp-actions");
+    if (!targets.length || !("IntersectionObserver" in window)) return;
+    const visible = new Set<Element>();
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) visible.add(e.target);
+        else visible.delete(e.target);
+      }
+      setShown(visible.size === 0);
+    });
+    targets.forEach((t) => io.observe(t));
+    return () => io.disconnect();
+  }, []);
+  return (
+    <div className="lp-sticky-cta" data-shown={shown ? "" : undefined}>
+      <Link href={href} className="lp-btn lp-btn-primary" tabIndex={shown ? undefined : -1}>
+        {children}
+      </Link>
+    </div>
   );
 }
 
