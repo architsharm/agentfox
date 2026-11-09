@@ -329,3 +329,20 @@ def test_contain_it_names_the_agent_auto_reports_as(tmp_path):
     report = _scan(tmp_path, {"desk.py": _TRIFECTA_SYSTEM})
     (trifecta,) = report.trifectas
     assert "agentfox permit grant front-desk send_email" in trifecta.evidence["fix"]
+
+
+def test_agentfox_itself_is_not_a_framework_the_app_is_built_on(tmp_path):
+    report = _scan(
+        tmp_path,
+        {
+            "main.py": """
+            import agentfox
+            from openai import OpenAI
+
+            agentfox.auto("helper")
+            OpenAI().chat.completions.create(model="gpt-4o", messages=[])
+            """
+        },
+    )
+    assert "AgentFox" not in report.frameworks
+    assert report.model_calls and all(s.governed for s in report.model_calls)

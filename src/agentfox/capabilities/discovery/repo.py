@@ -137,7 +137,8 @@ _FRAMEWORK_IMPORTS = {
     "langsmith": "LangSmith",
     "langfuse": "Langfuse",
     "opentelemetry": "OpenTelemetry",
-    "agentfox": "AgentFox",
+    # Not `agentfox`: the line `up` adds is AgentFox itself, not what the app is built
+    # on (it read "built on: AgentFox" and init listed it as a recognised framework).
     # Agent frameworks the agent pass reads by shape rather than by a constructor of
     # its own; naming the stack here keeps the report from saying "custom".
     "pydantic_ai": "Pydantic AI",
