@@ -83,7 +83,7 @@ A running list as we go. Newest priorities first. `[ ]` open · `[~]` started ·
 - [ ] **Website docs drift**: the install page shows 43 controls and 3 packs (`init` now prints 44 and 4) and its troubleshooting table still lists the removed `init --path` `FileNotFoundError`; the Access page says grants are always recorded as a group, but an email is recorded as a subject (`entitlement.ts:grantPrincipalKind`).
 - [ ] **Load errors read as empty**: `TokenManager.tsx` `load()` ignores `r.ok` (a 401/500 shows "no tokens"); same pattern in `SetupBanner.tsx` and `ConditionFields.tsx`.
 - [ ] **Three dead proxy routes** with no client caller: `app/api/agents/[slug]/map`, `app/api/projects/route.ts` (GET), `app/api/traces/[id]`.
-- [ ] **Next.js 16.4.0 was flagged as vulnerable**; `dashboard/package-lock.json` still pins it. Re-check the advisory and bump.
+- [x] **Next.js 16.4.0 was flagged as vulnerable**: bumped to 16.4.5 (2026-11-08).
 
 ## 6. UI changes, deferred (review of PR #122)
 
