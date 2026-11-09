@@ -160,7 +160,7 @@ async function ToolAccess({ agent }: { agent?: string }) {
             <li key={a.slug}>
               <div className="k-list-main">
                 <span className="k-name">{a.name || a.slug}</span>
-                <span className="muted">{a.declared_tools?.length || 0} tools declared</span>
+                <span className="muted">{a.declared_tools?.length === 1 ? "1 tool declared" : `${a.declared_tools?.length || 0} tools declared`}</span>
               </div>
               <Link className="k-btn" href={href(`/app/projects/${encodeURIComponent(a.slug)}`, { view: "access" })}>
                 Edit access
