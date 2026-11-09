@@ -2351,17 +2351,21 @@ def _remote_preflight(
     # A hand-off's acknowledgement carries the person's conversation, not a tool's.
     handed = {id(messages[int(i)]) for i in _delegation.handoff_messages(messages)}
     for index, message in enumerate(fresh):
+        source = (
+            "tool_result"
+            if (message.get("role") == "tool" and id(message) not in handed)
+            or str(index) in quoted
+            else "user"
+        )
         body = state.remote.post(
             "/v1/guard/input",
             {
                 "agent": _agent_of(state),
                 "content": str(message.get("content")),
-                "taint_source": (
-                    "tool_result"
-                    if (message.get("role") == "tool" and id(message) not in handed)
-                    or str(index) in quoted
-                    else "user"
-                ),
+                "taint_source": source,
+                # A tool's output is checked by the rules for what the agent reads, as
+                # the local pre-flight (`message_segments`) and the attack test check it.
+                **({"surface": "tool_result"} if source == "tool_result" else {}),
                 "environment": state.environment,
                 **{
                     k: v
