@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MODES, actorWords, modeKey, modeLabel, modeWord, ruleTitle, sentence, wouldDo } from "./vocab";
+import { MODES, actorWords, modeKey, modeLabel, modeWord, ruleTitle, sentence, withDetectorNames, wouldDo } from "./vocab";
 
 describe("sentence", () => {
   it("capitalises a title that opens with a plain word", () => {
@@ -57,6 +57,16 @@ describe("mode words", () => {
     expect(modeKey("enforced")).toBe("enforce");
     expect(modeKey("watching")).toBe("observe");
     expect(modeKey("mixed")).toBeNull();
+  });
+});
+
+describe("withDetectorNames", () => {
+  it("says detector keys in a control's rationale as names", () => {
+    expect(withDetectorNames("injection.heuristic, pii.native ran on 98.0% of traced invocations")).toBe(
+      "Prompt injection, Personal data ran on 98.0% of traced invocations",
+    );
+    expect(withDetectorNames("see e.g. foo.bar")).toBe("see e.g. foo.bar");
+    expect(withDetectorNames(null)).toBe("");
   });
 });
 

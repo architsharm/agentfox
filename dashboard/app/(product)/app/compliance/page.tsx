@@ -11,6 +11,7 @@ import { EnterpriseOnly } from "@/components/product/EnterpriseOnly";
 import { hasFeature } from "@/lib/product/edition";
 import { NoticeToast } from "@/components/product/NoticeToast";
 import { controlShare } from "@/lib/product/posture";
+import { withDetectorNames } from "@/lib/product/vocab";
 
 /**
  * Behind the sign-in wall: `noindex`, plus a tab title that is not the fourth
@@ -206,7 +207,7 @@ export default async function Compliance({
                       </td>
                       <td className="small wrap muted" style={{ maxWidth: 330 }}>{c.objective}</td>
                       <td><ControlStatus value={c.status} /></td>
-                      <td className="small wrap muted" style={{ maxWidth: 380 }}>{c.rationale || "—"}</td>
+                      <td className="small wrap muted" style={{ maxWidth: 380 }}>{withDetectorNames(c.rationale) || "—"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -423,7 +424,7 @@ function NeedsWork({ controls }: { controls: any[] }) {
               </Link>
               <span className="nw-key" title="Control ID in the AgentFox control catalogue. The NOM- prefix is kept so evidence already exported still matches.">Control <span className="mono">{c.key}</span></span>
             </div>
-            <p className="nw-why">{c.rationale || "No rationale recorded."}</p>
+            <p className="nw-why">{withDetectorNames(c.rationale) || "No rationale recorded."}</p>
           </li>
         ))}
       </ol>
