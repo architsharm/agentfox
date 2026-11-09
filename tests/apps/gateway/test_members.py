@@ -37,6 +37,13 @@ def test_an_owner_adds_a_teammate_who_signs_in_with_the_key(client):
 
 
 def test_only_owners_and_admins_change_members_and_nobody_changes_themselves(client):
-    assert client.post("/api/members", json={"email": "a@example.com"}, headers=DEV).status_code == 403
+    assert (
+        client.post("/api/members", json={"email": "a@example.com"}, headers=DEV).status_code == 403
+    )
     me = client.get("/api/me", headers=ADMIN).json()
-    assert client.patch(f"/api/members/{me['id']}", json={"role": "auditor"}, headers=ADMIN).status_code == 409
+    assert (
+        client.patch(
+            f"/api/members/{me['id']}", json={"role": "auditor"}, headers=ADMIN
+        ).status_code
+        == 409
+    )

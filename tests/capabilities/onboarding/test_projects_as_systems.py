@@ -418,14 +418,18 @@ def test_a_long_proposed_list_can_be_dismissed_at_once(client):
     key = _key(client)
     _repo_a(client, key)
     drafts = [
-        a for a in client.get("/api/agents", headers=ADMIN).json()["agents"] if a["status"] == "draft"
+        a
+        for a in client.get("/api/agents", headers=ADMIN).json()["agents"]
+        if a["status"] == "draft"
     ]
     assert len(drafts) == 2 and all(a["scan_run_id"] is None for a in drafts)
     out = client.post(
         "/api/agents/reject", json={"ids": [a["id"] for a in drafts] + ["nope"]}, headers=ADMIN
     )
     assert out.status_code == 200 and out.json()["rejected"] == ["billing-agent", "triage-agent"]
-    statuses = {a["slug"]: a["status"] for a in client.get("/api/agents", headers=ADMIN).json()["agents"]}
+    statuses = {
+        a["slug"]: a["status"] for a in client.get("/api/agents", headers=ADMIN).json()["agents"]
+    }
     assert statuses["triage-agent"] == "rejected" and statuses["billing-agent"] == "rejected"
     auditor = as_user("aisha@example.com")
     assert client.post("/api/agents/reject", json={"ids": []}, headers=auditor).status_code == 403

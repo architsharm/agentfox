@@ -7,7 +7,8 @@ Any live workspace key whose owner may change the registry is accepted, and so i
 setup key from before (``afi_``), which only ever reached the runner routes.
 
 The workspace key never expires by itself (it is the app's runtime key); it ends when
-it is rotated or revoked. The older setup key is an operator token in everything but reach (``platform/identity/operators``):
+it is rotated or revoked. The older setup key is an operator token in everything but
+reach (``platform/identity/operators``):
 stored as a hash with a findable prefix, shown in full once when it is made, expiring
 (``onboarding_key_ttl_days``), revocable from the token list or by rotating it, and
 written to the audit log when it is issued or revoked. Its ``afi_`` prefix keeps it

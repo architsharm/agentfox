@@ -50,12 +50,12 @@ from agentfox.apps.gateway.routes import custom_rules as custom_rule_routes
 from agentfox.apps.gateway.routes import features as feature_routes
 from agentfox.apps.gateway.routes import imports as import_routes
 from agentfox.apps.gateway.routes import library as library_routes
+from agentfox.apps.gateway.routes import members as member_routes
 from agentfox.apps.gateway.routes import metrics as metrics_routes
 from agentfox.apps.gateway.routes import onboarding_flow as onboarding_flow_routes
 from agentfox.apps.gateway.routes import platform_hooks as platform_hook_routes
 from agentfox.apps.gateway.routes import protection as protection_routes
 from agentfox.apps.gateway.routes import rule_examples as rule_example_routes
-from agentfox.apps.gateway.routes import members as member_routes
 from agentfox.apps.gateway.routes import workspace as workspace_routes
 from agentfox.capabilities.compliance.catalog import load_catalog
 from agentfox.capabilities.detection import all_detectors, available_detectors
