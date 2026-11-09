@@ -187,7 +187,8 @@ nav.side .project-switch-name { font-weight: 500; gap: 3px; }
 nav.side .project-switch-name small { order: 2; font-size: 10px; font-weight: 400; text-transform: lowercase; letter-spacing: 0; color: var(--af-brand); }
 nav.side .project-switch-name small::before { content: "// "; }
 nav.side .project-switch-menu { border-radius: 4px; box-shadow: var(--af-shadow-2); border-color: var(--af-line); font-family: var(--af-mono); }
-nav.side .project-switch-menu { left: 0; right: auto; min-width: 100%; width: max-content; max-width: 280px; }
+/* Fixed to the viewport (see ProjectSwitcher): a min-width of 100% was the whole window wide. */
+nav.side .project-switch-menu { right: auto; min-width: var(--psm-min, 200px); width: max-content; max-width: 280px; }
 nav.side .project-switch-menu button, nav.side .project-switch-filter { border-radius: 3px; font-family: var(--af-mono); font-size: 13px; }
 nav.side .project-switch-menu button small { white-space: nowrap; padding-left: 16px; }
 nav.side .project-switch-menu .project-switch-foot { padding-left: 7px; font-size: 13px; color: var(--af-link); }
@@ -891,3 +892,4 @@ a.gm-add { align-self: flex-start; text-decoration: none; }
 .shell .k-row-link tbody tr:hover { background: var(--af-subtle); }
 .shell .k-row-link .k-name::after { content: ""; position: absolute; inset: 0; }
 .shell .k-row-link td a:not(.k-name) { position: relative; z-index: 1; }
+.pending-agents { margin: 0 0 16px; }

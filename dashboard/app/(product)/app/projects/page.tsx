@@ -87,7 +87,7 @@ export default async function Projects({ searchParams }: { searchParams: Promise
           )}
           {proposed.length === 0 ? (
             <Card>
-              <Empty action={<Link href="/app/settings?tab=connect" className="k-btn">Scan a repo</Link>}>Nothing proposed.</Empty>
+              <Empty action={<Link href="/app/welcome?again=1" className="k-btn">Scan a repository</Link>}>Nothing proposed.</Empty>
             </Card>
           ) : shownProposed.length === 0 ? (
             <Card>

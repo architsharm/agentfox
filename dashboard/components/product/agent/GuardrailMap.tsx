@@ -1455,7 +1455,7 @@ function Legend() {
       ))}
       <span className="gm-legend-sep" aria-hidden />
       <span className="gm-legend-kind">
-        <Mark size={16} /> Rail with guardrails (the number is how many rules, not traffic)
+        <Mark size={16} /> Rail with guardrails (number: how many rules)
       </span>
       <span className="gm-legend-kind">
         <span className="gm-legend-plus" aria-hidden>+</span> Rail, none yet

@@ -460,6 +460,9 @@ nav.side {
   padding: 18px 12px;
   position: sticky;
   top: 0;
+  /* Sticky makes a stacking context: without a level of its own, the project
+     switcher's menu (fixed, inside it) painted under the page's map canvas. */
+  z-index: 35;
   height: 100vh;
   overflow-y: auto;
   display: flex;
@@ -758,6 +761,9 @@ tr.row-expanded:hover { background: var(--panel-2); }
   margin: 16px 0;
 }
 .caveat strong { display: block; margin-bottom: 3px; }
+
+/* An inline error beside the control that failed (not the full-width .error panel). */
+.k-error { color: var(--bad); font-size: var(--t-small); }
 
 .error {
   background: var(--bad-bg);
