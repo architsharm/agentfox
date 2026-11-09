@@ -54,13 +54,19 @@ class AccountError(Exception):
 def keys_page(server: str) -> str:
     """Where a key for ``server`` is made, as a sentence fragment."""
     from agentfox.apps.cli.commands._shared import dashboard_url
-    from agentfox.apps.cli.wizard.targets import CLOUD_APP_URL
+    from agentfox.apps.cli.wizard.targets import CLOUD_APP_URL, cloud_dashboard_for
 
-    site = dashboard_url()
-    if not site and "useagentfox.com" in server:
-        site = CLOUD_APP_URL
-    where = f" ({site}/app/start)" if site else " in the AgentFox dashboard"
-    return f"{KEY_STEP}{where}"
+    site = cloud_dashboard_for(server) or dashboard_url()
+    if site == CLOUD_APP_URL and not cloud_dashboard_for(server):
+        site = ""  # a project once set up against Cloud, now pointed at another server
+    if site:
+        return f"{KEY_STEP} ({site}/app/start)"
+    # Not Cloud's gateway, and nobody said where its dashboard is: say so rather than
+    # point at Cloud's pages, which hold no key for this server.
+    return (
+        f"{KEY_STEP} in the dashboard for {server} (its address is not set here: "
+        "AGENTFOX_DASHBOARD_URL), or `agentfox admin auth issue <email>` on that server"
+    )
 
 
 def key_rejected(server: str, status: int = 401) -> str:
