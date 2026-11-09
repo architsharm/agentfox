@@ -212,7 +212,7 @@ def test_the_support_bot_is_a_lethal_trifecta_in_plain_english(support_bot):
     assert "can send email (send_email)" in code.detail
     assert "An instruction hidden in a web page could send customer data out." in code.detail
     assert "agentfox permit grant" in code.evidence["fix"]
-    assert 'agentfox.auto(mode="observe")' in code.evidence["fix"]
+    assert "agentfox policy enforce tool-containment" in code.evidence["fix"]
     assert code.evidence["exfiltration"][0] == "send_email"
 
 
