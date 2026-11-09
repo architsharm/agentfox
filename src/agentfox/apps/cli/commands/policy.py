@@ -249,9 +249,8 @@ def policy_simulate(
     try:
         candidate = PolicyDocument.from_yaml(file.read_text())
     except Exception as exc:  # noqa: BLE001 - any parse or schema error, said in one line
-        console.print(
-            f"[red]{escape(str(file))} isn't a policy AgentFox can read:[/] {escape(str(exc))[:200]}"
-        )
+        why = escape(str(exc))[:200]
+        console.print(f"[red]{escape(str(file))} isn't a policy AgentFox can read:[/] {why}")
         raise typer.Exit(2) from None
     with _session() as session:
         diff = simulate(
