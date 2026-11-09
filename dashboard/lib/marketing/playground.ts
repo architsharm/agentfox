@@ -49,6 +49,20 @@ export async function playgroundCall<T = any>(
   return res.json();
 }
 
+/**
+ * What to show a visitor when a call fails. The gateway's own sentence for a
+ * response it sent; otherwise a plain one, never the browser's "Failed to fetch",
+ * "Load failed" or "signal timed out", which read as the page being broken.
+ */
+export function failureMessage(e: unknown): string {
+  if (e instanceof ApiError) return e.message;
+  const name = (e as { name?: string } | null)?.name;
+  if (name === "TimeoutError" || name === "AbortError") {
+    return "The sandbox took too long to answer. Try again.";
+  }
+  return "The sandbox could not be reached. Check your connection and try again.";
+}
+
 /** "in about 12 minutes", from a 429's `retry_after_seconds`. */
 export function retryPhrase(seconds?: number): string {
   if (!seconds || seconds <= 60) return "in a minute";
