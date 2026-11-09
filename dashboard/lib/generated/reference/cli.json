@@ -4797,6 +4797,19 @@
         "multiple": false,
         "default": "cli",
         "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "out",
+        "opts": [
+         "--out"
+        ],
+        "type": "path",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": "Where to write the zip: a file path, or a directory to put it in. Default: the evidence directory under the state dir."
        }
       ],
       "default_subcommand": null,
