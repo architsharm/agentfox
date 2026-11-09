@@ -3405,6 +3405,12 @@
       "type": "string",
       "required": false,
       "description": ""
+     },
+     {
+      "name": "tool",
+      "type": "string",
+      "required": false,
+      "description": ""
      }
     ]
    }

@@ -194,6 +194,17 @@ export function suggestedLadderName(def: { tool?: string | null; unit?: string |
 }
 
 /**
+ * A limit's name after its bands or tool change. A name the product suggested ("Approval
+ * above $1,000 on pay_vendor") is said again from the new bands, so it never names the
+ * old amount; a name the person wrote is theirs and stays.
+ */
+export function ladderNameAfterEdit(name: string, before: Parameters<typeof suggestedLadderName>[0], after: Parameters<typeof suggestedLadderName>[0], key?: string): string {
+  const typed = name.trim();
+  if (!typed || typed === key || typed === suggestedLadderName(before)) return suggestedLadderName(after);
+  return typed;
+}
+
+/**
  * The sentences of what was written that compiled to nothing. A sentence that became
  * the allow band ("Transfers up to $100 run automatically") is used, so it is not
  * listed even when the compiler reports it as ignored.

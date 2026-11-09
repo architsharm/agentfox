@@ -284,6 +284,8 @@ class CompileIn(BaseModel):
     #: The agent the rule is written for: its declared tools are what a rule's tool
     #: resolves to ("refund" -> its `issue_refund`).
     agent: str | None = None
+    #: The tool the person picked: every limit in the text governs it.
+    tool: str | None = Field(None, max_length=160)
 
 
 def _field_warnings(session: Session, compiled: dict[str, Any]) -> dict[str, Any]:
@@ -318,9 +320,22 @@ def compile_text(
     agent = (
         session.scalar(select(Agent).where(Agent.slug == payload.agent)) if payload.agent else None
     )
-    tools = list(agent.declared_tools or []) if agent else None
+    # The tools a limit can bind to: the agent's own, else every tool this workspace
+    # has seen, so "vendor payments" binds to its `pay_vendor`, not a generic name
+    # nothing calls.
+    if agent is not None:
+        tools = list(agent.declared_tools or [])
+    else:
+        from agentfox.core.models import Tool
+
+        tools = sorted(
+            {k for k in session.scalars(select(Tool.key)) if not k.startswith("redteam.")}
+        ) or None
     return _field_warnings(
-        session, compile_document(payload.text, key_prefix="custom", tools=tools).to_json()
+        session,
+        compile_document(
+            payload.text, key_prefix="custom", tools=tools, tool=payload.tool or None
+        ).to_json(),
     )
 
 

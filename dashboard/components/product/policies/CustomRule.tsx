@@ -130,6 +130,7 @@ export function CustomRule({
   const [tried, setTried] = useState<null | { matched: boolean; matches: any[]; observed?: unknown[] }>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [asking, setAsking] = useState(false);
   const [saved, setSaved] = useState<null | { ruleId: string; mode: string; packMode: string }>(null);
 
   const isTopic = kind === "topic" || kind === "allow";
@@ -193,7 +194,7 @@ export function CustomRule({
 
   const remove = () =>
     run(async () => {
-      if (!initial || !window.confirm(`Delete "${initial.name}"? It stops checking traffic now.`)) return;
+      if (!initial) return;
       await callJson(`/api/custom-rules/${encodeURIComponent(initial.key)}`, "DELETE");
       router.push("/app/policies");
     });
@@ -449,11 +450,23 @@ export function CustomRule({
           <button className="k-btn-primary" disabled={busy || !ready} onClick={save}>
             {busy ? "Saving…" : editing ? "Save changes" : "Save rule"}
           </button>
-          {editing && (
-            <button className="k-btn-danger" disabled={busy} onClick={remove}>
-              Delete rule
-            </button>
-          )}
+          {editing &&
+            // Asked in the page, not with window.confirm (which some browsers suppress).
+            (asking ? (
+              <span className="k-act-confirm" role="alertdialog" aria-label={`Delete ${initial!.name}?`}>
+                <span>Delete “{initial!.name}”? It stops checking traffic now.</span>
+                <button className="k-btn-danger" disabled={busy} onClick={remove}>
+                  Delete rule
+                </button>
+                <button className="k-btn-ghost" onClick={() => setAsking(false)}>
+                  Cancel
+                </button>
+              </span>
+            ) : (
+              <button className="k-btn-danger" disabled={busy} onClick={() => setAsking(true)}>
+                Delete rule
+              </button>
+            ))}
         </div>
       </div>
     </div>

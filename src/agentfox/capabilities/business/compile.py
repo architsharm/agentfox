@@ -122,6 +122,8 @@ _OUTCOME_WORDS: list[tuple[tuple[str, ...], str]] = [
             "require approval",
             "second pair of eyes",
             "four eyes",
+            "for approval",
+            "for review",
         ),
         "escalate",
     ),
@@ -377,8 +379,35 @@ _NEEDS_APPROVAL = re.compile(
 )
 
 
+#: "are never allowed", "is not permitted": a negated allow is a block. Checked before
+#: the word lists, where the bare "allowed" would otherwise read it as allow, so the top
+#: band of "free up to $1,000, approval to $50,000, never above" let everything through.
+_NEGATED_ALLOW = re.compile(
+    r"\b(?:never|not|no longer|cannot|can't|may not|must not)\s+(?:be\s+|ever\s+)?"
+    r"(?:allowed|permitted|approved|issued|paid|made|processed|sent)\b"
+)
+
+#: Weaker words for "this runs without a person", tried only when no stronger word
+#: (approval, verification, block) is in the clause: "are automatically sent for
+#: approval" must stay an approval.
+_ALLOW_WEAK = (
+    "automatically",
+    "go through",
+    "goes through",
+    "can be issued",
+    "may be issued",
+    "can be paid",
+    "can be made",
+    "are free",
+    "is free",
+    "freely",
+)
+
+
 def _outcome(text: str) -> str | None:
     lowered = " ".join(text.lower().split())
+    if _NEGATED_ALLOW.search(lowered):
+        return "block"
     # Ordered by specificity: "requires approval" must beat a bare "approve".
     for words, outcome in _OUTCOME_WORDS:
         for word in sorted(words, key=len, reverse=True):
@@ -386,6 +415,10 @@ def _outcome(text: str) -> str | None:
                 return outcome
     if _NEEDS_APPROVAL.search(lowered):
         return "escalate"
+    if not re.search(r"\b(?:approv|review|check|verif)", lowered) and any(
+        word in lowered for word in _ALLOW_WEAK
+    ):
+        return "allow"
     return None
 
 
@@ -441,8 +474,41 @@ def _tool(text: str, tools: list[str] | None = None) -> str | None:
                 return tool
             tail = tool.rsplit(".", 1)[-1]
             named = [t for t in own if word in t.lower() or tail in t.lower()]
-            return named[0] if named else tool
+            if named:
+                return named[0]
+            # The agent's own tool that the sentence names best, by the words in its
+            # name: "vendor payments" is `pay_vendor`, not the generic
+            # `payments.transfer` an agent with `pay_vendor` never calls.
+            best = _best_own_tool(lowered, own, word)
+            return best or tool
     return None
+
+
+def _stem(word: str) -> str:
+    for suffix in ("ments", "ment", "ings", "ing", "ions", "ion", "es", "s"):
+        if word.endswith(suffix) and len(word) - len(suffix) >= 3:
+            return word[: -len(suffix)]
+    return word
+
+
+def _best_own_tool(lowered: str, own: list[str], hint: str) -> str | None:
+    """The one own tool whose name shares the hint word's stem and the most words
+    with the sentence, or None when none does or two tie."""
+    words = {_stem(w) for w in re.findall(r"[a-z]+", lowered)}
+    stem = _stem(hint)
+    scored: list[tuple[int, str]] = []
+    for name in own:
+        parts = [_stem(p) for p in re.split(r"[^a-z]+", name.lower()) if p]
+        if not any(stem.startswith(p) or p.startswith(stem) for p in parts if len(p) >= 3):
+            continue
+        hits = sum(1 for p in parts if any(w.startswith(p) or p.startswith(w) for w in words if len(w) >= 3))
+        scored.append((hits, name))
+    if not scored:
+        return None
+    scored.sort(reverse=True)
+    if len(scored) > 1 and scored[0][0] == scored[1][0]:
+        return None
+    return scored[0][1]
 
 
 @dataclass
@@ -576,12 +642,17 @@ def _is_governance(sentence: str) -> bool:
 
 
 def compile_document(
-    text: str, *, key_prefix: str = "policy", tools: list[str] | None = None
+    text: str,
+    *,
+    key_prefix: str = "policy",
+    tools: list[str] | None = None,
+    tool: str | None = None,
 ) -> Compilation:
     """Compile a written policy into executable rules and a short review queue.
 
     `tools`, the agent's own tools when the rule is written for one, resolves the
-    tool a rule governs to one the agent actually calls (`_tool`).
+    tool a rule governs to one the agent actually calls (`_tool`). `tool`, picked by
+    the person, is the tool every limit in the text governs.
     """
     result = Compilation()
     sentences = _sentences(text)
@@ -612,9 +683,9 @@ def compile_document(
     counts = [c for c in ladder_clauses if c.unit == "count"]
     others = [c for c in ladder_clauses if c.unit != "count"]
     if others:
-        _build_ladders(others, result, key_prefix, tools)
+        _build_ladders(others, result, key_prefix, tools, tool)
     if counts:
-        _build_ladders(counts, result, key_prefix, tools)
+        _build_ladders(counts, result, key_prefix, tools, tool)
     return result
 
 
@@ -1087,11 +1158,15 @@ _EXTRACTORS: dict[str, Any] = {
 
 
 def _build_ladders(
-    clauses: list[_Clause], result: Compilation, key_prefix: str, tools: list[str] | None = None
+    clauses: list[_Clause],
+    result: Compilation,
+    key_prefix: str,
+    tools: list[str] | None = None,
+    picked: str | None = None,
 ) -> None:
     """Assemble threshold clauses into one total ladder per (tool, unit)."""
     units = {c.unit for c in clauses if c.unit}
-    tool = _tool(" ".join(c.source for c in clauses), tools)
+    tool = picked or _tool(" ".join(c.source for c in clauses), tools)
     #: Fragments for quoting back in a question; whole sentences for accounting.
     source_fragments = [c.source for c in clauses]
     source_sentences = list(dict.fromkeys(c.sentence or c.source for c in clauses))
@@ -1143,7 +1218,7 @@ def _build_ladders(
             )
         )
         return
-    if not any(re.search(r"\b[a-z_]+\.[a-z_]+\b", c.source.lower()) for c in clauses):
+    if not picked and not any(re.search(r"\b[a-z_]+\.[a-z_]+\b", c.source.lower()) for c in clauses):
         assumptions.append(
             Assumption(
                 what=f"governs the tool '{tool}'",

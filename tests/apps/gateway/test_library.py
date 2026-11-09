@@ -290,3 +290,13 @@ def test_an_earlier_business_rule_version_can_be_restored(client):
     assert restored.json()["version"] == 3
     rule = client.get("/api/business/rules/refund-cap", headers=ADMIN).json()
     assert rule["definition"]["bands"][0]["upto"] == 100.0 and rule["mode"] == "observe"
+
+
+def test_compile_uses_the_tool_picked_in_the_form(client):
+    out = client.post(
+        "/api/business/compile",
+        json={"text": "Payments over $1,000 need approval from finance.", "tool": "pay_vendor"},
+        headers=ADMIN,
+    ).json()
+    ladder = next(r for r in out["rules"] if r["kind"] == "threshold_ladder")
+    assert ladder["definition"]["tool"] == "pay_vendor"

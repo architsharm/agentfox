@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { callJson } from "@/components/kit/Act";
 import { type Band, bandsForSave, canCheckFirst } from "@/lib/product/resave";
+import { ladderNameAfterEdit } from "@/lib/product/policyWords";
 
 const OUTCOMES = [
   { key: "allow", label: "Allow" },
@@ -26,6 +27,7 @@ export function LadderEditor({ rule, tools }: { rule: any; tools: string[] }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [asking, setAsking] = useState(false);
 
   const set = (i: number, patch: Partial<Band>) => {
     setSaved(false);
@@ -46,10 +48,13 @@ export function LadderEditor({ rule, tools }: { rule: any; tools: string[] }) {
 
   const save = () =>
     run(async () => {
+      // A suggested name follows the new bands ("Approval above $2,000"), a typed one stays.
+      const next = ladderNameAfterEdit(name, def, { ...def, tool, bands: bandsForSave(bands) }, rule.key);
+      setName(next);
       await callJson(`/api/business/rules/${encodeURIComponent(rule.key)}`, "PUT", {
         definition: {
           ...def,
-          name,
+          name: next,
           tool,
           field: `arguments.${field.replace(/^arguments\./, "")}`,
           bands: bandsForSave(bands),
@@ -61,7 +66,6 @@ export function LadderEditor({ rule, tools }: { rule: any; tools: string[] }) {
 
   const remove = () =>
     run(async () => {
-      if (!window.confirm(`Delete "${name}"? Calls it held go through unchecked.`)) return;
       await callJson(`/api/business/rules/${encodeURIComponent(rule.key)}`, "DELETE");
       router.push("/app/policies");
     });
@@ -178,9 +182,22 @@ export function LadderEditor({ rule, tools }: { rule: any; tools: string[] }) {
           {busy ? "Saving…" : "Save changes"}
         </button>
         {saved && <span className="k-pill k-pill-ok">Saved</span>}
-        <button className="k-btn-danger" disabled={busy} onClick={remove}>
-          Delete
-        </button>
+        {/* Asked in the page, not with window.confirm (which some browsers suppress). */}
+        {asking ? (
+          <span className="k-act-confirm" role="alertdialog" aria-label={`Delete ${name}?`}>
+            <span>Delete “{name}”? Calls it held go through unchecked.</span>
+            <button className="k-btn-danger" disabled={busy} onClick={remove}>
+              Delete
+            </button>
+            <button className="k-btn-ghost" onClick={() => setAsking(false)}>
+              Cancel
+            </button>
+          </span>
+        ) : (
+          <button className="k-btn-danger" disabled={busy} onClick={() => setAsking(true)}>
+            Delete
+          </button>
+        )}
       </div>
     </div>
   );

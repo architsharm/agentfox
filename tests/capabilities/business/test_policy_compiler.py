@@ -378,3 +378,39 @@ def test_a_row_count_ladder_compiles_without_asking_for_a_unit():
     (rule,) = result.rules
     assert rule.definition["unit"] == "count"
     assert [b.get("upto") for b in rule.definition["bands"]] == [1000, 50000, None]
+
+
+PAYABLES = ["lookup_invoice", "pay_vendor", "email_vendor", "delete_vendor"]
+
+
+def test_free_then_approval_then_never_compiles_every_band():
+    """Each sentence is a band: free up to X, a person from X to Y, never above Y."""
+    c = compile_document(
+        "Payments up to $1000 can be issued automatically. Payments between $1000 and "
+        "$50000 require approval from a finance manager. Payments above $50000 are "
+        "never allowed.",
+        tools=PAYABLES,
+    )
+    definition = _ladder(c).definition
+    bands = [(b.get("upto"), b["outcome"]) for b in definition["bands"]]
+    assert bands == [(1000.0, "allow"), (50000.0, "escalate"), (None, "block")]
+    assert c.ignored == []
+
+
+def test_a_limit_binds_to_the_tool_the_agent_has():
+    c = compile_document(
+        "Vendor payments over $1,000 need approval from a finance manager.", tools=PAYABLES
+    )
+    assert _ladder(c).definition["tool"] == "pay_vendor"
+
+
+def test_a_picked_tool_is_the_one_the_limit_governs():
+    c = compile_document(
+        "Payments over $1,000 need approval.", tools=PAYABLES, tool="email_vendor"
+    )
+    assert _ladder(c).definition["tool"] == "email_vendor"
+
+
+def test_sent_for_approval_automatically_is_still_an_approval():
+    c = compile_document("Transfers above $500 are automatically sent for approval.")
+    assert [b["outcome"] for b in _ladder(c).definition["bands"]] == ["allow", "escalate"]
