@@ -59,6 +59,21 @@ def collect(root: Path) -> dict[str, Any]:
     return {"repo": repo, "skills": skills}
 
 
+#: Files the Python `auto()` line can't go in: the TypeScript SDK checks those calls.
+_JS = (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts")
+
+
+def _governing_fix(path: str) -> str:
+    """How to govern the call, in the file's own language. A TypeScript file was told
+    to add the Python `import agentfox`."""
+    if str(path).lower().endswith(_JS):
+        return (
+            "Check its input and output with the TypeScript SDK (`@agentfox/sdk`: "
+            "`fox.guardInput(...)` before the call, `fox.guardOutput(...)` after)."
+        )
+    return "Add `import agentfox; agentfox.auto()` to the entry point."
+
+
 def annotations(result: dict[str, Any]) -> list[str]:
     lines: list[str] = []
     for site in result["repo"]["sites"]:
@@ -79,7 +94,7 @@ def annotations(result: dict[str, Any]) -> list[str]:
                 annotation(
                     "warning",
                     f"Ungoverned {site.get('provider') or 'model'} call: {site['detail']}. "
-                    "Add `import agentfox; agentfox.auto()` to the entry point.",
+                    + _governing_fix(site["file"]),
                     file=site["file"],
                     line=site["line"],
                     title="AgentFox: ungoverned model call",

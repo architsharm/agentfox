@@ -11,6 +11,7 @@ import datetime as dt
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -160,6 +161,7 @@ def promote_trace(
     The shortest path from "this went wrong in production" to "this can never ship
     again" is the feature that makes an eval suite grow instead of rot.
     """
+    from agentfox.capabilities.evaluation.cases import NoInput
     from agentfox.capabilities.evaluation.cases import promote_trace as promote
 
     suite = _suite(session, key)
@@ -167,6 +169,8 @@ def promote_trace(
         case = promote(session, suite, trace_id, actor=user.email or user.id)
     except LookupError as exc:
         raise HTTPException(404, str(exc)) from exc
+    except NoInput as exc:
+        raise HTTPException(422, str(exc)) from exc
     return {"id": case.id, "suite": key, "source_trace_id": trace_id}
 
 
@@ -445,14 +449,18 @@ class GateIn(BaseModel):
     scorers: list[str] | None = None
     baseline_run_id: str | None = None
     thresholds: dict[str, float] = Field(default_factory=dict)
-    min_pass_rate: float | None = None
+    #: A share, 0 to 1: 1.5 was accepted, and no suite could ever pass it.
+    min_pass_rate: float | None = Field(default=None, ge=0, le=1)
 
 
 @router.post("/eval/gate")
 def run_gate(
     payload: GateIn, session: Session = Depends(db), user: User = Depends(require("eval"))
 ) -> dict[str, Any]:
-    """The CI entry point. Non-zero exit maps from ``passed: false``."""
+    """The CI entry point. A gate that fails answers **412** with the same body
+    (``passed: false``, the regressions, JUnit and SARIF), so ``curl --fail`` and any
+    HTTP client fail the build on it. It answered 200 with ``passed: false``, and the
+    snippet's ``curl -s`` passed every build."""
     suite = _suite(session, payload.suite)
     agent = payload.target.get("agent")
     run = NativeEvalRunner().run(
@@ -477,11 +485,14 @@ def run_gate(
             "regressions": len(result.regressions),
         },
     )
-    return {
+    body = {
         **result.to_json(),
         "junit": to_junit(result, payload.suite),
         "sarif": to_sarif(result),
     }
+    if not result.passed:
+        return JSONResponse(status_code=412, content=jsonable_encoder(body))
+    return body
 
 
 # ---------------------------------------------------------------------------

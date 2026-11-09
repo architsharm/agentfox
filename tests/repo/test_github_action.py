@@ -84,6 +84,19 @@ def test_unknown_fail_on_is_a_usage_error(tmp_path):
     assert github_action.main(["--path", str(tmp_path), "--fail-on", "everything"]) == 2
 
 
+def test_an_ungoverned_call_is_told_the_fix_in_its_own_language():
+    """A .ts file was told to add the Python `import agentfox` (wow3 prove)."""
+
+    def note(path: str) -> str:
+        site = {"kind": "model_call", "governed": False, "provider": "openai",
+                "detail": "chat.completions.create", "file": path, "line": 3}  # fmt: skip
+        [line] = github_action.annotations({"repo": {"sites": [site]}, "skills": []})
+        return line
+
+    assert "import agentfox" not in note("src/bot.ts") and "@agentfox/sdk" in note("src/bot.ts")
+    assert "import agentfox" in note("app/bot.py")
+
+
 def test_action_inputs_reach_the_script():
     action = yaml.safe_load((REPO / "action.yml").read_text())
     run = action["runs"]["steps"][-1]["run"]
