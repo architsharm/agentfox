@@ -21,12 +21,9 @@ What keeps a public write safe to expose:
   * It is rate limited per address with the same limiter the playground uses, so it
     cannot be turned into a way to fill a disk.
 
-The response is deliberately the same shape whether the address was new or already
-present. Answering "you are already on this list" to an unauthenticated caller would
-turn the endpoint into an oracle for whether a given person has signed up; the
-`status` field distinguishes the two only so the page can say "welcome back" rather
-than being wrong, and it is the one thing here worth revisiting if that ever matters
-more than the wording.
+The response is the same whether the address was new or already present.
+Answering "you are already on this list" to an unauthenticated caller would turn the
+endpoint into an oracle for whether a given person has signed up.
 """
 
 from __future__ import annotations
@@ -168,13 +165,12 @@ def join_waitlist(
             if existing is None:  # pragma: no cover - the index says this cannot happen
                 raise
 
+    # The same answer whether the address was new or already there: anyone can post
+    # any address here, so a different reply for a repeat would tell a stranger who
+    # has signed up.
     return {
-        "status": "already_on_list" if existing is not None else "added",
+        "status": "added",
         "email": payload.email,
         "source": payload.source,
-        "message": (
-            "You're already on the list — we'll email you when hosted AgentFox opens."
-            if existing is not None
-            else "You're on the list. We'll email you when hosted AgentFox opens."
-        ),
+        "message": "You're on the list. We'll email you when hosted AgentFox opens.",
     }
