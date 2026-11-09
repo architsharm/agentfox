@@ -586,6 +586,16 @@ def search_traces(
             if held
             else {}
         )
+        # A run that kept the person's message (`record_input`) carries what they
+        # asked, even when the request also held a document or a tool's result and its
+        # input check therefore saw untrusted content: such a run starts a turn too.
+        asked.update(
+            session.scalars(
+                select(Span.trace_id).where(
+                    Span.trace_id.in_({t.id for t in traces}), Span.kind == "input"
+                )
+            )
+        )
         # A refusal before any check (a paused agent) left a span, not a decision.
         for sp in session.scalars(
             select(Span).where(Span.trace_id.in_({t.id for t in traces}), Span.kind == REFUSAL_SPAN)

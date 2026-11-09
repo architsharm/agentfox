@@ -91,6 +91,33 @@ def test_a_session_still_groups_by_turn_not_whole_conversation(client):
     ]
 
 
+def test_a_question_with_a_document_is_its_own_turn(client, session):
+    """The demo's "Summarise the Q3 refunds document." carries the document, so its
+    input check sees tool output; it folded into the question before it, and Activity
+    headed the blocked injection with "How long do I have to request a refund?"."""
+    from agentfox.core.models import Decision
+    from agentfox.platform.ledger.trace import start_trace
+    from agentfox.runtime.enforcement.summary import record_input
+
+    agent = "doc-bot"
+    for text, source in (("How long do refunds take?", "user"), ("Summarise this doc.", "tool_result")):
+        trace = start_trace(session, agent_id=None, agent_slug=agent)
+        trace.summary = text
+        record_input(session, trace, text)
+        session.add(
+            Decision(
+                trace_id=trace.id,
+                surface="input",
+                mode="observe",
+                verdict="allow",
+                taint_summary_json={"max_source": source},
+            )
+        )
+        session.commit()
+    rows = client.get(f"/api/traces?agent={agent}&group=true", headers=ADMIN).json()["traces"]
+    assert [r["summary"] for r in rows] == ["Summarise this doc.", "How long do refunds take?"]
+
+
 def test_a_tool_calls_run_page_is_titled_with_the_turns_message(client):
     """The run page of a hand-off was titled "transfer_to_restaurant_scout"."""
     agent = "title-bot"
