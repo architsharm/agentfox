@@ -531,6 +531,16 @@ def create_app() -> FastAPI:
     # get the headers too.
     app.add_middleware(SecurityHeaders)
 
+    from agentfox.runtime.enforcement import ProviderUnavailable
+
+    @app.exception_handler(ProviderUnavailable)
+    async def provider_unavailable(_request: Request, exc: ProviderUnavailable) -> JSONResponse:
+        """No provider could answer: a 502 that says so, rather than a bare 500."""
+        return JSONResponse(
+            status_code=502,
+            content={"error": {"type": "agentfox_provider_unavailable", "message": str(exc)}},
+        )
+
     app.include_router(inline.router)
     app.include_router(registry.router)
     app.include_router(policy.router)

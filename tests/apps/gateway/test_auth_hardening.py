@@ -387,6 +387,27 @@ def test_an_anonymous_caller_cannot_pick_a_paid_provider(ready, production, path
     assert keyed.status_code != 401
 
 
+def test_a_hosted_provider_is_never_called_with_egress_off(ready, monkeypatch):
+    """allow_egress=false was only checked when listing providers; naming one in a
+    request still sent the prompt to it."""
+    from agentfox.platform.providers.remote import OpenAIProvider
+
+    monkeypatch.setattr(get_settings(), "allow_egress", False)
+
+    called = []
+    monkeypatch.setattr(OpenAIProvider, "complete", lambda self, request: called.append(request))
+    raw, _ = _agent_key()
+    response = _app().post(
+        "/v1/chat/completions",
+        json={"model": "gpt-4o", "messages": [{"role": "user", "content": "hi"}]},
+        headers={"X-AgentFox-Provider": "openai", "Authorization": f"Bearer {raw}"},
+    )
+    assert called == []
+    # Said plainly, not a bare 500.
+    assert response.status_code == 502
+    assert response.json()["error"]["type"] == "agentfox_provider_unavailable"
+
+
 def test_an_oversized_body_is_refused_before_it_is_read(ready, production, monkeypatch):
     monkeypatch.setattr(get_settings(), "max_request_bytes", 1000)
     client = _app()
