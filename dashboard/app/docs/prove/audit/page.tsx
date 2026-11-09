@@ -142,10 +142,29 @@ python3 verify_chain.py              # manifest signature and checkpoints too`}<
 
       <h2>Retention and legal hold</h2>
       <p>
-        <strong>Settings → Retention</strong> sets how long each kind of data is kept. A daily job
-        deletes older runs and redacts old content; the audit log is never purged. A legal hold stops
-        the purge for the agents it names, or for everything. Both changes are recorded on the audit
-        log.
+        <strong>Settings → Retention</strong> sets how long each kind of data is kept. A kind with no
+        period set is kept indefinitely. A daily job (or <strong>Run purge now</strong>) then:
+      </p>
+      <ul>
+        <li>
+          <strong>deletes</strong> runs (with their spans, trace links and conversation turns) and
+          decisions (with their detector runs and results) older than their period;
+        </li>
+        <li>
+          <strong>redacts</strong> prompt and response content, detection samples and eval output
+          older than their period, keeping the row, its timing and its scores;
+        </li>
+        <li>
+          never touches the audit log: removing an entry would break the chain. Each purge is itself
+          an audit entry with what it deleted and redacted.
+        </li>
+      </ul>
+      <p>
+        Runs and decisions have separate periods, so a decision can outlive its run. Pages that still
+        name such a run (a control&apos;s runs, the run page itself) say it was removed by retention
+        and on which day, and SIEM events for the decision keep its agent. A legal hold stops the
+        purge for the agents it names, or for everything. Changing a period and placing or releasing
+        a hold are recorded on the audit log.
       </p>
 
       <h2>If something goes wrong</h2>

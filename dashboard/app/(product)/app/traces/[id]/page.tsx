@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { appPageMetadata } from "@/lib/site";
 import { ApiError, api, apiErrorProps } from "@/lib/product/api";
-import { ApiDown, NotFound } from "@/components/ui";
+import { ApiDown, NotFound, removedByRetention } from "@/components/ui";
 import {
   ActionPill,
   Card,
@@ -78,7 +78,12 @@ export default async function RunDetail({
       <>
         <Header title="Run" back={{ href: "/app/traces", label: "Activity" }} />
         {e instanceof ApiError && e.status === 404 ? (
-          <NotFound what="run" detail={id} back={{ href: "/app/traces", label: "Activity" }} />
+          <NotFound
+            what="run"
+            detail={id}
+            back={{ href: "/app/traces", label: "Activity" }}
+            removedOn={removedByRetention(e.message)}
+          />
         ) : (
           <ApiDown {...apiErrorProps(e)} />
         )}

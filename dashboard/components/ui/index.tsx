@@ -466,19 +466,29 @@ export function NotFound({
   what,
   detail,
   back,
+  removedOn,
 }: {
   /** What kind of thing is missing, lowercase — "finding", "trace", "run". */
   what: string;
   detail?: string;
   back?: { href: string; label: string };
+  /** The day a retention purge deleted it, when the gateway knows (YYYY-MM-DD). */
+  removedOn?: string | null;
 }) {
   return (
     <div className="hero empty">
-      <div className="hero-title">No such {what}</div>
-      <p>
-        The control plane is up — it just doesn&rsquo;t have a {what} at this id. The
-        link may be stale, or nothing has created one yet.
-      </p>
+      <div className="hero-title">{removedOn ? `This ${what} was removed by retention` : `No such ${what}`}</div>
+      {removedOn ? (
+        <p>
+          The retention purge on {removedOn} deleted it, as Settings &rarr; Retention says to. Its
+          decisions and the audit log still record what happened.
+        </p>
+      ) : (
+        <p>
+          The control plane is up — it just doesn&rsquo;t have a {what} at this id. The
+          link may be stale, or nothing has created one yet.
+        </p>
+      )}
       {detail && <p className="small muted mono">{detail}</p>}
       {back && (
         <p>
@@ -612,4 +622,10 @@ export function StatusBar({
       )}
     </div>
   );
+}
+
+/** "removed by retention on 2026-11-09" from a gateway 404 body, or null. */
+export function removedByRetention(message: string | undefined | null): string | null {
+  const m = /removed by retention on (\d{4}-\d{2}-\d{2})/.exec(message || "");
+  return m ? m[1] : null;
 }

@@ -17,7 +17,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from agentfox.apps.gateway.deps import current_user, db, require
@@ -25,6 +25,7 @@ from agentfox.capabilities.compliance import retention as retention_svc
 from agentfox.capabilities.detection.tuning import explain_recorded
 from agentfox.core.models import (
     AuditEntry,
+    Decision,
     LegalHold,
     RetentionPolicy,
     Trace,
@@ -133,6 +134,14 @@ def get_trace(
 ) -> dict[str, Any]:
     detail = full_trace(session, trace_id, explain=explain_recorded)
     if detail is None:
+        # Decisions can outlive their run; if one still names it, say the run was
+        # removed by retention rather than that it never existed.
+        first = session.scalar(
+            select(func.min(Decision.created_at)).where(Decision.trace_id == trace_id)
+        )
+        removed = retention_svc.removed_runs(session, {trace_id: first}) if first else {}
+        if trace_id in removed:
+            raise HTTPException(404, f"removed by retention on {removed[trace_id]}")
         raise HTTPException(404, "unknown trace")
     detail["links"] = [
         {

@@ -20,11 +20,13 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from agentfox.core.models import Decision, DetectionFinding, Finding, Trace
+from agentfox import __version__
+from agentfox.core.models import Agent, Decision, DetectionFinding, Finding, Trace
 
 VENDOR = "AgentFox"
 PRODUCT = "ControlPlane"
-VERSION = "0.1.0"
+#: The product version, so a SOC can tell which release produced an event.
+VERSION = __version__
 
 #: Verdict -> CEF severity (0-10). A block is an event a SOC should see; an
 #: observe-mode "would have blocked" is informational until enforcement is on.
@@ -54,12 +56,21 @@ def decision_event(session: Session, decision: Decision) -> dict[str, Any]:
         else []
     )
 
+    # A decision outlives its run when retention deletes runs first; it still names
+    # its agent, so the event keeps its attribution (environment then comes from the
+    # agent's own record rather than the deleted run).
+    agent = (
+        session.get(Agent, decision.agent_id)
+        if decision.agent_id and (trace is None or not trace.agent_slug)
+        else None
+    )
     return {
         "event_type": "agent.decision",
         "event_id": decision.id,
         "timestamp": _iso(decision.created_at),
-        "agent": trace.agent_slug if trace else None,
-        "environment": trace.environment if trace else None,
+        "agent": (trace.agent_slug if trace else None) or (agent.slug if agent else None),
+        "environment": (trace.environment if trace else None)
+        or (agent.environment if agent else None),
         "trace_id": decision.trace_id,
         "surface": decision.surface,
         "tool": decision.tool_key,
@@ -76,11 +87,20 @@ def decision_event(session: Session, decision: Decision) -> dict[str, Any]:
     }
 
 
-def finding_event(finding: Finding) -> dict[str, Any]:
+def finding_event(finding: Finding, session: Session | None = None) -> dict[str, Any]:
+    # A finding about an agent names it by id; a SOC filters on the slug, as it does
+    # for decisions, so carry both.
+    agent = (
+        session.get(Agent, finding.subject_id)
+        if session is not None and finding.subject_type == "agent" and finding.subject_id
+        else None
+    )
     return {
         "event_type": f"governance.finding.{finding.type}",
         "event_id": finding.id,
         "timestamp": _iso(finding.created_at),
+        "agent": agent.slug if agent else None,
+        "environment": agent.environment if agent else None,
         "title": finding.title,
         "severity_label": finding.severity,
         "severity": {"critical": 10, "high": 8, "medium": 5, "low": 2}.get(finding.severity, 5),
@@ -212,7 +232,7 @@ def export(
         fquery = select(Finding).order_by(Finding.created_at.desc()).limit(limit)
         if since:
             fquery = fquery.where(Finding.created_at >= since)
-        events.extend(finding_event(f) for f in session.scalars(fquery))
+        events.extend(finding_event(f, session) for f in session.scalars(fquery))
 
     events.sort(key=lambda e: str(e.get("timestamp") or ""))
 

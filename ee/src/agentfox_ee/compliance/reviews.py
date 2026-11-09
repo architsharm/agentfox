@@ -142,6 +142,15 @@ def rule_activity(
                     }
                 )
         fires += 1 if hit else 0
+    # A decision can outlive its run (runs and decisions have separate retention
+    # periods): say the run was removed instead of linking to "No such run".
+    from agentfox.capabilities.compliance.retention import removed_runs
+
+    removed = removed_runs(
+        session, {r["trace_id"]: dt.datetime.fromisoformat(r["at"]) for r in runs if r["at"]}
+    )
+    for r in runs:
+        r["removed_on"] = removed.get(r["trace_id"])
     last = max((s["last_fired"] for s in by_rule.values() if s["last_fired"]), default=None)
     return {
         "window_days": _FIRED_WINDOW_DAYS,

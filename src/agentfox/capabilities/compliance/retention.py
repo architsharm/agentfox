@@ -438,6 +438,41 @@ def purge(
     return run
 
 
+def removed_runs(session: Session, runs: dict[str, dt.datetime | None]) -> dict[str, str]:
+    """Which of these runs a retention purge deleted, and when: ``{trace_id: date}``.
+
+    ``runs`` maps a trace id to when something still on record (a decision, an audit
+    entry) says it happened. A run that no longer exists was removed by the first purge
+    whose runs cutoff is after that moment and that deleted runs. Pages that still
+    reference it say so instead of linking to "No such run". A missing run no purge
+    explains is left out.
+    """
+    if not runs:
+        return {}
+    present = set(session.scalars(select(Trace.id).where(Trace.id.in_(list(runs)))))
+    missing = {tid: at for tid, at in runs.items() if tid not in present}
+    if not missing:
+        return {}
+    purges = []
+    for run in session.scalars(select(RetentionRun).order_by(RetentionRun.started_at)):
+        traces = (run.results_json or {}).get("traces") or {}
+        if not traces.get("runs_deleted") or not traces.get("cutoff"):
+            continue
+        cutoff = as_aware(dt.datetime.fromisoformat(traces["cutoff"]))
+        purges.append((cutoff, as_aware(run.finished_at or run.started_at)))
+    out: dict[str, str] = {}
+    for tid, at in missing.items():
+        when = as_aware(at) if at else None
+        # The run started a moment before the record that names it, so a run right on a
+        # cutoff falls back to the first purge after that record.
+        match = next((f for c, f in purges if when is None or when < c), None) or next(
+            (f for _, f in purges if when is not None and f >= when), None
+        )
+        if match is not None:
+            out[tid] = match.date().isoformat()
+    return out
+
+
 def run_json(run: RetentionRun | None) -> dict[str, Any] | None:
     if run is None:
         return None

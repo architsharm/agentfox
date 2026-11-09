@@ -147,7 +147,14 @@ export default async function ControlPage({
                 <tr key={r.trace_id}>
                   <td className="tight muted">{ago(r.at)}</td>
                   <td>
-                    <Link className="k-mono" href={`/app/traces/${r.trace_id}`}>{r.trace_id}</Link>
+                    {r.removed_on ? (
+                      <>
+                        <span className="k-mono muted">{r.trace_id}</span>{" "}
+                        <span className="muted small">removed by retention on {r.removed_on}</span>
+                      </>
+                    ) : (
+                      <Link className="k-mono" href={`/app/traces/${r.trace_id}`}>{r.trace_id}</Link>
+                    )}
                   </td>
                   <td className="muted">{ruleTitle(r.rule_id)}</td>
                   <td className="tight">
