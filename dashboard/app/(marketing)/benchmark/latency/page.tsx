@@ -104,7 +104,7 @@ export default function LatencyBenchmarkPage() {
     <div className="lp">
       <Reveal />
       <LpNav />
-      <main>
+      <main id="main">
         <section className="lp-hero lp-hero-short">
           <FlowArt mode="ribbon" />
           <div className="lp-hero-copy">

@@ -27,7 +27,7 @@ export default function Support() {
   return (
     <div className="lp">
       <LpNav />
-      <main className="lp-page">
+      <main id="main" className="lp-page">
         <div className="lp-wrap">
           <h1>Support</h1>
           <p className="lp-lead">

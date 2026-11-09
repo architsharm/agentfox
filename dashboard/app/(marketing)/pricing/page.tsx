@@ -41,7 +41,7 @@ export default async function Pricing({
   return (
     <div className="mk">
       <MarketingNav />
-      <main>
+      <main id="main">
         <section className="mk-section mk-page-hero mk-ink-act">
           <div className="mk-wrap">
             <h1 className="mk-h1 mk-up mk-d1">Pricing</h1>

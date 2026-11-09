@@ -11,7 +11,7 @@ import { FOOTER, HEADER, HEADER_CTA } from "@/lib/marketing/nav";
 import { SESSION_COOKIE } from "@/lib/product/api";
 
 import { Logo } from "@/components/product/Logo";
-import { CopyChip, ThemeButton } from "./client";
+import { CopyChip, MenuDismiss, ThemeButton } from "./client";
 import { HOME_DESCRIPTION, REPO_URL, SUPPORT_EMAIL } from "@/lib/site";
 
 
@@ -39,6 +39,10 @@ export async function LpNav() {
   const signedIn = Boolean((await cookies()).get(SESSION_COOKIE)?.value);
   return (
     <header className="lp-nav lp-x">
+      {/* Every public page gives its <main> id="main". */}
+      <a href="#main" className="lp-skip">
+        Skip to content
+      </a>
       <div className="lp-nav-in">
         <Link href="/" className="lp-brand" aria-label="AgentFox home">
           <Logo size={22} />
@@ -68,6 +72,7 @@ export async function LpNav() {
                 <path d="M4 7h16M4 12h16M4 17h16" />
               </svg>
             </summary>
+            <MenuDismiss />
             <div className="lp-menu-panel">
               {HEADER.map((it) => (
                 <Link key={it.href} href={it.href}>

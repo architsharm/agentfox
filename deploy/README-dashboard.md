@@ -111,8 +111,9 @@ In the GitHub OAuth app (Settings → Developer settings → OAuth Apps):
 The callback must match exactly, including the scheme and the path. A mismatch is
 the single most common cause of a failed sign-in.
 
-The app requests `repo read:user user:email`. `repo` is what lets the scan download a
-private repository. Say so on the login page if you expect security-minded visitors,
+The app requests `repo user:email`. `repo` is what lets the scan download a private
+repository; `user:email` finds the address when a GitHub email is private. The public
+profile needs no scope, so `read:user` is not asked for. Say so on the login page if you expect security-minded visitors,
 because a broad `repo` scope on an unknown startup is a common objection.
 
 ## 4. Let the browser reach the playground

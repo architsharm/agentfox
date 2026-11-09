@@ -157,6 +157,24 @@ def test_oauth_provision_keys_on_the_provider_subject(ready, production):
     assert _provision_oauth(client, subject="g-2").json()["user"]["id"] != first["user"]["id"]
 
 
+@pytest.mark.parametrize("provider", ["google", "microsoft"])
+def test_a_sign_in_with_an_existing_operators_email_never_joins_their_workspace(
+    ready, production, provider
+):
+    """Account pre-hijacking: an operator made by email (the CLI) has no external id,
+    and a Google or Microsoft sign-in naming that email — verified or not — must get
+    a workspace of its own, never the operator's account or tenant."""
+    with system_scope("test"), session_scope() as s:
+        owner = s.scalars(select(User).where(User.email == "admin@example.com")).one()
+        owner_id, owner_org = owner.id, owner.org_id
+    body = _provision_oauth(client := _app(), provider, "attacker-1", email="admin@example.com")
+    assert body.status_code == 200
+    user = body.json()["user"]
+    assert user["id"] != owner_id and user["org_id"] != owner_org
+    headers = {"Authorization": f"Bearer {body.json()['token']}"}
+    assert client.get("/api/agents", headers=headers).json()["agents"] == []
+
+
 def test_oauth_subjects_never_collide_across_providers(ready, production):
     client = _app()
     github = _provision(client, gh_id="555").json()
@@ -325,3 +343,130 @@ def test_token_mode_401_names_auth_mode_not_the_environment(ready, monkeypatch):
 def test_production_401_names_the_environment(ready, production):
     detail = _app().get("/api/agents").json()["detail"]
     assert "'production'" in detail
+
+
+# ---------------------------------------------------------------------------
+# Launch audit — failed authentication is logged and throttled; security headers
+# ---------------------------------------------------------------------------
+
+
+def test_failed_authentication_is_logged_without_the_credential(ready, production, caplog):
+    forged = "nom_api_" + "x" * 40
+    with caplog.at_level("WARNING", logger="agentfox.apps.gateway.deps"):
+        response = _app().get("/api/agents", headers={"Authorization": f"Bearer {forged}"})
+    assert response.status_code == 401
+    lines = [r.getMessage() for r in caplog.records if "refused" in r.getMessage()]
+    assert lines and "/api/agents" in lines[0]
+    assert all("xxxxxxxx" not in line and "nom_api_" not in line for line in lines)
+
+
+def test_repeated_bad_credentials_are_throttled_but_a_good_one_still_works(ready, production):
+    from agentfox.apps.gateway.deps import failed_auth_limiter
+
+    client = _app()
+    good = {"Authorization": f"Bearer {_provision(client).json()['token']}"}
+    bad = {"Authorization": "Bearer nom_api_" + "y" * 40}
+    statuses = [
+        client.get("/api/agents", headers=bad).status_code
+        for _ in range(failed_auth_limiter.limit + 1)
+    ]
+    assert statuses[:-1] == [401] * failed_auth_limiter.limit
+    assert statuses[-1] == 429
+    # The same address with a valid token is never locked out by someone's guessing.
+    assert client.get("/api/me", headers=good).status_code == 200
+    throttled = client.post(
+        "/v1/guard/input",
+        json={"agent": "a", "content": "hi"},
+        headers={"Authorization": f"Bearer {BOGUS_AGENT_KEY}"},
+    )
+    assert throttled.status_code == 429
+    assert int(throttled.headers["Retry-After"]) >= 1
+
+
+@pytest.mark.parametrize("path", ["/v1/chat/completions", "/v1/messages"])
+def test_an_anonymous_caller_cannot_pick_a_paid_provider(ready, production, path):
+    """X-AgentFox-Provider spends the deployment's API key; anonymous callers get the default."""
+    client = _app()
+    body = {"model": "gpt-4o", "max_tokens": 16, "messages": [{"role": "user", "content": "hi"}]}
+    chosen = client.post(path, json=body, headers={"X-AgentFox-Provider": "openai"})
+    assert chosen.status_code == 401, chosen.text
+    assert "X-AgentFox-Provider" in chosen.json()["detail"]
+    # No header, or naming the default, is still served as shadow traffic.
+    default = get_settings().default_provider
+    assert client.post(path, json=body).status_code == 200
+    assert client.post(path, json=body, headers={"X-AgentFox-Provider": default}).status_code == 200
+    # With an agent key the choice is the caller's (the provider itself may then fail).
+    raw, _ = _agent_key()
+    keyed = client.post(
+        path,
+        json=body,
+        headers={"X-AgentFox-Provider": "openai", "Authorization": f"Bearer {raw}"},
+    )
+    assert keyed.status_code != 401
+
+
+def test_a_hosted_provider_is_never_called_with_egress_off(ready, monkeypatch):
+    """allow_egress=false was only checked when listing providers; naming one in a
+    request still sent the prompt to it."""
+    from agentfox.platform.providers.remote import OpenAIProvider
+
+    monkeypatch.setattr(get_settings(), "allow_egress", False)
+
+    called = []
+    monkeypatch.setattr(OpenAIProvider, "complete", lambda self, request: called.append(request))
+    raw, _ = _agent_key()
+    response = _app().post(
+        "/v1/chat/completions",
+        json={"model": "gpt-4o", "messages": [{"role": "user", "content": "hi"}]},
+        headers={"X-AgentFox-Provider": "openai", "Authorization": f"Bearer {raw}"},
+    )
+    assert called == []
+    # Said plainly, not a bare 500.
+    assert response.status_code == 502
+    assert response.json()["error"]["type"] == "agentfox_provider_unavailable"
+
+
+def test_anonymous_inline_traffic_can_be_limited_per_address(ready, production, monkeypatch):
+    client = _app()
+    body = {"agent": "support-triage", "content": "hello"}
+    # Off by default: shadow traffic from one address is the self-hosted norm.
+    assert all(client.post("/v1/guard/input", json=body).status_code == 200 for _ in range(5))
+    monkeypatch.setattr(get_settings(), "anonymous_inline_per_minute", 3)
+    statuses = [client.post("/v1/guard/input", json=body).status_code for _ in range(4)]
+    assert statuses == [200, 200, 200, 429]
+    # A caller with a credential is not counted against it.
+    raw, _ = _agent_key()
+    keyed = client.post("/v1/guard/input", json=body, headers={"Authorization": f"Bearer {raw}"})
+    assert keyed.status_code == 200
+
+
+def test_an_oversized_body_is_refused_before_it_is_read(ready, production, monkeypatch):
+    monkeypatch.setattr(get_settings(), "max_request_bytes", 1000)
+    client = _app()
+    big = {"agent": "support-triage", "content": "a" * 2000}
+    response = client.post("/v1/guard/input", json=big)
+    assert response.status_code == 413
+    assert "max_request_bytes" in response.json()["detail"]
+    assert response.headers["x-content-type-options"] == "nosniff"
+
+    def chunks():
+        yield b'{"agent": "support-triage", "content": "'
+        for _ in range(20):
+            yield b"a" * 100
+        yield b'"}'
+
+    chunked = client.post(
+        "/v1/guard/input", content=chunks(), headers={"Content-Type": "application/json"}
+    )
+    assert chunked.status_code == 413
+    small = client.post("/v1/guard/input", json={"agent": "support-triage", "content": "hi"})
+    assert small.status_code == 200
+
+
+@pytest.mark.parametrize("path", ["/api/health", "/api/agents", "/docs"])
+def test_gateway_responses_carry_security_headers(ready, production, path):
+    response = _app().get(path)
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
+    assert response.headers["referrer-policy"] == "no-referrer"

@@ -21,7 +21,7 @@ export default function Page() {
         that need a person.
       </p>
 
-      <Steps>
+      <Steps topLevel>
         <Step title="Find the run">
           <p>
             Open <strong>Traces</strong>. The <strong>Runs</strong> tab lists recent runs with their
@@ -98,7 +98,7 @@ export default function Page() {
       </p>
 
       <h2>If something goes wrong</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>You see</th>

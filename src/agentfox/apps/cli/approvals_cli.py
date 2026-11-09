@@ -202,7 +202,7 @@ def approvals_show(
 
 
 def _decide(approval_id: str, approved: bool, rationale: str, actor: str | None) -> None:
-    from agentfox.platform.identity import resolve_approval
+    from agentfox.platform.identity import ApprovalAlreadyDecided, resolve_approval
     from agentfox.platform.ledger import chain
 
     who = actor or "cli"
@@ -213,7 +213,13 @@ def _decide(approval_id: str, approved: bool, rationale: str, actor: str | None)
                 f"[yellow]{approval.id} is already {approval.status}[/]; nothing was changed."
             )
             raise typer.Exit(1)
-        decided = resolve_approval(session, approval.id, approved, who[:40], rationale)
+        try:
+            decided = resolve_approval(session, approval.id, approved, who[:40], rationale)
+        except ApprovalAlreadyDecided as exc:
+            console.print(
+                f"[yellow]{exc.approval_id} is already {exc.status}[/]; nothing was changed."
+            )
+            raise typer.Exit(1) from exc
         chain.append(
             session,
             f"approval.{decided.status}",

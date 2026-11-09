@@ -132,6 +132,18 @@ def _redacted(message: dict[str, Any], segment: Segment, text: str) -> dict[str,
     return {**message, "content": content}
 
 
+def _provider_available(provider: Any) -> bool:
+    """Whether a provider may be called here. One without an `available` check (a test
+    double, a plugin) is taken at its word."""
+    check = getattr(provider, "available", None)
+    if check is None:
+        return True
+    try:
+        return bool(check())
+    except Exception:  # noqa: BLE001 - a provider that cannot say is not available
+        return False
+
+
 def wants_structured_output(passthrough: dict[str, Any] | None) -> bool:
     """Whether the caller asked for JSON (OpenAI ``response_format``), not prose."""
     fmt = (passthrough or {}).get("response_format")
@@ -498,6 +510,20 @@ class _CompletionMixin:
             except KeyError as exc:
                 record.attempts.append(
                     ProviderAttempt(rung.provider, rung.model, ok=False, error=str(exc))
+                )
+                continue
+            if not _provider_available(model_provider):
+                # The egress gate, enforced where the call is made rather than only in
+                # the provider listing: with `allow_egress` off a hosted provider named
+                # by a request (X-AgentFox-Provider) or by the fallback chain was still
+                # called, so the prompt left the deployment that promised it would not.
+                record.attempts.append(
+                    ProviderAttempt(
+                        rung.provider,
+                        rung.model,
+                        ok=False,
+                        error="not available here (allow_egress is off, or it has no key)",
+                    )
                 )
                 continue
 

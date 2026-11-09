@@ -138,7 +138,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-336 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+337 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -497,6 +497,7 @@ from the code. Regenerate after changing any route:
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/` | Name the service and say where to go next. Unauthenticated. |
+| `POST` | `/api/account/delete` | Delete the caller's account and the whole workspace it owns. Irreversible. |
 | `POST` | `/api/business/compile` | Compile written policy into rules and questions. Nothing is saved. |
 | `GET` | `/api/business/rules` | List Business Rules |
 | `POST` | `/api/business/rules` | Save Business Rule |

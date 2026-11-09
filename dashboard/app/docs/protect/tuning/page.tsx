@@ -22,7 +22,7 @@ export default function Page() {
         the guardrail off.
       </p>
 
-      <Steps>
+      <Steps topLevel>
         <Step title="Find the blocked run">
           <p>
             Open <strong>Traces</strong> and the run that was blocked. The run shows each check, what it
@@ -84,7 +84,7 @@ agentfox policy proposals show chp_…`}</Code>
       </ul>
 
       <h2>If something goes wrong</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>You see</th>

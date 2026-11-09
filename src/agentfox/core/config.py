@@ -398,6 +398,19 @@ class Settings(BaseSettings):
             return max(0, self.trusted_proxy_hops)
         return 1 if os.environ.get("VERCEL") else 0
 
+    #: The largest request body the gateway reads, in bytes; 0 for no limit. Several
+    #: routes take a body from anyone (the guard API serves unregistered agents, the
+    #: playground and the waitlist are public), and without a cap one request can make
+    #: the process buffer as much as the client cares to send. Large enough for a long
+    #: prompt or a batch of trace spans; Vercel's own cap (4.5 MB) is lower still.
+    max_request_bytes: int = 10_000_000
+    #: Inline requests (`/v1/guard/*`, `/v1/chat/completions`, `/v1/messages`, `/v1/mcp/call`)
+    #: per minute per address from a caller with no credential; 0 for no limit. Off by
+    #: default because a self-hosted gateway serves its own unregistered agents (shadow
+    #: traffic), often from one address. A gateway on the public internet should set it:
+    #: each anonymous call writes a trace into the default tenant.
+    anonymous_inline_per_minute: int = 0
+
     # --- Outbound finding webhooks ----------------------------------------
     # Every newly committed Finding at or above `webhook_min_severity` is POSTed
     # to `webhook_url` (see webhooks.py). Still gated by `allow_egress` above: a

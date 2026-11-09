@@ -141,7 +141,7 @@ function ImportGuardrailsAi() {
           </button>
         )}
       </div>
-      {error && <div className="error">{error}</div>}
+      {error && <div className="error" role="alert">{error}</div>}
       {plan?.errors.map((e) => <div key={e} className="error">{e}</div>)}
 
       {plan && plan.items.length > 0 && (

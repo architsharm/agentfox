@@ -38,6 +38,7 @@ from agentfox.core.models import (
 )
 from agentfox.platform.identity import (
     AgentStopped,
+    ApprovalAlreadyDecided,
     assess_posture,
     check_capability,
     expire_stale_approvals,
@@ -1216,6 +1217,8 @@ def _resolve(
         approval = resolve_approval(session, approval_id, approved, user.id, rationale)
     except AgentStopped as exc:
         raise HTTPException(409, str(exc)) from exc
+    except ApprovalAlreadyDecided as exc:
+        raise HTTPException(409, f"approval is already {exc.status}") from exc
     if approval is None:
         raise HTTPException(404, "unknown approval")
     if approval.status == "expired":

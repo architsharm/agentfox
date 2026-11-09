@@ -211,7 +211,19 @@ export async function proxyJson(
  */
 export function sameOriginPath(returnTo: string | null, fallback: string): string {
   if (!returnTo || !returnTo.startsWith("/") || returnTo.startsWith("//")) return fallback;
-  return returnTo;
+  // The URL parser reads a backslash as a slash and drops tabs and newlines, so
+  // `/\evil.example` and `/<TAB>/evil.example` are `//evil.example` by the time a
+  // browser follows them. Refuse both, then parse and confirm the origin did not move.
+  if (returnTo.includes("\\") || /[\u0000-\u001f\u007f]/.test(returnTo)) return fallback;
+  const base = "http://same-origin.invalid";
+  let url: URL;
+  try {
+    url = new URL(returnTo, base);
+  } catch {
+    return fallback;
+  }
+  if (url.origin !== base) return fallback;
+  return `${url.pathname}${url.search}${url.hash}`;
 }
 
 /**

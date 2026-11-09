@@ -60,7 +60,7 @@ export function PackMode({
         >
           Switch to watching
         </button>
-        {error && <span className="k-act-error">{error}</span>}
+        {error && <span className="k-act-error" role="alert">{error}</span>}
       </span>
     );
   }
@@ -102,7 +102,7 @@ export function PackMode({
           </button>
         </span>
       )}
-      {error && <span className="k-act-error">{error}</span>}
+      {error && <span className="k-act-error" role="alert">{error}</span>}
     </span>
   );
 }

@@ -154,6 +154,38 @@ def _trust_map(header: str | None) -> dict[str, str] | None:
         return None
 
 
+def _refuse_anonymous_provider_choice(
+    request: Request, credential: str | None, provider: str | None
+) -> None:
+    """An unauthenticated caller may not pick the model provider.
+
+    The model routes serve a caller with no credential (shadow traffic, observed and
+    governed) through the deployment's default provider. ``X-AgentFox-Provider`` lets a
+    caller choose another one, and a hosted provider is called with *the deployment's*
+    API key: on a public gateway whose default is the offline ``echo`` provider, that
+    header turned any anonymous request into a free call to OpenAI or Anthropic on
+    the operator's bill. Choosing still works with an agent key or an operator token,
+    and in development, where the identity header is also accepted.
+    """
+    from agentfox.platform.identity.operators import header_identity_allowed
+
+    if not provider or provider == get_settings().default_provider:
+        return
+    if credential is not None:
+        return
+    auth = request.headers.get("authorization") or ""
+    if auth.lower().startswith("bearer ") and auth.split(" ", 1)[1].strip().startswith("nom_api_"):
+        return  # agent_credential has already verified it
+    if header_identity_allowed():
+        return
+    raise HTTPException(
+        401,
+        "Choosing a model provider with X-AgentFox-Provider needs a credential: send "
+        "'Authorization: Bearer nom_agt_…' (an agent key) or 'Bearer nom_api_…'. Without "
+        "one, requests use this deployment's default provider.",
+    )
+
+
 def _evidence_from_body(session: Session, body: dict[str, Any]) -> dict[str, Any] | None:
     """Entitlement over HTTP — the caller declares who's asking and what was retrieved.
 
@@ -793,6 +825,7 @@ async def chat_completions(
     x_agentfox_stream_mode: Annotated[str | None, Header()] = None,
     x_agentfox_approval: Annotated[str | None, Header()] = None,
 ) -> Any:
+    _refuse_anonymous_provider_choice(request, credential, x_agentfox_provider)
     body = await request.json()
     enforcer = Enforcer(session)
     evidence = _evidence_from_body(session, body)
@@ -896,6 +929,7 @@ async def messages(
     x_agentfox_stream_mode: Annotated[str | None, Header()] = None,
     x_agentfox_approval: Annotated[str | None, Header()] = None,
 ) -> Any:
+    _refuse_anonymous_provider_choice(request, credential, x_agentfox_provider)
     body = await request.json()
     payload = list(body.get("messages", []))
     if body.get("system"):

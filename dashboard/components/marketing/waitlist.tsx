@@ -17,7 +17,19 @@
  * who to tell when the hosted version opens, which is the only reason to ask.
  */
 
-export function WaitlistForm({ returnTo = "/pricing#editions" }: { returnTo?: string }) {
+/** The id of the block holding the form and its result, so a submit lands on it. */
+export const WAITLIST_ANCHOR = "waitlist";
+/** The id of the error line above the form, for the input's aria-describedby. */
+export const WAITLIST_ERROR_ID = "waitlist-error";
+
+export function WaitlistForm({
+  returnTo = `/pricing#${WAITLIST_ANCHOR}`,
+  invalid = false,
+}: {
+  returnTo?: string;
+  /** The last submit failed and its message is on the page under WAITLIST_ERROR_ID. */
+  invalid?: boolean;
+}) {
   return (
     <form action="/api/waitlist" method="POST" className="wl">
       {/* Was "hosted-cloud": a queue for a product that turned out to already be
@@ -36,6 +48,8 @@ export function WaitlistForm({ returnTo = "/pricing#editions" }: { returnTo?: st
           autoComplete="email"
           placeholder="you@company.com"
           className="wl-input"
+          aria-invalid={invalid || undefined}
+          aria-describedby={invalid ? WAITLIST_ERROR_ID : undefined}
         />
         <button type="submit" className="mk-btn mk-btn-primary wl-submit">
           Join
@@ -43,7 +57,7 @@ export function WaitlistForm({ returnTo = "/pricing#editions" }: { returnTo?: st
       </div>
       <input type="hidden" name="return_to" value={returnTo} />
       <p className="wl-fine">
-        One email when pricing is announced. Nothing else.
+        One email when pricing is announced. Nothing else. <a href="/privacy">Privacy policy</a>.
       </p>
     </form>
   );

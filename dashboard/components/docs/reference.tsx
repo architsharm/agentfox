@@ -59,7 +59,7 @@ function usage(node: CliNode): string {
 function ParamTable({ params }: { params: Param[] }) {
   if (!params.length) return null;
   return (
-    <div className="docs-table"><table className="docs-params">
+    <div className="docs-table" tabIndex={0}><table className="docs-params">
       <thead>
         <tr>
           <th>Argument / option</th>
@@ -98,7 +98,7 @@ function CommandBlock({ node, depth }: { node: CliNode; depth: number }) {
         <code>agentfox {node.path}</code>
       </Heading>
       {node.help && <p className="docs-cmd-help">{node.help}</p>}
-      <pre className="docs-usage">
+      <pre className="docs-usage" tabIndex={0}>
         <code>{usage(node)}</code>
       </pre>
       {node.default_subcommand && (
@@ -134,7 +134,7 @@ export function CliIndex() {
     panels.set(key, [...(panels.get(key) ?? []), node]);
   }
   return (
-    <div className="docs-table"><table className="docs-params">
+    <div className="docs-table" tabIndex={0}><table className="docs-params">
       <thead>
         <tr>
           <th>Stage</th>
@@ -187,7 +187,7 @@ function RouteBlock({ route }: { route: Route }) {
         </p>
       )}
       {route.body && route.body.fields.length > 0 && (
-        <div className="docs-table"><table className="docs-params">
+        <div className="docs-table" tabIndex={0}><table className="docs-params">
           <thead>
             <tr>
               <th>Body field</th>

@@ -16,7 +16,7 @@ vi.mock("next/headers", () => ({
   cookies: vi.fn(async () => ({ get: cookiesGetMock })),
 }));
 
-const { proxyReviewAction, proxyJson } = await import("./proxy");
+const { proxyReviewAction, proxyJson, sameOriginPath } = await import("./proxy");
 
 function withToken(token: string | undefined) {
   cookiesGetMock.mockReturnValue(token === undefined ? undefined : { value: token });
@@ -184,5 +184,30 @@ describe("detailText", () => {
     );
     expect(detailText("plain")).toBe("plain");
     expect(detailText(undefined)).toBe("");
+  });
+});
+
+describe("sameOriginPath", () => {
+  it("keeps a path on this origin, with its query and hash", () => {
+    expect(sameOriginPath("/pricing?plan=team#form", "/x")).toBe("/pricing?plan=team#form");
+  });
+
+  it.each([
+    null,
+    "",
+    "https://evil.example/",
+    "//evil.example",
+    "/\\evil.example",
+    "/\\/evil.example",
+    "/\t/evil.example",
+    "/\n/evil.example",
+    "javascript:alert(1)",
+    "pricing",
+  ])("refuses %j and falls back", (value) => {
+    expect(sameOriginPath(value as string | null, "/fallback")).toBe("/fallback");
+    // Whatever it returns must resolve to this origin.
+    expect(new URL(sameOriginPath(value as string | null, "/fallback"), "https://useagentfox.com").origin).toBe(
+      "https://useagentfox.com",
+    );
   });
 });

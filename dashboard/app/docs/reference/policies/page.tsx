@@ -15,7 +15,7 @@ type PackRule = { id: string; effect: string; severity: string; what: string };
 
 function PackTable({ rules }: { rules: PackRule[] }) {
   return (
-    <div className="docs-table"><table>
+    <div className="docs-table" tabIndex={0}><table>
       <thead>
         <tr>
           <th>Rule</th>
@@ -112,7 +112,7 @@ export default function Page() {
       </p>
 
       <h2 id="document">The document</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Field</th><th>Values</th><th>Default</th><th>Meaning</th></tr>
         </thead>
@@ -129,7 +129,7 @@ export default function Page() {
       </table></div>
 
       <h2 id="rule">A rule</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Field</th><th>Default</th><th>Meaning</th></tr>
         </thead>
@@ -150,7 +150,7 @@ export default function Page() {
       <h2 id="effects">Effects</h2>
       <p>When several rules fire, across all bound packs, the strongest effect wins:</p>
       <Code lang="text" copy={false}>{`allow < tokenize < mask < redact < abstain < escalate < block`}</Code>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Effect</th><th>What happens when enforced</th></tr>
         </thead>
@@ -185,7 +185,7 @@ export default function Page() {
       </p>
 
       <h3 id="provenance">Provenance</h3>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Level</th><th>The value came from</th></tr>
         </thead>
@@ -207,7 +207,7 @@ export default function Page() {
       </p>
 
       <h2 id="conditions">Conditions (<code>when</code>)</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Key</th><th>Type</th><th>Matches when</th></tr>
         </thead>
@@ -492,7 +492,7 @@ output: block ['pii.outbound_redact', 'output.card_number']`}</Output>
       </p>
       <h3 id="declare">Declaring a tool</h3>
       <Code>{`agentfox declare tool billing.export --impact high_impact --output-trust trusted --triggers "s3.put,email.send"`}</Code>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Option</th><th>Values</th><th>Meaning</th></tr>
         </thead>
@@ -513,7 +513,7 @@ output: block ['pii.outbound_redact', 'output.card_number']`}</Output>
 
       <h3 id="grant-options">permit grant</h3>
       <Code>{`agentfox permit grant support-triage 'billing.*' --limit 'format:in=csv,json' --limit 'rows:lte=5000' --max-taint retrieved --requires-approval --expires-in-days 7 --yes`}</Code>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Option</th><th>Default</th><th>Meaning</th></tr>
         </thead>
@@ -544,7 +544,7 @@ output: block ['pii.outbound_redact', 'output.card_number']`}</Output>
         fails an equality, list or numeric limit. An unknown operator is refused before
         anything is written.
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Operator</th><th>Example</th><th>Holds when the argument is</th></tr>
         </thead>
@@ -566,7 +566,7 @@ output: block ['pii.outbound_redact', 'output.card_number']`}</Output>
         decides what provenance the rules see for a tool call. The recorded decision
         always keeps the session value and notes which scope was applied.
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Value</th><th>What policy sees</th><th>Trade-off</th></tr>
         </thead>
@@ -602,7 +602,7 @@ bands:
     approver_role: finance-lead
   - outcome: block
     reason: credits above $5,000 go through the finance system`}</Code>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Field</th><th>Default</th><th>Meaning</th></tr>
         </thead>
@@ -617,7 +617,7 @@ bands:
           <tr><td><code>bands</code></td><td>required</td><td>Ordered by <code>upto</code>, ascending. Each covers values above the previous <code>upto</code>, up to and including its own. The last band omits <code>upto</code>.</td></tr>
         </tbody>
       </table></div>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Band field</th><th>Meaning</th></tr>
         </thead>
@@ -664,7 +664,7 @@ bands:
         <code>POST /api/import/agent-governance/plan</code>, then{" "}
         <code>/api/import/agent-governance</code> (<code>skip</code> leaves items out).
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Source</th><th>Becomes</th></tr>
         </thead>
@@ -719,7 +719,7 @@ billing.large_export                 block     enforce  org:*  —
         <code>scope_id</code> (which team, agent or user; <code>*</code> for all) and a
         compose mode:
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th><code>compose</code></th><th>Meaning</th></tr>
         </thead>
@@ -933,7 +933,7 @@ fired contains out if {
         from false-positive labels (<code>proposals from-labels</code>). A loosening is never
         applied by automation.
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Status</th><th>Meaning</th></tr>
         </thead>
@@ -959,7 +959,7 @@ fired contains out if {
         (omit <code>--agent</code> for the default). Conditions you do not name keep these
         defaults:
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Condition</th><th>Default</th></tr>
         </thead>
@@ -992,7 +992,7 @@ fired contains out if {
         fact, aggregate, procedure). Boundaries start in observe;{" "}
         <code>agentfox test boundary</code> shows the refusal without changing anything.
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Abstention kind</th><th>When</th></tr>
         </thead>

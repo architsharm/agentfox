@@ -22,7 +22,7 @@ export default function Page() {
         one habit.
       </p>
 
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>Check</th>

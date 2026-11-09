@@ -5,7 +5,7 @@ import { api, apiErrorProps, safeApi } from "@/lib/product/api";
 import { hasFeature } from "@/lib/product/edition";
 import { ApiDown } from "@/components/ui";
 import { EnterpriseOnly } from "@/components/product/EnterpriseOnly";
-import { Retention } from "@/components/product/Retention";
+import { DeleteAccount, Retention } from "@/components/product/Retention";
 import { Card, Empty, Header, Pill, Tabs, ago } from "@/components/kit";
 import { Act } from "@/components/kit/Act";
 import { NoticeToast } from "@/components/product/NoticeToast";
@@ -106,9 +106,10 @@ export default async function Settings({
   );
 }
 
-/** How long each class of recorded data is kept, and legal holds (open core). */
+/** How long each class of recorded data is kept, legal holds (open core), and deleting your account. */
 async function RetentionTab() {
   let retention: any;
+  const me = await safeApi<any>("/api/me", null);
   try {
     retention = await api("/api/retention");
   } catch (e: any) {
@@ -125,6 +126,7 @@ async function RetentionTab() {
       <Header title="Settings" />
       <AreaTabs tabs={SETTINGS_TABS} active="retention" />
       <Retention retention={retention} />
+      <DeleteAccount me={me} />
     </>
   );
 }

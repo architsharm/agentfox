@@ -443,7 +443,7 @@ export function CustomRule({
         </div>
       )}
 
-      {error && <div className="error">{error}</div>}
+      {error && <div className="error" role="alert">{error}</div>}
       <div>
         <div className="k-pills" style={{ gap: 8 }}>
           <button className="k-btn-primary" disabled={busy || !ready} onClick={save}>

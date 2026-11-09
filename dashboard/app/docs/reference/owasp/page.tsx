@@ -65,7 +65,7 @@ export default function Page() {
         granting them. <strong>Partial</strong> means some of the risk is enforced, some is
         only recorded until you promote a pack, and some is not addressed at all.
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>Item</th>

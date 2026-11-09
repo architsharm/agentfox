@@ -35,7 +35,7 @@ export default function PlaygroundPage() {
   return (
     <div className="mk">
       <MarketingNav />
-      <main className="pg">
+      <main id="main" className="pg">
         <Playground apiBase={apiBase} />
       </main>
       <Footer />

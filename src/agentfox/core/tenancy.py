@@ -296,3 +296,44 @@ def tenant_exempt_models() -> list[str]:
         for mapper in Base.registry.mappers
         if issubclass(mapper.class_, TenantExempt)
     )
+
+
+# ---------------------------------------------------------------------------
+# Disposing of a whole tenant
+# ---------------------------------------------------------------------------
+
+
+def delete_tenant_rows(session: Session, org_id: str) -> int:
+    """Delete every row one tenant owns, in every tenant-scoped table. Returns the count.
+
+    The one routine that removes a tenant wholesale, shared by the playground's sandbox
+    expiry and a signed-in owner deleting their own workspace, so "every row" means
+    the same thing in both. Tables are emptied child-first (reverse dependency order)
+    so foreign keys hold throughout. Tenant-exempt tables (the waitlist) are skipped:
+    they have no ``org_id`` and hold no tenant's rows.
+
+    The explicit ``org_id ==`` predicate is deliberate even though the session filter
+    attaches its own: the cost of this being wrong is another tenant's data, so the
+    statement says which tenant on its face. Callers decide *whether* a tenant may be
+    disposed of; this only does it.
+    """
+    from sqlalchemy import delete
+
+    from agentfox.core.models import Base
+
+    if not org_id:
+        raise ValueError("refusing to delete rows for an empty tenant id")
+    position = {table.name: index for index, table in enumerate(Base.metadata.sorted_tables)}
+    mappers = sorted(
+        Base.registry.mappers,
+        key=lambda mapper: position.get(mapper.local_table.name, -1),
+        reverse=True,
+    )
+    removed = 0
+    for mapper in mappers:
+        model = mapper.class_
+        if not issubclass(model, TenantScoped):
+            continue
+        result = session.execute(delete(model).where(model.org_id == org_id))
+        removed += getattr(result, "rowcount", 0) or 0
+    return removed

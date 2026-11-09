@@ -103,7 +103,7 @@ export function Body() {
         </svg>
       </Diagram>
       <p>We verified each of these against Claude Code 2.1.220, live where a probe was possible:</p>
-      <table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>Hook</th>
@@ -137,7 +137,7 @@ export function Body() {
             <td>Live probe</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         A blocking hook could also signal with exit code 2, but Claude Code prefixes stderr
         with the hook script&apos;s path, so the agent sees noise instead of a reason. We return
@@ -225,7 +225,7 @@ agentfox admin hooks daemon                               # a warm process the h
         The shell rules come from the <code>tool-containment</code> pack, which ships enforcing
         and fails closed. These are real commands checked against it:
       </p>
-      <table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>Command</th>
@@ -243,7 +243,7 @@ agentfox admin hooks daemon                               # a warm process the h
           <tr><td><code>terraform apply</code></td><td><code>action.infrastructure_mutation</code></td><td>Escalate, shown as deny</td></tr>
           <tr><td><code>npm publish</code></td><td><code>action.supply_chain_publish</code></td><td>Escalate, shown as deny</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         <code>control_plane.tamper</code> deserves a note. An agent that can switch its own
         guardrail to observe mode has no guardrail, so that rule is protected: a version of the

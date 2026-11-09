@@ -22,7 +22,7 @@ export default function Page() {
         map current with rescans and a CI check.
       </p>
 
-      <Steps>
+      <Steps topLevel>
         <Step title="Open the agent map">
           <p>
             Open <strong>Agents</strong>. Each agent is drawn with its user, its model, its tools and the
@@ -98,7 +98,7 @@ agentfox scan --fail --no-submit`}</Code>
       </ul>
 
       <h2>If something goes wrong</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>You see</th>

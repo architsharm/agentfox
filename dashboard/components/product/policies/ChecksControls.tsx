@@ -183,7 +183,7 @@ export function ModelTest({ modelKey, surface }: { modelKey: string; surface: st
         ) : (
           <span className="k-act-error">{out.error}</span>
         ))}
-      {error && <span className="k-act-error">{error}</span>}
+      {error && <span className="k-act-error" role="alert">{error}</span>}
     </div>
   );
 }

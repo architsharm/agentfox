@@ -12,6 +12,13 @@ the file it came from.
 ## [Unreleased]
 
 ### Added
+- **Delete my account.** A workspace's owner can delete their account and the whole
+  workspace from Settings → Retention, after typing their email
+  (`POST /api/account/delete`). It is refused while a legal hold is active, while another
+  member remains, and for the deployment's default workspace.
+- **Crisis resources in the playground.** A playground message about self-harm or suicide
+  gets a reply pointing to local emergency services and findahelpline.com instead of the
+  demo agent's echo. The guardrail verdict is unchanged.
 - **Restore this version.** A pack's or a business rule's History has "Restore this
   version": the old rules go live again as a new version, in the current mode
   (`POST /api/policies/{key}/versions/{version}/restore`,
@@ -22,6 +29,18 @@ the file it came from.
   page says who is told and links to where to set it up.
 
 ### Changed
+- **Privacy policy and terms, rewritten against the deployment.** The privacy page now
+  names the controller (Nometria Inc.), every cookie, Google and Microsoft sign-in, the
+  pricing list, the hosted judges (Anthropic, TypeSafe) and model server that read what
+  you send, Render as the dashboard host, retention per data type, self-service
+  deletion, and rights under GDPR/UK GDPR, California law and India's DPDP Act. The terms
+  name Nometria Inc., state that the service is free with nothing to cancel, set 18 as
+  the minimum age, add a copyright-complaint route and drop the unfilled governing-law
+  placeholder.
+- **Less asked for at sign-in.** GitHub sign-in no longer requests `read:user`; the
+  pricing-list form forwards only the email it asks for. The playground composer and the
+  pricing-list form link to the privacy policy, and sign-in confirms you are 18 or older.
+- The docs' terminal screenshots no longer reference a font on cdnjs.
 - **One rule model for business rules.** An approval limit written in New rule is
   listed in Applied rules (in Your rules), its page
   (`/app/policies/rules/business.<key>`) shows its real mode, hits and history, and
@@ -147,6 +166,29 @@ the file it came from.
   uses `$AGENTFOX_URL` and says so.
 
 ### Fixed
+- **Public pages render without JavaScript.** A loading boundary at the root of the
+  site wrapped every public page, so each was served as a dashboard skeleton with the
+  page itself hidden until scripts ran: visitors and crawlers without JavaScript saw
+  the skeleton (or, on /benchmark, nothing), and everyone else saw it flash. The app
+  keeps its own loading state inside the app shell.
+- **Every public page unfurls with the site card.** Pages other than the home page
+  and blog posts had no `og:image` or `twitter:image`.
+- **Site polish for launch:** favicon.ico and a web app manifest; a skip link on
+  every public page and in the app; a `main` landmark on the docs; heading order on
+  /benchmark, /pricing and the quickstart; the mobile menu closes on Escape or an
+  outside click; the header fits a 320px screen; the waitlist form returns to its own
+  result with the error tied to the field; the playground shows plain, announced
+  errors instead of "Failed to fetch"; slightly darker muted text so chips pass AA;
+  underlined links in docs prose; wide tables and code scroll inside the page instead
+  of widening it at 320px. On phones the home page keeps a "Get started" bar at the
+  bottom once the hero's buttons scroll away.
+- **The waitlist confirmation matches the form.** It said "we'll email you when hosted
+  AgentFox opens"; the form asks to be told when pricing is announced.
+- **App forms say what went wrong.** A dropped connection showed "Failed to fetch",
+  and a failed request over HTTP/2 could show an empty error; errors are now
+  announced to screen readers. Primary buttons that are links had dark text on the
+  rose (3.3:1), status badges were under 4.5:1, and the search palette now returns
+  focus to its button when closed.
 - "Start blocking" on Your rules said "0 would have been stopped" right after a words
   rule had flagged a message: it counted calls newly blocked compared with what a
   watching rule already would have done. It now counts what the pack's own rules
@@ -186,6 +228,42 @@ the file it came from.
   returning typed arrays) and GHSA-p3m5-59mp-jv5r (denial of service with Server Actions).
   Dev-only test tooling (vite, vitest) is updated for its own advisories. `npm audit`
   reports 0 vulnerabilities, and `next build` no longer stops on the security check.
+- **Open redirect closed.** A form's `return_to` written `/\example.com` (or with a tab
+  after the slash) passed the same-origin check and the browser followed it off-site;
+  the public waitlist form was reachable this way. The check now refuses backslashes and
+  control characters and confirms the parsed origin. The eval annotation form's
+  `redirect_to` goes through the same check.
+- **Anonymous callers cannot choose the model provider.** Outside development,
+  `X-AgentFox-Provider` naming anything but the default needs an agent key or API token,
+  so an unauthenticated `/v1/chat/completions` or `/v1/messages` cannot spend the
+  deployment's OpenAI or Anthropic key. The public playground always uses the offline
+  `echo` provider.
+- **`allow_egress = false` is enforced where the model is called**, not only in the
+  provider list: a hosted provider named by a request or the fallback chain is skipped.
+  When no provider can answer, the inline routes return 502 instead of 500.
+- **Failed authentication is logged and throttled.** Each refused credential is logged
+  with the address and route (never the credential); past 30 failures in 5 minutes from
+  one address a bad credential gets 429. A valid credential is never refused.
+- `anonymous_inline_per_minute` (`AGENTFOX_ANONYMOUS_INLINE_PER_MINUTE`, off by default):
+  a per-address limit on inline calls made with no credential, for a gateway open to
+  the internet, where each anonymous call writes a trace into the default tenant.
+- **Request bodies are capped** at `max_request_bytes` (`AGENTFOX_MAX_REQUEST_BYTES`,
+  10 MB); a larger one gets 413 before it is buffered.
+- **Security headers.** The dashboard and the gateway refuse framing (`X-Frame-Options:
+  DENY`, `frame-ancestors 'none'`) and send `nosniff` and a referrer policy; the
+  dashboard also sends HSTS and a permissions policy and no longer sends `X-Powered-By`.
+- `AGENTFOX_ALLOWED_ORIGINS` (dashboard): when set, redirects are built only from a listed
+  origin, never from a `Host` or `X-Forwarded-Host` the client made up.
+- Deciding an approval is atomic: two people approving and denying at once cannot both be
+  told their decision stood (the second gets 409).
+- The `endpoint_is_reachable` validator no longer follows a redirect into the private
+  network or cloud metadata; every hop is vetted.
+- The waitlist answers a repeat address exactly as a new one, so it no longer tells a
+  stranger who has signed up.
+- `docker-compose.yml` publishes OPA's unauthenticated API on 127.0.0.1 only.
+- Locked dependencies with published advisories are updated (certifi, urllib3, pyjwt,
+  pypdf, aiohttp, gitpython, pyasn1, setuptools, langgraph-sdk; the TypeScript SDK's
+  dev-only vitest).
 
 ## [0.5.1] - 2026-11-08
 

@@ -23,7 +23,7 @@ export default function Page() {
         existing traces into AgentFox.
       </p>
 
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>Destination</th>
@@ -124,7 +124,7 @@ export AGENTFOX_WEBHOOK_MIN_SEVERITY=high`}</Code>
       </ul>
 
       <h2>If something goes wrong</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>You see</th>

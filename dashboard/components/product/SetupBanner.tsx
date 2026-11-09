@@ -189,7 +189,7 @@ function AddProject({ id }: { id: string }) {
       >
         Add project
       </button>
-      {error && <span className="k-act-error">{error}</span>}
+      {error && <span className="k-act-error" role="alert">{error}</span>}
     </>
   );
 }
@@ -238,7 +238,7 @@ function Enforce({ slug }: { slug: string }) {
       >
         Turn blocking on
       </button>
-      {error && <span className="k-act-error">{error}</span>}
+      {error && <span className="k-act-error" role="alert">{error}</span>}
       <Link className="k-btn" href={projectHref(slug)}>
         Review on canvas
       </Link>

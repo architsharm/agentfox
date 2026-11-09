@@ -2,7 +2,8 @@
 
 /** Small client pieces for the landing pages: a copy chip, and scroll reveal. */
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 
 export function CopyChip({ text, wide = false }: { text: string; wide?: boolean }) {
   const [done, setDone] = useState(false);
@@ -95,4 +96,64 @@ export function ThemeButton() {
       </svg>
     </button>
   );
+}
+
+/**
+ * The home page's primary call to action, pinned to the bottom of a phone screen
+ * (lp.css shows it at 640px and under) once the hero's own buttons have scrolled
+ * away, and hidden again whenever they, or the closing section's buttons, are back in
+ * view, so the same button is never on screen twice. Hidden until this runs, so
+ * without JavaScript the page is exactly as before.
+ */
+export function StickyCta({ href, children }: { href: string; children: React.ReactNode }) {
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const targets = document.querySelectorAll(".lp-hero .lp-actions, .lp-cta .lp-actions");
+    if (!targets.length || !("IntersectionObserver" in window)) return;
+    const visible = new Set<Element>();
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) visible.add(e.target);
+        else visible.delete(e.target);
+      }
+      setShown(visible.size === 0);
+    });
+    targets.forEach((t) => io.observe(t));
+    return () => io.disconnect();
+  }, []);
+  return (
+    <div className="lp-sticky-cta" data-shown={shown ? "" : undefined}>
+      <Link href={href} className="lp-btn lp-btn-primary" tabIndex={shown ? undefined : -1}>
+        {children}
+      </Link>
+    </div>
+  );
+}
+
+/**
+ * Closes the header's mobile menu (a plain <details>, so Enter and Space open and
+ * close it with no script at all) on Escape, handing focus back to its button, and
+ * on a click outside it. Rendered inside the <details> it controls.
+ */
+export function MenuDismiss() {
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const menu = ref.current?.closest("details");
+    if (!menu) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || !menu.open) return;
+      menu.open = false;
+      menu.querySelector("summary")?.focus();
+    };
+    const onPointer = (e: PointerEvent) => {
+      if (menu.open && !menu.contains(e.target as Node)) menu.open = false;
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointer);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointer);
+    };
+  }, []);
+  return <span ref={ref} hidden />;
 }

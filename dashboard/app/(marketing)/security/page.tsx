@@ -21,7 +21,7 @@ export default function Security() {
   return (
     <div className="lp">
       <LpNav />
-      <main className="lp-page">
+      <main id="main" className="lp-page">
         <div className="lp-wrap">
           <h1>Security</h1>
           <p className="lp-lead">How to report a vulnerability, and what has and hasn&apos;t been checked.</p>

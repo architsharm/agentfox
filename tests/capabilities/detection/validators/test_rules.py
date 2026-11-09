@@ -227,6 +227,60 @@ def test_endpoint_is_reachable_refuses_non_http_and_internal(monkeypatch):
     assert "inside the network" in f.reason
 
 
+def _fake_dns(table):
+    import socket
+
+    def resolve(host, port, *args, **kwargs):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, port)) for ip in table[host]]
+
+    return resolve
+
+
+def test_endpoint_is_reachable_does_not_follow_a_redirect_inside_the_network(monkeypatch):
+    """A public URL answering 302 to the metadata address was followed by urllib."""
+    import httpx
+
+    from agentfox.capabilities.detection.validators.builtin import structure
+    from agentfox.core import outbound
+
+    monkeypatch.setattr(structure, "_egress_allowed", lambda: True)
+    monkeypatch.setattr(structure, "_public_host", lambda host: True)
+    monkeypatch.setattr(
+        outbound,
+        "_getaddrinfo",
+        _fake_dns({"public.example": ["93.184.216.34"], "169.254.169.254": ["169.254.169.254"]}),
+    )
+    requested = []
+
+    def handler(request):
+        requested.append(str(request.url))
+        return httpx.Response(302, headers={"location": "http://169.254.169.254/latest/meta-data/"})
+
+    monkeypatch.setattr(outbound, "_TRANSPORT", httpx.MockTransport(handler))
+    [f] = _run("endpoint_is_reachable", "http://public.example/")
+    assert "inside the network" in f.reason
+    assert len(requested) == 1 and "169.254" not in requested[0]
+
+
+def test_endpoint_is_reachable_reports_the_status(monkeypatch):
+    import httpx
+
+    from agentfox.capabilities.detection.validators.builtin import structure
+    from agentfox.core import outbound
+
+    monkeypatch.setattr(structure, "_egress_allowed", lambda: True)
+    monkeypatch.setattr(structure, "_public_host", lambda host: True)
+    monkeypatch.setattr(outbound, "_getaddrinfo", _fake_dns({"public.example": ["93.184.216.34"]}))
+    status = {"code": 200}
+    monkeypatch.setattr(
+        outbound, "_TRANSPORT", httpx.MockTransport(lambda r: httpx.Response(status["code"]))
+    )
+    assert _passes("endpoint_is_reachable", "https://public.example/")
+    status["code"] = 404
+    [f] = _run("endpoint_is_reachable", "https://public.example/")
+    assert f.detail == {"status": 404}
+
+
 # ------------------------------------------------------------------------- sql
 
 

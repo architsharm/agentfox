@@ -35,7 +35,7 @@ export function BlogArticle({
     <div className="mk">
       <JsonLd post={post} faq={faq} />
       <MarketingNav />
-      <main>
+      <main id="main">
         <section className="mk-section-tight blog-hero mk-ink-act">
           <div className="mk-hero-glow" aria-hidden />
           <div className="mk-wrap" style={{ position: "relative" }}>

@@ -82,7 +82,7 @@ agentfox.auto(agent="support-triage", mode="observe")`}</Code>
 export AGENTFOX_API_KEY=nom_api_…`}</Code>
 
       <h2 id="modes">Observe or enforce</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th><code>mode</code></th>
@@ -151,7 +151,7 @@ govern(fox, triage_agent)  # its hand-offs and tools too`}</Code>
       </Callout>
 
       <h2>If something goes wrong</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>You see</th>

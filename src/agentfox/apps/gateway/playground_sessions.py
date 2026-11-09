@@ -38,7 +38,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.exc import (
     IntegrityError,
     OperationalError,
@@ -48,8 +48,8 @@ from sqlalchemy.exc import (
 from sqlalchemy.orm import Session
 
 from agentfox.core.db import get_sessionmaker
-from agentfox.core.models import Base, PlaygroundSandbox, TenantScoped, as_aware, utcnow
-from agentfox.core.tenancy import bind_session, system_scope
+from agentfox.core.models import PlaygroundSandbox, as_aware, utcnow
+from agentfox.core.tenancy import bind_session, delete_tenant_rows, system_scope
 from agentfox.fixtures.sandbox_agents import seed_sandbox_agents
 from agentfox.fixtures.seed import seed as seed_world
 
@@ -150,34 +150,21 @@ def _purge_sandbox(session: Session, org_id: str) -> None:
     wrong is another tenant's rows. The id format is re-checked here too, so this can
     never be pointed at a real org even by a caller that skipped the route.
 
-    Tables are emptied child-first (reverse dependency order) so foreign keys hold
-    throughout — SQLite runs with ``PRAGMA foreign_keys=ON`` and Postgres enforces
-    them regardless.
+    The deletion itself is `tenancy.delete_tenant_rows`: tables are emptied
+    child-first (reverse dependency order) so foreign keys hold throughout — SQLite
+    runs with ``PRAGMA foreign_keys=ON`` and Postgres enforces them regardless.
 
     This does delete the sandbox's ``AuditEntry`` rows, which are append-only
-    everywhere else in the product. It is the disposal of a whole throwaway tenant on
+    everywhere else in the product (the other exception is an owner deleting their
+    whole workspace, `routes/integrations.py`). It is the disposal of a whole throwaway tenant on
     a stated TTL, not an edit to a retained tenant's chain: no row of a real customer
     is reachable from here, and nothing rewrites a chain in place.
     """
     if not is_sandbox_id(org_id):
         raise ValueError(f"refusing to purge a tenant that is not a sandbox: {org_id!r}")
-
-    position = {table.name: index for index, table in enumerate(Base.metadata.sorted_tables)}
-    mappers = sorted(
-        Base.registry.mappers,
-        key=lambda mapper: position.get(mapper.local_table.name, -1),
-        reverse=True,
-    )
-    for mapper in mappers:
-        model = mapper.class_
-        # Skip the tables that hold no tenant's rows — `models.TenantExempt`, today just
-        # the waitlist. They have no `org_id` to compare, so this loop would raise on
-        # them, and a sweep that raises is a sandbox that never expires. Filtering on
-        # `TenantScoped` rather than naming the table keeps that true for the next one:
-        # "delete this tenant's rows" can only mean the tables that have a tenant.
-        if not issubclass(model, TenantScoped):
-            continue
-        session.execute(delete(model).where(model.org_id == org_id))
+    # The waitlist and any other `TenantExempt` table are skipped there: they have no
+    # `org_id` to compare, and a sweep that raises is a sandbox that never expires.
+    delete_tenant_rows(session, org_id)
 
 
 @dataclass(frozen=True)

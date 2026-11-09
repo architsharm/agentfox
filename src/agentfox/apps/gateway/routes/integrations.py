@@ -345,6 +345,70 @@ def logout(
     return {"revoked": True}
 
 
+class DeleteAccountIn(BaseModel):
+    #: The signed-in user's own email, typed back. A deliberate second step, so a
+    #: stray click or a forged form cannot erase a workspace.
+    confirm: str = ""
+
+
+@router.post("/api/account/delete")
+def delete_account(
+    payload: DeleteAccountIn,
+    session: Session = Depends(db),
+    user: User = Depends(current_user),
+) -> dict[str, Any]:
+    """Delete the caller's account and the whole workspace it owns. Irreversible.
+
+    The self-service half of the privacy page's "getting your data deleted": every row
+    under the workspace's ``org_id`` goes, in every tenant-scoped table
+    (`tenancy.delete_tenant_rows`, the same routine that disposes of an expired
+    playground sandbox), including the user row, its tokens, the encrypted GitHub
+    grant and the workspace's own audit chain. Nothing outside the workspace is
+    touched: audit chains are per tenant, so no other chain loses an entry.
+
+    Refused, with the reason, rather than half-done:
+
+    * by anyone but an owner, because it removes everyone's data in the workspace;
+    * while the workspace has another member, whose data it also is;
+    * while a legal hold is active, which is the one thing that stops the retention
+      purge too (release it in Settings, Retention first);
+    * for the deployment's default workspace, which a self-hosted operator removes
+      on the host, not from a browser.
+    """
+    from agentfox.apps.gateway.playground_sessions import is_sandbox_id
+    from agentfox.core.models import LegalHold
+    from agentfox.core.tenancy import delete_tenant_rows
+
+    if user.role != "owner":
+        raise HTTPException(403, "Only the workspace owner can delete it.")
+    org_id = user.org_id
+    if not org_id or org_id == get_settings().org_id or is_sandbox_id(org_id):
+        raise HTTPException(
+            409, "This is the deployment's default workspace. Remove it on the server instead."
+        )
+    if payload.confirm.strip().lower() != (user.email or "").strip().lower():
+        raise HTTPException(400, "Type your email address exactly to confirm.")
+    bind_session(session, org_id)
+    others = session.scalar(select(func.count()).select_from(User).where(User.id != user.id))
+    if others:
+        raise HTTPException(
+            409,
+            "This workspace has other members. Remove them first, or write to "
+            "support@nometria.com.",
+        )
+    if session.scalar(
+        select(func.count()).select_from(LegalHold).where(LegalHold.released_at.is_(None))
+    ):
+        raise HTTPException(
+            409, "A legal hold is active. Release it in Settings, Retention, then try again."
+        )
+    removed = delete_tenant_rows(session, org_id)
+    session.commit()
+    # The workspace id only: the email that named it is what was just deleted.
+    log.info("account deleted by its owner: workspace %s, %d rows", org_id, removed)
+    return {"deleted": True, "rows": removed}
+
+
 # ---------------------------------------------------------------------------
 # Connection — storing the GitHub access token itself, org-scoped.
 # ---------------------------------------------------------------------------

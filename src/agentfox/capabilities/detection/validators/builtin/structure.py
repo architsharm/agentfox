@@ -487,8 +487,7 @@ class EndpointIsReachable(Validator):
     def check(
         self, text: str, params: EndpointIsReachableParams, ctx: CheckContext
     ) -> list[Finding]:
-        import urllib.error
-        import urllib.request
+        from agentfox.core import outbound
 
         if not self.available():
             raise RuntimeError(f"{self.name} is unavailable: {self.unavailable_reason()}")
@@ -504,14 +503,23 @@ class EndpointIsReachable(Validator):
             return [Finding(reason="URL has no host")]
         if not _public_host(parsed.hostname):
             return [Finding(reason="URL points inside the network; not requested")]
-        request = urllib.request.Request(url, method="GET")
+        # Through `core.outbound`, not urllib: urllib follows redirects on its own, so a
+        # public URL answering 302 to 169.254.169.254 or 127.0.0.1 got the gateway to
+        # request it anyway. Here every hop is resolved, vetted and pinned.
         try:
-            with urllib.request.urlopen(request, timeout=params.timeout_s) as resp:
-                status = resp.status
-        except urllib.error.HTTPError as exc:
-            status = exc.code
-        except (urllib.error.URLError, TimeoutError, OSError, ValueError):
-            return [Finding(reason="URL could not be reached")]
+            resp = outbound.guarded_get(
+                url, what="the URL", max_bytes=1, truncate=True, timeout=params.timeout_s
+            )
+            status = resp.status_code
+        except outbound.OutboundRefused as exc:
+            message = str(exc)
+            answered = re.search(r"HTTP (\d{3})", message)
+            if answered:
+                status = int(answered.group(1))
+            elif message.startswith("refusing to fetch"):
+                return [Finding(reason="URL points inside the network; not requested")]
+            else:
+                return [Finding(reason="URL could not be reached")]
         if status != 200:
             return [Finding(reason=f"URL returned status {status}", detail={"status": status})]
         return []

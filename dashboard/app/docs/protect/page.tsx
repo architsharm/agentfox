@@ -22,7 +22,7 @@ export default function Page() {
         once you trust them.
       </p>
 
-      <Steps>
+      <Steps topLevel>
         <Step title="See the rules on your agents">
           <p>
             Open <strong>Policies</strong>. <strong>Applied rules</strong> lists each rule, what it does

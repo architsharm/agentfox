@@ -39,7 +39,7 @@ export default function Page() {
         Anything an agent can call that is not the model: a function, an API, an MCP server, a shell.
         Each tool has an impact, which says how much harm a wrong call can do:
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>Impact</th>

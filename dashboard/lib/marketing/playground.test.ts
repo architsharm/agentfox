@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ApiError, explainVerdict, playgroundCall, retryPhrase } from "@/lib/marketing/playground";
+import { ApiError, explainVerdict, failureMessage, playgroundCall, retryPhrase } from "@/lib/marketing/playground";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -44,6 +44,22 @@ describe("playgroundCall", () => {
       session_id: "pg_1",
     });
     expect(fetchMock).toHaveBeenCalledWith("http://gw/api/playground/sessions", expect.anything());
+  });
+});
+
+describe("failureMessage", () => {
+  it("passes the gateway's own sentence through", () => {
+    expect(failureMessage(new ApiError(400, "Message is too long."))).toBe("Message is too long.");
+  });
+
+  it("never shows the browser's raw network error", () => {
+    const msg = failureMessage(new TypeError("Failed to fetch"));
+    expect(msg).not.toMatch(/fetch/i);
+    expect(msg).toMatch(/could not be reached/);
+  });
+
+  it("says a timeout is a timeout", () => {
+    expect(failureMessage(new DOMException("signal timed out", "TimeoutError"))).toMatch(/too long/);
   });
 });
 

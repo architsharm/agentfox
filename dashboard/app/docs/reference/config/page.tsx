@@ -127,6 +127,18 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "what": "Proxies in front of the gateway that append to X-Forwarded-For. The per-visitor limits (playground, waitlist, showcase) read the visitor's address that many entries from the right. 0 ignores the header."
       },
       {
+        "key": "max_request_bytes",
+        "env": "AGENTFOX_MAX_REQUEST_BYTES",
+        "def": "10000000",
+        "what": "The largest request body the gateway reads, in bytes. A larger one is refused with 413 before it is buffered. 0 for no limit."
+      },
+      {
+        "key": "anonymous_inline_per_minute",
+        "env": "AGENTFOX_ANONYMOUS_INLINE_PER_MINUTE",
+        "def": "0",
+        "what": "Inline requests per minute per address from a caller with no credential (429 past it). 0 for no limit, the right setting for a self-hosted gateway serving its own unregistered agents; set it on a gateway open to the internet."
+      },
+      {
         "key": "onboarding_key_ttl_days",
         "env": "AGENTFOX_ONBOARDING_KEY_TTL_DAYS",
         "def": "30",
@@ -1069,7 +1081,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
       {GROUPS.map((group) => (
         <section key={group.id}>
           <h2 id={group.id}>{group.title}</h2>
-          <div className="docs-table"><table>
+          <div className="docs-table" tabIndex={0}><table>
             <thead>
               <tr>
                 <th>Key and variable</th>
@@ -1101,7 +1113,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
         With <code>webhook_url</code> set and <code>allow_egress</code> on, AgentFox POSTs a
         JSON body for each finding at or above <code>webhook_min_severity</code>:
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Part</th><th>What it is</th></tr>
         </thead>
@@ -1139,7 +1151,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
         <code>GET /api/export/siem</code> returns recent decisions and findings, oldest
         first, as <code>text/plain</code>. It needs a token when token auth is on.
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Parameter</th><th>Default</th><th>Values</th></tr>
         </thead>
@@ -1176,7 +1188,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
         Headers the proxy routes (<code>/v1/chat/completions</code>, <code>/v1/messages</code>)
         read and return. Routes and bodies are in the <Link href="/docs/reference/api">HTTP API reference</Link>.
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Request header</th><th>What it does</th></tr>
         </thead>
@@ -1186,14 +1198,14 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
           <tr><td><code>X-AgentFox-Intent</code></td><td>The declared task.</td></tr>
           <tr><td><code>X-AgentFox-Trust</code></td><td>JSON map of message index to source, e.g. <code>{`{"1":"retrieved"}`}</code>.</td></tr>
           <tr><td><code>X-AgentFox-Environment</code></td><td>Default <code>production</code>.</td></tr>
-          <tr><td><code>X-AgentFox-Provider</code></td><td>Which configured provider to forward to (default <code>default_provider</code>).</td></tr>
+          <tr><td><code>X-AgentFox-Provider</code></td><td>Which configured provider to forward to (default <code>default_provider</code>). Outside development, naming a provider other than the default needs an agent key or API token.</td></tr>
           <tr><td><code>X-AgentFox-Stream-Mode</code></td><td><code>buffered</code> or <code>windowed</code> for this request (below).</td></tr>
           <tr><td><code>X-AgentFox-Priority</code></td><td>Admission priority when shedding load (default <code>normal</code>).</td></tr>
           <tr><td><code>X-AgentFox-Approval</code></td><td>An approved <code>apr_…</code> id: the held request runs once.</td></tr>
           <tr><td><code>Authorization: Bearer nom_agt_…</code></td><td>Optional agent key.</td></tr>
         </tbody>
       </table></div>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Response header</th><th>Meaning</th></tr>
         </thead>
@@ -1207,7 +1219,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
           <tr><td><code>x-agentfox-degraded</code></td><td>A dependency was unavailable while serving the request.</td></tr>
         </tbody>
       </table></div>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Status</th><th>Meaning</th></tr>
         </thead>
@@ -1224,7 +1236,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
         decision; 429 and 503 apply to every <code>/v1</code> route.
       </p>
       <h3 id="streaming">Streaming modes</h3>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th><code>streaming_mode</code></th><th>Behaviour</th></tr>
         </thead>
@@ -1243,7 +1255,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
       </p>
 
       <h2 id="compose">What deploy/docker-compose.yml sets</h2>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr><th>Variable</th><th>Compose value</th><th>Why it differs from the default</th></tr>
         </thead>
@@ -1292,7 +1304,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
         settings come from or are used by a separate program. None of them can go in{" "}
         <code>agentfox.toml</code>.
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>Variable</th>
@@ -1318,7 +1330,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
         (for example <code>AGENTFOX_API_URL</code>) when unset. They are read at request time,
         so one image can point at any gateway.
       </p>
-      <div className="docs-table"><table>
+      <div className="docs-table" tabIndex={0}><table>
         <thead>
           <tr>
             <th>Variable</th>

@@ -34,7 +34,8 @@ export function Code({
           {copy && lang !== "text" && <CopyButton text={text} />}
         </figcaption>
       )}
-      <pre>
+      {/* Focusable so a keyboard user can scroll a long line sideways. */}
+      <pre tabIndex={0}>
         <code>{text}</code>
       </pre>
     </figure>
@@ -69,8 +70,15 @@ export function Callout({
 }
 
 /** A numbered walkthrough. Each <Step> is one thing the reader does. */
-export function Steps({ children }: { children: ReactNode }) {
-  return <ol className="docs-steps">{children}</ol>;
+export function Steps({ children, topLevel = false }: { children: ReactNode; topLevel?: boolean }) {
+  return (
+    <>
+      {/* Each step's title is an h3. Straight under the page's h1, screen readers
+          need an h2 above them, or the outline skips a level. */}
+      {topLevel && <h2 className="sr-only">Steps</h2>}
+      <ol className="docs-steps">{children}</ol>
+    </>
+  );
 }
 
 export function Step({ title, children }: { title: string; children: ReactNode }) {
@@ -143,7 +151,7 @@ export function Screenshot({
 /** A two-column "what you want → what to run" table. */
 export function TaskTable({ rows }: { rows: { task: string; run: string; href?: string }[] }) {
   return (
-    <div className="docs-table"><table className="docs-tasks">
+    <div className="docs-table" tabIndex={0}><table className="docs-tasks">
       <thead>
         <tr>
           <th>You want to</th>

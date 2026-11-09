@@ -17,20 +17,17 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = publicPageMetadata({
   title: "Terms of service",
   description:
-    "Terms for the hosted AgentFox service: as-is, no SLA, a shared playground that gets reset, and nothing that narrows the Apache-2.0 licence.",
+    "Terms for the hosted AgentFox service from Nometria Inc.: free, as-is, no SLA, a shared playground that gets reset, and nothing that narrows the Apache-2.0 licence.",
   path: "/terms",
 });
 
 const LICENCE_URL = `${REPO_URL}/blob/main/LICENSE`;
 
-/** A governing-law clause nobody has chosen yet reads as a placeholder, not a fact. */
-const GOVERNING_LAW = "[jurisdiction to be set by the maintainer]";
-
 export default function Terms() {
   return (
     <div className="mk">
       <MarketingNav />
-      <main className="mk-prose">
+      <main id="main" className="mk-prose">
         <section className="mk-section mk-page-hero mk-ink-act">
           <div className="mk-wrap">
             <div className="mk-narrow">
@@ -38,11 +35,12 @@ export default function Terms() {
               <h1 className="mk-h1" style={{ margin: "18px 0 0" }}>
                 Terms of service</h1>
               <p className="mk-lede" style={{ marginTop: 20 }}>
-                These cover the hosted playground and dashboard. They do not narrow
-                the Apache-2.0 licence.
+                These cover the hosted playground and dashboard, run by Nometria Inc., a
+                Delaware corporation (&ldquo;we&rdquo;). They do not narrow the Apache-2.0
+                licence.
               </p>
               <p className="mk-fine" style={{ marginTop: 16 }}>
-                Last updated 24 September 2026.
+                Last updated 9 November 2026.
               </p>
             </div>
           </div>
@@ -87,7 +85,7 @@ export default function Terms() {
                 The hosted service is provided as-is and as-available, with no warranty of
                 any kind, express or implied, including any implied warranty of
                 merchantability, fitness for a particular purpose, or non-infringement. To
-                the fullest extent the law allows, the maintainer is not liable for any
+                the fullest extent the law allows, Nometria Inc. is not liable for any
                 direct, indirect, incidental, special, consequential or exemplary damages
                 arising out of your use of the hosted service, including lost profits, lost
                 data or business interruption.
@@ -95,7 +93,7 @@ export default function Terms() {
               <p className="mk-body" style={{ marginTop: 14 }}>
                 There is no service level agreement. There is no uptime commitment, no
                 support commitment on this tier, no response time and no credit for an
-                outage. This is a demonstration operated by one person.
+                outage. This is a preview operated by a small team.
               </p>
               <p className="mk-body" style={{ marginTop: 14 }}>
                 Do not use the hosted service to govern production agents, and do not rely
@@ -192,11 +190,43 @@ export default function Terms() {
             <div className="mk-narrow">
               <h2 className="mk-h2">Accounts</h2>
               <p className="mk-body" style={{ marginTop: 14 }}>
-                Signing in with GitHub creates an account and an organisation you own. You
-                are responsible for what happens under it and for the repositories you
-                choose to connect. Connect a repository only if you are entitled to, and
-                revoke the authorisation in your GitHub settings when you are done: that
-                takes effect at GitHub&rsquo;s end immediately.
+                Signing in with GitHub, Google or Microsoft creates an account and a
+                workspace you own. Accounts are for people aged 18 or over, using the
+                service for themselves or for an organisation they are allowed to act for.
+                The service is not directed to children, and anyone under 13 (under 16 in
+                the European Economic Area) may not use it. You are responsible for what
+                happens under your account and for the repositories you choose to connect.
+                Connect a repository only if you are entitled to, and revoke the
+                authorisation in your GitHub settings when you are done: that takes effect
+                at GitHub&rsquo;s end immediately.
+              </p>
+              <p className="mk-body" style={{ marginTop: 14 }}>
+                You can delete your account and its workspace yourself at any time, in
+                Settings, Retention. How that works, and what it removes, is on the{" "}
+                <Link href="/privacy">privacy page</Link>.
+              </p>
+
+              <h2 className="mk-h2" style={{ marginTop: 48 }}>
+                Price
+              </h2>
+              <p className="mk-body" style={{ marginTop: 14 }}>
+                The hosted service is free while it is in preview. There is no paid plan,
+                no card on file, no trial that turns into a charge, and no subscription to
+                cancel. If paid plans are introduced, their price, renewal and
+                cancellation terms will be shown before you can subscribe, and you will
+                not be charged for anything you have not agreed to.
+              </p>
+
+              <h2 className="mk-h2" style={{ marginTop: 48 }}>
+                Copyright complaints
+              </h2>
+              <p className="mk-body" style={{ marginTop: 14 }}>
+                Nothing you put into the hosted service is published by it: a workspace is
+                visible to its members, and a playground sandbox to whoever holds its link.
+                If you believe something on this site infringes your copyright, write to{" "}
+                <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> with the address of
+                the material, the work you believe it infringes, and how to reach you, and
+                we will look into it.
               </p>
 
               <h2 className="mk-h2" style={{ marginTop: 48 }}>
@@ -214,20 +244,6 @@ export default function Terms() {
                 None of this can take the software away from you. If the hosted service is
                 switched off tomorrow, the Apache-2.0 grant is unaffected and the
                 repository is still there.
-              </p>
-
-              <h2 className="mk-h2" style={{ marginTop: 48 }}>
-                Governing law
-              </h2>
-              <p className="mk-body" style={{ marginTop: 14 }}>
-                These terms are governed by the laws of {GOVERNING_LAW}, and the courts of{" "}
-                {GOVERNING_LAW} have exclusive jurisdiction over any dispute arising from
-                them.
-              </p>
-              <p className="mk-fine" style={{ marginTop: 12 }}>
-                That placeholder is real and unfilled. It is left visible rather than
-                guessed at, because naming a jurisdiction we have not chosen would be the
-                sort of decorative accuracy this project exists to avoid.
               </p>
 
               <h2 className="mk-h2" style={{ marginTop: 48 }}>
