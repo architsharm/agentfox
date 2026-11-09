@@ -157,6 +157,24 @@ def test_oauth_provision_keys_on_the_provider_subject(ready, production):
     assert _provision_oauth(client, subject="g-2").json()["user"]["id"] != first["user"]["id"]
 
 
+@pytest.mark.parametrize("provider", ["google", "microsoft"])
+def test_a_sign_in_with_an_existing_operators_email_never_joins_their_workspace(
+    ready, production, provider
+):
+    """Account pre-hijacking: an operator made by email (the CLI) has no external id,
+    and a Google or Microsoft sign-in naming that email — verified or not — must get
+    a workspace of its own, never the operator's account or tenant."""
+    with system_scope("test"), session_scope() as s:
+        owner = s.scalars(select(User).where(User.email == "admin@example.com")).one()
+        owner_id, owner_org = owner.id, owner.org_id
+    body = _provision_oauth(client := _app(), provider, "attacker-1", email="admin@example.com")
+    assert body.status_code == 200
+    user = body.json()["user"]
+    assert user["id"] != owner_id and user["org_id"] != owner_org
+    headers = {"Authorization": f"Bearer {body.json()['token']}"}
+    assert client.get("/api/agents", headers=headers).json()["agents"] == []
+
+
 def test_oauth_subjects_never_collide_across_providers(ready, production):
     client = _app()
     github = _provision(client, gh_id="555").json()
