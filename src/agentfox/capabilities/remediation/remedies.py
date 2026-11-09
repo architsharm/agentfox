@@ -647,7 +647,17 @@ def remedies_for(session: Session, finding: Finding) -> list[Remedy]:
     elif t == "agent_breaker_tripped":
         out = _breaker(session, ctx)
     elif t == "budget_breach":
-        out = [Remedy("open_checks", "Open Checks", kind="link", href="/app/policies?tab=checks")]
+        # The fix the pipeline worked out for this detector (`PipelineResult.explain`):
+        # an install command when its libraries are missing, a pull for its model.
+        out = [
+            Remedy(
+                "open_checks",
+                "Open Checks",
+                kind="link",
+                href="/app/policies?tab=checks",
+                hint=str(ctx.evidence.get("fix") or ""),
+            )
+        ]
     elif t in _GROUNDING_TYPES:
         out = _test_and_feedback(session, ctx) + _links(ctx)
         if t == "boundary_breach" and ctx.slug:

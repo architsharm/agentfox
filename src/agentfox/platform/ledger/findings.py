@@ -322,16 +322,26 @@ def record_detector_health(
     status_by_key = {r.detector_key: r.status for r in results}
     summary = pipeline_result.summary() if hasattr(pipeline_result, "summary") else {}
 
+    explain = getattr(pipeline_result, "explain", None)
     for key in dict.fromkeys(degraded):
         status = status_by_key.get(key, "degraded")
+        why = explain(key) if callable(explain) else {}
+        cause = why.get("cause") or ""
         raise_finding(
             session,
             type="budget_breach",
             severity="medium",
-            title=f"Detector '{key}' degraded on {surface}: {status}",
+            title=f"Detector '{key}' degraded on {surface}: {status}"
+            + (f" ({cause})" if cause and cause != status else ""),
             subject_type="agent",
             subject_id=subject_id,
-            evidence={**summary, "detector_key": key, "status": status, "surface": surface},
+            evidence={
+                **summary,
+                "detector_key": key,
+                "status": status,
+                "surface": surface,
+                **({"cause": cause, "fix": why["fix"]} if why.get("fix") else {}),
+            },
             control_keys=["NOM-RTG-06"],
             fingerprint_parts=(key,),
         )

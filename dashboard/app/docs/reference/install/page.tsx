@@ -132,7 +132,10 @@ python -m spacy download en_core_web_lg   # for pii.presidio, about 400MB`}</Cod
         <code>sentence-transformers/all-MiniLM-L6-v2</code>,{" "}
         <code>ibm-granite/granite-guardian-3.0-2b</code>); the model names are settings. The
         gateway Docker image ships with the permissive ones inside.{" "}
-        <code>agentfox admin detectors list</code> shows what can run here.
+        <code>agentfox admin detectors list</code> shows what can run here. Pulling{" "}
+        <code>injection.classifier</code> fetches two of them, and says so: PIGuard, which
+        it checks with, and the protectai model, a second opinion asked only when PIGuard
+        finds nothing, whose hits are recorded and never blocked on.
       </p>
       <Callout kind="note" title="Enabled but unavailable">
         The <code>detectors</code> line of <code>agentfox doctor</code> lists what is enabled{" "}
