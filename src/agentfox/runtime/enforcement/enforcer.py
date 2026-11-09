@@ -1689,6 +1689,7 @@ class Enforcer(
                 trace_id=call.trace_id,
                 decision_id=decision_row.id,
                 surface=surface,
+                source=(call.taint_summary or {}).get("max_source"),
                 effective=det_effective,
                 applied=det_applied,
                 reason=call.reason,
