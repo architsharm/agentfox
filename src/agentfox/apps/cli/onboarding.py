@@ -188,7 +188,10 @@ def init(
         help="The AgentFox API to report to. Default: http://127.0.0.1:8080.",
     ),
 ) -> None:
-    """Set everything up. Idempotent, offline, and safe to run twice.
+    """Connect this repo to your account (--key), or prepare the local database and policies.
+
+    Idempotent and safe to run twice. Without --key it is offline and edits no code;
+    `agentfox up` is the guided setup that also adds `agentfox.auto()`.
 
     Creates the database, applies migrations, loads the control catalog and the
     shipped policy packs, every one watching (observe) until you switch it to blocking

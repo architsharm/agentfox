@@ -285,9 +285,9 @@ connection. The hosted runner is triggered by
 
 ## Commands, grouped by what you are trying to do
 
-`agentfox --help` lists fourteen top-level commands in six groups: Start (`up`, `init`, `demo`), See (`scan`,
-`agents`), Watch (`serve`, `findings`), Contain (`permit`, `declare`, `policy`), Prove (`test`,
-`report`) and Operate (`doctor`, `admin`). Below, the same commands by task. They name the demo's
+`agentfox --help` lists fourteen top-level commands in seven groups: Start (`up`, `init`, `demo`),
+Discover (`scan`, `agents`), Govern (`permit`, `declare`, `policy`), Protect (`serve`, `findings`),
+Test (`test`), Prove (`report`) and Operate (`doctor`, `admin`). Below, the same commands by task. They name the demo's
 agents (`support-triage`, `payments-ops`): use your own agent's name (`agentfox agents list`), or run
 `agentfox demo --in-workspace` first to follow along.
 

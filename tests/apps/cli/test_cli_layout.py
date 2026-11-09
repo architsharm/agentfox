@@ -214,7 +214,7 @@ def test_help_lists_the_panels_in_order_and_hides_old_names():
     output = runner.invoke(app, ["--help"]).output
     positions = [
         output.index(f"─ {panel} ")
-        for panel in ("Start", "See", "Watch", "Contain", "Prove", "Operate")
+        for panel in ("Start", "Discover", "Govern", "Protect", "Test", "Prove", "Operate")
     ]
     assert positions == sorted(positions)
     for old in ("quickscan", "compliance", "guardrails", "capability", "entitlement"):

@@ -1,12 +1,12 @@
-"""The visible shape of the CLI: fourteen verbs in six panels.
+"""The visible shape of the CLI: fourteen verbs in seven panels.
 
 The commands themselves live in their own modules (``commands/``, ``onboarding.py``,
 ``controls_cli.py`` …), each registered on the app under a working name. This module
 decides what ``agentfox`` actually exposes and under which name. It runs once, after
 every other module has registered its commands, and does three things:
 
-1. registers the callbacks under the tree (Start · See · Watch · Contain · Prove ·
-   Operate);
+1. registers the callbacks under the tree (Start · Discover · Govern · Protect · Test
+   · Prove · Operate);
 2. removes every other top-level name, except the two protocol endpoints below;
 3. swaps the root group for one that adds ``--version`` and orders the panels.
 
@@ -29,11 +29,14 @@ from typer.core import TyperGroup, TyperOption
 from typer.main import get_command_name
 from typer.models import CommandInfo, TyperInfo
 
-START, SEE, WATCH, CONTAIN, PROVE, OPERATE = (
+# The panels follow the product's five jobs (discover, govern, protect, test, prove),
+# between getting started and running the deployment.
+START, DISCOVER, GOVERN, PROTECT, TEST, PROVE, OPERATE = (
     "Start",
-    "See",
-    "Watch",
-    "Contain",
+    "Discover",
+    "Govern",
+    "Protect",
+    "Test",
     "Prove",
     "Operate",
 )
@@ -44,14 +47,14 @@ VISIBLE: list[tuple[str, str]] = [
     ("up", START),
     ("init", START),
     ("demo", START),
-    ("scan", SEE),
-    ("agents", SEE),
-    ("serve", WATCH),
-    ("findings", WATCH),
-    ("permit", CONTAIN),
-    ("declare", CONTAIN),
-    ("policy", CONTAIN),
-    ("test", PROVE),
+    ("scan", DISCOVER),
+    ("agents", DISCOVER),
+    ("permit", GOVERN),
+    ("declare", GOVERN),
+    ("policy", GOVERN),
+    ("serve", PROTECT),
+    ("findings", PROTECT),
+    ("test", TEST),
     ("report", PROVE),
     ("doctor", OPERATE),
     ("admin", OPERATE),

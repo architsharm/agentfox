@@ -4,7 +4,7 @@
   "path": "",
   "name": "agentfox",
   "summary": "",
-  "help": "Agent-native, vendor-neutral governance for AI agents in production.",
+  "help": "The control plane for AI agents: discover them, govern what they may do, protect them at runtime, test them, and prove it.\n\nNew here? `agentfox scan`, then `agentfox up` (guided setup). With an account key: `agentfox init --key …`.",
   "panel": null,
   "params": [
    {
@@ -27,8 +27,8 @@
    {
     "path": "up",
     "name": "up",
-    "summary": "Set up AgentFox for this project: scan, choose, and it does the rest.",
-    "help": "Set up AgentFox for this project: scan, choose, and it does the rest.\n\nAsks where AgentFox runs (this machine, your own server, or AgentFox Cloud), what\nto cover (coding agents, your Python agent, the gateway, tools, MCP servers,\nmonitoring, compliance, the dashboard) and how strict to start, then does all of\nit. Every question has a recommended answer; `--yes` takes them all. Run it again\nany time: it remembers the answers and only changes what is new.",
+    "summary": "Guided setup for this project: scan, choose what to cover, and it does the rest.",
+    "help": "Guided setup for this project: scan, choose what to cover, and it does the rest.\n\nAsks where AgentFox runs (this machine, your own server, or AgentFox Cloud), what\nto cover (coding agents, your Python agent, the gateway, tools, MCP servers,\nmonitoring, compliance, the dashboard) and how strict to start, then does all of\nit. Every question has a recommended answer; `--yes` takes them all. Run it again\nany time: it remembers the answers and only changes what is new.",
     "panel": "Start",
     "params": [
      {
@@ -210,8 +210,8 @@
    {
     "path": "init",
     "name": "init",
-    "summary": "Set everything up.",
-    "help": "Set everything up. Idempotent, offline, and safe to run twice.\n\nCreates the database, applies migrations, loads the control catalog and the\nshipped policy packs, every one watching (observe) until you switch it to blocking\nwith `agentfox policy enforce <key>`; coding-agent only for agents this repo's\ncoding-harness hooks govern. Missing grants, destructive commands and tampering\nwith AgentFox are refused from the start. It writes an\nagentfox.toml carrying the real runtime defaults so they are visible rather than\nimplicit. AGENTFOX_* environment variables override that file.",
+    "summary": "Connect this repo to your account (--key), or prepare the local database and policies.",
+    "help": "Connect this repo to your account (--key), or prepare the local database and policies.\n\nIdempotent and safe to run twice. Without --key it is offline and edits no code;\n`agentfox up` is the guided setup that also adds `agentfox.auto()`.\n\nCreates the database, applies migrations, loads the control catalog and the\nshipped policy packs, every one watching (observe) until you switch it to blocking\nwith `agentfox policy enforce <key>`; coding-agent only for agents this repo's\ncoding-harness hooks govern. Missing grants, destructive commands and tampering\nwith AgentFox are refused from the start. It writes an\nagentfox.toml carrying the real runtime defaults so they are visible rather than\nimplicit. AGENTFOX_* environment variables override that file.",
     "panel": "Start",
     "params": [
      {
@@ -316,7 +316,7 @@
     "name": "scan",
     "summary": "Find what is worth governing: a repo, this machine, an MCP server, the runtime.",
     "help": "Find what is worth governing: a repo, this machine, an MCP server, the runtime.\n\n`agentfox scan [PATH] [--fail] [--json]` scans a repository (the default). `agentfox scan --sessions [PATH]` also reads local AI-tool sessions and runs the live detector check. `machine` checks the MCP servers and skills your AI tools load on this machine. `mcp`, `skills` and `runtime` scan the rest; `monitors` re-checks connected sources on a schedule.",
-    "panel": "See",
+    "panel": "Discover",
     "params": [],
     "default_subcommand": "repo",
     "enterprise": false,
@@ -800,7 +800,7 @@
     "name": "agents",
     "summary": "Find every agent that is running, and who owns it.",
     "help": "Find every agent that is running, and who owns it.",
-    "panel": "See",
+    "panel": "Discover",
     "params": [],
     "default_subcommand": null,
     "enterprise": false,
@@ -1207,203 +1207,11 @@
     ]
    },
    {
-    "path": "serve",
-    "name": "serve",
-    "summary": "Run the gateway and control-plane API, the MCP server for AI clients, or the model server.",
-    "help": "Run the gateway and control-plane API, the MCP server for AI clients, or the model server.\n\n`agentfox serve` starts the API (the default) on 127.0.0.1:8080. `--host 0.0.0.0` and `--port 9000` change where it listens; `--reload` restarts it when the code changes; `agentfox serve api --help` lists every option.\n\n`agentfox serve mcp` speaks MCP over stdio; `agentfox serve models` runs the model-backed detectors for gateways that should not hold weights.",
-    "panel": "Watch",
-    "params": [],
-    "default_subcommand": "api",
-    "enterprise": false,
-    "commands": [
-     {
-      "path": "serve api",
-      "name": "api",
-      "summary": "Start the gateway and control-plane API.",
-      "help": "Start the gateway and control-plane API.\n\nIt serves JSON: the API under /api, the gateway under /v1, and interactive API\ndocs at /docs. The web dashboard is AgentFox Cloud (`agentfox up --target cloud`)\nor the self-hosted stack (`agentfox up --target self-hosted`).",
-      "panel": null,
-      "params": [
-       {
-        "kind": "option",
-        "name": "host",
-        "opts": [
-         "--host"
-        ],
-        "type": "text",
-        "choices": [],
-        "required": false,
-        "multiple": false,
-        "default": "127.0.0.1",
-        "help": ""
-       },
-       {
-        "kind": "option",
-        "name": "port",
-        "opts": [
-         "--port"
-        ],
-        "type": "integer",
-        "choices": [],
-        "required": false,
-        "multiple": false,
-        "default": 8080,
-        "help": ""
-       },
-       {
-        "kind": "option",
-        "name": "reload",
-        "opts": [
-         "--reload",
-         "--no-reload"
-        ],
-        "type": "flag",
-        "choices": [],
-        "required": false,
-        "multiple": false,
-        "default": null,
-        "help": ""
-       }
-      ],
-      "default_subcommand": null,
-      "enterprise": false,
-      "commands": []
-     },
-     {
-      "path": "serve mcp",
-      "name": "mcp",
-      "summary": "Serve MCP over stdio (for Claude Code, Claude Desktop and other MCP clients).",
-      "help": "Serve MCP over stdio (for Claude Code, Claude Desktop and other MCP clients).\n\nRead-only by design: nothing that changes enforcement or stops an agent is exposed.",
-      "panel": null,
-      "params": [],
-      "default_subcommand": null,
-      "enterprise": false,
-      "commands": []
-     },
-     {
-      "path": "serve models",
-      "name": "models",
-      "summary": "Run the model server: model-backed detectors for gateways that should not hold weights.",
-      "help": "Run the model server: model-backed detectors for gateways that should not\nhold weights. Point a gateway at it with AGENTFOX_MODEL_SERVER_URL.",
-      "panel": null,
-      "params": [
-       {
-        "kind": "option",
-        "name": "host",
-        "opts": [
-         "--host"
-        ],
-        "type": "text",
-        "choices": [],
-        "required": false,
-        "multiple": false,
-        "default": "127.0.0.1",
-        "help": ""
-       },
-       {
-        "kind": "option",
-        "name": "port",
-        "opts": [
-         "--port"
-        ],
-        "type": "integer",
-        "choices": [],
-        "required": false,
-        "multiple": false,
-        "default": 8090,
-        "help": ""
-       },
-       {
-        "kind": "option",
-        "name": "workers",
-        "opts": [
-         "--workers"
-        ],
-        "type": "integer",
-        "choices": [],
-        "required": false,
-        "multiple": false,
-        "default": 1,
-        "help": "Processes; each loads every model once."
-       }
-      ],
-      "default_subcommand": null,
-      "enterprise": false,
-      "commands": []
-     }
-    ]
-   },
-   {
-    "path": "findings",
-    "name": "findings",
-    "summary": "What the platform found.",
-    "help": "What the platform found. The list `agentfox.auto()` tells you to read.\n\nOrdered worst first, then most recently seen. A finding that keeps happening is\none row with a count, not one row per occurrence, so the length of this list is\nthe number of distinct problems. `--types` lists the kinds of finding there are.",
-    "panel": "Watch",
-    "params": [
-     {
-      "kind": "option",
-      "name": "severity",
-      "opts": [
-       "--severity",
-       "-s"
-      ],
-      "type": "text",
-      "choices": [],
-      "required": false,
-      "multiple": false,
-      "default": null,
-      "help": "Show only this severity: critical, high, medium, low or info."
-     },
-     {
-      "kind": "option",
-      "name": "limit",
-      "opts": [
-       "--limit",
-       "-n"
-      ],
-      "type": "integer",
-      "choices": [],
-      "required": false,
-      "multiple": false,
-      "default": 20,
-      "help": "How many findings to show, worst first."
-     },
-     {
-      "kind": "option",
-      "name": "as_json",
-      "opts": [
-       "--json"
-      ],
-      "type": "flag",
-      "choices": [],
-      "required": false,
-      "multiple": false,
-      "default": null,
-      "help": "Full records for scripts: whole ids, fingerprints, subjects and timestamps."
-     },
-     {
-      "kind": "option",
-      "name": "types",
-      "opts": [
-       "--types"
-      ],
-      "type": "flag",
-      "choices": [],
-      "required": false,
-      "multiple": false,
-      "default": null,
-      "help": "List every finding type instead: what each means, its usual severity, who raises it."
-     }
-    ],
-    "default_subcommand": null,
-    "enterprise": false,
-    "commands": []
-   },
-   {
     "path": "permit",
     "name": "permit",
     "summary": "Grant, list and withdraw what an agent — or an end user — may do, and decide the calls held for a person (`permit approvals`).",
     "help": "Grant, list and withdraw what an agent — or an end user — may do, and decide the calls held for a person (`permit approvals`).",
-    "panel": "Contain",
+    "panel": "Govern",
     "params": [],
     "default_subcommand": null,
     "enterprise": false,
@@ -1907,7 +1715,7 @@
     "name": "declare",
     "summary": "Declare the facts containment reasons over: tools, data scope, sources, hand-offs.",
     "help": "Declare the facts containment reasons over: tools, data scope, sources, hand-offs.\n\nWhat a tool can do, which column says whose row it is, what an agent has no data for, which sources are authoritative, and when to hand off to a person.",
-    "panel": "Contain",
+    "panel": "Govern",
     "params": [],
     "default_subcommand": null,
     "enterprise": false,
@@ -2574,7 +2382,7 @@
     "name": "policy",
     "summary": "Write the rules, try them against recorded traffic, then turn them on.",
     "help": "Write the rules, try them against recorded traffic, then turn them on.",
-    "panel": "Contain",
+    "panel": "Govern",
     "params": [],
     "default_subcommand": null,
     "enterprise": false,
@@ -4078,11 +3886,203 @@
     ]
    },
    {
+    "path": "serve",
+    "name": "serve",
+    "summary": "Run the gateway and control-plane API, the MCP server for AI clients, or the model server.",
+    "help": "Run the gateway and control-plane API, the MCP server for AI clients, or the model server.\n\n`agentfox serve` starts the API (the default) on 127.0.0.1:8080. `--host 0.0.0.0` and `--port 9000` change where it listens; `--reload` restarts it when the code changes; `agentfox serve api --help` lists every option.\n\n`agentfox serve mcp` speaks MCP over stdio; `agentfox serve models` runs the model-backed detectors for gateways that should not hold weights.",
+    "panel": "Protect",
+    "params": [],
+    "default_subcommand": "api",
+    "enterprise": false,
+    "commands": [
+     {
+      "path": "serve api",
+      "name": "api",
+      "summary": "Start the gateway and control-plane API.",
+      "help": "Start the gateway and control-plane API.\n\nIt serves JSON: the API under /api, the gateway under /v1, and interactive API\ndocs at /docs. The web dashboard is AgentFox Cloud (`agentfox up --target cloud`)\nor the self-hosted stack (`agentfox up --target self-hosted`).",
+      "panel": null,
+      "params": [
+       {
+        "kind": "option",
+        "name": "host",
+        "opts": [
+         "--host"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "127.0.0.1",
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "port",
+        "opts": [
+         "--port"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": 8080,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "reload",
+        "opts": [
+         "--reload",
+         "--no-reload"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       }
+      ],
+      "default_subcommand": null,
+      "enterprise": false,
+      "commands": []
+     },
+     {
+      "path": "serve mcp",
+      "name": "mcp",
+      "summary": "Serve MCP over stdio (for Claude Code, Claude Desktop and other MCP clients).",
+      "help": "Serve MCP over stdio (for Claude Code, Claude Desktop and other MCP clients).\n\nRead-only by design: nothing that changes enforcement or stops an agent is exposed.",
+      "panel": null,
+      "params": [],
+      "default_subcommand": null,
+      "enterprise": false,
+      "commands": []
+     },
+     {
+      "path": "serve models",
+      "name": "models",
+      "summary": "Run the model server: model-backed detectors for gateways that should not hold weights.",
+      "help": "Run the model server: model-backed detectors for gateways that should not\nhold weights. Point a gateway at it with AGENTFOX_MODEL_SERVER_URL.",
+      "panel": null,
+      "params": [
+       {
+        "kind": "option",
+        "name": "host",
+        "opts": [
+         "--host"
+        ],
+        "type": "text",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": "127.0.0.1",
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "port",
+        "opts": [
+         "--port"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": 8090,
+        "help": ""
+       },
+       {
+        "kind": "option",
+        "name": "workers",
+        "opts": [
+         "--workers"
+        ],
+        "type": "integer",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": 1,
+        "help": "Processes; each loads every model once."
+       }
+      ],
+      "default_subcommand": null,
+      "enterprise": false,
+      "commands": []
+     }
+    ]
+   },
+   {
+    "path": "findings",
+    "name": "findings",
+    "summary": "What the platform found.",
+    "help": "What the platform found. The list `agentfox.auto()` tells you to read.\n\nOrdered worst first, then most recently seen. A finding that keeps happening is\none row with a count, not one row per occurrence, so the length of this list is\nthe number of distinct problems. `--types` lists the kinds of finding there are.",
+    "panel": "Protect",
+    "params": [
+     {
+      "kind": "option",
+      "name": "severity",
+      "opts": [
+       "--severity",
+       "-s"
+      ],
+      "type": "text",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": null,
+      "help": "Show only this severity: critical, high, medium, low or info."
+     },
+     {
+      "kind": "option",
+      "name": "limit",
+      "opts": [
+       "--limit",
+       "-n"
+      ],
+      "type": "integer",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": 20,
+      "help": "How many findings to show, worst first."
+     },
+     {
+      "kind": "option",
+      "name": "as_json",
+      "opts": [
+       "--json"
+      ],
+      "type": "flag",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": null,
+      "help": "Full records for scripts: whole ids, fingerprints, subjects and timestamps."
+     },
+     {
+      "kind": "option",
+      "name": "types",
+      "opts": [
+       "--types"
+      ],
+      "type": "flag",
+      "choices": [],
+      "required": false,
+      "multiple": false,
+      "default": null,
+      "help": "List every finding type instead: what each means, its usual severity, who raises it."
+     }
+    ],
+    "default_subcommand": null,
+    "enterprise": false,
+    "commands": []
+   },
+   {
     "path": "test",
     "name": "test",
     "summary": "Prove the controls hold before you ship: score, gate, attack, and dry-run.",
     "help": "Prove the controls hold before you ship: score, gate, attack, and dry-run.",
-    "panel": "Prove",
+    "panel": "Test",
     "params": [],
     "default_subcommand": null,
     "enterprise": false,

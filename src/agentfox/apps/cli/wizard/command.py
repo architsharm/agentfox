@@ -547,7 +547,7 @@ def up(
         help="Skip the user-level MCP configs and skills of the AI tools on this machine.",
     ),
 ) -> None:
-    """Set up AgentFox for this project: scan, choose, and it does the rest.
+    """Guided setup for this project: scan, choose what to cover, and it does the rest.
 
     Asks where AgentFox runs (this machine, your own server, or AgentFox Cloud), what
     to cover (coding agents, your Python agent, the gateway, tools, MCP servers,

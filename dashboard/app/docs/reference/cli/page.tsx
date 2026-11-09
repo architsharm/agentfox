@@ -24,8 +24,8 @@ export default function Page() {
       </p>
 
       <p>
-        The commands are grouped the way the work goes: see what you have, watch it run,
-        contain what it can do, prove it. <code>agentfox --help</code> prints the same
+        The commands are grouped by the job they do: discover your agents, govern what they
+        may do, protect them at runtime, test them, prove it. <code>agentfox --help</code> prints the same
         panels, and every command takes <code>--help</code>. For walkthroughs that put
         these commands together, start with the <Link href="/docs/quickstart">Quickstart</Link>.
       </p>
