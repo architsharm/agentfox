@@ -192,3 +192,12 @@ def test_an_attack_test_loads_the_model_before_its_first_probe(seeded, monkeypat
     run_campaign(seeded, "support-triage", probes=[])
 
     assert calls == [1]
+
+
+def test_a_model_warm_all_loaded_is_not_warmed_again_in_the_background(loading):
+    """`warm_all()` then `AgentFox(...)`: the check must use the model it waited for."""
+    loading.release.set()
+    detection_base.warm_all()
+
+    assert warmup.warm_in_background() is None
+    assert not warmup.warming(loading.key)

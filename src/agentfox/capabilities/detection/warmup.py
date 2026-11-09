@@ -34,6 +34,8 @@ WARMING = "warming"
 _pending: set[str] = set()
 #: Set when the interpreter starts shutting down: a load interrupted by it is not an error.
 _exiting = threading.Event()
+#: Detectors already warmed in this process, by any path (`warm_all()` included).
+_warmed: set[str] = set()
 #: Whether `warm_now()` already ran in this process.
 _done_now = False
 
@@ -42,6 +44,13 @@ def warming(key: str) -> bool:
     """Whether the background warm-up is still loading ``key``. The pipeline skips such
     a detector for the check at hand rather than wait for the load."""
     return key in _pending
+
+
+def mark_warmed(key: str) -> None:
+    """Record that ``key`` is loaded, so a later background warm-up skips it (a script
+    that called `warm_all()` and then `AgentFox(...)` had its first check run without
+    the model it had just waited for)."""
+    _warmed.add(key)
 
 
 def _mark_exiting() -> None:
@@ -82,7 +91,7 @@ def _needs_warming() -> list:
     return [
         detector
         for key, detector in all_detectors().items()
-        if key in enabled and type(detector).warm is not BaseDetector.warm
+        if key in enabled and key not in _warmed and type(detector).warm is not BaseDetector.warm
     ]
 
 
@@ -99,6 +108,7 @@ def _warm(detectors: list) -> None:
             # is asked here, on this thread, rather than by the caller.
             if detector.available():
                 detector.warm()
+                _warmed.add(detector.key)
         except Exception as exc:  # noqa: BLE001 - warming must never break the caller
             if _exiting.is_set():
                 log.debug("agentfox: warm-up of %s stopped by exit: %s", detector.key, exc)
@@ -166,4 +176,5 @@ def _reset() -> None:
         _started = None
         _done_now = False
         _pending.clear()
+        _warmed.clear()
         _exiting.clear()

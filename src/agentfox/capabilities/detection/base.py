@@ -297,6 +297,9 @@ def warm_all() -> None:
         try:
             if detector.available():
                 detector.warm()
+                from agentfox.capabilities.detection.warmup import mark_warmed
+
+                mark_warmed(key)
         except Exception:
             log.exception("detector %s failed to warm; it stays cold", key)
 
