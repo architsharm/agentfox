@@ -207,14 +207,50 @@ def _find_optional(app: typer.Typer, *path: str) -> CommandInfo | None:
 
 def _alias(
     target: typer.Typer, info: CommandInfo | None, name: str, *, hidden: bool = False
-) -> None:
-    if info is None:  # an extension command that is not installed
-        return
+) -> bool:
+    """Register ``info`` under ``name``; False when it is an extension command that is
+    not installed (callers then put an `_enterprise_only` stub in its place)."""
+    if info is None:
+        return False
     clone = copy.copy(info)
     clone.name = name
     clone.hidden = hidden
     clone.rich_help_panel = None
     target.registered_commands.append(clone)
+    return True
+
+
+#: A stub takes whatever the real command would have, so it is reached and can explain.
+_PASS_THROUGH = {"allow_extra_args": True, "ignore_unknown_options": True, "help_option_names": []}
+
+#: Marks a callback as an Enterprise-only stub (the docs reference badges these).
+ENTERPRISE_ONLY = "__agentfox_enterprise_only__"
+
+
+def _enterprise_message(command: str, what: str) -> str:
+    return (
+        f"{what} (`agentfox {command}`) is part of AgentFox Enterprise, which is not "
+        "installed here. It comes with AgentFox Cloud (`agentfox up --target cloud`) and "
+        "the self-hosted Enterprise stack.\nIn the open core: `agentfox report` for the "
+        "summary, `agentfox report verify` for the tamper-evident audit chain."
+    )
+
+
+def _enterprise_only(target: typer.Typer, command: str, what: str) -> None:
+    """Register ``command``'s last word on ``target`` as a stub that says it is Enterprise.
+
+    The name is listed (the docs list it too), takes any arguments and options, and exits
+    2 with one clear message rather than a usage error from whichever command the
+    arguments fell through to.
+    """
+
+    def unavailable(ctx: typer.Context) -> None:
+        typer.echo(_enterprise_message(command, what), err=True)
+        raise typer.Exit(2)
+
+    unavailable.__doc__ = f"{what} (AgentFox Enterprise; not installed here)."
+    setattr(unavailable, ENTERPRISE_ONLY, True)
+    target.command(command.split()[-1], context_settings=_PASS_THROUGH)(unavailable)
 
 
 def _new_group(help: str, cls: type[TyperGroup] | None = None, **kwargs: Any) -> typer.Typer:
@@ -257,6 +293,8 @@ def apply_layout(app: typer.Typer) -> None:
     _alias(scan_app, find("check"), "repo")
     _alias(scan_app, find("quickscan"), "sessions", hidden=True)
     _alias(scan_app, find("agents", "discover"), "runtime")
+    if not any(info.name == "monitors" for info in scan_app.registered_groups):
+        _enterprise_only(scan_app, "scan monitors", "Scheduled monitoring of connected sources")
 
     # -- See: agents -------------------------------------------------------------
     find("agents", "discover").hidden = True  # -> scan runtime
@@ -354,21 +392,30 @@ def apply_layout(app: typer.Typer) -> None:
     )
     if summary_info is not None:
         _alias(report_app, summary_info, "summary")
-    _alias(report_app, find("compliance", "status"), "status")
+    # Without Enterprise these names fell through to the default command and failed with
+    # "unexpected extra argument (risk)". Each says what it is instead (_enterprise_only).
+    _alias(report_app, find("compliance", "status"), "status") or _enterprise_only(
+        report_app, "report status", "Compliance posture"
+    )
     evidence_info = find("evidence", "export")
     if evidence_info is not None:
         _alias(report_app, evidence_info, "evidence")
     else:
-        # Without Enterprise, `report evidence` fell through to the default command and
-        # failed with "unexpected extra argument (evidence)". Say what it is instead.
-        report_app.command(
-            "evidence",
-            context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
-        )(_evidence_unavailable)
+        report_app.command("evidence", context_settings=_PASS_THROUGH)(_evidence_unavailable)
     _alias(report_app, find("audit", "verify"), "verify")
-    for name in ("risk", "obligations", "frameworks", "board", "review-packet"):
-        _alias(report_app, find("compliance", name), name)
-    _alias(report_app, find("compliance", "review"), "signoff")
+    for name, what in (
+        ("risk", "Risk assessment"),
+        ("obligations", "Regulatory obligations"),
+        ("frameworks", "Compliance frameworks"),
+        ("board", "The board report"),
+        ("review-packet", "The reviewer packet"),
+    ):
+        _alias(report_app, find("compliance", name), name) or _enterprise_only(
+            report_app, f"report {name}", what
+        )
+    _alias(report_app, find("compliance", "review"), "signoff") or _enterprise_only(
+        report_app, "report signoff", "Compliance sign-off"
+    )
     _alias(report_app, find("entitlement", "report"), "entitlement")
     _alias(report_app, find("escalation", "scan"), "escalations")
     _alias(report_app, find("eval", "drift"), "drift")
@@ -388,6 +435,8 @@ def apply_layout(app: typer.Typer) -> None:
         _alias(catalog_app, find("compliance", name), name)
     if catalog_app.registered_commands:
         admin_app.add_typer(catalog_app, name="catalog")
+    else:
+        _enterprise_only(admin_app, "admin catalog", "The compliance control catalog")
     _alias(admin_app, find("audit", "checkpoint"), "checkpoint")
     _alias(admin_app, find("seed"), "seed")
     _alias(admin_app, find("version"), "version")
@@ -443,6 +492,9 @@ def _evidence_unavailable(ctx: typer.Context) -> None:
         err=True,
     )
     raise typer.Exit(2)
+
+
+setattr(_evidence_unavailable, ENTERPRISE_ONLY, True)
 
 
 def _declared_list(tools_list: CommandInfo, sources_list: CommandInfo):

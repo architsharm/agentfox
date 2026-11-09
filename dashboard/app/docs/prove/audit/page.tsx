@@ -27,7 +27,10 @@ export default function Page() {
       <Callout kind="note" title="Enterprise">
         Compliance (control status, frameworks, sign-off, risk register) and evidence packages are
         AgentFox Enterprise. The summary, the audit log and retention are in the open core. Enterprise
-        runs free in production for one workspace with up to four agents.
+        runs free in production for one workspace with up to four agents. With the open-source package
+        alone, the Enterprise commands below (<code>report status</code>, <code>report evidence</code>,{" "}
+        <code>report review-packet</code>, <code>admin catalog sync</code>) say they are not installed
+        and exit 2.
       </Callout>
 
       <Steps topLevel>
@@ -89,7 +92,8 @@ agentfox report evidence --agent payments-ops --since-days 30`}</Code>
         and they are not legal advice. Each one is labelled <code>DRAFT — UNVERIFIED</code> until a
         named person signs it off: open a control on <strong>Compliance</strong> and use{" "}
         <strong>Record a review</strong> (written to the audit log, valid for 90 days), or hand the
-        reviewer <Link href={cli("report-review-packet")}><code>agentfox report review-packet</code></Link>.
+        reviewer <Link href={cli("report-review-packet")}><code>agentfox report review-packet</code></Link>{" "}
+        (Enterprise).
       </p>
 
       <h2>Before you show checkpoints to anyone</h2>
@@ -119,7 +123,8 @@ agentfox report evidence --agent payments-ops --since-days 30`}</Code>
           <tr>
             <td>Every compliance count is zero</td>
             <td>
-              Press <strong>Load control catalog</strong>, or run <code>agentfox admin catalog sync</code>.
+              Press <strong>Load control catalog</strong>, or run <code>agentfox admin catalog sync</code>{" "}
+              (both Enterprise).
             </td>
           </tr>
           <tr>

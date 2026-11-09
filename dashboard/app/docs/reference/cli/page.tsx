@@ -18,7 +18,9 @@ export default function Page() {
       <h1>CLI reference</h1>
       <p className="docs-lede">
         Every command and option, generated from the CLI by{" "}
-        <code>scripts/gen/docs_reference.py</code>. If it is on this page, it runs.
+        <code>scripts/gen/docs_reference.py</code>. If it is on this page, it runs. Commands marked{" "}
+        <strong>Enterprise</strong> need AgentFox Enterprise (Cloud or the self-hosted Enterprise
+        stack); the open-source package lists them and says so when you run one.
       </p>
 
       <p>

@@ -24,7 +24,7 @@ const PROBLEMS: [ReactNode, ReactNode][] = [
   ["Webhooks, Slack or a hosted model do nothing", <>Set <code>AGENTFOX_ALLOW_EGRESS=true</code>. With egress off nothing leaves the server.</>],
   ["API calls return 401", <>The server requires tokens. Send <code>Authorization: Bearer nom_api_…</code>; <code>agentfox admin auth status</code> says which mode is on.</>],
   [<>CI says <code>unknown suite</code></>, <><code>AGENTFOX_DATABASE_URL</code> points at a different database from the one with the suite.</>],
-  ["Compliance counts are all zero", <>Press <strong>Load control catalog</strong> on Reports → Compliance, or run <code>agentfox admin catalog sync</code>.</>],
+  ["Compliance counts are all zero (Enterprise)", <>Press <strong>Load control catalog</strong> on Reports → Compliance, or run <code>agentfox admin catalog sync</code>. Without AgentFox Enterprise there is no compliance view; the open core has <code>agentfox report</code> and <code>agentfox report verify</code>.</>],
   ["The audit log check fails", <>An entry was changed or removed after it was written. <code>agentfox report verify</code> names the first broken entry.</>],
 ];
 

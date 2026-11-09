@@ -25,6 +25,8 @@ export type CliNode = {
   panel: string | null;
   params: Param[];
   default_subcommand: string | null;
+  /** Only in AgentFox Enterprise; the open-core wheel answers with "not installed here". */
+  enterprise?: boolean;
   commands: CliNode[];
 };
 
@@ -90,12 +92,22 @@ function ParamTable({ params }: { params: Param[] }) {
   );
 }
 
+/** Marks a command the open-source package does not include. */
+export function EnterpriseBadge() {
+  return (
+    <span className="docs-ee" title="Part of AgentFox Enterprise (Cloud or the self-hosted Enterprise stack); not in the open-source package">
+      Enterprise
+    </span>
+  );
+}
+
 function CommandBlock({ node, depth }: { node: CliNode; depth: number }) {
   const Heading = depth <= 1 ? "h2" : "h3";
   return (
     <section className="docs-cmd" id={anchorFor(node.path)}>
       <Heading>
         <code>agentfox {node.path}</code>
+        {node.enterprise && <EnterpriseBadge />}
       </Heading>
       {node.help && <p className="docs-cmd-help">{node.help}</p>}
       <pre className="docs-usage" tabIndex={0}>
@@ -151,6 +163,7 @@ export function CliIndex() {
                 <a href={`#${anchorFor(node.path)}`}>
                   <code>{node.path}</code>
                 </a>
+                {node.enterprise && <EnterpriseBadge />}
               </td>
               <td>{node.summary}</td>
             </tr>

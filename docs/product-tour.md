@@ -268,7 +268,7 @@ destructive endpoint, an MCP server whose tools drifted. A finding closes itself
 clears and reopens if it comes back; a run that could not read the source closes nothing.
 
 ```bash
-agentfox scan monitors list                       # what is watched, last outcome, next run
+agentfox scan monitors list                       # Enterprise: what is watched, last outcome, next run
 agentfox scan monitors add github_repo acme/bot   # or created for you when you connect one
 agentfox admin jobs run-due                       # self-hosted: put this on cron
 ```
