@@ -128,3 +128,22 @@ def test_unknown_user_cannot_import(client):
     stranger = as_user("stranger@example.com")
     r = client.post(f"{URL}/plan", json={"source": RULES}, headers=stranger)
     assert r.status_code in (401, 403)
+
+
+def test_a_condition_on_the_reply_keeps_its_surface(client, session):
+    source = """
+apiVersion: governance.toolkit/v1
+name: payables-guard
+default_action: allow
+rules:
+  - name: no-iban-in-replies
+    condition: "output contains 'IBAN'"
+    action: deny
+"""
+    r = client.post(URL, json={"source": source}, headers=ADMIN)
+    assert r.status_code == 200, r.text
+    [key] = r.json()["patterns"]
+    pattern = session.query(CustomRule).filter_by(key=key).one()
+    assert pattern.surfaces_json == ["output"]
+    body = client.get("/api/policies/imported-payables-guard", headers=ADMIN).json()["body"]
+    assert "tool_args" not in body and "output" in body
