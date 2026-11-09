@@ -193,8 +193,9 @@ def init(
     Creates the database, applies migrations, loads the control catalog and the
     shipped policy packs, every one watching (observe) until you switch it to blocking
     with `agentfox policy enforce <key>`; coding-agent only for agents this repo's
-    coding-harness hooks govern. Missing grants, destructive commands and tampering
-    with AgentFox are refused from the start. It writes an
+    coding-harness hooks govern. Destructive commands and tampering with AgentFox
+    are refused from the start; a tool an agent was not granted is refused once
+    tool-containment blocks. It writes an
     agentfox.toml carrying the real runtime defaults so they are visible rather than
     implicit. AGENTFOX_* environment variables override that file.
     """
@@ -292,8 +293,9 @@ def setup_workspace(
         # real customer. Blocking is a step the user takes (`agentfox policy enforce
         # tool-containment`, or Start blocking in the dashboard). A pack already
         # installed keeps the mode it is in, so running `init` again never changes it.
-        # A missing grant, a destructive statement (`rm -rf ~/`) and tampering with
-        # AgentFox are refused whatever mode the packs are in.
+        # A destructive statement (`rm -rf ~/`) and tampering with AgentFox are
+        # refused whatever mode the packs are in; a missing grant follows
+        # tool-containment's mode (`platform.policy.containment_mode`).
         modes: dict[str, str] = {}
         kept: set[str] = set()
         for document in documents:
@@ -334,8 +336,8 @@ def setup_workspace(
             )
         elif "tool-containment" in modes:
             say(
-                "      [dim]Missing grants, destructive commands and tampering are still "
-                "refused. When the would-block decisions look right: "
+                "      [dim]Destructive commands and tampering are still refused. When the "
+                "would-block decisions look right: "
                 "`agentfox policy enforce tool-containment`.[/]"
             )
 
