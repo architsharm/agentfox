@@ -40,6 +40,12 @@ def save_ladder(
     action rather than a configuration write — so it records who changed it, why, and
     what the bands were before.
     """
+    # One scope, said once: the agent passed in, else the one the definition names
+    # (`agent:` in a rules file the CLI applies). Both are written back, so the row
+    # that enforcement filters on and the definition the screens read never differ.
+    agent_slug = agent_slug or ladder.agent or None
+    if (ladder.agent or None) != agent_slug:
+        ladder = ladder.model_copy(update={"agent": agent_slug})
     agent_id = None
     if agent_slug:
         agent = session.scalar(select(Agent).where(Agent.slug == agent_slug))

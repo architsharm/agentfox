@@ -110,6 +110,20 @@ def compiled_rules(session: Session, agent_slug: str | None) -> list[CompiledRul
     return out
 
 
+def scoped_rules(session: Session) -> dict[str, list[str]]:
+    """The custom rules limited to some agents, by rule id (`custom.<key>`).
+
+    The one place a custom rule's scope is read for listing: the `custom` pack's
+    rules carry no agent condition (the detector and the sequence check filter by
+    agent), so a list of what applies where asks here.
+    """
+    return {
+        rule_id_for(row.key): list(row.agents_json)
+        for row in session.scalars(select(CustomRule))
+        if row.agents_json
+    }
+
+
 def sequence_rules(session: Session, agent_slug: str | None) -> list[tuple[str, SequenceSpec]]:
     out = []
     for row in session.scalars(

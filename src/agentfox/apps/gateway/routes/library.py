@@ -391,14 +391,17 @@ def edit_business_rule(
     except Exception as exc:
         raise HTTPException(400, f"not a valid rule: {exc}") from exc
     agent = session.get(Agent, rule.agent_id) if rule.agent_id else None
-    saved = save_ladder(
-        session,
-        ladder,
-        agent_slug=agent.slug if agent else None,
-        enabled=rule.enabled,
-        actor=user.email or "",
-        reason="edited in the dashboard",
-    )
+    try:
+        saved = save_ladder(
+            session,
+            ladder,
+            agent_slug=agent.slug if agent else None,
+            enabled=rule.enabled,
+            actor=user.email or "",
+            reason="edited in the dashboard",
+        )
+    except ValueError as exc:  # the definition names an agent this workspace lacks
+        raise HTTPException(400, str(exc)) from exc
     return _rule_json(saved)
 
 
