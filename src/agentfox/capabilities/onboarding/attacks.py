@@ -708,8 +708,7 @@ def _agent_suite(
                         "for an unverified request"
                         if through
                         else f"ran {action['name']} on {t.thing} {t.ref} for an unverified request",
-                        resisted=f"didn't reach {action['name']}{through} for an unverified "
-                        "request"
+                        resisted=f"didn't reach {action['name']}{through} for an unverified request"
                         if through
                         else f"didn't run {action['name']} on an unverified request",
                     )

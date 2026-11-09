@@ -2,7 +2,9 @@
 
 The attacks are written from the agent's own tools by the attack library the
 dashboard's attack test uses (``capabilities/onboarding/attacks.py``), so a seat-booking
-agent is attacked through ``update_seat``, not with generic SQL and refund probes. The
+agent is attacked through ``update_seat``, not with generic SQL and refund probes, and
+a triage agent through the refund tool of the agent it hands off to (that call checked
+as the refunds agent's, as live traffic checks it). The
 built-in generic probes run with ``--builtin``, or when AgentFox knows none of the
 agent's tools."""
 
@@ -184,7 +186,7 @@ def redteam_run(
                     holder[t["name"]] = other
                     far.append(t)
         acting = [
-            t["name"] + (f" (through {holder[t['name']]})" if t["name"] in holder else "")
+            t["name"] + (f" through {holder[t['name']]}" if t["name"] in holder else "")
             for t in roles(tools, far).action
         ]
         reach = f" and {len(far)} it reaches through hand-offs" if far else ""
