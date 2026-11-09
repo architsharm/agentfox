@@ -166,7 +166,7 @@ export function SetupCard({
       setDetail((d) => ({
         ...d,
         guarding: tests?.first
-          ? `${tests.first.total ?? "The"} attacks on your agent as it is, no guardrails yet. Tools are faked, nothing real happens. Results show beside the map.`
+          ? `${tests.first.total ?? "The"} attacks${tests.first.controlsTotal ? ` + ${tests.first.controlsTotal} normal requests` : ""} on your agent as it is, with AgentFox only watching (nothing blocks yet). Tools are faked, nothing real happens. Results show beside the map.`
           : "No tools found to test yet.",
       }));
       if (stop) return;
@@ -260,6 +260,14 @@ export function SetupCard({
     }
   };
 
+  // Each step that comes alive (the command after a key, the agents after init
+  // reports in) can be below the fold on a laptop, so bring it into view.
+  const stepRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (phase === "key") return;
+    stepRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [phase]);
+
   const shownKey = key ?? "<your-key>";
   // A key exists, shown now or earlier: the next steps can go ahead.
   const haveKey = Boolean(key || keyInfo?.hasKey);
@@ -274,7 +282,7 @@ export function SetupCard({
               {hasProjects ? "Connect a new project" : "Connect your first agent"}
             </h1>
             <p className="mt-1 text-muted-foreground">
-              AgentFox reads your agents from their code, maps the tools they can call, and guards every call. Two steps.
+              AgentFox reads your agents from their code, maps the tools they can call, and guards every call. Three steps.
             </p>
           </div>
           {!hasProjects && (
@@ -293,7 +301,7 @@ export function SetupCard({
             </p>
             <Link
               href="/app/welcome?again=1"
-              className="inline-flex h-8 items-center gap-2 rounded-md bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover"
+              className="inline-flex h-8 items-center gap-2 rounded-full bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover"
             >
               Scan a repository
             </Link>
@@ -327,7 +335,7 @@ export function SetupCard({
                       type="button"
                       onClick={replaceKey}
                       disabled={creating}
-                      className="inline-flex h-8 items-center gap-2 rounded-md bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
+                      className="inline-flex h-8 items-center gap-2 rounded-full bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
                     >
                       {creating ? <Loader2 className="size-3.5 animate-spin" /> : <KeyRound className="size-3.5" />}
                       {creating ? "Making…" : "Make a new key"}
@@ -340,7 +348,7 @@ export function SetupCard({
                   <button
                     type="button"
                     onClick={() => setReplacing(true)}
-                    className="mt-3 inline-flex h-8 items-center gap-2 rounded-md border bg-card px-3.5 text-[13px] font-medium hover:bg-muted"
+                    className="mt-3 inline-flex h-8 items-center gap-2 rounded-full border bg-card px-3.5 text-[13px] font-medium hover:bg-muted"
                   >
                     <KeyRound className="size-3.5" /> Make a new key
                   </button>
@@ -358,7 +366,7 @@ export function SetupCard({
                   type="button"
                   onClick={createKey}
                   disabled={creating}
-                  className="mt-3 inline-flex h-8 items-center gap-2 rounded-md bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
+                  className="mt-3 inline-flex h-8 items-center gap-2 rounded-full bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
                 >
                   {creating ? <Loader2 className="size-3.5 animate-spin" /> : <KeyRound className="size-3.5" />}
                   {creating ? "Creating…" : "Create a key"}
@@ -377,7 +385,7 @@ export function SetupCard({
             <Install keyText={shownKey} server={server} muted={!key} />
           </Step>
 
-          <Step n={3} title="Your agents arrive" state={phase === "done" ? "done" : haveKey ? "active" : "todo"} last>
+          <Step n={3} title="Your agents arrive" state={phase === "done" ? "done" : haveKey ? "active" : "todo"} last anchor={stepRef}>
             {!haveKey ? (
               <p className="text-muted-foreground">Appears here the moment init reports in.</p>
             ) : phase === "waiting" ? (
@@ -395,7 +403,7 @@ export function SetupCard({
                       type="button"
                       onClick={addAgents}
                       disabled={adding}
-                      className="mt-3 inline-flex h-8 items-center gap-2 rounded-md bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
+                      className="mt-3 inline-flex h-8 items-center gap-2 rounded-full bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
                     >
                       {adding ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
                       {adding ? "Adding…" : found?.agents.length === 1 ? "Add to AgentFox" : `Add ${found?.agents.length} agents to AgentFox`}
@@ -426,12 +434,14 @@ function Step({
   title,
   state,
   last,
+  anchor,
   children,
 }: {
   n: number;
   title: string;
   state: "todo" | "active" | "done";
   last?: boolean;
+  anchor?: React.Ref<HTMLDivElement>;
   children: React.ReactNode;
 }) {
   return (
@@ -448,7 +458,7 @@ function Step({
       >
         {state === "done" ? <Check className="size-3.5" strokeWidth={3} /> : n}
       </span>
-      <div className={cn("pb-7", last && "pb-0")}>
+      <div ref={anchor} className={cn("pb-7", last && "pb-0")}>
         <h2 className="mb-1 pt-1 text-[15px] font-semibold">{title}</h2>
         {children}
       </div>
@@ -474,7 +484,7 @@ function Code({ text, className, muted }: { text: string; className?: string; mu
   const [copied, setCopied] = useState(false);
   return (
     <div className={cn("relative rounded-lg border bg-muted px-4 py-3", className)}>
-      <pre className={cn("overflow-x-auto pr-10 font-mono text-[12.5px] leading-6 whitespace-pre", muted && "text-muted-foreground")}>{text}</pre>
+      <pre className={cn("pr-10 font-mono text-[12.5px] leading-6 whitespace-pre-wrap [overflow-wrap:anywhere]", muted && "text-muted-foreground")}>{text}</pre>
       <button
         type="button"
         aria-label={copied ? "Copied" : "Copy"}

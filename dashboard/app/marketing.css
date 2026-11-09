@@ -1474,6 +1474,12 @@
 .mk-notify h3 { margin: 0; }
 .mk-notify p { margin: 6px 0 0; max-width: 54ch; font-size: var(--t-small); }
 .mk-notify .wl { flex: 0 0 auto; min-width: min(100%, 22rem); }
+/* Phones: the form takes the card's full width, so Join wraps under the field
+   inside the card instead of standing out past its edge. */
+@media (max-width: 640px) {
+  .mk-notify .wl { flex: 1 1 100%; min-width: 0; max-width: 100%; }
+  .mk-notify .wl-row .wl-input { flex-basis: 100%; }
+}
 
 /* --- The decision card, arriving in the order the check runs ---------------
  *
@@ -3576,7 +3582,8 @@
   text-transform: uppercase;
   color: var(--mk-muted);
 }
-.docs-nav div:first-child p { margin-top: 0; }
+.docs-nav-list > div:first-child p { margin-top: 0; }
+.docs-nav-toggle { display: none; }
 .docs-nav ul {
   list-style: none;
   margin: 0;
@@ -3628,6 +3635,15 @@
   color: var(--mk-text);
   text-wrap: pretty;
 }
+/* Every docs table sits in one of these (the pages wrap them), so a wide table
+   scrolls inside its own box instead of pushing the page sideways on a phone. */
+.docs-table {
+  max-width: 100%;
+  margin-top: 14px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.docs-table > table { margin-top: 0 !important; }
 .docs-doc table {
   width: 100%;
   margin-top: 14px;
@@ -3672,6 +3688,7 @@
   font-family: var(--mk-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
   white-space: pre;
 }
+.docs-doc :not(pre) > code { overflow-wrap: anywhere; }
 .docs-doc p code,
 .docs-doc li code {
   font-family: var(--mk-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
@@ -3686,7 +3703,19 @@
     gap: 28px;
     padding-top: 28px;
   }
-  .docs-nav { position: static; }
+  /* On a phone the contents collapse behind one bordered button that names the
+     current page; the article starts right under it. */
+  .docs-nav { position: static; max-height: none; overflow: visible; border: 1px solid var(--mk-border); border-radius: 10px; background: var(--mk-surface); }
+  .docs-nav-toggle {
+    display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px;
+    border: 0; background: transparent; color: var(--mk-text); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; text-align: left;
+  }
+  .docs-nav-current { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; color: var(--mk-muted); }
+  .docs-nav-toggle svg { flex: 0 0 auto; transition: transform 150ms; }
+  .docs-nav.is-open .docs-nav-toggle svg { transform: rotate(180deg); }
+  .docs-nav-list { display: none; padding: 4px 14px 14px; border-top: 1px solid var(--mk-border); }
+  .docs-nav.is-open .docs-nav-list { display: block; }
+  .docs-nav-list > div:first-child p { margin-top: 12px; }
 }
 
 
@@ -3919,7 +3948,13 @@
 .blog-cta-title { margin: 0 !important; font-size: 18px !important; font-weight: 650; color: var(--mk-ink-text) !important; }
 .blog-cta-body { margin: 6px 0 0 !important; font-size: 15px !important; color: var(--mk-ink-muted) !important; }
 .blog-cta-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-.blog-cta .mk-btn-outline { color: var(--mk-ink-text); border-color: var(--mk-ink-border); }
+/* The callout is dark in both themes, so its secondary button is light in both.
+   Through var(--mk-ink-text) it picked up the page's text colour after the token
+   remap and was dark-on-dark ("Quickstart" invisible in the 0.5 release post). */
+.blog-cta a.mk-btn-outline,
+.docs-doc .blog-cta a.mk-btn-outline { color: #ecedf1; border-color: rgba(255, 255, 255, 0.28); background: transparent; }
+.blog-cta a.mk-btn-outline:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.45); }
+:root[data-theme="dark"] .blog-cta { border: 1px solid rgba(255, 255, 255, 0.1); }
 .docs-doc .blog-cta a.mk-btn { text-decoration: none; }
 .docs-doc .blog-cta a.mk-btn-primary { color: var(--mk-cta-fg, #fff); }
 
@@ -4127,3 +4162,14 @@
 .docs-cards strong { display: block; color: var(--mk-text); }
 .docs-cards span { display: block; margin-top: 4px; font-size: 14px; color: var(--mk-muted); }
 @media (max-width: 640px) { .docs-pager { grid-template-columns: 1fr; } .docs-pager-next { grid-column: 1; text-align: left; } }
+
+/* Blog screenshots are light captures of the product and the site. On a dark page
+   they were the brightest thing on screen by far; a hairline frame and a slight dim
+   keep them readable without glare. */
+:root[data-theme="dark"] :is(.blog-cover, .blog-figure) .shot-frame,
+:root[data-theme="dark"] .blog-card-img { border-color: var(--mk-border-strong); }
+:root[data-theme="dark"] :is(.blog-cover, .blog-figure, .blog-card-img) img { filter: brightness(0.82) contrast(1.04); }
+
+/* Legal pages (privacy, terms): text at a readable measure, in the same 800px
+   column the other public pages (support, security, 404) use for their header. */
+.mk-prose .mk-narrow { max-width: 800px; }

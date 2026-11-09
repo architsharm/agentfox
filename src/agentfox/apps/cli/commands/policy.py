@@ -53,7 +53,26 @@ def policy_list() -> None:
                 f"[green]{mode}[/]" if mode == "enforce" else f"[yellow]{mode}[/]",
                 str(len((shown.compiled_json or {}).get("rules", []))),
             )
+        # Business rules (approval limits) are rules too, stored apart from the
+        # packs; the dashboard counts them in Your rules, so they are counted here.
+        business = _business_modes(session)
+        if business:
+            modes = set(business)
+            mode = modes.pop() if len(modes) == 1 else "mixed"
+            table.add_row(
+                "business rules",
+                "—",
+                f"[green]{mode}[/]" if mode == "enforce" else f"[yellow]{mode}[/]",
+                str(len(business)),
+            )
         console.print(table)
+
+
+def _business_modes(session) -> list[str]:
+    """Each enabled business rule's mode, one entry per rule."""
+    from agentfox.capabilities.business.store import rule_entries
+
+    return [e["enforcement"] for e in rule_entries(session)]
 
 
 @policy_app.command("lint")
@@ -83,6 +102,12 @@ def policy_lint(
         raise typer.Exit(1)
     if report["findings"]:
         console.print("\n[green]LINT PASS[/] [dim](advisory findings only)[/]")
+
+
+def _rule_title(rule: dict) -> str:
+    """What a person calls the rule: its title or description, one line."""
+    text = str(rule.get("title") or rule.get("description") or "").strip()
+    return " ".join(text.split()) or "—"
 
 
 def _read_policy_file(path: Path):
@@ -125,23 +150,25 @@ def policy_effective(
     environment: str | None = typer.Option(
         None,
         "--environment",
-        help="Environment to resolve for. Defaults to the configured environment "
-        "(AGENTFOX_ENVIRONMENT), which is what the runtime itself uses.",
+        help="Environment to resolve for. Defaults to the one the gateway resolves "
+        "the agent in: its registered environment, or production without --agent.",
     ),
 ) -> None:
     """Show the policy actually in force for a subject, and where each rule came from.
 
     Opacity is what makes layered policy dangerous, so the resolver explains itself.
+    Business rules (approval limits) are listed too, from `business`.
     """
-    from agentfox.core.config import get_settings
-    from agentfox.platform.policy import effective_for
+    from agentfox.capabilities.business.store import effective_entries
+    from agentfox.platform.policy import effective_for, runtime_environment
 
-    environment = environment or get_settings().environment
     with _session() as session:
+        environment = environment or runtime_environment(session, agent)
         effective = effective_for(
             session, agent_slug=agent, environment=environment, team=team, user=user
         )
         explanation = effective.explain()
+        explanation["rules"] = [*explanation["rules"], *effective_entries(session, agent)]
 
     # Per layer, not one mode for the lot: "mode enforce" whenever any layer
     # enforced read as though every rule listed was enforcing.
@@ -162,11 +189,22 @@ def policy_effective(
         console.print("  [dim]layers: none[/]\n")
 
     table = Table(box=None, pad_edge=False)
-    for column in ("rule", "effect", "mode", "from", "overrides"):
-        table.add_column(column, style="bold" if column == "rule" else None)
+    # The title takes what the id and the four short columns leave of the width.
+    longest = max((len(r["rule_id"]) for r in explanation["rules"]), default=10)
+    title_width = max(10, min(48, console.width - longest - 48))
+    for column in ("rule", "title", "effect", "mode", "from", "overrides"):
+        # One line per rule: the title gives way to the terminal's width, never the id.
+        table.add_column(
+            column,
+            style="bold" if column == "rule" else ("dim" if column == "title" else None),
+            no_wrap=True,
+            overflow="ellipsis" if column == "title" else "fold",
+            max_width=title_width if column == "title" else None,
+        )
     for rule in explanation["rules"]:
         table.add_row(
             rule["rule_id"],
+            _rule_title(rule),
             rule["effect"],
             rule["enforcement"],
             rule["source"],

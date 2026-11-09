@@ -1,12 +1,24 @@
 import Link from "next/link";
 import { Dot, Empty, OutcomePill, Pill, ago } from "@/components/kit";
 import { SURFACES, WOULD, outcomeOf, ruleTitle } from "@/lib/product/vocab";
+import { approvalOutcome } from "@/lib/product/approvals";
+import { agentName } from "@/lib/product/names";
+import { runWhat } from "@/lib/product/runWhat";
 
 /** Runs as a list: when, which agent, what it was doing, what happened and why. */
-export function RunsTable({ runs, showAgent = true }: { runs: any[]; showAgent?: boolean }) {
+export function RunsTable({
+  runs,
+  showAgent = true,
+  names = new Map(),
+}: {
+  runs: any[];
+  showAgent?: boolean;
+  /** slug → display name (lib/product/names.ts). */
+  names?: Map<string, string>;
+}) {
   if (!runs.length) return <Empty>No runs match.</Empty>;
   return (
-    <table className="k-table">
+    <table className="k-table k-row-link">
       <thead>
         <tr>
           <th className="tight">When</th>
@@ -20,12 +32,7 @@ export function RunsTable({ runs, showAgent = true }: { runs: any[]; showAgent?:
         {runs.map((t) => {
           const rules: string[] = t.rules || [];
           // What the person asked reads better than the developer's task label.
-          const what =
-            t.summary ||
-            t.intent ||
-            (t.tools?.length ? t.tools.join(", ") : null) ||
-            (t.surfaces || []).map((x: string) => SURFACES[x] || x).filter((v: string, i: number, a: string[]) => a.indexOf(v) === i).join(" · ") ||
-            "Model call";
+          const what = runWhat(t, SURFACES);
           return (
             <tr key={t.id}>
               <td className="tight muted" title={t.started_at}>
@@ -34,7 +41,7 @@ export function RunsTable({ runs, showAgent = true }: { runs: any[]; showAgent?:
               {showAgent && (
                 <td>
                   {t.agent ? (
-                    <Link href={`/app/projects/${encodeURIComponent(t.agent)}`}>{t.agent}</Link>
+                    <Link href={`/app/projects/${encodeURIComponent(t.agent)}`}>{agentName(names, t.agent)}</Link>
                   ) : (
                     <span className="k-muted">—</span>
                   )}
@@ -58,6 +65,9 @@ export function RunsTable({ runs, showAgent = true }: { runs: any[]; showAgent?:
                     </Pill>
                   ) : (
                     <OutcomePill outcome={outcomeOf(t.verdict)} />
+                  )}
+                  {outcomeOf(t.verdict) === "held" && approvalOutcome({ status: t.approval_status }) && (
+                    <Pill tone={approvalOutcome({ status: t.approval_status })!.tone}>{approvalOutcome({ status: t.approval_status })!.label}</Pill>
                   )}
                   {t.would_verdict && outcomeOf(t.verdict) === "allowed" && (
                     <Pill tone="outline" title="The rule is watching. Blocking, it would have stopped this run.">

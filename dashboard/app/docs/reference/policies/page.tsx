@@ -15,7 +15,7 @@ type PackRule = { id: string; effect: string; severity: string; what: string };
 
 function PackTable({ rules }: { rules: PackRule[] }) {
   return (
-    <table>
+    <div className="docs-table"><table>
       <thead>
         <tr>
           <th>Rule</th>
@@ -34,7 +34,7 @@ function PackTable({ rules }: { rules: PackRule[] }) {
           </tr>
         ))}
       </tbody>
-    </table>
+    </table></div>
   );
 }
 
@@ -112,7 +112,7 @@ export default function Page() {
       </p>
 
       <h2 id="document">The document</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Field</th><th>Values</th><th>Default</th><th>Meaning</th></tr>
         </thead>
@@ -126,10 +126,10 @@ export default function Page() {
           <tr><td><code>scope</code></td><td><code>{"{agents: [globs], environments: [names]}"}</code></td><td><code>{"{}"}</code></td><td>Which agents and environments the pack applies to at runtime. Empty means all.</td></tr>
           <tr><td><code>rules</code></td><td>list</td><td><code>[]</code></td><td>The rules.</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h2 id="rule">A rule</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Field</th><th>Default</th><th>Meaning</th></tr>
         </thead>
@@ -145,12 +145,12 @@ export default function Page() {
           <tr><td><code>redaction</code></td><td><code>mask</code></td><td>The style used when the effect is <code>redact</code>, <code>mask</code> or <code>tokenize</code>.</td></tr>
           <tr><td><code>overridable</code></td><td><code>false</code></td><td>Whether a narrower level of the hierarchy may weaken this rule.</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h2 id="effects">Effects</h2>
       <p>When several rules fire, across all bound packs, the strongest effect wins:</p>
       <Code lang="text" copy={false}>{`allow < tokenize < mask < redact < abstain < escalate < block`}</Code>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Effect</th><th>What happens when enforced</th></tr>
         </thead>
@@ -161,7 +161,7 @@ export default function Page() {
           <tr><td><code>escalate</code></td><td>An approval is created and the call waits for a person (<code>ApprovalRequired</code>, HTTP 202).</td></tr>
           <tr><td><code>block</code></td><td>Refused (<code>PolicyViolation</code>, <code>agentfox.Blocked</code>, HTTP 403).</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         In <strong>observe</strong> a pack still evaluates and records what it would
         have done: the decision&apos;s <code>verdict</code> is <code>allow</code> and its{" "}
@@ -185,7 +185,7 @@ export default function Page() {
       </p>
 
       <h3 id="provenance">Provenance</h3>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Level</th><th>The value came from</th></tr>
         </thead>
@@ -197,7 +197,7 @@ export default function Page() {
           <tr><td><code>subagent</code></td><td>Another agent.</td></tr>
           <tr><td><code>memory</code></td><td>The agent&apos;s long-term memory.</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         Ordered from most to least trusted; everything after <code>user</code> is untrusted.{" "}
         <code>auto()</code> reads it from the conversation (a value copied out of a{" "}
@@ -207,7 +207,7 @@ export default function Page() {
       </p>
 
       <h2 id="conditions">Conditions (<code>when</code>)</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Key</th><th>Type</th><th>Matches when</th></tr>
         </thead>
@@ -234,7 +234,7 @@ export default function Page() {
           <tr><td><code>completion_requires</code></td><td>list</td><td>On the <code>completion</code> surface: any named fact was not reported as true by the caller. Scope the rule with <code>surface: [completion]</code>.</td></tr>
           <tr><td><code>expr</code></td><td>text</td><td>An escape hatch: a Python expression over <code>agent</code>, <code>surface</code>, <code>tool</code>, <code>impact</code>, <code>risk_tier</code>, <code>environment</code>, <code>n_detections</code>, <code>max_score</code>, <code>prior_tool_count</code>, <code>taint</code>, with no builtins. Lint cannot reason about it and it does not compile to Rego meaningfully; avoid it.</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h3 id="built-in">Refusals that are not policy rules</h3>
       <p>
@@ -492,7 +492,7 @@ output: block ['pii.outbound_redact', 'output.card_number']`}</Output>
       </p>
       <h3 id="declare">Declaring a tool</h3>
       <Code>{`agentfox declare tool billing.export --impact high_impact --output-trust trusted --triggers "s3.put,email.send"`}</Code>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Option</th><th>Values</th><th>Meaning</th></tr>
         </thead>
@@ -501,7 +501,7 @@ output: block ['pii.outbound_redact', 'output.card_number']`}</Output>
           <tr><td><code>--output-trust</code></td><td><code>untrusted</code> (default) | <code>trusted</code></td><td>Whether values from this tool&apos;s output count as tool results. Declare <code>trusted</code> only for a system of record you control; it also tells <code>composition.escalation</code> the flow is intended.</td></tr>
           <tr><td><code>--triggers</code></td><td>comma-separated tool keys</td><td>What the call sets off downstream, read by the <code>cascade.*</code> rules.</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         A tool first seen in traffic is registered with an <em>inferred</em> impact: names
         with <code>send</code>, <code>delete</code>, <code>transfer</code> or{" "}
@@ -513,7 +513,7 @@ output: block ['pii.outbound_redact', 'output.card_number']`}</Output>
 
       <h3 id="grant-options">permit grant</h3>
       <Code>{`agentfox permit grant support-triage 'billing.*' --limit 'format:in=csv,json' --limit 'rows:lte=5000' --max-taint retrieved --requires-approval --expires-in-days 7 --yes`}</Code>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Option</th><th>Default</th><th>Meaning</th></tr>
         </thead>
@@ -526,7 +526,7 @@ output: block ['pii.outbound_redact', 'output.card_number']`}</Output>
           <tr><td><code>--action</code></td><td>every action</td><td>Limit the grant to named actions on the tool. Repeatable.</td></tr>
           <tr><td><code>--granted-by</code></td><td>you</td><td>Who is accountable, recorded in the audit chain.</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         The agent must already exist (it appears the first time it sends traffic). Every
         grant and revocation (<code>agentfox permit revoke CAP_ID</code>) is on the audit
@@ -544,7 +544,7 @@ output: block ['pii.outbound_redact', 'output.card_number']`}</Output>
         fails an equality, list or numeric limit. An unknown operator is refused before
         anything is written.
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Operator</th><th>Example</th><th>Holds when the argument is</th></tr>
         </thead>
@@ -558,7 +558,7 @@ output: block ['pii.outbound_redact', 'output.card_number']`}</Output>
           <tr><td><code>contains</code></td><td><code>subject:contains=ticket</code></td><td>text containing it, case-insensitively</td></tr>
           <tr><td><code>matches</code></td><td><code>to:matches=@example\.com$</code></td><td>text matching a regular expression (search)</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h3 id="taint-scope">Taint scope</h3>
       <p>
@@ -566,7 +566,7 @@ output: block ['pii.outbound_redact', 'output.card_number']`}</Output>
         decides what provenance the rules see for a tool call. The recorded decision
         always keeps the session value and notes which scope was applied.
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Value</th><th>What policy sees</th><th>Trade-off</th></tr>
         </thead>
@@ -574,7 +574,7 @@ output: block ['pii.outbound_redact', 'output.card_number']`}</Output>
           <tr><td><code>session</code> (default)</td><td>The worst provenance anywhere in the run so far, plus the call&apos;s own arguments.</td><td>Contains injections that steer an argument without copying text. Escalates more honest calls.</td></tr>
           <tr><td><code>argument</code></td><td>Only what this call&apos;s arguments were copied from.</td><td>Lets honest calls through after the agent read the web. Misses an injection whose text never lands in an argument.</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h2 id="business-rules">Business rules (threshold ladders)</h2>
       <p>
@@ -602,7 +602,7 @@ bands:
     approver_role: finance-lead
   - outcome: block
     reason: credits above $5,000 go through the finance system`}</Code>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Field</th><th>Default</th><th>Meaning</th></tr>
         </thead>
@@ -616,8 +616,8 @@ bands:
           <tr><td><code>mode</code></td><td><code>observe</code></td><td>The ladder&apos;s own mode, whatever mode the packs are in. <code>--mode</code> on apply overrides it.</td></tr>
           <tr><td><code>bands</code></td><td>required</td><td>Ordered by <code>upto</code>, ascending. Each covers values above the previous <code>upto</code>, up to and including its own. The last band omits <code>upto</code>.</td></tr>
         </tbody>
-      </table>
-      <table>
+      </table></div>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Band field</th><th>Meaning</th></tr>
         </thead>
@@ -628,7 +628,7 @@ bands:
           <tr><td><code>approver_role</code></td><td>Who may approve an <code>escalate</code>.</td></tr>
           <tr><td><code>verify</code></td><td>Required for a <code>verify</code> band: <code>check</code> (the check key), <code>arguments</code>, <code>expect</code> (what passing looks like; absent means truthy), <code>on_pass</code> (default <code>allow</code>), <code>on_fail</code> and <code>on_error</code> (default <code>escalate</code>), <code>timeout_ms</code> (5000). AgentFox does not run the check: your code does, with <code>agentfox.capabilities.business.run_verification</code>.</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <ul>
         <li>When several ladders match, the strictest outcome wins. A ladder never loosens a security verdict.</li>
         <li>A missing field, a negative value, text that is not a number, or a value in another currency escalates. It never passes.</li>
@@ -664,7 +664,7 @@ bands:
         <code>POST /api/import/agent-governance/plan</code>, then{" "}
         <code>/api/import/agent-governance</code> (<code>skip</code> leaves items out).
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Source</th><th>Becomes</th></tr>
         </thead>
@@ -679,7 +679,7 @@ bands:
           <tr><td>regex or substring on message text</td><td>a custom pattern rule that detects, plus a policy rule acting on it</td></tr>
           <tr><td>Rego <code>input</code>, <code>output</code>, <code>pre_tool_call</code>, <code>post_tool_call</code></td><td>the input, output, tool-argument and tool-result surfaces</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         Not translated, and absent from the import: comparisons of two fields (unless both
         are tool, agent, surface or environment), negations, rate limits, conditions on
@@ -719,7 +719,7 @@ billing.large_export                 block     enforce  org:*  —
         <code>scope_id</code> (which team, agent or user; <code>*</code> for all) and a
         compose mode:
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th><code>compose</code></th><th>Meaning</th></tr>
         </thead>
@@ -728,7 +728,7 @@ billing.large_export                 block     enforce  org:*  —
           <tr><td><code>restrict</code></td><td>Tighten only. A rule with the same id and a weaker effect is rejected.</td></tr>
           <tr><td><code>override</code></td><td>May weaken a rule, but only one the broader level marked <code>overridable: true</code>.</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         Packs loaded by <code>agentfox init</code> are bound at <code>org:*</code> with{" "}
         <code>extend</code>. To place one elsewhere, post it to{" "}
@@ -933,7 +933,7 @@ fired contains out if {
         from false-positive labels (<code>proposals from-labels</code>). A loosening is never
         applied by automation.
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Status</th><th>Meaning</th></tr>
         </thead>
@@ -945,7 +945,7 @@ fired contains out if {
           <tr><td><code>applied</code>, <code>verified</code></td><td>In force; <code>verify</code> records whether it did what it promised.</td></tr>
           <tr><td><code>rejected</code>, <code>rolled_back</code>, <code>superseded</code></td><td>Not in force.</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         A tool declaration applies to the whole organisation, so it needs two different
         approvers: the same person approving twice is refused. Apply, rollback and verify
@@ -959,7 +959,7 @@ fired contains out if {
         (omit <code>--agent</code> for the default). Conditions you do not name keep these
         defaults:
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Condition</th><th>Default</th></tr>
         </thead>
@@ -973,7 +973,7 @@ fired contains out if {
           <tr><td><code>regulated_topics</code></td><td>legal, medical, financial_advice, complaint, discrimination</td></tr>
           <tr><td><code>urgent_flags</code></td><td>self_harm, urgency, legal_threat, regulatory, discrimination (self_harm cannot be switched off)</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         In <code>observe</code> (the default) the hourly <code>escalation.scan</code> job
         raises a <code>missed_escalation</code> finding for each conversation that qualified.
@@ -992,7 +992,7 @@ fired contains out if {
         fact, aggregate, procedure). Boundaries start in observe;{" "}
         <code>agentfox test boundary</code> shows the refusal without changing anything.
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Abstention kind</th><th>When</th></tr>
         </thead>
@@ -1003,7 +1003,7 @@ fired contains out if {
           <tr><td><code>unsupported_question_type</code></td><td>A question type the agent is not set up to answer.</td></tr>
           <tr><td><code>out_of_scope_entity</code></td><td>Only when the caller sends <code>known_entities</code>: the question names an identifier-shaped token not among them.</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h2 id="tasks">Commands</h2>
       <TaskTable

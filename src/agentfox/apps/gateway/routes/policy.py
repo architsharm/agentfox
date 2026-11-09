@@ -141,19 +141,29 @@ def get_effective(
     agent: str | None = None,
     team: str | None = None,
     user: str | None = None,
-    environment: str = "production",
+    environment: str | None = None,
     session: Session = Depends(db),
     _u: User = Depends(current_user),
 ) -> dict[str, Any]:
     """The policy actually in force for a subject, with per-rule provenance.
 
+    ``environment`` defaults to the one the runtime resolves the agent in: its own
+    registered environment, or ``production`` without an agent. Business rules
+    (approval limits) are listed too, with ``level`` ``business``.
+
     With ``agent``, each rule also says whether it was changed for that agent only
     (``changed_for_agent``), and ``agent_changes`` lists every rule the agent's own
     layer sets beside the workspace default it replaces.
     """
+    from agentfox.capabilities.business.store import effective_entries
+    from agentfox.platform.policy import runtime_environment
+
+    environment = environment or runtime_environment(session, agent)
     out = effective_for(
         session, agent_slug=agent, environment=environment, team=team, user=user
     ).explain()
+    # Business rules (approval limits) are in force too, each in its own mode.
+    out["rules"] = [*out["rules"], *effective_entries(session, agent)]
     if agent:
         changes = agent_scope.agent_changes(session, agent)
         by_id = {c["rule_id"]: c for c in changes}
@@ -162,6 +172,7 @@ def get_effective(
             rule["changed_for_agent"] = bool(change and change["kind"] == "changed")
             rule["added_for_agent"] = bool(change and change["kind"] == "added")
         out["agent_changes"] = changes
+    out["environment"] = environment
     return out
 
 
@@ -585,11 +596,21 @@ def patch_rule(
         }.items()
         if v is not None
     }
+    # What each changed field was, so a rule's history can say "from Medium to High".
+    old = {
+        "effect": rule.effect,
+        "enabled": rule.enabled,
+        "message": rule.message or "",
+        "on_block": rule.on_block,
+        "min_score": rule.when.detection.min_score if rule.when.detection else None,
+        "overridable": rule.overridable,
+    }
+    was = {k: old[k] for k in changes if old.get(k) is not None}
     _policy, version = save_policy(
         session,
         patched,
         author=user.email,
-        notes=payload.notes or f"{rule_id}: {changes}",
+        notes=payload.notes or f"{rule_id}: {changes}" + (f" (was {was})" if was else ""),
         bind_mode="observe",
         level=binding.level if binding else "org",
         scope_id=binding.scope_id if binding else "*",
@@ -611,6 +632,69 @@ def patch_rule(
         "body": version.body,
         "mode": binding.mode if binding else None,
         "needs_simulation": bool(binding and binding.mode == "enforce"),
+    }
+
+
+@router.post("/{key}/versions/{version}/restore", status_code=201)
+def restore_version(
+    key: str,
+    version: int,
+    session: Session = Depends(db),
+    user: User = Depends(require("policy")),
+) -> dict[str, Any]:
+    """Make an earlier version's rules live again, as a new version.
+
+    Undoing a change (a Tune applied, a rule switched off) used to mean redoing it by
+    hand. The restored rules are saved as the newest version, so history only moves
+    forward and the restore itself is one more audited change, and they go live in
+    the pack's current mode. An enforcing pack is replayed over recent traffic first
+    and the impact returned (`publish_in_current_mode`), which is why restoring one
+    needs the production policy role.
+    """
+    from agentfox.platform.policy.publish import current_mode, publish_in_current_mode
+
+    policy = session.scalar(select(Policy).where(Policy.key == key))
+    if policy is None:
+        raise HTTPException(404, f"unknown policy '{key}'")
+    source = session.scalar(
+        select(PolicyVersion).where(
+            PolicyVersion.policy_id == policy.id, PolicyVersion.version == version
+        )
+    )
+    if source is None:
+        raise HTTPException(404, f"policy '{key}' has no version {version}")
+    _binding, live = current_binding(session, policy.id)
+    if live is not None and live.version == version:
+        raise HTTPException(409, f"version {version} of '{key}' is already live")
+    if current_mode(session, key) == "enforce" and not may_enforce(user):
+        raise HTTPException(
+            403, f"'{key}' is blocking; restoring a version of it needs a production policy role"
+        )
+    try:
+        doc = load_version_document(source)
+    except UnloadablePolicyVersion as exc:
+        raise HTTPException(422, str(exc)) from exc
+    published = publish_in_current_mode(
+        session,
+        doc,
+        actor=user.email or user.id,
+        notes=f"Restored version {version}",
+    )
+    chain.append(
+        session,
+        "policy.version_restored",
+        actor_type="user",
+        actor_id=user.email or user.id,
+        subject_type="policy",
+        subject_id=key,
+        payload={"restored": version, "version": published.version, "mode": published.mode},
+    )
+    return {
+        "key": key,
+        "restored": version,
+        "version": published.version,
+        "mode": published.mode,
+        "simulation": published.simulation,
     }
 
 

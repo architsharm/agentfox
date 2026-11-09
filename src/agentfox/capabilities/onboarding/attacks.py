@@ -729,6 +729,18 @@ def control_counts(suite: list[Attack]) -> dict[str, int]:
     return out
 
 
+def suite_size(suite: list[Attack]) -> str:
+    """ "117 attacks + 12 normal requests": the suite counted the way the dashboard
+    counts it (the run's ``total`` and ``controlsTotal``). The CLI used to print
+    ``len(suite)``, 129 "attacks and checks", beside a card that said 117 attacks."""
+    attacks = sum(counts(suite).values())
+    controls = sum(control_counts(suite).values())
+    text = f"{attacks} attack{'' if attacks == 1 else 's'}"
+    if controls:
+        text += f" + {controls} normal request{'' if controls == 1 else 's'}"
+    return text
+
+
 def skipped(suite: list[Attack]) -> list[dict[str, str]]:
     """The sets not run, per agent, and why."""
     return [

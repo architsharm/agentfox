@@ -310,9 +310,17 @@ def test_every_tool_call_is_recorded_and_the_default_mode_does_not_break_the_app
     with _db() as session:
         decisions = session.query(Decision).filter(Decision.surface == "tool_args").all()
         assert [d.tool_key for d in decisions] == ["send_email"]
-        # The enforcer's verdict is recorded as it was decided (capability default-
-        # deny); the span records that this process let the call through, and why.
-        assert decisions[0].verdict == "block"
+        # What happened is recorded: the call ran, so the decision reads allowed, never
+        # Blocked. The rule that would have refused it (capability default-deny) is kept
+        # with its effect, and the scope this process applied says why it did not; the
+        # span records the same.
+        assert decisions[0].verdict == "allow"
+        assert decisions[0].mode == "observe"
+        assert any(
+            r["rule_id"] == "capability.default_deny" and r["effect"] == "block"
+            for r in decisions[0].rules_fired_json
+        )
+        assert "capability.default_deny" in decisions[0].taint_summary_json["exempt_rules"]
         span = session.query(Span).filter(Span.kind == "tool").one()
         assert span.name == "send_email"
         assert span.attributes_json["agentfox.runtime.autoguard.raised"] is False

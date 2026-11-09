@@ -1,4 +1,5 @@
-"""Slack alerts for monitor findings: a short message when one opens, reopens or closes.
+"""Slack alerts for monitor findings: a short message when one opens, reopens or closes,
+and when a call is held for a person's approval.
 
 The deployment-wide finding webhook (`core.webhooks`) already sends every committed
 finding at or above `webhook_min_severity`, monitor findings included, as signed JSON
@@ -41,7 +42,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from agentfox import __version__
 from agentfox.core.config import get_settings
-from agentfox.core.models import AlertChannel, Finding, Monitor
+from agentfox.core.models import AlertChannel, ApprovalRequest, Finding, Monitor
 
 log = logging.getLogger(__name__)
 
@@ -160,6 +161,69 @@ def queue_finding_alert(
 
 
 # ---------------------------------------------------------------------------
+# Held calls
+# ---------------------------------------------------------------------------
+
+_HELD_KEY = "agentfox_slack_held"
+
+
+def approval_link(approval_id: str) -> str:
+    base = (get_settings().console_url or "").rstrip("/")
+    return f"{base}/app/approvals/{approval_id}" if base else ""
+
+
+def format_held(approval: ApprovalRequest, agent: str | None) -> dict[str, Any]:
+    """The Slack body for a call held for a person: who, what, why, and the link."""
+    what = approval.tool_key or "a call"
+    if what.startswith("message:"):
+        what = f"a message ({what.removeprefix('message:')})"
+    else:
+        what = f"`{_escape(what)}`"
+    why = (approval.reason or "").split("; ")[0].strip()
+    head = f"*AgentFox* · Held for approval: {_escape(agent or 'an agent')} wants to run {what}"
+    link = approval_link(approval.id)
+    tail = " · ".join(
+        p for p in (_escape(why), f"<{link}|Approve or deny>" if link else approval.id) if p
+    )
+    return {"text": f"{head}\n{tail}"}
+
+
+def queue_held_alert(session: Session, approval: ApprovalRequest) -> int:
+    """Queue a Slack message for a call held for a person; sent once the session commits.
+
+    Sent to every channel whatever its minimum severity: a held call waits for an
+    answer and is denied when nobody gives one, so the people who can answer must
+    hear of it. Returns how many channels it was queued for."""
+    try:
+        from agentfox.core.models import Agent
+
+        agent = session.get(Agent, approval.agent_id) if approval.agent_id else None
+        body = format_held(approval, (agent.name or agent.slug) if agent else None)
+        queued = 0
+        for url, _min_severity in targets(session):
+            session.info.setdefault(_INFO_KEY, []).append((url, body))
+            queued += 1
+        return queued
+    except Exception:
+        log.warning("slack alert: could not queue a held-call message", exc_info=True)
+        return 0
+
+
+def _after_flush(session: Session, _context: Any) -> None:
+    # Only note the new approvals here; reading the channel is a query, which waits
+    # for the flush to finish (_after_flush_postexec).
+    for obj in session.new:
+        if isinstance(obj, ApprovalRequest) and obj.status == "pending":
+            session.info.setdefault(_HELD_KEY, []).append(obj)
+
+
+def _after_flush_postexec(session: Session, _context: Any) -> None:
+    held = session.info.pop(_HELD_KEY, None)
+    for approval in held or []:
+        queue_held_alert(session, approval)
+
+
+# ---------------------------------------------------------------------------
 # Session listeners and delivery
 # ---------------------------------------------------------------------------
 
@@ -175,6 +239,7 @@ def _after_soft_rollback(session: Session, previous_transaction: Any) -> None:
     # carries one with it.
     if getattr(previous_transaction, "parent", None) is None:
         session.info.pop(_INFO_KEY, None)
+        session.info.pop(_HELD_KEY, None)
 
 
 def install(factory: sessionmaker[Session]) -> sessionmaker[Session]:
@@ -183,6 +248,9 @@ def install(factory: sessionmaker[Session]) -> sessionmaker[Session]:
         return factory
     event.listen(factory, "after_commit", _after_commit)
     event.listen(factory, "after_soft_rollback", _after_soft_rollback)
+    # A call held for a person is announced in the same channels (Settings → Alerts).
+    event.listen(factory, "after_flush", _after_flush)
+    event.listen(factory, "after_flush_postexec", _after_flush_postexec)
     factory._agentfox_alerts = True  # type: ignore[attr-defined]
     return factory
 

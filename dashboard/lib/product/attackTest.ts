@@ -32,6 +32,8 @@ export type Run = {
   status: "running" | "done" | "failed";
   phase: "before" | "after";
   total: number;
+  /** Normal requests in the suite (benign controls), beside `total` attacks. */
+  controlsTotal?: number;
   byType: ByType[];
   waitingForRunner: boolean;
   error: string | null;
@@ -215,6 +217,64 @@ export type Tests = {
 };
 
 /** The running run, if any. */
+/** Attacks in a run that got through. */
+export function gotThroughOf(run: Run): number {
+  return typeof run.gotThrough === "number" ? run.gotThrough : run.byType.reduce((n, t) => n + (t.gotThrough ?? 0), 0);
+}
+
+/**
+ * The panel's one-line result: "22 → 9 attacks got through · 12 of 12 normal
+ * requests still answered". Rows alone left the reader to add up four fractions to
+ * find out whether the guardrails helped. Null until a run has reached a verdict.
+ */
+export function headline(before: Run | null | undefined, after: Run | null | undefined): string | null {
+  const b = before && runState(before) !== "not_run" ? before : null;
+  const a = after && runState(after) !== "not_run" ? after : null;
+  if (!b && !a) return null;
+  const attacks = b && a
+    ? `${gotThroughOf(b)} → ${gotThroughOf(a)} attacks got through`
+    : `${gotThroughOf((a || b)!)} of ${ran((a || b)!)} attacks got through`;
+  const last = a || b!;
+  const total = last.controls ?? last.byType.reduce((n, t) => n + (t.controls ?? 0), 0);
+  if (!total) return attacks;
+  const blocked = last.overBlocked ?? last.byType.reduce((n, t) => n + (t.overBlocked ?? 0), 0);
+  const errored = last.byType.reduce((n, t) => n + (t.controlsErrored ?? 0), 0);
+  const answered = total - blocked - errored;
+  return `${attacks} · ${answered} of ${total} normal request${total === 1 ? "" : "s"} ${a && b ? "still " : ""}answered`;
+}
+
+/** "36 not run: needs a tool that sends email": the reason beside the count. */
+export function notRunWhy(row: ByType | undefined): string | null {
+  const n = row?.notRun ?? 0;
+  if (!row || !n) return null;
+  const why = plainError(row.notRunReason);
+  return why ? `${n} not run: ${why.replace(/\.$/, "")}` : `${n} not run`;
+}
+
+/**
+ * Sets where more got through with the guardrails on than without. The guardrails
+ * didn't make the agent weaker; a live model answers the same attack differently
+ * from one run to the next, and the panel says so instead of hiding the row.
+ */
+export function worseRows(before: Run | null | undefined, after: Run | null | undefined): { label: string; before: string; after: string }[] {
+  if (!before || !after) return [];
+  const out: { label: string; before: string; after: string }[] = [];
+  for (const a of after.byType) {
+    const b = before.byType.find((t) => t.type === a.type);
+    if (!b || !ranOf(a) || !ranOf(b)) continue;
+    if (a.gotThrough > b.gotThrough) {
+      out.push({ label: a.label, before: `${b.gotThrough}/${ranOf(b)}`, after: `${a.gotThrough}/${ranOf(a)}` });
+    }
+  }
+  return out;
+}
+
+/** "Testing: 12 of 36" while a set runs; shown as progress, never as a result. */
+export function progressText(live: ByType | undefined): string | null {
+  if (!live || live.done >= live.total) return null;
+  return `testing ${live.done} of ${live.total}`;
+}
+
 export function liveRun(tests: Tests | null): Run | null {
   if (tests?.first?.status === "running") return tests.first;
   if (tests?.withBasic?.status === "running") return tests.withBasic;
@@ -243,14 +303,36 @@ export function campaignNumbers(summary: Record<string, any> | null | undefined)
   watching: number;
   through: number;
   tone: "ok" | "bad" | undefined;
+  /** Normal requests in the run (benign controls), and how many were answered. */
+  controls: number;
+  answered: number;
+  /** Share of attacks stopped live, 0..1, or null when none ran. Replaces "Score",
+   *  which was recall counting watching catches as stopped: "100%" beside "11 got
+   *  through". */
+  stoppedShare: number | null;
 } {
   const s = summary || {};
+  // Attacks only: `probes_run` also counts the normal requests, which made "22 tried"
+  // sit above 7 stopped + 11 got through.
   const ran = Number(s.attacks_run ?? s.probes_run ?? 0) || 0;
   const live = typeof s.attacks_stopped_live === "number";
   const stopped = live ? s.attacks_stopped_live : Number(s.attacks_blocked || 0);
   const watching = live ? Number(s.attacks_watching || 0) : 0;
   const through = live ? Number(s.attacks_through_live || 0) : Number(s.attacks_succeeded || 0);
-  return { ran, stopped, watching, through, tone: !ran ? undefined : through ? "bad" : "ok" };
+  const controls = Number(s.benign_probes_run || 0) || 0;
+  const blocked = Number(
+    (typeof s.benign_over_blocked_live === "number" ? s.benign_over_blocked_live : s.benign_false_positives) || 0,
+  );
+  return {
+    ran,
+    stopped,
+    watching,
+    through,
+    tone: !ran ? undefined : through ? "bad" : "ok",
+    controls,
+    answered: Math.max(0, controls - blocked),
+    stoppedShare: ran ? stopped / ran : null,
+  };
 }
 
 export const POLL_MS = 1500;

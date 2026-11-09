@@ -53,10 +53,16 @@ class SimulationDiff:
     runs: set[str] = field(default_factory=set)
 
     def to_json(self) -> dict[str, Any]:
+        # What the candidate's *own* rules would stop: `would_stop` counts a call any
+        # rule in force would stop with the candidate enforcing, which credits the
+        # candidate with another watching pack's catches. "What would this pack stop?"
+        # is this number.
+        own = [r for r in self.would_stop if r.get("own") in ("block", "escalate")]
         return {
             "replayed": self.replayed,
             "runs_replayed": len(self.runs),
             "runs_would_stop": len({r["trace_id"] for r in self.would_stop if r["trace_id"]}),
+            "runs_own_would_stop": len({r["trace_id"] or r["decision_id"] for r in own}),
             "unchanged": self.unchanged,
             "newly_blocked": self.newly_blocked,
             "newly_allowed": self.newly_allowed,
@@ -68,6 +74,7 @@ class SimulationDiff:
                 "newly_allowed": len(self.newly_allowed),
                 "newly_escalated": len(self.newly_escalated),
                 "would_stop": len(self.would_stop),
+                "own_would_stop": len(own),
                 "would_hide": len(self.would_hide),
             },
         }

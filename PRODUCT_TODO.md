@@ -19,7 +19,7 @@ A running list as we go. Newest priorities first. `[ ]` open · `[~]` started ·
   - Write a redaction back into the `message` item's `output_text` part.
   - `previous_response_id` / `conversation` keep history on OpenAI's servers, so the request does not carry the whole conversation. Provenance for earlier turns has to come from the session, or be marked as unknown.
   - Hosted tools (web search, file search, code interpreter) run at OpenAI. Record them from the output items; they can't be stopped before they run.
-- [ ] Workspace packs apply on top of a project's own guardrails: `tool-containment` enforces (destructive SQL/shell) and baseline watches. Decide whether a brand-new workspace should start everything in watch mode.
+- [x] Workspace packs apply on top of a project's own guardrails. Decided (audit 2026-11-08, B1): a brand-new workspace (`agentfox init`, `agentfox up`) starts every pack watching, tool-containment included; destructive SQL/shell, missing grants and tampering are refused regardless. The pack still declares `enforce`, used by `up --mode defaults`, the demo seed and the benchmarks.
 - [ ] **Attack test** (`capabilities/onboarding/runner.py`, `attacks.py`; the map's panel):
   - [ ] An "after" test of a project whose agents are still drafts is dominated by `capability.denied` (nothing granted until the agents are added; "Add all" grants the tools their code hands them). Every tool call is stopped and ordinary requests show as over-blocked. Say so on the panel, or test after the agents are added.
   - [ ] A re-run hides the previous "with basic guardrails" numbers until it finishes; keep the last finished one visible.
@@ -71,7 +71,6 @@ A running list as we go. Newest priorities first. `[ ]` open · `[~]` started ·
 - [ ] **Render blueprint**: `deploy/render.yaml` sets the dashboard's `AGENTFOX_API_URL` from `property: hostport` (no scheme, and `lib/env.ts:apiBase()` adds none), and the gateway block has no `AGENTFOX_TOKEN_ENCRYPTION_KEY`, so connecting GitHub returns 503.
 - [ ] **Blocked calls get different status codes**: `/v1/guard/tool_call` returns 200 with a block verdict, `/v1/mcp/call` returns 403. Make them match, or say so in the gateway guide.
 - [ ] **Injection classifier reported as timed out while under budget** (253 ms of a 300 ms budget shows `injection.classifier: timeout`). Check the classifier deadline against the request budget in `runtime/enforcement`.
-- [ ] **Held calls notify nobody**: approvals have no notification channel (Slack covers only issues), so a held call expires to deny unseen.
 - [ ] **Shadow agent raised twice**: `/api/attention` (`routes/onboarding.py`) adds "running and was never registered" on top of the open `shadow_agent` finding.
 - [ ] **Agent environment defaults to "production"** (`core/models/registry.py`), so a dev gateway's agents and runs are labelled production.
 - [ ] **Limit blocks don't say which value broke the limit**: `capability.constraint_violated` run detail should say e.g. "amount 40 > 25".

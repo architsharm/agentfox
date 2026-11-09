@@ -11,7 +11,175 @@ the file it came from.
 
 ## [Unreleased]
 
+### Added
+- **Restore this version.** A pack's or a business rule's History has "Restore this
+  version": the old rules go live again as a new version, in the current mode
+  (`POST /api/policies/{key}/versions/{version}/restore`,
+  `GET /api/business/rules/{key}/history`,
+  `POST /api/business/rules/{key}/versions/{version}/restore`).
+- **Held calls reach Slack.** With a Slack channel connected (Settings → Alerts), every
+  call held for approval is posted with a link to approve or deny it. The Approvals
+  page says who is told and links to where to set it up.
+
+### Changed
+- **One rule model for business rules.** An approval limit written in New rule is
+  listed in Applied rules (in Your rules), its page
+  (`/app/policies/rules/business.<key>`) shows its real mode, hits and history, and
+  `agentfox policy effective` and `policy list` list and count it.
+- **Business rules start blocking through the same gate as libraries.** Start blocking
+  replays the last 7 days of calls through the rule and shows what it would have held,
+  then confirms; the gateway refuses to enforce without that recorded simulation
+  (`POST /api/business/rules/{key}/simulate`). Switch to watching asks first.
+- **A denial sticks.** A retry that presents the approval a person denied, for the same
+  call, is blocked with the `approval.denied` rule and their reason, instead of
+  filing a fresh approval.
+- **An approval's reason leads with the rule that held the call**; rules that were only
+  watching come after it, labelled "(watching only)".
+- **A held call's run shows its answer**: Approved or Denied and by whom, in the run and
+  the runs list, and its Approval link opens that approval.
+- **Approvals follow the project switcher** like the other pages.
+- **The default project** is the one with the most recent traffic among projects with an
+  added agent, never a shadow agent. `GET /api/projects` carries `last_seen_at`.
+- `agentfox policy effective` (and `GET /api/policies/effective`) default to the
+  environment the gateway resolves the agent in, not the CLI's configured one, and the
+  CLI prints a title beside each rule id. `agentfox permit approvals list` prints full
+  ids and wraps between words.
+- **Policy screens say things in words and finish what they start.** On an agent's map,
+  a rule change that would loosen a rule its library closes now explains why and offers
+  "Allow agents to loosen it, then apply"; clicking a rule on a rail opens its settings
+  in place (block/ask/watch/off for this agent, and its threshold, "Block if prompt
+  injection ≥ 0.7"); tool limits read "amount under $1,000 · currency USD only", not
+  JSON; node names wrap instead of cutting off, at a readable size.
+- A Block or Ask chosen in a library that only watches reads "Block · watching" and is
+  dimmed, on the map and in Tune; a watching rule's header says "Would block". Blocking
+  is red, holding amber; the Blocking mode pill is no longer green.
+- Tune: "Apply this change to" starts at the rule's current scope; "Checked by" marks
+  checks that are off, have no model downloaded or have no judge on.
+- A rule's History reads "Sensitivity changed from Medium to High"; a saved one-rule
+  change now notes the value before it (`(was {...})`).
+- Library drawers show rule titles, render the description's markdown behind
+  "Details", and move control IDs to a details row. The Checks tab names every check
+  (no `custom.validators`, no `JEV`, one "Prompt injection (judge)").
+- Approval limits and words rules: help text, "Preview" and "Save rule", a readable
+  name instead of the slug, no false "Not used" for the sentence that became the allow
+  band, and an "Applies to" picker (this agent by default, or every agent). Business
+  rules now return the agent they are scoped to (`agent`).
+- Libraries: one primary action per card, a "Recommended" tag on Basic guardrails, and
+  "Apply to the rest of <project>". Applied rules are grouped by library, with
+  Blocking / Watching filters.
+- One look across the site and the app (UI audit, 2026-11-08). App links, focus rings
+  and checkboxes use the brand rose instead of indigo; every app button is a pill; an
+  active filter chip looks like the segmented control; "Blocking" is never green; table
+  headers start with a capital; sidebar page names are set in the site's sans.
+- One name per area: the traces area is **Activity** everywhere (sidebar, title,
+  breadcrumb, back links, Cmd-K); **Testing** for its page title; the agents list is
+  **Agents** with **New agent** (a *project* is a connected repository or system).
+- App pages say things in words: compliance rationale as sentences, agent display names
+  in issue titles and activity rows, issue evidence as plain lines with IDs in a
+  copyable details row, hand-offs as "Handed off to …", "Default workspace" instead of
+  `org_default`, readable audit-log subjects, control IDs labelled as such.
+- Sign-in page: styled token button, wrapping self-hosted command, theme button, and the
+  brand wall in the site's palette. The 404 page has the public header and footer.
+- Docs: a "Contents" drawer on phones, scrolling tables, `/login` instead of the missing
+  `/signup`, and one install path (`pip install -U agentfox`, then
+  `agentfox init --key … --server …`).
+- Blog: re-shot images against the current UI, one image per post, the dark callout's
+  secondary button is visible, and screenshots are dimmed in dark mode.
+- Public copy: the footer uses the control-plane line, pricing says what is offline by
+  default, the privacy page drops source line numbers, benchmark wording no longer
+  contradicts itself (numbers unchanged).
+- **A new workspace starts every pack watching, tool containment included.** `agentfox init`
+  bound `tool-containment` in enforce, so `intent.undeclared_irreversible` held a normal $50
+  transfer with no stated task for a person, against the promise that nothing your users do
+  is blocked until you say so. `init` now binds every shipped pack in observe (a second run
+  keeps each pack's mode) and says how to start blocking: `agentfox policy enforce
+  tool-containment`, or Start blocking in the dashboard after its simulation. A missing
+  grant (once the agent holds any), a destructive statement such as `rm -rf ~/` and
+  tampering with AgentFox are refused whatever the packs' modes. The pack still declares
+  `enforce`: `agentfox up --mode defaults` ("Shipped defaults") now applies it, where it
+  left whatever `init` had bound; the demo seed and the benchmarks are unchanged.
+- **A guard response's `mode` is the mode of the rule that decided it.** A call held by an
+  enforcing rule read `mode: observe` when a watching rule had fired the same effect first,
+  or when a grant or a destructive statement decided it with every pack watching.
+- **`agentfox.Blocked` reads as one sentence**, naming the rule by its dashboard title
+  ("Jailbreaks & prompt injection: … (also: System prompt extraction).") instead of every
+  rule's reason joined with ".;". Left uncaught, it prints one line, "AgentFox blocked this
+  message: <reason>. Catch agentfox.Blocked to handle it.", instead of a traceback
+  (`AGENTFOX_VERBOSE=1` keeps it); every other exception reaches the previous
+  `sys.excepthook` untouched. The Python reference shows how to catch it.
+- `agentfox init --key` prints the full "Missing something?" list of recognised shapes only
+  when it found no agent or no tool; otherwise one line points to the docs.
+- `agentfox init --server <url>` with no `--key` reads `AGENTFOX_API_KEY`, so the key
+  stays out of `ps` and the shell history. A plain `agentfox init` still sets up this
+  machine. (The dashboard's setup card keeps `--key` until a release with this is out.)
+- **The playground's "Watching" really watches.** The switch moves every content check in
+  the sandbox (the baseline, each sandbox agent's own layer, custom words and topics);
+  only the baseline used to flip, so an injection was blocked while "Watching". Watching,
+  it shows "would block" and the agent's reply; blocking, it is stopped. Limits on what an
+  agent may do apply in both.
+- Playground sandboxes are made on the first action, not on page load; the creation limit
+  is 30 an hour per visitor (was 8 per proxy address, which on Vercel meant everyone). Over
+  it, the answer says when to try again (`Retry-After`, `retry_after_seconds`) and the page
+  shows a notice instead of a "Start a new one" button that could not work.
+- Playground "why" is one sentence; regulation citations sit behind a disclosure. The
+  poisoned-document suggestion stays after the first message. On phones the agent picker
+  is one scrolling row and the chat follows it.
+- **Attack-test panel:** a headline total ("22 → 9 attacks got through · 12 of 12 normal
+  requests still answered"), a legend that says fewer is better, "N not run: why" under its
+  set, progress shown as progress on every run, and a note naming any set that got worse
+  (results of a live model vary between runs). The action is "Turn on basic guardrails and
+  test again", after a line saying the first run was watching only.
+- One count for the suite: the run carries `controlsTotal`, and the card and `agentfox
+  init` both say "117 attacks + 12 normal requests" (the CLI said 129 "attacks and checks").
+- **Testing → Attack tests:** "Attacks" counts attacks only (it counted the normal
+  requests too), so stopped + got through adds up; "Score" (recall, counting watching
+  catches as stopped) is now "Stopped live"; normal requests answered get their own column.
+- **Threat coverage** counts an attack caught only by a watching rule as got through, the
+  Testing page's definition, and no longer counts normal requests as attempts.
+- **Reports:** the "Projects" tile counted agents and is now "Agents"; High-risk agents
+  uses the same counts as Agents by risk; "Requests stopped" is "Requests held or blocked"
+  and says it is traffic. The Frameworks headline is the workspace's own figure, not an
+  average of framework rows, and Compliance uses the same definition (working of every
+  control that applies) instead of "of measured".
+- `/live` says how long ago the last run was and shows a "Behind schedule" notice past two
+  hours; it says "on an hourly schedule" rather than promising "every hour".
+- The CI tab never prints a loopback gateway address in a snippet meant for a CI runner; it
+  uses `$AGENTFOX_URL` and says so.
+
+### Fixed
+- "Start blocking" on Your rules said "0 would have been stopped" right after a words
+  rule had flagged a message: it counted calls newly blocked compared with what a
+  watching rule already would have done. It now counts what the pack's own rules
+  would stop (`runs_own_would_stop` in a simulation).
+- "Your rules" said "2 rules · blocking" while one of them was only watching; it now
+  says each rule's state ("1 blocking, 1 watching").
+- **After a hand-off, calls are credited to the agent running them.** `agentfox.auto()`
+  credited every call to the agent it names, so after the OpenAI Agents SDK triage agent
+  handed off, the FAQ agent's own `faq_lookup_tool` was listed as "Blocked: tools the agent
+  wasn't given" with a high issue "triage-agent tried to faq_lookup_tool without
+  permission". Each model and tool call now goes to the agent the framework is running:
+  the Agents SDK's current agent (read as its models are called), a LangGraph supervisor
+  or swarm member (the graph namespace it runs in) and a CrewAI agent running its task. The
+  agent a system starts with keeps the name `auto()` was given.
+- **A call that only would have been blocked is never recorded as blocked.** A tool call
+  `auto()` let run (observe mode, or the no-grants carve-out) was stored with verdict
+  `block` and listed as Blocked. It is recorded as allowed, in observe, with the rule kept
+  as what would have blocked it ("Would block" on the runs list).
+- `.github/workflows/monitors.yml`, which drives the hosted job runner and so `/live`, ran
+  as a green no-op since it was added: the cron secret was set and the URL was not. It now
+  falls back to a repository variable and, upstream, the hosted gateway, and fails when
+  half-configured.
+
 ### Security
+- `docs/screens/setup-key.png` showed a complete API key; it is re-captured with the
+  key masked.
+- **Cmd-K searches agents, tools, rules and open issues**, not only page names, from one
+  `/api/search` index built from list endpoints the app already calls.
+- `AGENTFOX_TRUSTED_PROXY_HOPS`: the per-visitor limits on public routes (playground,
+  waitlist, showcase) read the visitor's address from `X-Forwarded-For` behind that many
+  trusted proxies. Defaults to 1 on Vercel, whose edge overwrites the header, and 0
+  elsewhere.
+- `GET /api/playground/world`: the playground's agents and prompts without a sandbox.
 - The dashboard moves from Next.js 16.4.0 to 16.4.5. 16.4.0 is affected by
   GHSA-2464-fhr4-w9xw (unauthenticated remote code execution in the image optimisation
   API with SVG files), GHSA-673q-mjm6-r5xr (remote code execution in `use cache` functions

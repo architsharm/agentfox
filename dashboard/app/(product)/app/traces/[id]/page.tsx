@@ -19,6 +19,7 @@ import {
 } from "@/components/kit";
 import { SURFACES, TRUST, WOULD, detectorName, outcomeOf, ruleTitle } from "@/lib/product/vocab";
 import { NoticeToast } from "@/components/product/NoticeToast";
+import { approvalOutcome } from "@/lib/product/approvals";
 
 export const metadata: Metadata = appPageMetadata("Run");
 export const dynamic = "force-dynamic";
@@ -75,9 +76,9 @@ export default async function RunDetail({
   } catch (e: any) {
     return (
       <>
-        <Header title="Run" back={{ href: "/app/traces", label: "Runs" }} />
+        <Header title="Run" back={{ href: "/app/traces", label: "Activity" }} />
         {e instanceof ApiError && e.status === 404 ? (
-          <NotFound what="run" detail={id} back={{ href: "/app/traces", label: "Runs" }} />
+          <NotFound what="run" detail={id} back={{ href: "/app/traces", label: "Activity" }} />
         ) : (
           <ApiDown {...apiErrorProps(e)} />
         )}
@@ -95,17 +96,25 @@ export default async function RunDetail({
   const watchedEffect = fired.find((r) => r.mode === "observe" && ["block", "escalate"].includes(r.effect))?.effect;
   const denied = fired.find((r) => r.rule_id === "capability.denied");
   const primaryRule = fired.find((r) => r.mode !== "observe") || fired[0];
+  // A held call's answer: the run reads Held only while nobody has decided.
+  const heldApproval = decisions.find((x) => x.verdict === "escalate" && x.approval)?.approval;
+  const answered = approvalOutcome(heldApproval);
   const duration = (d.spans || []).reduce((n: number, s: any) => n + (s.duration_ms || 0), 0);
   const tabHref = (k: string) => href(`/app/traces/${id}`, { tab: k === "summary" ? undefined : k });
 
   return (
     <>
       <Header
-        back={{ href: "/app/traces", label: "Runs" }}
+        back={{ href: "/app/traces", label: "Activity" }}
         title={title}
         meta={
           <>
             {decisions.length ? <OutcomePill outcome={outcome} /> : <Pill tone="outline">Nothing checked</Pill>}
+            {outcome === "held" && answered && (
+              <Link href={`/app/approvals/${heldApproval.id}`}>
+                <Pill tone={answered.tone}>{answered.label}</Pill>
+              </Link>
+            )}
             {outcome === "allowed" && watchedEffect && <Pill tone="outline">{WOULD[watchedEffect]}</Pill>}
             {t.status === "error" && <Pill tone="bad">Error</Pill>}
           </>
@@ -175,7 +184,7 @@ function Summary({ decisions }: { decisions: any[] }) {
             action={
               <>
                 <OutcomePill outcome={outcomeOf(x.verdict)} />
-                {x.approval_id && <Link href="/app/approvals">Approval</Link>}
+                {x.approval_id && <ApprovalLink id={x.approval_id} approval={x.approval} />}
               </>
             }
             flush
@@ -218,7 +227,7 @@ function Steps({ spans }: { spans: any[] }) {
             <th>Step</th>
             <th>Kind</th>
             <th style={{ width: "35%" }}>Time</th>
-            <th className="num">ms</th>
+            <th className="num">Time (ms)</th>
           </tr>
         </thead>
         <tbody>
@@ -253,7 +262,7 @@ function Checks({ runs, runId }: { runs: any[]; runId: string }) {
             <th>Detector</th>
             <th>Where</th>
             <th>Found</th>
-            <th className="num">ms</th>
+            <th className="num">Time (ms)</th>
             <th className="tight">Was it right?</th>
           </tr>
         </thead>
@@ -337,5 +346,15 @@ function Origin({ decisions, taint }: { decisions: any[]; taint: any[] }) {
         );
       })}
     </>
+  );
+}
+
+/** The approval a decision filed or redeemed, linked, with what became of it. */
+function ApprovalLink({ id, approval }: { id: string; approval?: any }) {
+  const answered = approvalOutcome(approval);
+  return (
+    <Link href={`/app/approvals/${encodeURIComponent(id)}`} title={approval?.rationale || undefined}>
+      {answered ? <Pill tone={answered.tone}>{answered.label}</Pill> : approval?.status === "pending" ? "Waiting for approval" : "Approval"}
+    </Link>
   );
 }

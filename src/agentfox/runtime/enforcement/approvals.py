@@ -39,3 +39,36 @@ def held_call(
         "content": excerpt,
         "content_sha256": content_digest(content),
     }
+
+
+#: How strongly a fired rule's effect asks for the call to stop, for ordering reasons.
+_STOPS = {"block": 3, "escalate": 2, "verify": 1}
+
+#: Appended to a watching rule's reason: it was recorded, not what held the call.
+WATCHING_NOTE = "(watching only)"
+
+
+def approval_reason(rules_fired: list[dict[str, Any]]) -> str:
+    """Why a call was held, the rule that actually held it first.
+
+    The decision's reason joins every fired rule in the order they ran, so a call held
+    by an enforced approval limit was filed under whichever rule happened to run first,
+    often one that was only watching ("EU AI Act Art. 14 …"), and the Approvals page
+    shows the first sentence. Here the enforcing rules come first, strongest effect
+    first, and a watching rule is labelled as such: it is context, not the cause.
+    Rules that allow add nothing to why a call is held and are left out."""
+    seen: set[str] = set()
+    ranked: list[tuple[int, int, str]] = []
+    for rule in rules_fired or []:
+        text = " ".join(str(rule.get("reason") or "").split()).rstrip(";").strip()
+        effect = str(rule.get("effect") or "")
+        if not text or effect == "allow" or text in seen:
+            continue
+        seen.add(text)
+        watching = rule.get("mode") == "observe"
+        if watching:
+            text = f"{text.rstrip('.')} {WATCHING_NOTE}."
+        ranked.append((int(watching), -_STOPS.get(effect, 0), text))
+    # A stable sort: rules of the same standing keep the order they ran in.
+    ranked.sort(key=lambda r: (r[0], r[1]))
+    return "; ".join(text for _w, _s, text in ranked)

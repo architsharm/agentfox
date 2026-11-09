@@ -45,7 +45,7 @@ export default function Page() {
         AgentFox needs Python 3.11 or newer. The core install has no model weights and nothing
         that downloads them.
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>How</th>
@@ -70,10 +70,16 @@ export default function Page() {
             <td><code>pip install &quot;git+https://github.com/architsharm/agentfox.git&quot;</code></td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         The package installs one command, <code>agentfox</code>. <code>agentfox --version</code>{" "}
         prints the version.
+      </p>
+      <p>
+        Then, with an account, run the command from the dashboard&apos;s card:{" "}
+        <code>pip install -U agentfox</code> and <code>agentfox init --key … --server …</code> (
+        <Link href="/docs/quickstart">Quickstart</Link>). Without one, run <code>agentfox scan</code> and{" "}
+        <code>agentfox up</code> (<Link href="/docs/quickstart/cli">Quickstart without an account</Link>).
       </p>
 
       <h2 id="extras">Extras</h2>
@@ -82,7 +88,7 @@ export default function Page() {
         makes a detector <em>available</em>; it runs only once it is also listed in{" "}
         <code>enabled_detectors</code> (<Link href="/docs/reference/config#detectors">Configuration</Link>).
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>Extra</th>
@@ -101,7 +107,7 @@ export default function Page() {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
       <p>
         Enabled by default: <code>injection.heuristic</code>, <code>injection.classifier</code>,{" "}
         <code>pii.native</code>, <code>secrets.native</code>, <code>safety.lexicon</code>,{" "}
@@ -135,7 +141,7 @@ python -m spacy download en_core_web_lg   # for pii.presidio, about 400MB`}</Cod
       </Callout>
 
       <h2 id="state">Where state lives</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>Situation</th>
@@ -163,7 +169,7 @@ python -m spacy download en_core_web_lg   # for pii.presidio, about 400MB`}</Cod
             <td><code>var/evidence</code> at the repository root</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         State is per installation, not per directory: <code>agentfox findings</code> shows the
         same findings from anywhere. Give each project its own <code>AGENTFOX_STATE_DIR</code>{" "}
@@ -182,7 +188,11 @@ agentfox init`}</Code>
       <h2 id="init">agentfox init and agentfox.toml</h2>
       <p>
         Without <code>--key</code>, <code>agentfox init</code> sets up a local install. It is
-        offline and safe to run twice.
+        offline and safe to run twice. To connect to an account without the key showing in{" "}
+        <code>ps</code> or your shell history, export it and name the server:{" "}
+        <code>export AGENTFOX_API_KEY=…</code> then <code>agentfox init --server &lt;url&gt;</code>{" "}
+        (with <code>--server</code> and no <code>--key</code>, init reads{" "}
+        <code>AGENTFOX_API_KEY</code>).
       </p>
       <Code>{`agentfox init`}</Code>
       <Output>{`Setting up AgentFox
@@ -192,14 +202,17 @@ agentfox init`}</Code>
       agent-integrity          observe  recorded, nothing blocked
       baseline                 observe  recorded, nothing blocked
       eu-ai-act-high-risk      observe  recorded, nothing blocked
-      tool-containment         enforce  violations are blocked now
+      tool-containment         observe  recorded, nothing blocked
       coding-agent not enabled — no coding-agent hooks in this repo. \`agentfox admin hooks install
 --agent <slug> --write\` turns it on for that agent.
-      tool-containment blocks from the start — demote with \`agentfox policy observe <key>\`.
+      Missing grants, destructive commands and tampering are still refused. When the would-block
+decisions look right: \`agentfox policy enforce tool-containment\`.
   ✓ wrote agentfox.toml`}</Output>
       <p>
         It creates and migrates the database, loads the control catalog and the policy packs
-        in the mode each declares, and writes <code>agentfox.toml</code> in the current
+        every one watching (switch one to blocking with{" "}
+        <code>agentfox policy enforce &lt;key&gt;</code>; a second run keeps each pack&apos;s
+        mode), and writes <code>agentfox.toml</code> in the current
         directory (or <code>--path</code>, which must be an existing directory). A second run
         leaves an existing <code>agentfox.toml</code> alone. The fifth pack,{" "}
         <code>coding-agent</code>, applies only once a coding agent has hooks installed (
@@ -210,8 +223,8 @@ agentfox init`}</Code>
       <Code lang="toml" title="agentfox.toml">{`[agentfox]
 environment = "development"
 
-# Default mode for a policy that does not declare its own. Packs that declare a mode
-# keep it (the shipped tool-containment pack declares enforce).
+# Default mode for a policy that does not declare its own. \`agentfox init\` starts every
+# shipped pack in observe; \`agentfox policy enforce <key>\` starts one blocking.
 default_policy_mode = "observe"
 
 # Zero egress: no model call leaves this machine unless you turn it on.
@@ -256,7 +269,7 @@ taint_scope = "session"`}</Code>
       </p>
 
       <h2 id="upgrade">Upgrade</h2>
-      <Code>{`pip install --upgrade agentfox
+      <Code>{`pip install -U agentfox
 agentfox admin db upgrade
 agentfox admin db current`}</Code>
       <p>
@@ -280,7 +293,7 @@ rm agentfox.toml          # in each project where you ran agentfox init`}</Code>
       </p>
 
       <h2 id="troubleshooting">Troubleshooting</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>You see</th>
@@ -308,7 +321,7 @@ rm agentfox.toml          # in each project where you ran agentfox init`}</Code>
             <td>The database uses <code>SQL_ASCII</code>. Create it with UTF-8 encoding.</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
     </article>
   );
 }

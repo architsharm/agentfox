@@ -201,15 +201,16 @@ def test_init_leaves_an_existing_config_alone(isolated_db, tmp_path):
     assert (tmp_path / "agentfox.toml").read_text() == "# hand-edited\n"
 
 
-def test_init_loads_controls_and_policies_in_their_declared_modes(isolated_db, tmp_path):
-    """Each pack is reported in the mode it actually binds in. A blanket "observe
-    mode — nothing is blocked" was false: tool-containment ships `mode: enforce`."""
+def test_init_loads_controls_and_policies_watching(isolated_db, tmp_path):
+    """Each pack is reported in the mode it actually binds in: a new workspace
+    starts all of them watching, and says what is refused anyway."""
     result = runner.invoke(app, ["init", "--path", str(tmp_path)])
     output = flat(result.output)
     assert "controls" in output
     assert "baseline observe recorded, nothing blocked" in output
-    assert "tool-containment enforce violations are blocked now" in output
-    assert "nothing is blocked yet" not in output
+    assert "tool-containment observe recorded, nothing blocked" in output
+    assert "destructive commands" in output
+    assert "violations are blocked now" not in output
 
 
 def test_init_ends_by_telling_you_what_to_do_next(isolated_db, tmp_path):

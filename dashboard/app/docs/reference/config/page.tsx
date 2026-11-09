@@ -121,6 +121,12 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "what": "Comma-separated browser origins allowed to call the public playground, added to localhost."
       },
       {
+        "key": "trusted_proxy_hops",
+        "env": "AGENTFOX_TRUSTED_PROXY_HOPS",
+        "def": "1 on Vercel, else 0",
+        "what": "Proxies in front of the gateway that append to X-Forwarded-For. The per-visitor limits (playground, waitlist, showcase) read the visitor's address that many entries from the right. 0 ignores the header."
+      },
+      {
         "key": "onboarding_key_ttl_days",
         "env": "AGENTFOX_ONBOARDING_KEY_TTL_DAYS",
         "def": "30",
@@ -1063,7 +1069,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
       {GROUPS.map((group) => (
         <section key={group.id}>
           <h2 id={group.id}>{group.title}</h2>
-          <table>
+          <div className="docs-table"><table>
             <thead>
               <tr>
                 <th>Key and variable</th>
@@ -1086,7 +1092,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </section>
       ))}
 
@@ -1095,7 +1101,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
         With <code>webhook_url</code> set and <code>allow_egress</code> on, AgentFox POSTs a
         JSON body for each finding at or above <code>webhook_min_severity</code>:
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Part</th><th>What it is</th></tr>
         </thead>
@@ -1109,7 +1115,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
           <tr><td>Retries</td><td>One retry after half a second on a timeout, connection error or 5xx. A redirect is a failure. Failures are logged and dropped; use the SIEM export to backfill.</td></tr>
           <tr><td>Queue</td><td>A background thread behind a 1,000-item queue, so delivery never slows the code that raised the finding. Nothing is sent for work that was rolled back.</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h2 id="otlp">OpenTelemetry ingest</h2>
       <p>
@@ -1133,7 +1139,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
         <code>GET /api/export/siem</code> returns recent decisions and findings, oldest
         first, as <code>text/plain</code>. It needs a token when token auth is on.
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Parameter</th><th>Default</th><th>Values</th></tr>
         </thead>
@@ -1142,7 +1148,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
           <tr><td><code>since_days</code></td><td>7</td><td>How far back.</td></tr>
           <tr><td><code>limit</code></td><td>1000</td><td>Applied to decisions and to findings separately.</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         Findings are <code>governance.finding.&lt;type&gt;</code> events. CEF and LEEF severity
         runs 0 to 10 (block 8, escalate 6, a critical finding 10). A decision recorded without
@@ -1170,7 +1176,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
         Headers the proxy routes (<code>/v1/chat/completions</code>, <code>/v1/messages</code>)
         read and return. Routes and bodies are in the <Link href="/docs/reference/api">HTTP API reference</Link>.
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Request header</th><th>What it does</th></tr>
         </thead>
@@ -1186,8 +1192,8 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
           <tr><td><code>X-AgentFox-Approval</code></td><td>An approved <code>apr_…</code> id: the held request runs once.</td></tr>
           <tr><td><code>Authorization: Bearer nom_agt_…</code></td><td>Optional agent key.</td></tr>
         </tbody>
-      </table>
-      <table>
+      </table></div>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Response header</th><th>Meaning</th></tr>
         </thead>
@@ -1200,8 +1206,8 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
           <tr><td><code>x-agentfox-explain</code></td><td>Link to the trace in the app, when <code>console_url</code> is set.</td></tr>
           <tr><td><code>x-agentfox-degraded</code></td><td>A dependency was unavailable while serving the request.</td></tr>
         </tbody>
-      </table>
-      <table>
+      </table></div>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Status</th><th>Meaning</th></tr>
         </thead>
@@ -1212,13 +1218,13 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
           <tr><td>429</td><td>Load shed before governance ran (<code>agentfox_admission_shed</code>). Retry after <code>Retry-After</code>.</td></tr>
           <tr><td>503</td><td>A dependency is down and <code>fail_mode</code> says refuse (<code>agentfox_service_degraded</code>).</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         <code>/v1/guard/*</code> answer 200 with a <code>verdict</code> field for every
         decision; 429 and 503 apply to every <code>/v1</code> route.
       </p>
       <h3 id="streaming">Streaming modes</h3>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th><code>streaming_mode</code></th><th>Behaviour</th></tr>
         </thead>
@@ -1226,7 +1232,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
           <tr><td><code>buffered</code> (default)</td><td>The whole answer is collected and checked before anything is sent. Output checks are identical to a non-streamed call; first-token latency is the cost.</td></tr>
           <tr><td><code>windowed</code></td><td>Chunks are forwarded as they arrive while detectors run over a growing window (<code>stream_window_chars</code>, 200). A block ends the stream but cannot recall what was already sent.</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         A streamed response sends headers before anything is decided, so it carries{" "}
         <code>x-agentfox-streaming: enforced</code> and an empty trace header; the decision
@@ -1237,7 +1243,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
       </p>
 
       <h2 id="compose">What deploy/docker-compose.yml sets</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr><th>Variable</th><th>Compose value</th><th>Why it differs from the default</th></tr>
         </thead>
@@ -1251,7 +1257,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
           <tr><td><code>AGENTFOX_AUDIT_SIGNING_KEY</code>, <code>AGENTFOX_SERVICE_AUTH_SECRET</code></td><td>required</td><td>Compose refuses to start without them (<code>openssl rand -hex 32</code>).</td></tr>
           <tr><td><code>AGENTFOX_ACCEPT_RESTRICTED_MODEL_LICENSES</code></td><td><code>&quot;0&quot;</code></td><td>Below.</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h3 id="gated-models">Licence-gated models (Llama Guard, Prompt Guard 2)</h3>
       <p>
@@ -1286,7 +1292,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
         settings come from or are used by a separate program. None of them can go in{" "}
         <code>agentfox.toml</code>.
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>Variable</th>
@@ -1303,7 +1309,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
 
       <h2 id="dashboard">Dashboard</h2>
       <p>
@@ -1312,7 +1318,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
         (for example <code>AGENTFOX_API_URL</code>) when unset. They are read at request time,
         so one image can point at any gateway.
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>Variable</th>
@@ -1331,7 +1337,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
 
       <h2>What can go wrong</h2>
       <ul>

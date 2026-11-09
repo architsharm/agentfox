@@ -32,13 +32,19 @@ import {
   TONE_LABEL,
   TOOL_FILTERS,
   counts,
+  enforces,
   filterTools,
   groupSummary,
   groupTools,
+  limitsText,
+  looseningText,
   permissionCall,
   ruleChange,
   ruleSetting,
+  thresholdText,
   toolTone,
+  watchingNote,
+  actionTone,
   type AgentMap,
   type GroupBy,
   type MapRule,
@@ -50,11 +56,13 @@ import {
   type ToolFilter,
   type ToolGroup,
 } from "@/lib/product/guardrailMap";
-import { IMPACT, detectorName, ruleTitle, wouldDo } from "@/lib/product/vocab";
+import { IMPACT, SENSITIVITY, ruleTitle, sensitivityOf, wouldDo } from "@/lib/product/vocab";
 import { AttackTests } from "./AttackTests";
 import { ControlButton } from "./AgentStatus";
 import { breakerLabel, isHalted, stateLabel, type AgentFacts } from "@/lib/product/agentStatus";
 import { projectHref } from "@/lib/product/project";
+import { businessRuleName } from "@/lib/product/policyWords";
+import { checkName } from "@/lib/product/checks";
 
 // The surfaces a custom rule can check; a rail's others (retrieval, tool results) have no rule form yet.
 const RULE_SURFACES = ["input", "output", "tool_args"];
@@ -160,7 +168,7 @@ function AgentNode({
       <Handle type="target" position={Position.Bottom} id="results" style={{ left: RESULTS_AT }} />
       <Handle type="target" position={Position.Right} id="context" />
       <Kind icon={Bot} label="Agent" />
-      <strong className="gm-ellipsis">{data.name}</strong>
+      <strong className="gm-clamp2" title={data.name}>{data.name}</strong>
       <span className="gm-sub">
         {data.status ? <b>{data.status} · </b> : null}
         {data.framework ? `${data.framework} · ` : ""}decides what to do next
@@ -183,7 +191,7 @@ function LlmNode({ data }: NodeProps<Node<{ models: string[]; selected?: boolean
       <Handle type="source" position={Position.Bottom} id="out" style={{ left: RESULTS_AT }} />
       <Kind icon={Cpu} label={data.models.length > 1 ? `${data.models.length} LLMs` : "LLM"} />
       {data.models.length ? (
-        <strong className="gm-ellipsis k-mono" title={data.models.join(", ")}>
+        <strong className="gm-clamp2" title={data.models.join(", ")}>
           {data.models[0]}
           {data.models.length > 1 ? ` +${data.models.length - 1}` : ""}
         </strong>
@@ -225,7 +233,7 @@ function ToolNode({ data }: NodeProps<Node<{ tool: MapTool; selected: boolean }>
   return (
     <div className={`gm-tool gm-perm-${tl.permission}${data.selected ? " gm-selected" : ""}`} title={`${tl.key} · ${p.label}${own ? ` · ${plural(own, "guardrail")} on this tool` : ""}`}>
       <Wrench size={12} aria-hidden className="gm-tool-icon" />
-      <span className="k-mono gm-ellipsis gm-tool-key">{shortKey(tl.key)}</span>
+      <span className="gm-clamp2 gm-tool-key">{shortKey(tl.key)}</span>
       {tl.permission !== "allowed" && <span className={`gm-perm gm-perm-${p.tone}`}>{p.label}</span>}
       {own ? (
         <span className="gm-tool-mark" aria-label={plural(own, "guardrail")}>
@@ -347,8 +355,8 @@ const EDGE_TYPES = { guard: GuardEdge };
 /** Tools drawn in an agent's box before "+N more"; expanded, up to BOX_MAX. */
 const BOX_FIRST = 6;
 const BOX_MAX = 24;
-const TOOL_W = 200;
-const TOOL_H = 34;
+const TOOL_W = 230;
+const TOOL_H = 46;
 const GAP = 10;
 const PAD = 16;
 const HEAD = 48;
@@ -358,15 +366,15 @@ const HEAD = 48;
  * cards it joins): the user's lines one unit, every other line between one and three.
  * Cards have fixed sizes (af-theme.css, "v4") so the lengths come out exact.
  */
-const UNIT = 140;
+const UNIT = 120;
 const units = (n: number) => Math.min(3, Math.max(1, n)) * UNIT;
 const LENGTH = { user: 1, llm: 1.5, tools: 1.5, context: 1.5 } as const;
 
 const USER_W = 96;
-const AGENT_W = 180;
-const AGENT_H = 100;
-const LLM_W = 180;
-const LLM_H = 60;
+const AGENT_W = 230;
+const AGENT_H = 116;
+const LLM_W = 230;
+const LLM_H = 68;
 const DOCS_W = 160;
 const DOCS_H = 44;
 /** Where the lines meet the cards, so facing handles line up and the lines run straight. */
@@ -602,14 +610,14 @@ function boxTools(visible: MapTool[], expanded: boolean, selectedKey: string | n
 
 // --- changes -----------------------------------------------------------------------
 
-async function send(url: string, method: string, body?: unknown): Promise<{ ok: boolean; data: any }> {
+async function send(url: string, method: string, body?: unknown): Promise<{ ok: boolean; status: number; data: any }> {
   const res = await fetch(url, {
     method,
     headers: { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, data };
+  return { ok: res.ok, status: res.status, data };
 }
 
 function errorOf(data: any, fallback: string): string {
@@ -619,53 +627,167 @@ function errorOf(data: any, fallback: string): string {
   return detailText(d) || fallback;
 }
 
-/** Block / ask / watch / off for one rule, for this agent only. */
-function RuleControl({ rule, slug }: { rule: MapRule; slug: string }) {
-  const options = settingsFor(rule);
+/** A change the scope route refused because it loosens a rule agents may not loosen. */
+type Loosening = { change: Record<string, unknown>; canAllow: boolean };
+
+/**
+ * One rule's change for one agent, through `POST …/rules/{id}/scope`. A refusal to
+ * loosen comes back as `loosening`, which the control shows with a way forward:
+ * let agents loosen the workspace rule (a new version of its pack, made live in the
+ * pack's mode), then make the same change again.
+ */
+function useRuleChange(rule: MapRule, slug: string) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ error: boolean; text: string } | null>(null);
-  const current = ruleSetting(rule);
-  if (!rule.policy) return null;
+  const [loosening, setLoosening] = useState<Loosening | null>(null);
+  const scopeUrl = `/api/policies/${encodeURIComponent(rule.policy || "")}/rules/${encodeURIComponent(rule.id)}/scope`;
 
-  const set = async (to: RuleSetting) => {
-    if (to === current) return;
+  const apply = async (change: Record<string, unknown>) => {
     setBusy(true);
     setNote(null);
-    const r = await send(`/api/policies/${encodeURIComponent(rule.policy!)}/rules/${encodeURIComponent(rule.id)}/scope`, "POST", ruleChange(slug, to));
+    setLoosening(null);
+    const r = await send(scopeUrl, "POST", change);
     setBusy(false);
+    if (r.status === 409 && r.data?.detail && typeof r.data.detail === "object") {
+      setLoosening({ change, canAllow: Boolean(r.data.detail.can_allow_loosening) });
+      return;
+    }
     if (!r.ok) return setNote({ error: true, text: errorOf(r.data, "Could not change this rule.") });
     const watching = (r.data.agents || []).some((a: any) => a.mode !== "enforce");
     setNote({ error: false, text: watching ? "Saved for this agent. Watching first." : "Saved for this agent." });
     router.refresh();
   };
+
+  /** Let agents loosen the workspace rule, then retry the change that was refused. */
+  const allowThenApply = async () => {
+    if (!loosening || !rule.policy) return;
+    setBusy(true);
+    setNote(null);
+    const saved = await send(`/api/policies/${encodeURIComponent(rule.policy)}/rules/${encodeURIComponent(rule.id)}`, "POST", { overridable: true });
+    if (!saved.ok) {
+      setBusy(false);
+      return setNote({ error: true, text: errorOf(saved.data, "Could not let agents loosen this rule.") });
+    }
+    const live = await send(`/api/policies/${encodeURIComponent(rule.policy)}/mode`, "POST", { mode: saved.data.mode || "observe", version: saved.data.version });
+    if (!live.ok) {
+      setBusy(false);
+      return setNote({ error: true, text: errorOf(live.data, "Could not let agents loosen this rule.") });
+    }
+    await apply(loosening.change);
+  };
+
   const reset = async () => {
     setBusy(true);
     setNote(null);
+    setLoosening(null);
     const r = await send(`/api/agents/${encodeURIComponent(slug)}/rules/${encodeURIComponent(rule.id)}`, "DELETE");
     setBusy(false);
     if (!r.ok) return setNote({ error: true, text: errorOf(r.data, "Could not reset this rule.") });
     router.refresh();
   };
 
+  return { busy, note, loosening, apply, allowThenApply, reset, dismiss: () => setLoosening(null) };
+}
+
+/** The refusal to loosen, in words, with what can be done about it. */
+function LooseningNote({ rule, agentName, change }: { rule: MapRule; agentName: string; change: ReturnType<typeof useRuleChange> }) {
+  if (!change.loosening) return null;
+  return (
+    <div className="gm-loosen" role="alert">
+      <p>{looseningText(rule, agentName)}</p>
+      <div className="gm-loosen-actions">
+        {change.loosening.canAllow ? (
+          <button type="button" className="k-btn" disabled={change.busy} onClick={change.allowThenApply}>
+            {change.busy ? "Changing…" : `Allow agents to loosen it, then apply`}
+          </button>
+        ) : (
+          <span className="gm-sub">Ask an admin to allow agents to loosen it.</span>
+        )}
+        <Link className="gm-link" href={`/app/policies/rules/${encodeURIComponent(rule.id)}?tab=tune`}>
+          Change it for every agent instead
+        </Link>
+        <button type="button" className="gm-link" onClick={change.dismiss}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Block / ask / watch / off for one rule, for this agent only. */
+function RuleControl({ rule, slug, agentName }: { rule: MapRule; slug: string; agentName: string }) {
+  const options = settingsFor(rule);
+  const change = useRuleChange(rule, slug);
+  const current = ruleSetting(rule);
+  const watching = watchingNote(rule);
+  if (!rule.policy) return null;
+
   return (
     <div className="gm-control">
-      <div className="k-seg" role="group" aria-label={`What ${ruleTitle(rule.id, rule.description)} does for this agent`}>
-        {options.map((o) => (
-          <button key={o.key} type="button" title={o.title} disabled={busy} className={current === o.key ? "active" : ""} aria-pressed={current === o.key} onClick={() => set(o.key)}>
-            {o.label}
-          </button>
-        ))}
+      <div className={`k-seg${watching ? " gm-seg-watching" : ""}`} role="group" aria-label={`What ${ruleTitle(rule.id, rule.description)} does for this agent`}>
+        {options.map((o) => {
+          const on = current === o.key;
+          return (
+            <button
+              key={o.key}
+              type="button"
+              title={on && watching ? watching : o.title}
+              disabled={change.busy}
+              className={on ? "active" : ""}
+              aria-pressed={on}
+              onClick={() => !on && change.apply(ruleChange(slug, o.key))}
+            >
+              {o.label}
+              {on && watching ? <span className="gm-seg-watch"> · watching</span> : null}
+            </button>
+          );
+        })}
       </div>
+      {watching ? <span className="gm-sub gm-watch-note">{watching}</span> : null}
       {/* Only a copy of a workspace rule can go back to it; a rule only this agent has would be deleted. */}
       {rule.own && rule.workspace && (
-        <button type="button" className="gm-link" disabled={busy} onClick={reset} title={`Back to the workspace rule: ${rule.workspace.enabled ? rule.workspace.effect : "off"}`}>
+        <button type="button" className="gm-link" disabled={change.busy} onClick={change.reset} title={`Back to the workspace rule: ${rule.workspace.enabled ? rule.workspace.effect : "off"}`}>
           Reset
         </button>
       )}
-      {note && (
-        <span className={note.error ? "k-act-error" : "gm-saved"} role={note.error ? "alert" : "status"}>
-          {note.text}
+      <LooseningNote rule={rule} agentName={agentName} change={change} />
+      {change.note && (
+        <span className={change.note.error ? "k-act-error" : "gm-saved"} role={change.note.error ? "alert" : "status"}>
+          {change.note.text}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Low / Medium / High for a content rule, for this agent: the score a check must reach before it acts. */
+function SensitivityControl({ rule, slug, agentName }: { rule: MapRule; slug: string; agentName: string }) {
+  const change = useRuleChange(rule, slug);
+  if (rule.minScore == null || !rule.policy) return null;
+  const level = sensitivityOf(rule.minScore);
+  return (
+    <div className="gm-control">
+      <span className="gm-threshold">{thresholdText(rule)}</span>
+      <div className="k-seg" role="group" aria-label="Sensitivity">
+        {SENSITIVITY.map((s) => (
+          <button
+            key={s.key}
+            type="button"
+            disabled={change.busy}
+            className={level === s.key ? "active" : ""}
+            aria-pressed={level === s.key}
+            title={`Acts at a score of ${s.minScore} or more`}
+            onClick={() => level !== s.key && change.apply({ agents: [slug], min_score: s.minScore })}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+      <LooseningNote rule={rule} agentName={agentName} change={change} />
+      {change.note && (
+        <span className={change.note.error ? "k-act-error" : "gm-saved"} role={change.note.error ? "alert" : "status"}>
+          {change.note.text}
         </span>
       )}
     </div>
@@ -740,20 +862,14 @@ export type Catalog = {
 };
 
 const TIER: Record<string, { name: string; note: string }> = {
-  jev: { name: "Jev", note: "hosted judge model" },
+  jev: { name: "Hosted judge model (Jev)", note: "TypeSafe System One" },
   local_llm: { name: "Your LLM", note: "self-hosted, nothing leaves" },
   llm: { name: "Hosted LLM", note: "e.g. OpenAI, Anthropic" },
 };
 /** The order judges are asked in, for the open-ended questions these checks ask. */
 const CHAIN = ["jev", "local_llm", "llm"];
 
-/** Names the catalogue leaves blank. */
-const MODULE_NAME: Record<string, string> = {
-  "custom.validators": "Your validator rules",
-  "injection.judgment": "Prompt injection (judge)",
-  "validator.prompt_injection_llm": "Prompt injection (validator judge)",
-};
-const moduleName = (d: { key: string; label: string }) => MODULE_NAME[d.key] || d.label || detectorName(d.key);
+const moduleName = (d: { key: string; label: string }) => checkName(d);
 /** What kind of check each source is, in a word. */
 const KIND: Record<string, string> = { builtin: "Regex", open_source: "ML", yours: "Custom", llm_judge: "LLM" };
 
@@ -841,24 +957,48 @@ function Checks({ items, stage, slug }: { items: Catalog["detectors"]; stage: St
   );
 }
 
-/** What a rule does right now, in a word. */
+/** What a rule does right now, in a word, and the colour it reads in: stopping red, holding amber, watching quiet. */
 function ruleState(r: MapRule): { text: string; tone: string } {
-  if (r.enabled === false) return { text: "Off", tone: "off" };
+  if (r.enabled === false) return { text: "Off", tone: "quiet" };
   const does: Record<string, string> = { block: "Blocks", escalate: "Asks", redact: "Hides", mask: "Hides", tokenize: "Hides", allow: "Watches" };
   const text = does[r.effect] ?? r.effect;
-  if (r.mode === "observe" && r.effect !== "allow") return { text: `${wouldDo(text)} · watching`, tone: "watch" };
-  return { text, tone: r.effect === "allow" ? "watch" : "on" };
+  if (!enforces(r) && r.effect !== "allow") return { text: `${wouldDo(text)} · watching`, tone: "quiet" };
+  return { text, tone: actionTone({ ...r, mode: "enforce" }) };
 }
 
-/** One rule: its name and what it does. Click to set it up in Policies. */
-function RuleRow({ rule, slug }: { rule: MapRule; slug: string }) {
+/**
+ * One rule on a rail: its name and what it does. Clicked, its settings open in place:
+ * on/off and block/ask/watch for this agent, and how sure a check must be before it
+ * acts. "All settings" goes to the rule's own page.
+ */
+function RuleRow({ rule, slug, agentName, open, onToggle }: { rule: MapRule; slug: string; agentName: string; open: boolean; onToggle: () => void }) {
   const state = ruleState(rule);
+  const title = ruleTitle(rule.id, rule.description);
   return (
-    <li>
-      <Link href={`/app/policies/rules/${encodeURIComponent(rule.id)}?tab=tune&agent=${encodeURIComponent(slug)}`} className="gm-rule-link">
-        <span className="gm-rule-name">{ruleTitle(rule.id, rule.description)}</span>
-        <span className={`gm-rule-state gm-rule-${state.tone}`}>{state.text}</span>
-      </Link>
+    <li className={open ? "gm-rule-open" : undefined}>
+      <button type="button" className="gm-rule-link" aria-expanded={open} onClick={onToggle}>
+        <span className="gm-rule-name">{title}</span>
+        <span className={`gm-rule-state gm-tone-${state.tone}`}>{state.text}</span>
+      </button>
+      {open ? (
+        <div className="gm-rule-settings">
+          {rule.policy ? (
+            <>
+              <RuleControl rule={rule} slug={slug} agentName={agentName} />
+              <SensitivityControl rule={rule} slug={slug} agentName={agentName} />
+            </>
+          ) : (
+            <p className="gm-sub">This rule can&apos;t be changed for one agent here.</p>
+          )}
+          <span className="gm-sub">
+            From {rule.library || "a library"}
+            {rule.own ? " · changed for this agent" : ""}
+          </span>
+          <Link className="gm-link" href={`/app/policies/rules/${encodeURIComponent(rule.id)}?tab=tune&agent=${encodeURIComponent(slug)}`}>
+            All settings →
+          </Link>
+        </div>
+      ) : null}
     </li>
   );
 }
@@ -872,6 +1012,7 @@ function StagePanel({ stage, map, catalog, back }: { stage: Stage; map: AgentMap
   const tiers = Object.fromEntries((catalog?.tiers || []).map((t) => [t.tier, t]));
   const anyJudge = CHAIN.some((t) => tiers[t]?.enabled);
   const rail = RAIL[stage.key];
+  const [openRule, setOpenRule] = useState<string | null>(null);
 
   return (
     <div className="gm-panel gm-stage-panel">
@@ -886,7 +1027,7 @@ function StagePanel({ stage, map, catalog, back }: { stage: Stage; map: AgentMap
         {stage.rules.length ? (
           <ul className="gm-rule-rows">
             {sortRules(stage.rules).map((r) => (
-              <RuleRow key={r.id} rule={r} slug={slug} />
+              <RuleRow key={r.id} rule={r} slug={slug} agentName={map.agent.name || slug} open={openRule === r.id} onToggle={() => setOpenRule(openRule === r.id ? null : r.id)} />
             ))}
           </ul>
         ) : (
@@ -977,7 +1118,7 @@ function sortRules(rules: MapRule[]): MapRule[] {
   return [...rules].sort((a, b) => counts([b]).enforcing - counts([a]).enforcing || kind(a) - kind(b) || b.hits - a.hits);
 }
 
-function RuleList({ rules, slug }: { rules: MapRule[]; slug: string }) {
+function RuleList({ rules, slug, agentName }: { rules: MapRule[]; slug: string; agentName: string }) {
   if (!rules.length) return <p className="gm-sub">No policies on this line yet.</p>;
   const sorted = [...rules].sort((a, b) => counts([b]).enforcing - counts([a]).enforcing || b.hits - a.hits);
   return (
@@ -987,7 +1128,7 @@ function RuleList({ rules, slug }: { rules: MapRule[]; slug: string }) {
           <Link href={`/app/policies/rules/${encodeURIComponent(r.id)}?tab=tune&agent=${encodeURIComponent(slug)}`} className="gm-rule-name" title={r.own ? "Set for this agent" : "From the workspace"}>
             {ruleTitle(r.id, r.description)}
           </Link>
-          <RuleControl rule={r} slug={slug} />
+          <RuleControl rule={r} slug={slug} agentName={agentName} />
         </li>
       ))}
     </ul>
@@ -1162,14 +1303,14 @@ function Panel({
       <h4>Access</h4>
       <PermissionControl tool={tl} slug={slug} />
       <h4>Rules for this tool</h4>
-      <RuleList rules={tl.rules} slug={slug} />
+      <RuleList rules={tl.rules} slug={slug} agentName={map.agent.name || slug} />
       {tl.ladders.length > 0 && (
         <>
           <h4>Approval limits</h4>
           <ul className="gm-rules">
             {tl.ladders.map((l) => (
-              <li key={l.key}>
-                {l.name} <ModePill mode={l.mode} />
+              <li key={l.key} style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                <Link href={`/app/policies/business/${encodeURIComponent(l.key)}`}>{businessRuleName({ key: l.key, name: l.name, tool: tl.key })}</Link> <ModePill mode={l.mode} />
               </li>
             ))}
           </ul>
@@ -1178,13 +1319,7 @@ function Panel({
       {limits.length > 0 && (
         <>
           <h4>Limits</h4>
-          <ul className="gm-rules">
-            {limits.map(([arg, spec]) => (
-              <li key={arg} className="k-mono">
-                {arg}: {JSON.stringify(spec)}
-              </li>
-            ))}
-          </ul>
+          <p className="gm-limits">{limitsText(tl.limits).join(" · ")}</p>
         </>
       )}
       <p className="k-muted">Every call also passes the Tool calls step.</p>

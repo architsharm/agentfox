@@ -40,6 +40,7 @@ import "./marketing.css";
 import "./lp.css";
 import "./tw.css";
 import "./af-theme.css";
+import "./policies.css";
 
 /**
  * Runs before paint so a stored theme choice never flashes the wrong colours.

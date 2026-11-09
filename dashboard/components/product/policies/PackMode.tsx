@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { callJson } from "@/components/kit/Act";
+import { packWouldStop } from "@/lib/product/libraries";
 
 /**
  * Watching ↔ enforcing for a whole pack. Enforcing first replays the pack over the
@@ -15,6 +16,7 @@ export function PackMode({
   body,
   version,
   wouldStop,
+  secondary = false,
 }: {
   packKey: string;
   mode: string | null;
@@ -22,6 +24,8 @@ export function PackMode({
   version: number | null;
   /** Requests the pack's watching rules flagged in the window. */
   wouldStop?: number;
+  /** Not the card's main action: a plain button (Libraries keeps one primary per card). */
+  secondary?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -65,7 +69,7 @@ export function PackMode({
     <span className="k-act" style={{ flexWrap: "wrap" }}>
       {!sim ? (
         <button
-          className="k-btn-primary"
+          className={secondary ? "k-btn" : "k-btn-primary"}
           disabled={busy}
           onClick={() =>
             run(async () => {
@@ -78,7 +82,7 @@ export function PackMode({
       ) : (
         <span className="k-preview k-preview-inline">
           <span>
-            Last 7 days: <strong>{wouldStop ?? sim.counts?.newly_blocked ?? 0}</strong> would have been stopped
+            Last 7 days: <strong>{wouldStop ?? packWouldStop(sim)}</strong> would have been stopped
           </span>
           <button
             className="k-btn-primary"

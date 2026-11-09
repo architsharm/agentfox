@@ -76,7 +76,7 @@ export default function Page() {
       </Steps>
 
       <h2>Headers worth sending</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>Header</th>
@@ -97,7 +97,7 @@ export default function Page() {
             <td>The task the agent is on. Tool calls are checked against it.</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         Every route and field is in the <Link href="/docs/reference/api">HTTP API reference</Link>. Headers,
         streaming modes and status codes are under{" "}
@@ -111,7 +111,7 @@ export default function Page() {
       </p>
 
       <h2>If something goes wrong</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>You see</th>
@@ -135,7 +135,7 @@ export default function Page() {
             </td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <NextSteps
         items={[

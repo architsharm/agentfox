@@ -485,11 +485,35 @@ class RateLimiter:
             self._hits[key] = hits
             return True
 
+    def retry_after(self, key: str) -> int:
+        """Whole seconds until ``key`` may try again (0 when it already may)."""
+        now = time.monotonic()
+        with self._lock:
+            hits = [t for t in self._hits.get(key, []) if t > now - self.window]
+        if len(hits) < self.limit:
+            return 0
+        # The oldest hit that has to age out before one more fits.
+        oldest = sorted(hits)[len(hits) - self.limit]
+        return max(1, int(oldest + self.window - now + 0.999))
 
-#: New sandboxes per client address. Each one seeds a fresh world and (if the
-#: classifier ensemble is enabled) runs real model inference — bounded per-IP so
-#: this can't be turned into a free compute sink.
-session_creation_limiter = RateLimiter(limit=8, window_seconds=3600)
+
+def retry_phrase(seconds: int) -> str:
+    """ "in about 12 minutes", for a sentence a visitor reads."""
+    if seconds <= 60:
+        return "in a minute"
+    minutes = (seconds + 59) // 60
+    if minutes < 60:
+        return f"in about {minutes} minutes"
+    return "in about an hour"
+
+
+#: New sandboxes per visitor address (`client_address.client_address`, which reads the
+#: real address behind a trusted proxy). Each one seeds a fresh world and (if the
+#: classifier ensemble is enabled) runs real model inference — bounded per address
+#: so this can't be turned into a free compute sink. A sandbox is only made on a
+#: visitor's first action, not on page load, so this counts people trying the
+#: playground; 30 leaves room for an office or a conference behind one address.
+session_creation_limiter = RateLimiter(limit=30, window_seconds=3600)
 
 #: Actions (chat / tool-call / enforce-toggle / state) per sandbox. High enough for
 #: a human clicking around, low enough to bound a scripted hammer on one session.

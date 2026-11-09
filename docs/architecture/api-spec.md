@@ -138,7 +138,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-331 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+336 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -306,6 +306,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/policies/{key}/rules/{rule_id}/agents` | Every agent, nested by hand-off, and whether each has its own copy of the rule. |
 | `GET` | `/api/policies/{key}/rules/{rule_id}/checks` | The checks that can fire a rule: they report what it looks for, where it looks. |
 | `POST` | `/api/policies/{key}/rules/{rule_id}/scope` | Change a rule for every agent, or for only some (and what they hand off to). |
+| `POST` | `/api/policies/{key}/versions/{version}/restore` | Make an earlier version's rules live again, as a new version. |
 | `POST` | `/api/policies/{policy_id}/approve` | Approve Policy |
 | `POST` | `/api/policies/{policy_id}/reject` | Reject Policy |
 
@@ -480,9 +481,10 @@ from the code. Regenerate after changing any route:
 |---|---|---|
 | `POST` | `/api/playground/sessions` | Create a playground sandbox. |
 | `POST` | `/api/playground/sessions/{session_id}/chat` | Chat |
-| `POST` | `/api/playground/sessions/{session_id}/enforce` | Flip the baseline policy observe -> enforce (or back) for this sandbox only. |
+| `POST` | `/api/playground/sessions/{session_id}/enforce` | Flip every content check observe -> enforce (or back) for this sandbox only. |
 | `GET` | `/api/playground/sessions/{session_id}/state` | Everything the live sidebar needs: recent traces (decisions + detector runs |
 | `POST` | `/api/playground/sessions/{session_id}/tool-call` | Try a tool call directly, with no model in the loop. |
+| `GET` | `/api/playground/world` | The agents, tools and suggested prompts, without making a sandbox. |
 
 ### Public showcase (unauthenticated, cached, rate-limited)
 
@@ -501,7 +503,10 @@ from the code. Regenerate after changing any route:
 | `DELETE` | `/api/business/rules/{key}` | Remove Business Rule |
 | `GET` | `/api/business/rules/{key}` | Get Business Rule |
 | `PUT` | `/api/business/rules/{key}` | Change a rule's thresholds in place. It keeps its mode; changing an enforcing |
-| `POST` | `/api/business/rules/{key}/mode` | Business Rule Mode |
+| `GET` | `/api/business/rules/{key}/history` | Every saved version of the rule, newest first, with its bands. |
+| `POST` | `/api/business/rules/{key}/mode` | Watch or enforce a business rule. Enforcing needs a recorded simulation of the |
+| `POST` | `/api/business/rules/{key}/simulate` | Replay the last 7 days of calls through the rule as if it enforced, and record |
+| `POST` | `/api/business/rules/{key}/versions/{version}/restore` | Put an earlier version's bands back, as a new version in the rule's current mode. |
 | `GET` | `/api/catalog/controls` | Every control's id and title, from the catalog this build ships. |
 | `GET` | `/api/coverage/threats` | Every published threat, and what this deployment actually does about it. |
 | `GET` | `/api/custom-models` | Get Custom Models |

@@ -182,6 +182,14 @@ def test_api_end_to_end(client):
 
     run = client.post("/api/onboarding/tests", json={"phase": "before"}, headers=me).json()
     assert run["total"] == sum(counts(build_suite(structure)).values())
+    # One number for the suite: the card and the CLI say "N attacks + M normal requests".
+    from agentfox.capabilities.onboarding.attacks import control_counts, suite_size
+
+    controls = sum(control_counts(build_suite(structure)).values())
+    assert run["controlsTotal"] == controls
+    assert suite_size(build_suite(structure)) == (
+        f"{run['total']} attacks" + (f" + {controls} normal requests" if controls else "")
+    )
     assert run["status"] == "running"
     job = client.post("/api/onboarding/runner/poll", headers=runner_auth).json()["job"]
     assert job["runId"] == run["id"] and job["guardrails"] == []

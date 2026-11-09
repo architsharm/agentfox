@@ -28,15 +28,18 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
+from agentfox.apps.gateway.client_address import client_address
 from agentfox.apps.gateway.playground_sessions import (
     SESSION_TTL_SECONDS,
     PlaygroundSession,
     PlaygroundUnavailable,
     get_store,
+    retry_phrase,
     session_creation_limiter,
 )
 from agentfox.apps.gateway.routes.playground_deps import playground_session
@@ -48,36 +51,9 @@ from agentfox.fixtures.seed import AGENTS, CAPABILITIES, POISONED_DOCUMENT, TOOL
 router = APIRouter(prefix="/api/playground", tags=["playground"])
 
 
-def _client_key(request: Request) -> str:
-    return request.client.host if request.client else "unknown"
-
-
-@router.post("/sessions", status_code=201)
-def create_session(request: Request, background: BackgroundTasks) -> dict[str, Any]:
-    """Create a playground sandbox.
-
-    A private tenant in the deployment database, seeded with the demo fixtures.
-    `session_id` is the only credential. It survives this process, so a follow-up
-    request served by a different instance finds the same sandbox; it expires
-    `expires_in_seconds` after the last action on it, and its data is then deleted.
-    """
-    if not session_creation_limiter.check(_client_key(request)):
-        raise HTTPException(
-            429,
-            "Too many playground sandboxes from this address recently — please try "
-            "again in a while.",
-        )
-    try:
-        record = get_store().create()
-    except PlaygroundUnavailable as exc:
-        # 503 rather than 500: the playground is unavailable, the rest of the API is
-        # not, and the message names what an operator has to run.
-        raise HTTPException(503, str(exc)) from exc
-    # After the response: sweep, keep the cap, and build a spare for the next visitor.
-    background.add_task(get_store().refill)
+def _world() -> dict[str, Any]:
+    """What the page shows before anything is sent: agents, tools, the document."""
     return {
-        "session_id": record.id,
-        "expires_in_seconds": SESSION_TTL_SECONDS,
         # The agents modelled on live-tested apps first, each with its tools and the
         # prompts that show what its policy does; then the demo world's own agents.
         "agents": [
@@ -91,6 +67,60 @@ def create_session(request: Request, background: BackgroundTasks) -> dict[str, A
         "capabilities": CAPABILITIES,
         "poisoned_document": POISONED_DOCUMENT,
         "mode": "observe",
+    }
+
+
+@router.get("/world")
+def world(response: Response) -> dict[str, Any]:
+    """The agents, tools and suggested prompts, without making a sandbox.
+
+    The page renders from this, and makes a sandbox (`POST /sessions`) only when the
+    visitor first sends something. Making one on every page load spent the
+    per-address allowance on people who only looked, and a reload counted again.
+    """
+    response.headers["Cache-Control"] = "public, max-age=300"
+    return _world()
+
+
+@router.post("/sessions", status_code=201, response_model=None)
+def create_session(request: Request, background: BackgroundTasks) -> dict[str, Any] | JSONResponse:
+    """Create a playground sandbox.
+
+    A private tenant in the deployment database, seeded with the demo fixtures.
+    `session_id` is the only credential. It survives this process, so a follow-up
+    request served by a different instance finds the same sandbox; it expires
+    `expires_in_seconds` after the last action on it, and its data is then deleted.
+
+    Limited per visitor address (behind a trusted proxy, the forwarded one). Over the
+    limit the answer is 429 with `Retry-After` and `retry_after_seconds`, and a
+    sentence that says when.
+    """
+    key = client_address(request)
+    if not session_creation_limiter.check(key):
+        wait = session_creation_limiter.retry_after(key)
+        return JSONResponse(
+            status_code=429,
+            headers={"Retry-After": str(wait)},
+            content={
+                "detail": (
+                    "The playground has started a lot of sandboxes from your network in "
+                    f"the last hour. You can start another {retry_phrase(wait)}."
+                ),
+                "retry_after_seconds": wait,
+            },
+        )
+    try:
+        record = get_store().create()
+    except PlaygroundUnavailable as exc:
+        # 503 rather than 500: the playground is unavailable, the rest of the API is
+        # not, and the message names what an operator has to run.
+        raise HTTPException(503, str(exc)) from exc
+    # After the response: sweep, keep the cap, and build a spare for the next visitor.
+    background.add_task(get_store().refill)
+    return {
+        "session_id": record.id,
+        "expires_in_seconds": SESSION_TTL_SECONDS,
+        **_world(),
     }
 
 
@@ -250,19 +280,21 @@ def set_enforce_mode(
     payload: PlaygroundEnforceRequest,
     record: PlaygroundSession = Depends(playground_session),
 ) -> dict[str, Any]:
-    """Flip the baseline policy observe -> enforce (or back) for this sandbox only.
+    """Flip every content check observe -> enforce (or back) for this sandbox only.
+
+    That is the baseline, each sandbox agent's own protection layer and the custom
+    words and topics (`sandbox_agents.content_policy_keys`). Limits on what an agent
+    may do (tool grants, amounts, approvals) enforce in both modes.
 
     Nothing about the visitor's earlier messages changes retroactively — the point
     is to re-send the same injection afterwards and watch the verdict actually
     change from "would have blocked" to "blocked", the same "aha" `agentfox demo`
     already walks through interactively (`cli/demo.py`, section 08).
     """
-    from agentfox.platform.policy import set_mode
-
     if payload.mode not in ("observe", "enforce"):
         raise HTTPException(400, "mode must be 'observe' or 'enforce'")
     with record.session_scope() as session:
-        set_mode(session, "baseline", payload.mode)
+        sandbox_agents.set_sandbox_mode(session, payload.mode)
     return {"mode": payload.mode}
 
 

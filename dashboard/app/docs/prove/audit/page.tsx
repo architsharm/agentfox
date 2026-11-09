@@ -108,7 +108,7 @@ agentfox report evidence --agent payments-ops --since-days 30`}</Code>
       </p>
 
       <h2>If something goes wrong</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>You see</th>
@@ -137,7 +137,7 @@ agentfox report evidence --agent payments-ops --since-days 30`}</Code>
             <td>The key is not the one the checkpoints were signed with.</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <NextSteps
         items={[

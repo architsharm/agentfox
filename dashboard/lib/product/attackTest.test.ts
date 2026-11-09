@@ -3,6 +3,10 @@ import {
   IDLE_POLLS,
   POLL_MS,
   campaignNumbers,
+  headline,
+  notRunWhy,
+  progressText,
+  worseRows,
   cell,
   controlsLine,
   plainError,
@@ -196,7 +200,55 @@ describe("red-team campaign numbers (Testing → Attack tests)", () => {
     expect(n).toMatchObject({ stopped: 0, watching: 11, through: 22, tone: "bad" });
   });
 
+  it("adds up: attacks = stopped + got through, normal requests apart, no 100% beside a breach", () => {
+    // The demo sweep the audit saw: "22 tried, 7 stopped, 11 got through, Score 100%".
+    const n = campaignNumbers({
+      probes_run: 22,
+      attacks_run: 18,
+      attacks_blocked: 18,
+      attacks_succeeded: 0,
+      attacks_stopped_live: 7,
+      attacks_watching: 11,
+      attacks_through_live: 11,
+      benign_probes_run: 4,
+      benign_over_blocked_live: 0,
+      posture_score: 1,
+    });
+    expect(n.ran).toBe(18);
+    expect(n.stopped + n.through).toBe(n.ran);
+    expect(n).toMatchObject({ controls: 4, answered: 4, watching: 11 });
+    expect(n.stoppedShare).toBeCloseTo(7 / 18);
+    expect(campaignNumbers({ attacks_run: 0 }).stoppedShare).toBeNull();
+  });
+
   it("falls back to the old counts", () => {
     expect(campaignNumbers({ attacks_run: 5, attacks_blocked: 5, attacks_succeeded: 0 })).toMatchObject({ stopped: 5, through: 0, tone: "ok" });
+  });
+});
+
+describe("the panel's headline and notes", () => {
+  const jb = (over: Partial<ByType>) => row({ type: "jailbreak", label: "Jailbreaks", total: 36, done: 36, controls: 6, ...over });
+  const leak = (over: Partial<ByType>) => row({ type: "data_leak", label: "Data leaks", total: 18, done: 18, controls: 6, ...over });
+  const before = run({}, [jb({ gotThrough: 1, resisted: 35 }), leak({ gotThrough: 12, resisted: 6 })]);
+  const after = run({ phase: "after" }, [jb({ gotThrough: 3, stopped: 33 }), leak({ gotThrough: 0, stopped: 18 })]);
+
+  it("leads with the total, before → after, and the normal requests", () => {
+    expect(headline(before, after)).toBe("13 → 3 attacks got through · 12 of 12 normal requests still answered");
+    expect(headline(before, null)).toBe("13 of 54 attacks got through · 12 of 12 normal requests answered");
+    expect(headline(null, null)).toBeNull();
+  });
+
+  it("names a set that got worse, so the variation is shown rather than hidden", () => {
+    expect(worseRows(before, after)).toEqual([{ label: "Jailbreaks", before: "1/36", after: "3/36" }]);
+  });
+
+  it("says why attacks were not run, next to the count", () => {
+    expect(notRunWhy(row({ notRun: 2, notRunReason: "Needs a tool that sends email." }))).toBe("2 not run: Needs a tool that sends email");
+    expect(notRunWhy(row({ notRun: 0 }))).toBeNull();
+  });
+
+  it("shows progress as progress", () => {
+    expect(progressText(row({ total: 36, done: 12 }))).toBe("testing 12 of 36");
+    expect(progressText(row({ total: 36, done: 36 }))).toBeNull();
   });
 });

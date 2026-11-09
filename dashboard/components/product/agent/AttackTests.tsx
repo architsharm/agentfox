@@ -6,7 +6,11 @@ import { Play, Plus, Search, X } from "lucide-react";
 import {
   cell,
   controlsLine,
+  headline,
   liveRun,
+  notRunWhy,
+  progressText,
+  worseRows,
   plainError,
   pollDelay,
   runNote,
@@ -69,11 +73,12 @@ function Result({
   basicEnforcing?: boolean;
 }) {
   const running = live && live.done < live.total;
+  const progress = progressText(live);
   const has = (side: { row?: ByType; run: Run | null }) => Boolean(side.row && side.run);
   if (running && !has(before) && !has(after)) {
     return (
-      <span className="at-r at-r-live">
-        {live.done}/{live.total}
+      <span className="at-r">
+        <small className="at-progress">{progress}</small>
       </span>
     );
   }
@@ -97,6 +102,7 @@ function Result({
       {has(before) && has(after) ? <span className="at-arrow">→</span> : null}
       {has(after) ? n(after) : null}
       {would ? <small className="at-sub at-would">{would}</small> : null}
+      {running && progress ? <small className="at-progress">{progress}</small> : null}
     </span>
   );
 }
@@ -233,6 +239,7 @@ export function AttackTests({ project, paused }: { project: string; paused?: str
     before && beforeRan ? { line: controlsLine(before), label: after && afterRan ? "no guardrails" : "" } : null,
     after && afterRan ? { line: controlsLine(after), label: before && beforeRan ? "basic guardrails" : "" } : null,
   ].filter((x): x is { line: string; label: string } => Boolean(x?.line));
+  const worse = worseRows(before, after);
   const watching = Boolean(after && afterRan && basicOn && tests.basicEnforcing === false && (after.wouldStop ?? 0) > 0);
 
   return (
@@ -277,12 +284,19 @@ export function AttackTests({ project, paused }: { project: string; paused?: str
         <p className="gm-sub">Testing again; the last results stay until the new ones are in.</p>
       ) : null}
 
+      {!live && headline(before, after) ? (
+        <p className="at-headline">{headline(before, after)}</p>
+      ) : null}
+
       <ul className="at-rows">
         {rows.map((x) => (
           <li key={x.key}>
             <div className="at-row-text">
               <strong>{x.name}</strong>
               <span>{x.description}</span>
+              {notRunWhy(of(after, x.key) || of(before, x.key)) ? (
+                <small className="at-why">{notRunWhy(of(after, x.key) || of(before, x.key))}</small>
+              ) : null}
             </div>
             <Result
               before={{ row: of(before, x.key), run: before }}
@@ -298,7 +312,17 @@ export function AttackTests({ project, paused }: { project: string; paused?: str
           </li>
         ))}
       </ul>
-      {before && after ? <p className="at-legend">got through: no guardrails → basic guardrails</p> : null}
+      {before || after ? (
+        <p className="at-legend">
+          Attacks that got through, fewer is better{before && after ? ": no guardrails → basic guardrails" : ""}
+        </p>
+      ) : null}
+      {!live && worse.length ? (
+        <p className="at-note">
+          {worse.map((w) => `${w.label} went from ${w.before} to ${w.after}`).join("; ")}. Results vary between runs of a
+          live model: the same attack can fail once and land the next time. Run the test again to see the spread.
+        </p>
+      ) : null}
       {normal.length ? (
         <p className="at-legend">
           {normal.map((n, i) => (
@@ -333,11 +357,15 @@ export function AttackTests({ project, paused }: { project: string; paused?: str
       {first?.status === "done" && beforeRan && !basicOn ? (
         <div className="at-next">
           <div>
-            <strong>Add basic guardrails</strong>
-            <p>Blocks attacks in what users send and in what the agent reads; hides personal data and secrets in replies.</p>
+            <strong>Turn on basic guardrails</strong>
+            <p>
+              The run above had nothing blocking: AgentFox was only watching, which is why the rails on the map already
+              count catches. Basic guardrails block attacks in what users send and in what the agent reads, and hide
+              personal data and secrets in replies.
+            </p>
           </div>
           <button type="button" className="at-btn" onClick={addBasic} disabled={busy || !here || Boolean(paused)} title={paused || undefined}>
-            Add and test again
+            Turn on basic guardrails and test again
           </button>
         </div>
       ) : null}

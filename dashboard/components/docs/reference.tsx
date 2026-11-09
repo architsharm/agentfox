@@ -59,7 +59,7 @@ function usage(node: CliNode): string {
 function ParamTable({ params }: { params: Param[] }) {
   if (!params.length) return null;
   return (
-    <table className="docs-params">
+    <div className="docs-table"><table className="docs-params">
       <thead>
         <tr>
           <th>Argument / option</th>
@@ -86,7 +86,7 @@ function ParamTable({ params }: { params: Param[] }) {
           </tr>
         ))}
       </tbody>
-    </table>
+    </table></div>
   );
 }
 
@@ -134,7 +134,7 @@ export function CliIndex() {
     panels.set(key, [...(panels.get(key) ?? []), node]);
   }
   return (
-    <table className="docs-params">
+    <div className="docs-table"><table className="docs-params">
       <thead>
         <tr>
           <th>Stage</th>
@@ -157,7 +157,7 @@ export function CliIndex() {
           )),
         )}
       </tbody>
-    </table>
+    </table></div>
   );
 }
 
@@ -187,7 +187,7 @@ function RouteBlock({ route }: { route: Route }) {
         </p>
       )}
       {route.body && route.body.fields.length > 0 && (
-        <table className="docs-params">
+        <div className="docs-table"><table className="docs-params">
           <thead>
             <tr>
               <th>Body field</th>
@@ -208,7 +208,7 @@ function RouteBlock({ route }: { route: Route }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </section>
   );

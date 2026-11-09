@@ -65,7 +65,7 @@ export default function Page() {
         granting them. <strong>Partial</strong> means some of the risk is enforced, some is
         only recorded until you promote a pack, and some is not addressed at all.
       </p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>Item</th>
@@ -86,7 +86,7 @@ export default function Page() {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
       <p>
         Two things apply to every row. AgentFox sees only what is routed through it (the
         SDK, <code>agentfox.auto()</code>, the gateway, MCP governance or coding-agent
@@ -103,7 +103,8 @@ export default function Page() {
       </p>
       <p>
         <strong>What AgentFox does.</strong> It does not rely on spotting the hijack. The{" "}
-        <code>tool-containment</code> pack, which enforces from <code>agentfox init</code>,
+        <code>tool-containment</code> pack (watching in a new workspace; one command or
+        Start blocking turns it on),
         tracks where every tool argument came from and refuses or holds an irreversible or
         high-impact call whose arguments came from untrusted content (
         <code>taint.irreversible_tool</code>, <code>taint.high_impact_tool</code>,{" "}
@@ -140,7 +141,8 @@ export default function Page() {
       </p>
       <p>
         <strong>What AgentFox does.</strong> This is what <code>tool-containment</code> is
-        for, and it enforces from <code>agentfox init</code> with <code>fail_mode: closed</code>.
+        for, with <code>fail_mode: closed</code>. A new workspace starts it watching; a
+        missing grant and a destructive statement are refused regardless.
         Every tool has a declared impact (<code>read</code>, <code>write</code>,{" "}
         <code>high_impact</code>, <code>irreversible</code>). Every agent gets grants, and a
         call no grant covers is refused (<code>capability.denied</code>). Grants carry

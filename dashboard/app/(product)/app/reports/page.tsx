@@ -6,6 +6,7 @@ import { BarList, Card, Empty, Grid, Header, Kpi, Pill, Tabs, ago, href, num, pc
 import { AreaTabs, REPORTS_TABS } from "@/components/product/AreaTabs";
 import { EnterpriseOnly } from "@/components/product/EnterpriseOnly";
 import { hasFeature } from "@/lib/product/edition";
+import { controlShare } from "@/lib/product/posture";
 import { PrintButton } from "@/components/product/PrintButton";
 import { NoticeToast } from "@/components/product/NoticeToast";
 
@@ -53,28 +54,39 @@ async function Summary() {
   const posture = Object.values(board?.control_posture || {}) as any[];
   const t = usage?.totals || { requests: 0, held: 0, blocked: 0 };
   // Working out of every control that applies, not out of the ones measured: "8 of 8
-  // measured" read as 100% with 29 controls not set up at all.
-  const inScope = (p: any) => Math.max(0, (p.controls || 0) - (p.counts?.not_applicable || 0));
-  const working = (p: any) => p.counts?.effective || 0;
-  const share = (p: any) => (inScope(p) ? working(p) / inScope(p) : 0);
-  const best = posture.length ? Math.round((posture.reduce((n, p) => n + share(p), 0) / posture.length) * 100) : 0;
+  // measured" read as 100% with 29 controls not set up at all. One helper, shared with
+  // Reports → Compliance, so the two tabs say the same number.
+  const inScope = (p: any) => controlShare(p).applies;
+  const working = (p: any) => controlShare(p).working;
+  const share = (p: any) => controlShare(p).share ?? 0;
+  // The workspace's own figure (every control once), not an average of framework
+  // rows, which double-counted every control mapped to more than one framework.
+  const overall = controlShare(board?.overall_posture);
   const computedAt = posture.map((p) => p.computed_at).filter(Boolean).sort()[0];
+  // Every framework row the same: say why rather than look like a copy-paste bug.
+  const allSame =
+    posture.length > 1 && posture.every((p) => working(p) === working(posture[0]) && inScope(p) === inScope(posture[0]));
+  // The same counts the "Agents by risk" panel below draws from.
+  const byClass: Record<string, number> = overview.agents_by_risk_class || {};
+  const agentsTotal = Object.values(byClass).reduce((n, v) => n + (v || 0), 0);
+  const highRisk = (byClass.high || 0) + (byClass.prohibited || 0);
 
   return (
     <>
       <Grid cols={4}>
-        <Kpi label="Projects" value={num(inv.agents || 0)} href="/app/projects" hint="Registered and unregistered." />
-        <Kpi label="High-risk agents" value={num((overview.high_risk_agents || []).length)} href="/app/projects" />
+        <Kpi label="Agents" value={num(agentsTotal || inv.agents || 0)} href="/app/projects" hint="Every agent not retired, registered or found by a scan. The risk panel below counts the same agents." />
+        <Kpi label="High-risk agents" value={num(highRisk)} href="/app/projects" hint="Risk tier high or prohibited, as in Agents by risk below." />
         <Kpi label="Open issues" value={num(findings.total || 0)} tone={findings.by_severity?.critical ? "bad" : undefined} href="/app/findings" />
-        <Kpi label="Requests stopped (30d)" value={pctOf(t.held + t.blocked, t.requests)} hint={`${num(t.held + t.blocked)} of ${num(t.requests)} requests held or blocked.`} />
+        <Kpi label="Requests held or blocked (30d)" value={pctOf(t.held + t.blocked, t.requests)} hint={`${num(t.held + t.blocked)} of ${num(t.requests)} requests. Traffic, not controls: Frameworks below is a different measure.`} />
       </Grid>
       {compliance && (
         <Card
           title="Frameworks"
-          hint="Controls working, out of every control that applies, computed from live traffic. Mappings are drafts pending review."
+          hint={`Controls working, out of every control that applies, computed from live traffic. Mappings are drafts pending review.${allSame ? " Every framework below maps the same controls, so their rows match." : ""}`}
           action={
             <span>
-              {best}% average{computedAt ? <span className="k-muted"> · updated {ago(computedAt)} · </span> : " · "}
+              {overall.share == null ? "—" : `${Math.round(overall.share * 100)}%`} of controls working ({overall.working} of {overall.applies})
+              {computedAt ? <span className="k-muted"> · updated {ago(computedAt)} · </span> : " · "}
               <Link href="/app/compliance">Recompute</Link>
             </span>
           }
@@ -95,7 +107,7 @@ async function Summary() {
                     </span>
                   </td>
                   <td className="num tight">
-                    {working(p)} of {inScope(p)}
+                    {working(p)} of {inScope(p)} working
                   </td>
                   <td className="tight">
                     {p.failing_controls?.length ? (
@@ -123,7 +135,7 @@ async function Summary() {
         </Card>
         <Card title="Agents by risk">
           <BarList
-            rows={Object.entries(overview.agents_by_risk_class || {}).map(([k, v]) => ({ key: k, label: k[0].toUpperCase() + k.slice(1), value: v as number }))}
+            rows={Object.entries(overview.agents_by_risk_class || {}).map(([k, v]) => ({ key: k, label: `${k[0].toUpperCase() + k.slice(1)} risk`, value: v as number }))}
             empty="No agents"
           />
         </Card>
@@ -229,7 +241,7 @@ async function Audit() {
                   <td>{e.actor_id}</td>
                   <td>{String(e.action).replace(/[._]/g, " ")}</td>
                   <td className="muted">
-                    {e.payload?.trace_id ? <Link href={`/app/traces/${e.payload.trace_id}`}>{e.subject_type}</Link> : e.subject_type}
+                    {e.payload?.trace_id ? <Link href={`/app/traces/${e.payload.trace_id}`}>{subjectWords(e.subject_type)}</Link> : subjectWords(e.subject_type)}
                   </td>
                 </tr>
               ))}
@@ -241,4 +253,14 @@ async function Audit() {
       </Card>
     </>
   );
+}
+
+/** An audit subject as words: "api_token" reads "API token", "retention_run" "Retention run". */
+function subjectWords(subject?: string | null): string {
+  if (!subject) return "";
+  const words = String(subject)
+    .replace(/[._]+/g, " ")
+    .replace(/\b(api|id|mcp|sso|llm)\b/gi, (w) => w.toUpperCase())
+    .trim();
+  return words ? words[0].toUpperCase() + words.slice(1) : "";
 }

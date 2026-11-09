@@ -11,9 +11,9 @@ export type Screen = { src: string; alt: string; width: number; height: number }
 export const SCREENS = {
   setupKey: {
     src: "/docs/screens/setup-key.png",
-    alt: "The Connect your first agent card. Step 1, Create a key, shows a new workspace key with a copy button. Step 2 shows the pip install and agentfox init --key command with that key filled in.",
-    width: 1280,
-    height: 1342,
+    alt: "The Connect your first agent card. Step 1, Create a key, shows a new workspace key (masked here) with a copy button. Step 2 shows pip install -U agentfox and the agentfox init --key --server command with that key filled in.",
+    width: 1248,
+    height: 1334,
   },
   agentsArrive: {
     src: "/docs/screens/agents-arrive.png",

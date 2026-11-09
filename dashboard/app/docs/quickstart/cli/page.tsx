@@ -78,7 +78,7 @@ agentfox scan`}</Code>
 
       <h2>Connect to an account later</h2>
       <p>
-        <Link href="/signup">Sign up</Link>, press <strong>Create a key</strong> on the Agents page, and
+        <Link href="/login">Sign in</Link> (that creates your workspace), press <strong>Create a key</strong> on the Agents page, and
         run the <code>init</code> command from the card in the same repository. It saves the key in{" "}
         <code>.agentfox/agentfox.env</code>, and from then on your app&apos;s calls go to your account
         and show up on the dashboard. The <Link href="/docs/quickstart">Quickstart</Link> walks through
@@ -86,7 +86,7 @@ agentfox scan`}</Code>
       </p>
 
       <h2>If something goes wrong</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>You see</th>
@@ -109,7 +109,7 @@ agentfox scan`}</Code>
             </td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <NextSteps
         items={[

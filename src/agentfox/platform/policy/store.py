@@ -468,6 +468,20 @@ def effective_for(
     return effective
 
 
+def runtime_environment(session: Session, agent_slug: str | None) -> str:
+    """The environment the runtime resolves an agent's policy in: the agent's own
+    registered ``environment`` (the enforcer's `_resolve_tool`), and ``production``
+    for a call with no agent. What ``policy effective`` defaults to, so it shows the
+    rules the gateway applies rather than the CLI's own configured environment."""
+    if agent_slug:
+        env = session.scalar(
+            select(Agent.environment).where(Agent.slug == agent_slug).order_by(Agent.created_at)
+        )
+        if env:
+            return env
+    return "production"
+
+
 def agent_team(session: Session, agent_slug: str | None) -> str | None:
     """The team an agent belongs to, for the `team` level of the hierarchy.
 

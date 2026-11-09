@@ -15,6 +15,12 @@ import {
   type MapTool,
   feeds,
   settingsFor,
+  actionTone,
+  findsLabel,
+  limitsText,
+  looseningText,
+  thresholdText,
+  watchingNote,
 } from "./guardrailMap";
 
 const IMPACTS = ["read", "write", "high_impact", "irreversible", null];
@@ -153,5 +159,63 @@ describe("how checks feed rules", () => {
     expect(settingsFor(rule({ kind: "content" })).map((o) => o.key)).toContain("redact");
     expect(settingsFor(rule({ kind: "action" })).map((o) => o.key)).not.toContain("redact");
     expect(ruleSetting(rule({ effect: "mask" }))).toBe("redact");
+  });
+});
+
+describe("what the map's rule panel says", () => {
+  const rule = (extra: Partial<MapRule>): MapRule => ({ id: "r", description: "", effect: "block", mode: "enforce", level: "agent", message: "", hits: 0, ...extra });
+
+  it("a chosen Block or Ask in a watching library is marked as not live", () => {
+    expect(watchingNote(rule({ mode: "observe", library: "EU AI Act" }))).toMatch(/EU AI Act is only recording.*would block/);
+    expect(watchingNote(rule({ mode: "observe", effect: "escalate" }))).toMatch(/would ask a person/);
+    expect(watchingNote(rule({ mode: "enforce" }))).toBeNull();
+    // Watch and Off mean the same thing whether the library watches or blocks.
+    expect(watchingNote(rule({ mode: "observe", effect: "allow" }))).toBeNull();
+    expect(watchingNote(rule({ mode: "observe", enabled: false }))).toBeNull();
+    // A tightened copy that enforces beside a watching one is live.
+    expect(watchingNote(rule({ mode: "observe", also: [{ effect: "block", mode: "enforce" }] }))).toBeNull();
+  });
+
+  it("colours stopping red, holding amber, hiding blue and everything else quiet", () => {
+    expect(actionTone(rule({}))).toBe("block");
+    expect(actionTone(rule({ effect: "escalate" }))).toBe("held");
+    expect(actionTone(rule({ effect: "redact" }))).toBe("hide");
+    expect(actionTone(rule({ mode: "observe" }))).toBe("quiet");
+    expect(actionTone(rule({ effect: "allow" }))).toBe("quiet");
+    expect(actionTone(rule({ enabled: false }))).toBe("quiet");
+  });
+
+  it("says a content rule's threshold in words", () => {
+    expect(thresholdText(rule({ finds: "INJECTION.JAILBREAK", minScore: 0.7 }))).toBe("Block if prompt injection ≥ 0.7");
+    expect(thresholdText(rule({ effect: "tokenize", finds: "PII", minScore: 0.8 }))).toBe("Hide it if personal data ≥ 0.8");
+    expect(thresholdText(rule({ minScore: null }))).toBeNull();
+    expect(findsLabel("SOMETHING_NEW")).toBe("something new");
+  });
+
+  it("names the library, not the pack key, when a change would loosen a rule", () => {
+    const text = looseningText(rule({ library: "Tool containment" }), "Payments Operations Agent");
+    expect(text).toContain("Tool containment");
+    expect(text).toContain("Payments Operations Agent");
+    expect(text).not.toMatch(/intent\.|tool-containment/);
+  });
+});
+
+describe("a tool's limits, in words", () => {
+  it("never shows JSON, and prices an amount when the currency is pinned", () => {
+    expect(limitsText({ amount: { lt: 1000 }, currency: { in: ["USD"] } })).toEqual(["amount under $1,000", "currency USD only"]);
+  });
+
+  it("leaves an amount bare when the currency is not pinned", () => {
+    expect(limitsText({ amount: { lte: 500 } })).toEqual(["amount at most 500"]);
+    expect(limitsText({ amount: { gte: 1, lte: 50 }, currency: { in: ["USD", "EUR"] } })).toEqual(["amount at least 1 and at most 50", "currency USD or EUR"]);
+  });
+
+  it("reads the other comparators and bare values", () => {
+    expect(limitsText({ to: { matches: "@acme\\.com$" }, region: { not_in: ["cn", "ru"] }, mode: "dry_run" })).toEqual([
+      "to matching @acme\\.com$",
+      "region not cn or ru",
+      "mode exactly dry_run",
+    ]);
+    expect(limitsText(null)).toEqual([]);
   });
 });

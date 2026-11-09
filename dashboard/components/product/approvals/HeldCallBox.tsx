@@ -3,10 +3,12 @@
  * if nobody answers. A held refund used to expire as "Nobody answered" with no
  * sign anywhere that nobody had been told.
  *
- * Only what the gateway actually does. It sends no notification for a held call
- * (Slack alerts and webhooks carry findings, not approvals), every request waits
- * `approval_ttl_minutes` (AGENTFOX_APPROVAL_TTL_MINUTES, 30 by default), and an
- * unanswered one follows its `timeout_action`, which is `deny`.
+ * Only what the gateway actually does. A held call is posted to the workspace's
+ * Slack channel (Settings → Alerts, an Enterprise feature) when one is connected and
+ * outbound messages are allowed; otherwise nobody is told and the line says where to
+ * set it up. Every request waits `approval_ttl_minutes`
+ * (AGENTFOX_APPROVAL_TTL_MINUTES, 30 by default), and an unanswered one follows its
+ * `timeout_action`, which is `deny`.
  */
 import Link from "next/link";
 import { safeApi } from "@/lib/product/api";
@@ -14,6 +16,8 @@ import { DEFAULT_WAIT_MINUTES, minutesLabel, onExpiry, waitMinutes, type Approva
 
 export async function HeldCallBox({ waiting }: { waiting: Approval[] }) {
   const slack = await safeApi<any>("/api/alerts/slack", { configured: false });
+  // Sent to the tenant's channel or the deployment's, when messages may leave at all.
+  const told = Boolean((slack.configured && slack.enabled !== false) || slack.deployment_channel) && slack.egress_allowed !== false;
   const carried = waiting.map(waitMinutes).find((m): m is number => m !== null);
   const wait = carried ?? DEFAULT_WAIT_MINUTES;
   const action = waiting.find((a) => a.timeout_action)?.timeout_action || "deny";
@@ -26,12 +30,15 @@ export async function HeldCallBox({ waiting }: { waiting: Approval[] }) {
           <div>
             <dt>Who is told</dt>
             <dd>
-              Nobody is notified. Held calls wait here.
-              {slack.configured && (
-                <span className="k-muted">
-                  {" "}
-                  <Link href="/app/settings?tab=alerts">Slack alerts</Link> cover new issues, not held calls.
-                </span>
+              {told ? (
+                <>
+                  Your <Link href="/app/settings?tab=alerts">Slack channel</Link>, and they wait here.
+                </>
+              ) : (
+                <>
+                  Nobody is notified. Held calls wait here.{" "}
+                  <Link href="/app/settings?tab=alerts">{slack.configured ? "Allow outbound messages to post them to Slack" : "Post them to Slack"}</Link>
+                </>
               )}
             </dd>
           </div>

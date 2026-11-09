@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { projectHref, projectInPath, projectView } from "./project";
+import { defaultProject, projectHref, projectInPath, projectView } from "./project";
 import { WORKSPACE_NAV, projectNav } from "./nav";
 
 describe("project views", () => {
@@ -45,12 +45,12 @@ describe("sidebar scopes", () => {
     expect(labels).not.toContain("Policies");
   });
 
-  it("lights Reports on its tab pages and Traces on its tab pages", () => {
+  it("lights Reports on its tab pages and Activity on its tab pages", () => {
     const rows = WORKSPACE_NAV.flatMap((g) => g.items);
     const reports = rows.find((r) => r[0] === "Reports")!;
     expect(reports[1]).toBe("/app/reports");
     expect(reports[2]).toEqual(expect.arrayContaining(["/app/compliance", "/app/coverage"]));
-    const traces = rows.find((r) => r[0] === "Traces")!;
+    const traces = rows.find((r) => r[0] === "Activity")!;
     expect(traces[2]).toEqual(expect.arrayContaining(["/app/tools", "/app/models", "/app/sessions", "/app/events"]));
   });
 
@@ -59,8 +59,29 @@ describe("sidebar scopes", () => {
     expect(rows[0][1]).toBe("/app/map");
     expect(rows[0][2]).toContain("/app/projects");
     expect(rows.map((r) => r[0])).toEqual([
-      "Agents", "Policies", "Approvals", "Issues", "Testing", "Traces", "Reports",
+      "Agents", "Policies", "Approvals", "Issues", "Testing", "Activity", "Reports",
       "Settings",
     ]);
+  });
+});
+
+describe("default project", () => {
+  const row = (project: string, status: string, last_seen_at: string | null = null) => ({ project, last_seen_at, members: [{ status }] });
+
+  it("opens the added project with the most recent traffic, never a shadow agent", () => {
+    // The API lists the most recently registered first: here a shadow agent seen once.
+    const projects = [
+      row("marketing-copy-bot", "shadow", "2026-11-08T11:12:58+00:00"),
+      row("support-triage", "active", "2026-11-08T11:12:57+00:00"),
+      row("payments-ops", "active", "2026-11-08T11:23:16+00:00"),
+      row("draft-bot", "draft"),
+    ];
+    expect(defaultProject(projects)?.project).toBe("payments-ops");
+  });
+
+  it("falls back to the first added project, then to the first of all", () => {
+    expect(defaultProject([row("a", "draft"), row("b", "active"), row("c", "active")])?.project).toBe("b");
+    expect(defaultProject([row("a", "shadow"), row("b", "draft")])?.project).toBe("a");
+    expect(defaultProject([])).toBeUndefined();
   });
 });

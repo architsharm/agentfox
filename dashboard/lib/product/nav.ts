@@ -3,7 +3,7 @@
  *
  * All projects is the workspace: which agents (Agents), what is allowed
  * (Policies), what needs me (Approvals), what is broken (Issues), does it hold up
- * (Testing), what happened (Traces), show others (Reports), and how it is set up
+ * (Testing), what happened (Activity), show others (Reports), and how it is set up
  * (Settings, whose Detection tab holds the protection levels every project gets).
  * One project is that project's pages only: its canvas (the map of its guardrails,
  * and everything about it when nothing is selected), what it may do (Access), its
@@ -40,7 +40,7 @@ const SETTINGS: NavItem = [
 /**
  * Guardrails is everything: Agents (each project's map) is home and the place to set
  * things up; Policies, Approvals, Issues and Testing are the ways back in to what
- * needs a decision; Traces is the record behind all of it, for troubleshooting
+ * needs a decision; Activity is the record behind all of it, for troubleshooting
  * (its tabs include Tools, Models, Sessions and Events); Reports is what you show
  * others (Compliance, Threat coverage, Evidence and the audit log are its tabs).
  */
@@ -54,7 +54,7 @@ export const WORKSPACE_NAV: NavGroup[] = [
       ["Issues", "/app/findings"],
       ["Testing", "/app/test"],
       [
-        "Traces",
+        "Activity",
         "/app/traces",
         ["/app/observe", "/app/tools", "/app/models", "/app/events", "/app/sessions", "/app/escalation/conversations"],
       ],
@@ -76,7 +76,7 @@ export function projectNav(slug: string): NavGroup[] {
         ["Access", projectHref(slug, "access"), [projectHref(slug, "features")], "/app/entitlement"],
         ["Approvals", `/app/approvals?${q}`],
         ["Issues", `/app/findings?${q}`],
-        ["Traces", `/app/traces?${q}`, [projectHref(slug, "activity"), `/app/observe?${q}`], "/app/traces"],
+        ["Activity", `/app/traces?${q}`, [projectHref(slug, "activity"), `/app/observe?${q}`], "/app/traces"],
       ],
     },
     { group: "", items: [["Settings", projectHref(slug, "settings"), [], "/app/settings"]] },

@@ -89,12 +89,10 @@ def test_an_approval_does_not_cover_another_agent_or_tool(seeded):
     assert spent is None and "not 'payments.transfer'" in why
 
 
-@pytest.mark.parametrize("decision", ["pending", "denied", "expired"])
+@pytest.mark.parametrize("decision", ["pending", "expired"])
 def test_only_an_approved_unexpired_approval_redeems(seeded, decision):
     fox, approval_id = _held(seeded)
-    if decision == "denied":
-        resolve_approval(seeded, approval_id, False, "usr_test", "no")
-    elif decision == "expired":
+    if decision == "expired":
         _approve(seeded, approval_id)
         seeded.get(ApprovalRequest, approval_id).expires_at = utcnow() - dt.timedelta(minutes=1)
         seeded.flush()
@@ -103,6 +101,67 @@ def test_only_an_approved_unexpired_approval_redeems(seeded, decision):
             s.guard_tool(
                 "email.send", dict(EMAIL), provenance=USER_PROVENANCE, approval_id=approval_id
             )
+
+
+def test_a_retry_of_a_denied_call_is_refused_with_the_denial(seeded):
+    """A denial is an answer: the retry presenting it is blocked with the denier's
+    reason, and no fresh approval asks the same person the same question again."""
+    fox, approval_id = _held(seeded)
+    resolve_approval(seeded, approval_id, False, "usr_test", "not this customer")
+    before = len(seeded.scalars(select(ApprovalRequest)).all())
+    with fox.session(intent="email the customer their receipt") as s:
+        with pytest.raises(PolicyViolation) as refused:
+            s.guard_tool(
+                "email.send", dict(EMAIL), provenance=USER_PROVENANCE, approval_id=approval_id
+            )
+    result = refused.value.result
+    assert result.verdict == "block"
+    assert result.rules_fired[0]["rule_id"] == "approval.denied"
+    assert result.reason.startswith(f"A person denied this call ({approval_id}): not this customer")
+    assert len(seeded.scalars(select(ApprovalRequest)).all()) == before
+    assert seeded.get(ApprovalRequest, approval_id).status == "denied"
+
+
+def test_a_denial_does_not_cover_a_different_call(seeded):
+    """Other arguments are not what was denied: they are held for a person as usual."""
+    fox, approval_id = _held(seeded)
+    resolve_approval(seeded, approval_id, False, "usr_test", "no")
+    with fox.session(intent="email the customer their receipt") as s:
+        with pytest.raises(ApprovalRequired) as held:
+            s.guard_tool(
+                "email.send",
+                {**EMAIL, "to": "someone-else@example.com"},
+                provenance=USER_PROVENANCE,
+                approval_id=approval_id,
+            )
+    assert held.value.approval_id != approval_id
+
+
+def test_the_approval_names_the_rule_that_held_the_call_first(seeded):
+    """A watching rule that fired too is labelled, and comes after the deciding one."""
+    from agentfox.runtime.enforcement.approvals import approval_reason
+
+    reason = approval_reason(
+        [
+            {
+                "rule_id": "eu.art14",
+                "effect": "escalate",
+                "mode": "observe",
+                "reason": "EU Art. 14.",
+            },
+            {"rule_id": "x.allow", "effect": "allow", "mode": "enforce", "reason": "fine"},
+            {
+                "rule_id": "business.cap",
+                "effect": "escalate",
+                "mode": "enforce",
+                "reason": "Over $100.",
+            },
+        ]
+    )
+    assert reason == "Over $100.; EU Art. 14 (watching only)."
+    fox, approval_id = _held(seeded)
+    filed = seeded.get(ApprovalRequest, approval_id)
+    assert "(watching only)" not in filed.reason.split("; ")[0]
 
 
 def test_an_approval_never_releases_a_block(seeded):
@@ -184,6 +243,28 @@ def test_http_retry_with_the_approval_runs(client):
     assert retry.json()["verdict"] == "allow", retry.json()
     again = client.post("/v1/guard/tool_call", json={**TOOL_CALL, "approval_id": approval_id})
     assert again.json()["verdict"] == "escalate"
+
+
+def test_a_held_runs_trace_shows_who_answered(client):
+    """The run of a held call reads Approved or Denied, and by whom, once answered."""
+    held = client.post("/v1/guard/tool_call", json=TOOL_CALL).json()
+    trace_id, approval_id = held["trace_id"], held["approval_id"]
+    admin = as_user("admin@example.com")
+    pending = client.get(f"/api/traces/{trace_id}", headers=admin).json()
+    [decision] = [d for d in pending["decisions"] if d["approval_id"] == approval_id]
+    assert decision["approval"]["status"] == "pending" and decision["approval"]["resolver"] is None
+    client.post(f"/api/approvals/{approval_id}/deny", json={"rationale": "no"}, headers=admin)
+    denied = client.get(f"/api/traces/{trace_id}", headers=admin).json()
+    [decision] = [d for d in denied["decisions"] if d["approval_id"] == approval_id]
+    assert decision["approval"]["status"] == "denied"
+    assert decision["approval"]["resolver"] == "admin@example.com"
+    assert decision["approval"]["rationale"] == "no"
+    runs = client.get("/api/traces?limit=20", headers=admin).json()["traces"]
+    assert next(t for t in runs if t["id"] == trace_id)["approval_status"] == "denied"
+    # And the retry of what was denied is refused, not held again.
+    retry = client.post("/v1/guard/tool_call", json={**TOOL_CALL, "approval_id": approval_id})
+    assert retry.json()["verdict"] == "block", retry.json()
+    assert retry.json().get("approval_id") is None
 
 
 def test_an_agent_key_reads_its_own_approval_and_no_one_elses(client, monkeypatch):

@@ -14,7 +14,7 @@ import httpx
 from rich.console import Console
 from rich.table import Table
 
-from agentfox.capabilities.onboarding.attacks import build_suite
+from agentfox.capabilities.onboarding.attacks import build_suite, suite_size
 from agentfox.capabilities.onboarding.mapper import map_repository
 
 POLL_SECONDS = 2.0
@@ -212,7 +212,14 @@ def report(api: Any, console: Console, root: Path, server: str, key: str) -> dic
             "[yellow]●[/yellow] Connected, but no agents were found, so there is nothing "
             "to set up yet. Fix that (see below), then run this again."
         )
-    _print_missing_help(console)
+    if structure["agents"] and structure["tools"]:
+        # Found what it was looking for: the full list of shapes would bury the result.
+        console.print(
+            "[dim]Missing an agent or tool? What mapping recognises: "
+            "https://useagentfox.com/docs/discover — then run this again.[/dim]\n"
+        )
+    else:
+        _print_missing_help(console)
     return mapped
 
 
@@ -560,8 +567,7 @@ def _run_job(
     label = "with your guardrails" if checked else "without guardrails"
     suite = build_suite(structure, job.get("sets"))
     console.print(
-        f"[bold]Running {len(suite)} attacks and checks {label}[/bold] · tools are faked, "
-        "nothing real happens"
+        f"[bold]Running {suite_size(suite)} {label}[/bold] · tools are faked, nothing real happens"
     )
     out = _Results(api, run_id)
     drivers = _drivers(console, root, mapped, structure, loaded)

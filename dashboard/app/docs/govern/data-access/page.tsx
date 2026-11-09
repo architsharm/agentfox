@@ -100,7 +100,7 @@ agentfox permit user "kb/support/*" support`}</Code>
       </p>
 
       <h2>If something goes wrong</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>You see</th>
@@ -121,7 +121,7 @@ agentfox permit user "kb/support/*" support`}</Code>
             <td>The team name must match exactly, and the pattern must match the source each chunk carries.</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <NextSteps
         items={[

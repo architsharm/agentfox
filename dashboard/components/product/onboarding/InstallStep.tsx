@@ -45,7 +45,7 @@ export function InstallStep() {
   const view = forced === "success" ? { connected: true, structure: STRUCTURE } : forced === "empty" ? { connected: false, structure: EMPTY } : live;
   const found = Boolean(view?.connected && view.structure.agents.length > 0);
   const counts = structureCounts(view?.structure ?? EMPTY);
-  const command = `pip install agentfox && agentfox init --key ${key ?? "nom_api_…"}`;
+  const command = `pip install -U agentfox && agentfox init --key ${key ?? "nom_api_…"}`;
 
   return (
     <section className="flex flex-col gap-6" aria-labelledby="ob-h">

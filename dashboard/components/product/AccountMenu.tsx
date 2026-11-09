@@ -15,13 +15,15 @@ export function AccountMenu({
   role?: string;
 }) {
   const initial = (email || "?").trim()[0]?.toUpperCase() || "?";
+  const label = workspaceLabel(workspace);
+  const isId = Boolean(workspace && label !== workspace);
   return (
     <details className="account-menu">
       <summary>
         <span className="avatar">{initial}</span>
         <span className="account-summary">
           <span className="account-email">{email}</span>
-          {workspace && <span className="account-workspace">{workspace}</span>}
+          {label && <span className="account-workspace">{label}</span>}
         </span>
       </summary>
       <div className="account-menu-body">
@@ -32,6 +34,12 @@ export function AccountMenu({
         {workspace && (
           <div className="account-menu-row">
             <span className="muted small">Workspace</span>
+            <span className="small">{label}</span>
+          </div>
+        )}
+        {isId && (
+          <div className="account-menu-row">
+            <span className="muted small">Workspace ID</span>
             <span className="small mono">{workspace}</span>
           </div>
         )}
@@ -56,4 +64,18 @@ export function AccountMenu({
       </div>
     </details>
   );
+}
+
+/**
+ * The workspace as a name. /api/me answers with the GitHub login when GitHub is
+ * connected and otherwise the raw tenant id ("org_default"), which is an internal
+ * key, not something a person named. The id stays in the menu for support.
+ */
+export function workspaceLabel(workspace?: string | null): string {
+  if (!workspace) return "";
+  if (workspace === "org_default") return "Default workspace";
+  const m = /^org_(.+)$/.exec(workspace);
+  if (!m) return workspace;
+  const words = m[1].replace(/[_-]+/g, " ").trim();
+  return words ? `${words[0].toUpperCase()}${words.slice(1)} workspace` : workspace;
 }

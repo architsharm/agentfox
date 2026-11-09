@@ -74,7 +74,7 @@ agentfox policy proposals from-traffic --agent claude-dev`}</Code>
 
       <h2>What is refused from the start</h2>
       <p>The shell rules block from day one, whatever the grants say:</p>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>Command</th>
@@ -89,7 +89,7 @@ agentfox policy proposals from-traffic --agent claude-dev`}</Code>
           <tr><td><code>terraform apply</code>, <code>npm publish</code></td><td><code>action.infrastructure_mutation</code>, <code>action.supply_chain_publish</code></td></tr>
           <tr><td>Turning AgentFox off, e.g. <code>agentfox policy observe …</code></td><td><code>control_plane.tamper</code></td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>
         A refused tool call does not run, and the agent is told which rule stopped it. A refused prompt
         never reaches the model. A tool result cannot be undone; when it carries injected instructions,
@@ -138,7 +138,7 @@ claude plugin install agentfox@agentfox`}</Code>
       </p>
 
       <h2>If something goes wrong</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>You see</th>
@@ -163,7 +163,7 @@ claude plugin install agentfox@agentfox`}</Code>
             <td>Trust the hooks in <code>/hooks</code>, and start the daemon.</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <NextSteps
         items={[

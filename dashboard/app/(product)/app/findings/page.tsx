@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { agentName, agentNames, withAgentNames } from "@/lib/product/names";
 import { appPageMetadata } from "@/lib/site";
 import { api, apiErrorProps, safeApi } from "@/lib/product/api";
 import { ApiDown, findingTypeInfo } from "@/components/ui";
@@ -46,6 +47,7 @@ export default async function Issues({ searchParams }: { searchParams: Promise<S
     (a, b) => severityRank(a.severity) - severityRank(b.severity) || String(b.last_seen_at).localeCompare(String(a.last_seen_at)),
   );
   const keep = { agent: sp.agent, severity: sp.severity };
+  const names = agentNames(agents.agents);
   // "No open issues" in a workspace that has never been scanned or sent a request
   // reads as good news when it means nothing has been looked at yet. Asked only
   // when the list is empty, so a busy workspace pays nothing for it.
@@ -95,11 +97,11 @@ export default async function Issues({ searchParams }: { searchParams: Promise<S
                 <tr key={f.id}>
                   <td className="tight"><SeverityPill value={f.severity} /></td>
                   <td>
-                    <Link className="k-name" href={`/app/findings/${f.id}`}>{sentence(f.title)}</Link>
+                    <Link className="k-name" href={`/app/findings/${f.id}`}>{sentence(withAgentNames(f.title, names))}</Link>
                     <span className="sub">{findingTypeInfo(f.type).label}</span>
                   </td>
                   <td>
-                    {f.agent_slug ? <Link style={{ whiteSpace: "nowrap" }} href={`/app/projects/${encodeURIComponent(f.agent_slug)}`}>{f.agent_slug}</Link> : <span className="k-muted">—</span>}
+                    {f.agent_slug ? <Link style={{ whiteSpace: "nowrap" }} href={`/app/projects/${encodeURIComponent(f.agent_slug)}`}>{agentName(names, f.agent_slug)}</Link> : <span className="k-muted">—</span>}
                   </td>
                   <td className="num">{num(f.occurrences || 1)}</td>
                   <td className="tight muted">{ago(f.last_seen_at || f.created_at)}</td>

@@ -130,3 +130,32 @@ export const DIRECTION_LABEL: Record<string, string> = {
   stronger: "Stronger",
   unchanged: "Unchanged",
 };
+
+/** Older than this, the page says the feed is behind its hourly schedule. */
+export const STALE_AFTER_MS = 2 * 60 * 60 * 1000;
+
+/** "12 minutes ago", "3 hours ago", "2 days ago". */
+export function ago(ms: number): string {
+  const minutes = Math.max(0, Math.round(ms / 60_000));
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  return `${Math.round(hours / 24)} days ago`;
+}
+
+/**
+ * How old the last run is. The probes are scheduled hourly, but a run only
+ * happens when something drives the job runner (a cron, or traffic), so the page
+ * reports the age it sees instead of promising a cadence.
+ */
+export function freshness(
+  lastUpdated: string | null,
+  now: number = Date.now(),
+): { ago: string; stale: boolean } {
+  if (!lastUpdated) return { ago: "never", stale: true };
+  const at = Date.parse(lastUpdated);
+  if (Number.isNaN(at)) return { ago: "unknown", stale: true };
+  const age = now - at;
+  return { ago: ago(age), stale: age > STALE_AFTER_MS };
+}

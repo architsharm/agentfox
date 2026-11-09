@@ -47,10 +47,10 @@ import { githubConnected } from "@/lib/product/welcome";
  * the same as losing the ability to find the thing by typing its name.
  */
 const NAV_SEARCH_ONLY: { label: string; href: string; group: string; feature?: string }[] = [
-  { label: "Runs", href: "/app/traces", group: "Observe" },
-  { label: "What breaks", href: "/app/observe?tab=breaks", group: "Observe" },
-  { label: "Security", href: "/app/observe?tab=security", group: "Observe" },
-  { label: "Cost & speed", href: "/app/observe?tab=cost", group: "Observe" },
+  { label: "Runs", href: "/app/traces", group: "Activity" },
+  { label: "What breaks", href: "/app/observe?tab=breaks", group: "Activity" },
+  { label: "Security", href: "/app/observe?tab=security", group: "Activity" },
+  { label: "Cost & speed", href: "/app/observe?tab=cost", group: "Activity" },
   { label: "Policy performance", href: "/app/policies?tab=performance", group: "Policies" },
   { label: "Policy library", href: "/app/policies?tab=libraries", group: "Policies" },
   { label: "Suggested changes", href: "/app/policies?tab=changes", group: "Policies" },
@@ -58,8 +58,8 @@ const NAV_SEARCH_ONLY: { label: string; href: string; group: string; feature?: s
   { label: "Protection levels", href: "/app/settings?tab=detection", group: "Settings" },
   { label: "Detector tuning", href: "/app/settings?tab=detection&sec=tuning", group: "Settings" },
   { label: "AI judges & egress", href: "/app/settings?tab=detection&sec=judges", group: "Settings" },
-  { label: "Attack tests", href: "/app/test?tab=attacks", group: "Test" },
-  { label: "Test suites", href: "/app/test?tab=suites", group: "Test" },
+  { label: "Attack tests", href: "/app/test?tab=attacks", group: "Testing" },
+  { label: "Test suites", href: "/app/test?tab=suites", group: "Testing" },
   { label: "Compliance", href: "/app/compliance", group: "Reports", feature: "compliance" },
   { label: "Threat coverage", href: "/app/coverage", group: "Reports" },
   { label: "Evidence", href: "/app/reports?tab=evidence", group: "Reports", feature: "evidence" },

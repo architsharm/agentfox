@@ -23,7 +23,7 @@ export default function Page() {
         existing traces into AgentFox.
       </p>
 
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>Destination</th>
@@ -81,7 +81,7 @@ export default function Page() {
             </td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <Screenshot {...SCREENS.integrations} />
 
@@ -124,7 +124,7 @@ export AGENTFOX_WEBHOOK_MIN_SEVERITY=high`}</Code>
       </ul>
 
       <h2>If something goes wrong</h2>
-      <table>
+      <div className="docs-table"><table>
         <thead>
           <tr>
             <th>You see</th>
@@ -154,7 +154,7 @@ export AGENTFOX_WEBHOOK_MIN_SEVERITY=high`}</Code>
             <td>The call did not go through the proxy with a Langfuse, LangSmith or <code>traceparent</code> header.</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <NextSteps
         items={[

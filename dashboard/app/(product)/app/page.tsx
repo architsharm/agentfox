@@ -144,7 +144,7 @@ async function LegacyHome({ searchParams }: { searchParams: Promise<SP> }) {
             <Kpi label="Errors" value={num(t.errors)} current={t.errors} prev={p.errors} tone={t.errors ? "bad" : undefined} href={runsHref(f, { errors: true })} />
           </Grid>
           <Grid cols={2}>
-            <Card title="Requests" action={<Link href="/app/observe">Observe</Link>}>
+            <Card title="Requests" action={<Link href="/app/observe">Activity</Link>}>
               <TimeChart buckets={b} bucketSeconds={summary.bucket_seconds} height={120} linkFor={(start, end) => runsHref(f, { start, end })} />
             </Card>
             <Card title="Projects" action={<Link href="/app/projects">All projects</Link>} flush>

@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from agentfox.capabilities.business.graph import combine as combine_business
 from agentfox.capabilities.containment.findings import (
+    applied_verdict,
     detector_verdict,
     is_detector_rule,
     matches_detector_rule,
@@ -47,6 +48,7 @@ from agentfox.core.models import Agent, Decision, Identity, Tool, Trace, as_awar
 from agentfox.platform import checks as check_registry
 from agentfox.platform.identity import (
     check_capability,
+    denial_of,
     redeem_approval,
     request_approval,
     verify_credential,
@@ -73,7 +75,7 @@ from agentfox.platform.registry.service import observe_agent
 from agentfox.runtime.availability import observe_check
 from agentfox.runtime.checks import checks_for
 from agentfox.runtime.enforcement import background
-from agentfox.runtime.enforcement.approvals import held_call
+from agentfox.runtime.enforcement.approvals import approval_reason, held_call
 from agentfox.runtime.enforcement.completion import _CompletionMixin
 from agentfox.runtime.enforcement.findings import _FindingsMixin
 from agentfox.runtime.enforcement.limits import _LimitsMixin
@@ -218,6 +220,20 @@ class _Evaluation:
     redeemed_approval: Any = None
     latency_ms: float = 0.0
     reason: str = ""
+
+
+def _deciding_mode(verdict: str, effective: str, packs_mode: str) -> str:
+    """The mode of what decided the call, not of the packs bound around it.
+
+    A verdict that was applied came from a rule that enforces (a pack in enforce, a
+    grant, a destructive statement, the kill switch); a stronger verdict that was
+    only recorded came from one that watches. A response reading ``mode: observe``
+    beside an escalation a person must approve said the opposite of what happened."""
+    if verdict != "allow":
+        return "enforce"
+    if effective != "allow":
+        return "observe"
+    return packs_mode
 
 
 class Enforcer(
@@ -1371,6 +1387,8 @@ class Enforcer(
         )
         approval_id = call.approval_id
         if approval_id and call.effective == "escalate" and call.persist:
+            if self._refuse_denied_retry(call, approval_id):
+                return
             redeemed, refusal = redeem_approval(
                 self.session,
                 approval_id,
@@ -1397,6 +1415,41 @@ class Enforcer(
                     )
                 )
 
+    def _refuse_denied_retry(self, call: _Evaluation, approval_id: str) -> bool:
+        """A retry of the very call a person denied is refused, with their reason.
+
+        Escalating it again filed a fresh approval with no link to the denial, so the
+        reviewer saw the call they had just turned down as a new request, and an agent
+        could keep asking until someone said yes. Refused only where the call would
+        have been held (``verdict`` escalate); in observe mode it is recorded."""
+        denied = denial_of(
+            self.session,
+            approval_id,
+            agent_id=call.agent.id if call.agent else None,
+            tool_key=call.held[0],
+            arguments=call.held[1],
+        )
+        if denied is None:
+            return False
+        why = (denied.resolution_rationale or "").strip()
+        call.effective = "block"
+        if call.verdict == "escalate":
+            call.verdict = "block"
+        call.taint_summary["approval"] = {"id": approval_id, "redeemed": False, "denied": True}
+        # First, so the reason the agent and the run show leads with the denial.
+        call.rules_fired.insert(
+            0,
+            _fired_rule(
+                "approval.denied",
+                "block",
+                f"A person denied this call ({approval_id})" + (f": {why}" if why else ""),
+                severity="medium",
+                controls=["NOM-IAM-03"],
+                mode="enforce" if call.verdict == "block" else "observe",
+            ),
+        )
+        return True
+
     def _build_result(self, call: _Evaluation) -> EnforcementResult:
         """The result the caller gets: verdicts, reason, explanation, redacted content."""
         rules_fired, pipeline_result = call.rules_fired, call.pipeline_result
@@ -1409,6 +1462,7 @@ class Enforcer(
             if refused:
                 reason = f"{reason}; the approval presented was not used: {refused}"
         call.reason = reason
+        call.mode = _deciding_mode(call.verdict, call.effective, call.mode)
 
         result = EnforcementResult(
             verdict=call.verdict,
@@ -1460,6 +1514,14 @@ class Enforcer(
         """Record the decision, its findings, any approval request, the span, the audit entry."""
         agent, surface, trace_id = call.agent, call.surface, call.trace_id
         verdict, effective, rules_fired = call.verdict, call.effective, call.rules_fired
+        if surface == "tool_args":
+            # What happened, not what was decided: a call the caller ran anyway (auto()
+            # in observe mode, the no-grants carve-out) is recorded as allowed, and its
+            # rules as would-have-blocked; the scope is kept on the decision.
+            verdict = applied_verdict(
+                verdict, rules_fired, getattr(self, "_containment_scope", ("enforced", frozenset()))
+            )
+        mode = call.mode if verdict == call.verdict else "observe"
         # --- 9. persist decision, findings, audit ------------------------
         decision_row = Decision(
             trace_id=trace_id,
@@ -1474,7 +1536,7 @@ class Enforcer(
             detector_run_ids=call.detector_run_ids,
             taint_summary_json=call.taint_summary,
             latency_ms=call.latency_ms,
-            mode=call.mode,
+            mode=mode,
         )
         self.session.add(decision_row)
         self.session.flush()
@@ -1633,7 +1695,7 @@ class Enforcer(
                 agent_id=call.agent.id if call.agent else None,
                 tool_key=call.held[0],
                 arguments=call.held[1],
-                reason=call.reason,
+                reason=approval_reason(call.rules_fired) or call.reason,
                 trace_id=call.trace_id,
                 decision_id=decision_row.id,
             )

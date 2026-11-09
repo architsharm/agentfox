@@ -9,12 +9,16 @@ import { CustomRule } from "@/components/product/policies/CustomRule";
 import { RuleTests } from "@/components/product/policies/RuleTests";
 import { RuleTuner, type RuleScope } from "@/components/product/policies/RuleTuner";
 import { RuleChecks } from "@/components/product/policies/RuleChecks";
+import { Act } from "@/components/kit/Act";
+import { BusinessMode } from "@/components/product/policies/BusinessMode";
+import { LadderEditor } from "@/components/product/policies/LadderEditor";
 import { checksFor, type CheckInfo } from "@/lib/product/checks";
+import { versionNote } from "@/lib/product/policyWords";
 import { RANGE_DAYS, metricsQs, runsHref } from "@/lib/product/observe";
-import { loadRules, ruleMode, type RuleInfo } from "@/lib/product/rules";
+import { BUSINESS_LIBRARY, businessRule, loadRules, ruleMode, type RuleInfo } from "@/lib/product/rules";
 import { ensureRange } from "@/lib/product/range";
 import { RangeProvider } from "@/components/kit/RangeContext";
-import { categoryLabel, rangeOf, ruleCategory, ruleTitle } from "@/lib/product/vocab";
+import { WOULD, categoryLabel, rangeOf, ruleCategory, ruleTitle } from "@/lib/product/vocab";
 
 export const metadata: Metadata = appPageMetadata("Rule");
 export const dynamic = "force-dynamic";
@@ -33,6 +37,8 @@ export default async function RulePage({ params, searchParams }: { params: Promi
   const { ruleId: raw } = await params;
   const ruleId = decodeURIComponent(raw);
   const sp = await searchParams;
+  // A business rule (an approval limit) is stored apart from the packs; same page.
+  if (ruleId.startsWith("business.")) return <BusinessRule ruleKey={ruleId.slice("business.".length)} sp={sp} />;
   // A rule written in the workspace's own words can also be edited and deleted here.
   const tabs = ruleId.startsWith("custom.") ? [TABS[0], { key: "edit", label: "Edit" }, ...TABS.slice(1)] : TABS;
   const tab = tabs.some((t) => t.key === sp.tab) ? sp.tab! : "overview";
@@ -60,7 +66,8 @@ export default async function RulePage({ params, searchParams }: { params: Promi
         hint={ruleId.startsWith("custom.") ? undefined : rule?.description}
         meta={
           <>
-            {rule && <ActionPill effect={rule.effect} />}
+            {/* While its library only watches, the rule would block: it is not live, so not red. */}
+            {rule && (mode === "enforce" || !WOULD[rule.effect] ? <ActionPill effect={rule.effect} /> : <Pill tone="outline">{WOULD[rule.effect]}</Pill>)}
             <ModePill mode={mode} />
             <Pill tone="outline">{categoryLabel(ruleCategory(ruleId))}</Pill>
           </>
@@ -146,17 +153,34 @@ export default async function RulePage({ params, searchParams }: { params: Promi
                   .filter((p) => rule.packs.some((x) => x.key === p.key))
                   .flatMap((p) => p.versions.map((v: any) => ({ ...v, pack: p, live: v.version === p.boundVersion })))
                   .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
-                  .map((v) => (
+                  .map((v) => {
+                    // "injection.direct: {'min_score': 0.5}" reads "Sensitivity changed from Medium to High".
+                    const note = versionNote(v.notes, (id) => ruleTitle(id, rules.find((r) => r.rule_id === id)?.description));
+                    const other = note.rule && note.rule !== ruleTitle(ruleId, rule.description) ? `${note.rule}: ` : "";
+                    return (
                     <tr key={v.id}>
                       <td>
-                        <span className="k-name">{v.notes || `Version ${v.version}`}</span>
+                        <span className="k-name">{note.text ? `${other}${note.text}` : `Version ${v.version}`}</span>
                         <span className="sub">{v.pack.name}</span>
                       </td>
                       <td className="tight">{v.live ? <Pill tone="ok">Live</Pill> : <Pill tone="outline">v{v.version}</Pill>}</td>
                       <td className="tight muted">{v.author}</td>
                       <td className="tight muted">{ago(v.created_at)}</td>
+                      <td className="tight">
+                        {!v.live && (
+                          <Act
+                            url={`/api/policies/${encodeURIComponent(v.pack.key)}/versions/${v.version}/restore`}
+                            className="k-btn-ghost"
+                            done="Restored"
+                            confirm={`Restore version ${v.version} of ${v.pack.name}? Its rules become live again as a new version, ${v.pack.mode === "enforce" ? "blocking (replayed over the last 7 days on the way in)" : "watching"}, as the library is now.`}
+                          >
+                            Restore this version
+                          </Act>
+                        )}
+                      </td>
                     </tr>
-                  ))}
+                    );
+                  })}
               </tbody>
             </table>
           ) : (
@@ -222,6 +246,8 @@ async function CheckedBy({ finds, agent }: { finds: string; agent?: string }) {
     surfaces: d.surfaces || [],
     available: Boolean(d.available),
     finds: d.finds || "",
+    enabled: d.always_on ? true : Boolean(d.enabled),
+    unavailable: d.unavailable_reason || null,
   }));
   const on: string[] = Array.from(new Set((map?.stages || []).flatMap((st: any) => st.detectors || [])));
   return (
@@ -234,3 +260,153 @@ async function CheckedBy({ finds, agent }: { finds: string; agent?: string }) {
   );
 }
 
+
+const BUSINESS_TABS = [
+  { key: "overview", label: "Overview" },
+  { key: "examples", label: "Hits" },
+  { key: "tune", label: "Change" },
+  { key: "history", label: "History" },
+];
+
+/**
+ * A business rule's page: the same overview, hits and history as any rule, its real
+ * mode (it watches or blocks on its own, not through a pack), Start blocking through
+ * the simulate-then-confirm gate, and its bands to change under Change.
+ */
+async function BusinessRule({ ruleKey, sp }: { ruleKey: string; sp: SP }) {
+  const ruleId = `business.${ruleKey}`;
+  const path = `/app/policies/rules/${encodeURIComponent(ruleId)}`;
+  const tab = BUSINESS_TABS.some((t) => t.key === sp.tab) ? sp.tab! : "overview";
+  if (tab === "overview" || tab === "examples") await ensureRange(path, sp);
+  const range = rangeOf(sp.range);
+  const [b, stats, tools, versions] = await Promise.all([
+    safeApi<any>(`/api/business/rules/${encodeURIComponent(ruleKey)}`, null),
+    safeApi<any>(`/api/metrics/rules?${metricsQs({ range })}`, { rules: [] }),
+    tab === "tune" ? safeApi<any>("/api/tools", { tools: [] }) : Promise.resolve({ tools: [] }),
+    tab === "history" ? safeApi<any>(`/api/business/rules/${encodeURIComponent(ruleKey)}/history`, { versions: [] }) : Promise.resolve({ versions: [] }),
+  ]);
+  if (!b)
+    return (
+      <>
+        <Header back={{ href: "/app/policies", label: "Policies" }} title={ruleTitle(ruleId)} />
+        <Card>
+          <Empty>No such rule. It may have been deleted.</Empty>
+        </Card>
+      </>
+    );
+  const rule = businessRule(b);
+  const mode = ruleMode(rule);
+  const s = (stats.rules || []).find((r: any) => r.rule_id === ruleId);
+  const tabHref = (k: string) => href(path, { tab: k === "overview" ? undefined : k, range: sp.range });
+  const name = b.name && b.name !== b.key ? b.name : ruleTitle(ruleId);
+  return (
+    <RangeProvider range={sp.range}>
+      <>
+        <Header
+          back={{ href: "/app/policies", label: "Policies" }}
+          title={name}
+          hint={rule.description !== name ? rule.description : undefined}
+          meta={
+            <>
+              <ActionPill effect={rule.effect} />
+              <ModePill mode={mode} />
+              <Pill tone="outline">Approval limit</Pill>
+            </>
+          }
+          actions={
+            <>
+              {b.enabled !== false && <BusinessMode ruleKey={ruleKey} mode={b.mode} name={name} />}
+              <Link className="k-btn" href={tabHref("tune")}>
+                Change
+              </Link>
+            </>
+          }
+        />
+        <Tabs items={BUSINESS_TABS.map((t) => ({ ...t, href: tabHref(t.key) }))} active={tab} />
+
+        {tab === "overview" && (
+          <>
+            <FilterBar />
+            <Grid cols={4}>
+              <Kpi label="Hits" value={num(s?.fires || 0)} spark={s?.series} href={runsHref({ range }, { rule: ruleId })} />
+              <Kpi label="Stopped" value={num(s?.enforced || 0)} />
+              <Kpi label="Would have stopped" value={num(s?.watched || 0)} hint="Hits while the rule was only watching." />
+              <Kpi label="Last hit" value={s ? ago(s.last_fired) : "Never"} />
+            </Grid>
+            <Grid cols={2}>
+              <Card title="By agent">
+                <BarList rows={Object.entries(s?.agents || {}).map(([k, v]) => ({ key: k, label: k, value: v as number, href: `/app/projects/${encodeURIComponent(k)}` }))} empty="No hits" />
+              </Card>
+              <Card title="By tool">
+                <BarList rows={Object.entries(s?.tools || {}).map(([k, v]) => ({ key: k, label: k, value: v as number, href: runsHref({ range }, { rule: ruleId, tool: k }) }))} empty={b.tool ? `Only ${b.tool}` : "Any tool"} />
+              </Card>
+            </Grid>
+            <Card title="In libraries" flush>
+              <table className="k-table">
+                <tbody>
+                  <tr>
+                    <td><Link className="k-name" href="/app/policies?tab=libraries&open=custom">{BUSINESS_LIBRARY.name}</Link></td>
+                    <td className="tight"><ActionPill effect={rule.effect} /></td>
+                    <td className="tight">{b.enabled !== false ? <ModePill mode={b.mode} /> : <Pill tone="outline">Off</Pill>}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </Card>
+          </>
+        )}
+
+        {tab === "examples" && <Examples ruleId={ruleId} range={range} />}
+
+        {tab === "tune" && (
+          <Card>
+            <LadderEditor rule={b} tools={(tools.tools || []).map((t: any) => t.key).filter((k: string) => !k.startsWith("redteam."))} />
+          </Card>
+        )}
+
+        {tab === "history" && (
+          <Card flush>
+            {versions.versions?.length ? (
+              <table className="k-table">
+                <tbody>
+                  {versions.versions.map((v: any) => (
+                    <tr key={v.version}>
+                      <td>
+                        <span className="k-name">{v.notes || `Version ${v.version}`}</span>
+                        <span className="sub">{bandsText(v.bands, b.definition?.unit)}</span>
+                      </td>
+                      <td className="tight">{v.live ? <Pill tone="ok">Live</Pill> : <Pill tone="outline">v{v.version}</Pill>}</td>
+                      <td className="tight muted">{v.author}</td>
+                      <td className="tight muted">{ago(v.at)}</td>
+                      <td className="tight">
+                        {!v.live && (
+                          <Act
+                            url={`/api/business/rules/${encodeURIComponent(ruleKey)}/versions/${v.version}/restore`}
+                            className="k-btn-ghost"
+                            done="Restored"
+                            confirm={`Restore version ${v.version} of ${name}? Its limits become live again as a new version, ${b.mode === "enforce" ? "blocking" : "watching"} as the rule is now.`}
+                          >
+                            Restore this version
+                          </Act>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <Empty>No history.</Empty>
+            )}
+          </Card>
+        )}
+      </>
+    </RangeProvider>
+  );
+}
+
+/** "up to 100 USD: allow · above that: ask a person" */
+function bandsText(bands: any[], unit?: string): string {
+  const does: Record<string, string> = { allow: "allow", verify: "check first", escalate: "ask a person", block: "block" };
+  return (bands || [])
+    .map((x) => `${x.upto != null ? `up to ${x.upto}${unit ? ` ${unit}` : ""}` : "above that"}: ${does[x.outcome] || x.outcome}`)
+    .join(" · ");
+}

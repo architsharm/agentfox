@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ApiError, playgroundCall } from "@/lib/marketing/playground";
+import { ApiError, explainVerdict, playgroundCall, retryPhrase } from "@/lib/marketing/playground";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -44,5 +44,51 @@ describe("playgroundCall", () => {
       session_id: "pg_1",
     });
     expect(fetchMock).toHaveBeenCalledWith("http://gw/api/playground/sessions", expect.anything());
+  });
+});
+
+describe("rate limit", () => {
+  it("carries when to retry from a 429", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ detail: "Later.", retry_after_seconds: 1500 }), { status: 429 }),
+      ),
+    );
+    const err = await playgroundCall("http://gw", "/api/playground/sessions").catch((e) => e);
+    expect(err.retryAfterSeconds).toBe(1500);
+    expect(retryPhrase(err.retryAfterSeconds)).toBe("in about 25 minutes");
+    expect(retryPhrase(undefined)).toBe("in a minute");
+  });
+});
+
+describe("explainVerdict", () => {
+  it("turns the joined reasons into one sentence and moves citations aside", () => {
+    const v = {
+      reason:
+        "Prompt-injection or jailbreak attempt detected in user input.; System-prompt extraction attempt.; EU AI Act Art. 15 - resilience against attempts to alter system behaviour.; Prompt-injection or jailbreak attempt detected in user input.",
+      rules_fired: [
+        { rule_id: "injection.direct", reason: "Prompt-injection or jailbreak attempt detected in user input." },
+        { rule_id: "injection.system_prompt_leak", reason: "System-prompt extraction attempt." },
+        { rule_id: "eu.art15.injection_resistance", reason: "EU AI Act Art. 15 - resilience against attempts to alter system behaviour." },
+        { rule_id: "injection.direct", reason: "Prompt-injection or jailbreak attempt detected in user input." },
+      ],
+    };
+    const out = explainVerdict(v);
+    expect(out.sentence).toBe("Prompt-injection or jailbreak attempt detected in user input (and 1 more check).");
+    expect(out.sentence).not.toContain(".;");
+    expect(out.citations).toEqual(["EU AI Act Art. 15 - resilience against attempts to alter system behaviour."]);
+  });
+
+  it("names a custom rule in words", () => {
+    const out = explainVerdict({
+      rules_fired: [{ rule_id: "custom.airline-cs-words", reason: "airline-cs: blocked words: your rule" }],
+    });
+    expect(out.sentence).toBe("It matched this agent's blocked words.");
+  });
+
+  it("falls back to the first reason when no rule is listed", () => {
+    expect(explainVerdict({ reason: "Over the limit.; Something else." }).sentence).toBe("Over the limit.");
   });
 });

@@ -143,7 +143,7 @@ export function Screenshot({
 /** A two-column "what you want → what to run" table. */
 export function TaskTable({ rows }: { rows: { task: string; run: string; href?: string }[] }) {
   return (
-    <table className="docs-tasks">
+    <div className="docs-table"><table className="docs-tasks">
       <thead>
         <tr>
           <th>You want to</th>
@@ -160,7 +160,7 @@ export function TaskTable({ rows }: { rows: { task: string; run: string; href?: 
           </tr>
         ))}
       </tbody>
-    </table>
+    </table></div>
   );
 }
 

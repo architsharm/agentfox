@@ -205,7 +205,7 @@ curl -s localhost:8080/v1/guard/input -H 'content-type: application/json' -d @do
       </p>
       <Figure
         src="/product/injection-observed.png"
-        alt="A retrieved document carrying an override instruction, recorded in observe mode as would block in enforce."
+        alt="An AgentFox run whose retrieved document carries an instruction: allowed while the rule watches, and marked would block."
         caption={
           <>
             An injection in a retrieved document, recorded in observe mode as{" "}
@@ -213,7 +213,7 @@ curl -s localhost:8080/v1/guard/input -H 'content-type: application/json' -d @do
           </>
         }
         width={1600}
-        height={707}
+        height={900}
       />
     </>
   );

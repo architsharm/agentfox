@@ -7,11 +7,11 @@ import { Card, Empty, Grid, Header, Kpi, Pill, Tabs, ago, href, num } from "@/co
 import { CodeSnippet } from "@/components/product/start/CodeSnippet";
 import { TryIt } from "@/components/product/test/TryIt";
 import { AddPathToTests } from "@/components/product/test/AddPathToTests";
-import { publicApiBase } from "@/lib/env";
+import { remoteApiBase } from "@/lib/env";
 import { NoticeToast } from "@/components/product/NoticeToast";
 import { campaignNumbers } from "@/lib/product/attackTest";
 
-export const metadata: Metadata = appPageMetadata("Test", "Check rules and agents before they meet real traffic.");
+export const metadata: Metadata = appPageMetadata("Testing", "Check rules and agents before they meet real traffic.");
 export const dynamic = "force-dynamic";
 
 type SP = Record<string, string | undefined>;
@@ -33,7 +33,7 @@ export default async function Test({ searchParams }: { searchParams: Promise<SP>
 
   return (
     <>
-      <Header title="Test" />
+      <Header title="Testing" />
       <Tabs items={TABS.map((t) => ({ ...t, href: href("/app/test", { tab: t.key === "try" ? undefined : t.key }) }))} active={tab} />
       <NoticeToast notice={sp.review_notice} error={sp.review_error} />
       {tab === "try" && <Try agents={live} />}
@@ -187,22 +187,29 @@ async function Attacks({ agents }: { agents: any[] }) {
           <button type="submit" className="k-btn-primary">Run</button>
         </form>
       </Card>
-      {last && (
-        <Grid cols={3}>
-          <Kpi label="Attacks tried (last run)" value={num(last.summary?.probes_run || 0)} />
-          <Kpi
-            label="Stopped"
-            value={num(campaignNumbers(last.summary).stopped)}
-            hint={campaignNumbers(last.summary).watching ? `${campaignNumbers(last.summary).watching} more would be stopped once watching rules block` : undefined}
-          />
-          <Kpi
-            label="Got through"
-            value={campaignNumbers(last.summary).ran ? num(campaignNumbers(last.summary).through) : "—"}
-            tone={campaignNumbers(last.summary).tone}
-            hint={campaignNumbers(last.summary).ran ? undefined : "No attack ran"}
-          />
-        </Grid>
-      )}
+      {last && (() => {
+        const n = campaignNumbers(last.summary);
+        return (
+          <Grid cols={3}>
+            <Kpi
+              label="Attacks (last run)"
+              value={num(n.ran)}
+              hint={n.controls ? `plus ${n.controls} normal requests: ${n.answered} of ${n.controls} answered` : undefined}
+            />
+            <Kpi
+              label="Stopped"
+              value={num(n.stopped)}
+              hint={n.watching ? `${n.watching} more caught by watching rules: they count as got through until those rules block` : undefined}
+            />
+            <Kpi
+              label="Got through"
+              value={n.ran ? num(n.through) : "—"}
+              tone={n.tone}
+              hint={n.ran ? "Not stopped in live traffic" : "No attack ran"}
+            />
+          </Grid>
+        );
+      })()}
       <Card title="Past runs" flush>
         {list.length ? (
           <table className="k-table">
@@ -212,31 +219,34 @@ async function Attacks({ agents }: { agents: any[] }) {
                 <th className="num">Attacks</th>
                 <th className="num">Stopped</th>
                 <th className="num">Got through</th>
-                <th className="tight">Score</th>
+                <th className="tight" title="Share of attacks stopped in live traffic. A catch by a rule that only watches does not count.">Stopped live</th>
+                <th className="num">Normal requests answered</th>
                 <th className="tight">When</th>
               </tr>
             </thead>
             <tbody>
-              {list.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.name}</td>
-                  <td className="num">{num(c.summary?.probes_run || 0)}</td>
-                  <td className="num">{num(campaignNumbers(c.summary).stopped)}</td>
-                  <td className="num">
-                    {campaignNumbers(c.summary).through ? <Pill tone="bad">{campaignNumbers(c.summary).through}</Pill> : campaignNumbers(c.summary).ran ? "0" : "—"}
-                  </td>
-                  <td className="tight">
-                    {campaignNumbers(c.summary).ran ? (
-                      <Pill tone={(c.summary?.posture_score ?? 0) >= 0.9 && !campaignNumbers(c.summary).through ? "ok" : "warn"}>
-                        {Math.round((c.summary?.posture_score ?? 0) * 100)}%
-                      </Pill>
-                    ) : (
-                      <span className="muted">—</span>
-                    )}
-                  </td>
-                  <td className="tight muted">{ago(c.created_at)}</td>
-                </tr>
-              ))}
+              {list.map((c) => {
+                const n = campaignNumbers(c.summary);
+                return (
+                  <tr key={c.id}>
+                    <td>{c.name}</td>
+                    <td className="num">{num(n.ran)}</td>
+                    <td className="num">{num(n.stopped)}</td>
+                    <td className="num">
+                      {n.through ? <Pill tone="bad">{n.through}</Pill> : n.ran ? "0" : "—"}
+                    </td>
+                    <td className="tight">
+                      {n.stoppedShare != null ? (
+                        <Pill tone={n.through ? "warn" : "ok"}>{Math.round(n.stoppedShare * 100)}%</Pill>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
+                    <td className="num">{n.controls ? `${n.answered} of ${n.controls}` : "—"}</td>
+                    <td className="tight muted">{ago(c.created_at)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         ) : (
@@ -342,6 +352,7 @@ async function Reliability({ agents }: { agents: any[] }) {
           <Empty>No targets yet.</Empty>
         )}
       </Card>
+      <div style={{ height: 16 }} />
       <Grid cols={2}>
         <Card title="New target">
           <form action="/api/eval/slos" method="POST" className="k-form">
@@ -359,7 +370,12 @@ async function Reliability({ agents }: { agents: any[] }) {
                 <option value="7d">7 days</option>
                 <option value="30d">30 days</option>
               </select>
-              <input className="k-input" type="number" name="target" step="0.01" min="0" max="1" defaultValue="0.9" style={{ width: 90 }} aria-label="Target (0–1)" />
+              {/* Was an unlabelled "0.9" box: say what the number is. */}
+              <label className="k-pills k-muted" style={{ gap: 8 }}>
+                Target pass rate
+                <input className="k-input" type="number" name="target" step="0.01" min="0" max="1" defaultValue="0.9" style={{ width: 90 }} aria-label="Target pass rate, 0 to 1" />
+                <span>(0–1)</span>
+              </label>
             </div>
             <input className="k-input" name="objective" placeholder="95% of answers stay grounded" aria-label="Objective" />
             <div><button type="submit" className="k-btn-primary">Add target</button></div>
@@ -385,14 +401,21 @@ async function Reliability({ agents }: { agents: any[] }) {
 }
 
 function Ci() {
-  const gateway = publicApiBase();
+  // A CI runner cannot reach a gateway on this machine's loopback address.
+  const { url: gateway, isLoopback } = remoteApiBase();
   return (
     <>
       <Card title="Block a release when quality drops">
         <div className="k-form">
           <CodeSnippet label="Save the current run as the baseline" code="agentfox test baseline RUN_ID --label main" />
           <CodeSnippet label="In CI: fail on regression" code="agentfox test gate SUITE --baseline RUN_ID" />
-          <CodeSnippet label="Or over HTTP" code={`curl -s -X POST ${gateway}/api/eval/gate \\\n  -H "Authorization: Bearer $AGENTFOX_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"suite": "SUITE", "min_pass_rate": 0.9}'`} />
+          <CodeSnippet
+            label={
+              isLoopback
+                ? "Or over HTTP (set AGENTFOX_URL in CI to an address of your gateway the runner can reach)"
+                : "Or over HTTP"
+            }
+            code={`curl -s -X POST "${gateway}/api/eval/gate" \\\n  -H "Authorization: Bearer $AGENTFOX_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"suite": "SUITE", "min_pass_rate": 0.9}'`} />
         </div>
       </Card>
       <Card title="Attack test in CI">

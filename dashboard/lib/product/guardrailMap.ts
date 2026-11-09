@@ -189,6 +189,119 @@ export function ruleChange(slug: string, to: RuleSetting): Record<string, unknow
   return { agents: [slug], enabled: true, effect: to };
 }
 
+/**
+ * Whether a rule's chosen setting is live. A rule in a pack that only watches records
+ * what it would do and stops nothing, so its "Block" is not a block yet. Null when
+ * live (or when the setting is Watch or Off, which are the same either way); else the
+ * note the control shows under it.
+ */
+export function watchingNote(r: MapRule): string | null {
+  const s = ruleSetting(r);
+  if (s === null || s === "allow" || s === "off") return null;
+  if (enforces(r)) return null;
+  const from = r.library ? ` ${r.library} is` : " Its library is";
+  const verb = { block: "block", escalate: "ask a person", redact: "hide", allow: "", off: "" }[s];
+  return `Watching:${from} only recording, so this rule would ${verb} but stops nothing yet.`;
+}
+
+/** The colour a rule's action reads in: stopping is red, holding amber, hiding blue; watching and allowing are quiet. */
+export type ActionTone = "block" | "held" | "hide" | "quiet";
+export function actionTone(r: Pick<MapRule, "effect" | "mode" | "enabled">): ActionTone {
+  if (r.enabled === false || r.effect === "allow" || r.mode !== "enforce") return "quiet";
+  if (r.effect === "block") return "block";
+  if (r.effect === "escalate") return "held";
+  return "hide";
+}
+
+/** What a content rule looks for, in words: `INJECTION.JAILBREAK` → "prompt injection". */
+const FINDS: Record<string, string> = {
+  INJECTION: "prompt injection",
+  PII: "personal data",
+  SECRET: "a secret",
+  SECRETS: "a secret",
+  SAFETY: "harmful content",
+  CODE: "insecure code",
+  GROUNDING: "an unsupported answer",
+  SCHEMA: "a malformed reply",
+  TOXICITY: "toxic language",
+  TOPIC: "the topic",
+};
+export function findsLabel(finds?: string): string {
+  const head = (finds || "").split(".")[0].toUpperCase();
+  return FINDS[head] || (head ? head.toLowerCase().replace(/_/g, " ") : "a finding");
+}
+
+/**
+ * A content rule's threshold as a sentence: "Block if prompt injection ≥ 0.7".
+ * Null for a rule that tests no detection score.
+ */
+export function thresholdText(r: Pick<MapRule, "effect" | "finds" | "minScore">): string | null {
+  if (r.minScore == null) return null;
+  const verb: Record<string, string> = { block: "Block", escalate: "Ask a person", redact: "Hide it", mask: "Hide it", tokenize: "Hide it", allow: "Record" };
+  return `${verb[r.effect] ?? "Act"} if ${findsLabel(r.finds)} ≥ ${r.minScore}`;
+}
+
+/**
+ * A 409 from the scope route, in words a person can act on. The gateway's message
+ * names the rule id and the pack key; this names the library and says what to do.
+ */
+export function looseningText(r: Pick<MapRule, "library">, agentName: string): string {
+  const lib = r.library || "its library";
+  return `${lib} doesn't let one agent loosen this rule, so it can't be relaxed for ${agentName} alone.`;
+}
+
+// --- limits ------------------------------------------------------------------------
+
+const CURRENCY: Record<string, string> = { USD: "$", EUR: "€", GBP: "£" };
+
+/**
+ * A tool's argument limits as words, never JSON: `{amount: {lt: 1000}, currency: {in:
+ * ["USD"]}}` → ["amount under $1,000", "currency USD only"]. An amount takes the
+ * currency symbol only when another limit pins the currency to one value.
+ */
+export function limitsText(limits: Record<string, any> | null | undefined): string[] {
+  const entries = Object.entries(limits || {});
+  const pinned = entries
+    .map(([, spec]) => (spec && typeof spec === "object" && Array.isArray(spec.in) && spec.in.length === 1 ? String(spec.in[0]).toUpperCase() : null))
+    .find((c) => c && CURRENCY[c]);
+  const money = (arg: string, v: unknown) =>
+    typeof v === "number" ? (pinned && /amount|price|total|value|sum|cost/i.test(arg) ? `${CURRENCY[pinned]}${v.toLocaleString("en-US")}` : v.toLocaleString("en-US")) : String(v);
+  const list = (v: unknown) => (Array.isArray(v) ? v.map(String) : [String(v)]);
+  const or = (xs: string[]) => (xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1).join(", ")} or ${xs[xs.length - 1]}`);
+  return entries.map(([arg, spec]) => {
+    if (!spec || typeof spec !== "object" || Array.isArray(spec)) return `${arg} exactly ${list(spec).join(", ")}`;
+    const parts = Object.entries(spec).map(([op, v]) => {
+      switch (op) {
+        case "lt":
+          return `under ${money(arg, v)}`;
+        case "lte":
+        case "max":
+          return `at most ${money(arg, v)}`;
+        case "gt":
+          return `over ${money(arg, v)}`;
+        case "gte":
+        case "min":
+          return `at least ${money(arg, v)}`;
+        case "eq":
+          return `exactly ${money(arg, v)}`;
+        case "ne":
+          return `anything but ${money(arg, v)}`;
+        case "in":
+          return list(v).length === 1 ? `${list(v)[0]} only` : `${or(list(v))}`;
+        case "not_in":
+          return `not ${or(list(v))}`;
+        case "contains":
+          return `containing “${v}”`;
+        case "matches":
+          return `matching ${v}`;
+        default:
+          return `${op} ${list(v).join(", ")}`;
+      }
+    });
+    return `${arg} ${parts.join(" and ")}`;
+  });
+}
+
 // --- permission control -----------------------------------------------------------
 
 export const PERMISSION: Record<Permission, { label: string; short: string; tone: string }> = {

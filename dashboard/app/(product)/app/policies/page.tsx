@@ -23,6 +23,7 @@ import {
   num,
 } from "@/components/kit";
 import { Act } from "@/components/kit/Act";
+import { BusinessMode } from "@/components/product/policies/BusinessMode";
 import { FilterBar } from "@/components/kit/FilterBar";
 import { Checks } from "@/components/product/policies/Checks";
 import { ImportGuard } from "@/components/product/policies/ImportGuard";
@@ -92,7 +93,7 @@ export default async function Policies({ searchParams }: { searchParams: Promise
       />
       <Tabs items={TABS.map((t) => ({ ...t, href: href("/app/policies", { tab: t.key === "applied" ? undefined : t.key }) }))} active={tab} />
       <NoticeToast notice={sp.review_notice} error={sp.review_error} />
-      {tab === "applied" && <AppliedRules scope={sp.scope} agent={sp.agent} project={project} projectAgents={projectAgents} />}
+      {tab === "applied" && <AppliedRules scope={sp.scope} agent={sp.agent} mode={sp.mode} project={project} projectAgents={projectAgents} />}
       {tab === "libraries" && <Libraries project={project} agents={projectAgents} />}
       {tab === "rules" && <RulesTab sp={sp} />}
       {tab === "checks" && <Checks />}
@@ -187,14 +188,12 @@ async function RulesTab({ sp }: { sp: SP }) {
               {business.rules.map((b: any) => (
                 <tr key={b.key}>
                   <td>
-                    <Link className="k-name" href={`/app/policies/business/${encodeURIComponent(b.key)}`}>{b.name}</Link>
+                    <Link className="k-name" href={`/app/policies/rules/${encodeURIComponent(`business.${b.key}`)}`}>{b.name}</Link>
                     <span className="sub">{b.tool || "Any tool"}{b.description ? ` · ${b.description}` : ""}</span>
                   </td>
                   <td className="tight"><ModePill mode={b.enabled ? b.mode : null} /></td>
                   <td className="tight" style={{ textAlign: "right" }}>
-                    <Act url={`/api/business/rules/${encodeURIComponent(b.key)}/mode`} body={{ mode: b.mode === "enforce" ? "observe" : "enforce" }} className={b.mode === "enforce" ? "k-btn" : "k-btn-primary"}>
-                      {b.mode === "enforce" ? "Switch to watching" : "Start blocking"}
-                    </Act>
+                    <BusinessMode ruleKey={b.key} mode={b.mode} name={b.name} />
                   </td>
                 </tr>
               ))}
@@ -261,7 +260,7 @@ async function PerformanceTab({ sp }: { sp: SP }) {
   const cats = CATEGORIES.filter((c) => rules.some((r) => ruleCategory(r.rule_id) === c.key));
   const cell = (rs: any[], cat: string) => {
     const inCat = rs.filter((r) => ruleCategory(r.rule_id) === cat);
-    if (inCat.some((r) => r.enforcement === "enforce")) return <Pill tone="ok">Blocking</Pill>;
+    if (inCat.some((r) => r.enforcement === "enforce")) return <Pill tone="brand">Blocking</Pill>;
     if (inCat.length) return <Pill tone="outline">Watching</Pill>;
     return <span className="k-muted">—</span>;
   };

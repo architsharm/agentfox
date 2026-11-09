@@ -30,3 +30,47 @@ def test_effective_reports_per_layer_and_per_rule_modes(session):
     layer_lines = [line for line in out.splitlines() if "org:*(extend)" in line]
     assert any("watched" in line and "observe" in line for line in layer_lines)
     assert any("enforced" in line and "enforce" in line for line in layer_lines)
+
+
+def test_business_rules_are_listed_and_counted_like_other_rules(session, monkeypatch):
+    """An approval limit is in force too: `policy effective` lists it with a title, and
+    `policy list` counts it, so the CLI agrees with Your rules in the dashboard."""
+    from agentfox.apps.cli.commands import _shared
+    from agentfox.capabilities.business import Ladder, save_ladder
+
+    # The console is made once per process; give it a wide terminal whatever ran first.
+    monkeypatch.setattr(_shared.console, "width", 160)
+    save_policy(session, PolicyDocument.from_yaml(OBSERVED), bind_mode="observe")
+    save_ladder(
+        session,
+        Ladder.model_validate(
+            {
+                "key": "custom-payments-transfer",
+                "tool": "payments.transfer",
+                "field": "arguments.amount",
+                "unit": "USD",
+                "bands": [
+                    {"upto": 100, "outcome": "allow"},
+                    {"outcome": "escalate", "reason": "Transfers over $100 need finance."},
+                ],
+            }
+        ),
+        actor="t@example.com",
+    )
+    session.commit()
+
+    out = CliRunner().invoke(app, ["policy", "effective"]).output
+    assert out.splitlines()[0].startswith("effective policy in production")
+    line = next(x for x in out.splitlines() if x.startswith("business.custom-payments-transfer"))
+    assert "Transfers over $100 need finance." in line
+    assert "escalate" in line and "observe" in line
+    assert (
+        "title"
+        in out.splitlines()[
+            next(i for i, x in enumerate(out.splitlines()) if x.startswith("rule "))
+        ]
+    )
+
+    listed = CliRunner().invoke(app, ["policy", "list"]).output
+    row = next(x for x in listed.splitlines() if x.startswith("business rules"))
+    assert row.split()[-1] == "1" and "observe" in row

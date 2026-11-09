@@ -8,6 +8,7 @@ import { DescribeRule } from "@/components/product/policies/DescribeRule";
 import { ImportGuard } from "@/components/product/policies/ImportGuard";
 import { Libraries } from "@/components/product/policies/Libraries";
 import { observeScope } from "@/lib/product/observeScope";
+import type { ScopeAgent } from "@/components/product/policies/AgentScope";
 import { SURFACES, WOULD, outcomeOf, ruleTitle } from "@/lib/product/vocab";
 
 export const metadata: Metadata = appPageMetadata("Add rule");
@@ -34,16 +35,17 @@ export default async function NewRule({ searchParams }: { searchParams: Promise<
   // No builder chosen yet: start from what the person wants, not from our mechanisms.
   if (!sp.from && !sp.run) return <Start agent={sp.agent} surfaces={sp.surfaces} />;
   const tab = tabs.some((t) => t.key === sp.from) ? sp.from! : tabs[0].key;
+  const scopeAgents = tab === "custom" || tab === "describe" ? await projectAgents() : [];
 
   return (
     <>
       <Header back={{ href: "/app/policies", label: "Policies" }} title={sp.agent ? `New rule for ${sp.agent}` : "New rule"} />
       <Tabs items={tabs.map((t) => ({ ...t, href: href("/app/policies/new", { ...keep, from: t.key }) }))} active={tab} />
       {tab === "run" && sp.run && <FromRun id={sp.run} />}
-      {tab === "describe" && <Describe agent={sp.agent} />}
+      {tab === "describe" && <Describe agent={sp.agent} agents={scopeAgents} />}
       {tab === "custom" && (
         <Card>
-          <CustomRule agent={sp.agent} startKind={sp.kind as any} startOperator={sp.op} startSurfaces={sp.surfaces?.split(",")} />
+          <CustomRule agent={sp.agent} agents={scopeAgents} startKind={sp.kind as any} startOperator={sp.op} startSurfaces={sp.surfaces?.split(",")} />
         </Card>
       )}
       {tab === "packs" && <PacksTab />}
@@ -157,8 +159,15 @@ async function ToolAccess({ agent }: { agent?: string }) {
   );
 }
 
+/** The agents of the project chosen in the sidebar, by name: who a new rule can be limited to. */
+async function projectAgents(): Promise<ScopeAgent[]> {
+  const [{ agents }, all] = await Promise.all([observeScope(), safeApi<any>("/api/agents", { agents: [] })]);
+  const names = new Map<string, string>((all.agents || []).map((a: any) => [a.slug, a.name || a.slug]));
+  return agents.map((slug) => ({ slug, name: names.get(slug) || slug }));
+}
+
 /** Approval limits, offering the agent's own tools (or every declared tool) as answers. */
-async function Describe({ agent }: { agent?: string }) {
+async function Describe({ agent, agents }: { agent?: string; agents: ScopeAgent[] }) {
   const [access, all] = await Promise.all([
     agent ? safeApi<any>(`/api/agents/${encodeURIComponent(agent)}/access`, null) : Promise.resolve(null),
     safeApi<any>("/api/tools", { tools: [] }),
@@ -168,7 +177,7 @@ async function Describe({ agent }: { agent?: string }) {
     : (all.tools || []).map((t: any) => t.key).filter((k: string) => !k.startsWith("redteam."));
   return (
     <Card>
-      <DescribeRule agent={agent} tools={tools.slice(0, 24)} />
+      <DescribeRule agent={agent} agents={agents} tools={tools.slice(0, 24)} />
     </Card>
   );
 }

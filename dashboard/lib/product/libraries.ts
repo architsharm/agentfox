@@ -71,6 +71,22 @@ export function doesLabel(effect: string): string {
   return DOES[effect] || effect;
 }
 
+const WOULD_DO: Record<string, string> = {
+  block: "Would block",
+  escalate: "Would ask a person",
+  verify: "Would run a check",
+  redact: "Would hide",
+  mask: "Would hide",
+  tokenize: "Would hide",
+  abstain: "Would refuse",
+  allow: "Allow",
+};
+
+/** What a rule would do while its library only watches: "Would block". */
+export function wouldDoLabel(effect: string): string {
+  return WOULD_DO[effect] || `Would ${doesLabel(effect).toLowerCase()}`;
+}
+
 /** "Would have blocked 3, asked a person about 1 and hidden data in 2 of 140 checks". */
 export function simulationSummary(r: SimulationResult): string {
   if (!r.replayed) return `No traffic in the last ${r.since_days} days to replay. Blocking is allowed now; nothing tells you yet what it will stop.`;
@@ -94,7 +110,64 @@ export function libraryState(st: LibraryStatus, total: number): { text: string; 
   return { text: "Not applied", tone: "" };
 }
 
+/** Applied rules shown: all, only the ones that act now, or only the ones watching. */
+export type AppliedMode = "" | "enforce" | "observe";
+
+type AppliedRow = { id: string; effect: string; mode: string; libraries: string[] };
+
+/**
+ * Applied rules by the library they come from, so a page of fifty reads as a few
+ * sets: the groups that act first, then by size; inside one, acting rules first.
+ * A rule in several libraries is listed under the first.
+ */
+export function groupApplied<T extends AppliedRow>(rows: T[]): { library: string; rules: T[]; blocking: number }[] {
+  const acts = (r: AppliedRow) => r.mode !== "observe" && r.effect !== "allow";
+  const by = new Map<string, T[]>();
+  for (const r of rows) {
+    const lib = r.libraries[0] || "Other rules";
+    by.set(lib, [...(by.get(lib) || []), r]);
+  }
+  return Array.from(by.entries())
+    .map(([library, rules]) => ({
+      library,
+      rules: [...rules].sort((a, b) => Number(acts(b)) - Number(acts(a))),
+      blocking: rules.filter(acts).length,
+    }))
+    .sort((a, b) => Number(b.blocking > 0) - Number(a.blocking > 0) || b.rules.length - a.rules.length || a.library.localeCompare(b.library));
+}
+
 /** A library id as a URL path: `payments/refunds` keeps its slash. */
 export function libraryPath(id: string): string {
   return encodeURIComponent(id).replace(/%2F/g, "/");
+}
+
+/**
+ * Requests a pack's own rules would have stopped, from a policy simulation. Not
+ * `newly_blocked`: that compares with what each call would already have had, so a
+ * watching rule's own catches read 0 ("0 would have been stopped" right after a
+ * words rule flagged a message). An older gateway without the own count falls back
+ * to every stop the replay found.
+ */
+export function packWouldStop(sim: any): number {
+  return sim?.runs_own_would_stop ?? sim?.counts?.own_would_stop ?? sim?.runs_would_stop ?? sim?.counts?.would_stop ?? 0;
+}
+
+/**
+ * Your rules' one-line state from each rule's own mode: "2 rules · blocking" only
+ * when every one blocks, "2 rules · 1 blocking, 1 watching" when they differ. The
+ * words rules share the custom pack's mode; each business rule has its own.
+ */
+export function ownRulesState(modes: (string | null | undefined)[]): { text: string; tone: "" | "pol-on" | "pol-watch"; mode: "blocking" | "watching" | "mixed" | null } {
+  const n = modes.length;
+  if (!n) return { text: "No rules yet", tone: "", mode: null };
+  const count = `${n} ${n === 1 ? "rule" : "rules"}`;
+  const blocking = modes.filter((m) => m === "enforce").length;
+  if (blocking === n) return { text: `${count} · blocking`, tone: "pol-on", mode: "blocking" };
+  if (!blocking) return { text: `${count} · watching`, tone: "pol-watch", mode: "watching" };
+  return { text: `${count} · ${blocking} blocking, ${n - blocking} watching`, tone: "pol-watch", mode: "mixed" };
+}
+
+/** Calls a business rule would have held, from its simulation (POST …/simulate). */
+export function businessWouldStop(sim: any): number {
+  return sim?.counts?.would_stop ?? 0;
 }

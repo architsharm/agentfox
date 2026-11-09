@@ -55,13 +55,21 @@ def _policy_mode(key: str) -> str | None:
 # ---------------------------------------------------------------------------
 
 
-def test_init_reports_each_pack_in_its_declared_mode(tmp_path):
+def test_init_starts_every_pack_watching_and_says_how_to_block(tmp_path):
+    """Audit 2026-11-08, B1: tool containment held a normal $50 transfer for a person
+    on the first day. A new workspace starts every pack watching."""
     result = runner.invoke(app, ["init", "--path", str(tmp_path)])
     assert result.exit_code == 0, result.output
     output = flat(result.output)
     assert "baseline observe" in output
-    assert "tool-containment enforce" in output
-    assert "nothing is blocked yet" not in output
+    assert "tool-containment observe" in output
+    assert "agentfox policy enforce tool-containment" in output
+    assert _policy_mode("tool-containment") == "observe"
+    # Switched to blocking by the user, a second init keeps it blocking.
+    assert runner.invoke(app, ["policy", "enforce", "tool-containment"]).exit_code == 0
+    again = flat(runner.invoke(app, ["init", "--path", str(tmp_path)]).output)
+    assert "tool-containment enforce" in again and "(kept)" in again
+    assert _policy_mode("tool-containment") == "enforce"
 
 
 def test_init_config_template_matches_the_settings_defaults(tmp_path):
@@ -281,25 +289,28 @@ def test_entitlement_report_hint_names_a_real_command():
 
 
 # ---------------------------------------------------------------------------
-# 10. policy effective resolves for the configured environment
+# 10. policy effective resolves where the gateway does
 # ---------------------------------------------------------------------------
 
 
-def test_policy_effective_defaults_to_the_configured_environment(monkeypatch):
+def test_policy_effective_defaults_to_the_gateways_environment(monkeypatch):
+    """The runtime resolves an agent in its registered environment (production by
+    default), not the CLI's configured one: defaulting to "development" showed rules the
+    gateway was not applying."""
     from agentfox.core.config import reset_settings_cache
 
     _seed()
     default = runner.invoke(app, ["policy", "effective"])
     assert default.exit_code == 0, default.output
-    assert "effective policy in development" in flat(default.output)
+    assert "effective policy in production" in flat(default.output)
 
     monkeypatch.setenv("AGENTFOX_ENVIRONMENT", "staging")
     reset_settings_cache()
-    configured = runner.invoke(app, ["policy", "effective"])
-    assert "effective policy in staging" in flat(configured.output)
+    agent = runner.invoke(app, ["policy", "effective", "--agent", "payments-ops"])
+    assert "effective policy in production" in flat(agent.output)
 
-    explicit = runner.invoke(app, ["policy", "effective", "--environment", "production"])
-    assert "effective policy in production" in flat(explicit.output)
+    explicit = runner.invoke(app, ["policy", "effective", "--environment", "staging"])
+    assert "effective policy in staging" in flat(explicit.output)
 
 
 # ---------------------------------------------------------------------------
