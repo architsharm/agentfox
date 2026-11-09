@@ -138,7 +138,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-339 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+340 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -295,6 +295,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/policies/lint` | Policy lint. `passed` is false when critical/high findings exist. |
 | `POST` | `/api/policies/simulate` | Replay recorded traffic against a candidate policy. |
 | `POST` | `/api/policies/validate` | Validate Policy |
+| `DELETE` | `/api/policies/{key}` | Stop applying an imported policy. Its versions stay, for the audit trail. |
 | `GET` | `/api/policies/{key}` | Get Policy |
 | `GET` | `/api/policies/{key}/canary` | Get Policy Canary |
 | `POST` | `/api/policies/{key}/canary/advance` | Check the candidate cohort's health and advance, hold, or auto-roll-back. |

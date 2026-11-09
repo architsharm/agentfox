@@ -414,6 +414,46 @@ def get_policy(
     }
 
 
+#: Policies a person may remove outright: the ones they brought in with an import.
+#: Shipped libraries, the managed packs (`custom`, an agent's own layer) and packs
+#: with a protected rule are switched to watching or tuned instead.
+_REMOVABLE_PREFIX = "imported-"
+
+
+@router.delete("/{key}")
+def remove_policy(
+    key: str, session: Session = Depends(db), user: User = Depends(require("policy"))
+) -> dict[str, Any]:
+    """Stop applying an imported policy. Its versions stay, for the audit trail."""
+    from agentfox.platform.policy.store import _close_open_bindings
+
+    policy = session.scalar(select(Policy).where(Policy.key == key))
+    if policy is None:
+        raise HTTPException(404, f"unknown policy '{key}'")
+    if not key.startswith(_REMOVABLE_PREFIX):
+        raise HTTPException(
+            409,
+            "Only an imported policy can be removed. Switch this one to watching, or "
+            "turn its rules off one by one.",
+        )
+    binding, _bound = current_binding(session, policy.id)
+    if binding is not None and binding.mode == "enforce" and user.role not in _GRANT_ROLES:
+        raise HTTPException(
+            403, "This policy is blocking; removing it needs a production policy role."
+        )
+    _close_open_bindings(session, policy.id)
+    chain.append(
+        session,
+        "policy.removed",
+        actor_type="user",
+        actor_id=user.email or user.id,
+        subject_type="policy",
+        subject_id=policy.id,
+        payload={"policy": key, "mode": binding.mode if binding else None},
+    )
+    return {"removed": key}
+
+
 class PolicyIn(BaseModel):
     body: str
     notes: str = ""

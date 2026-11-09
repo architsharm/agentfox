@@ -194,7 +194,7 @@ const GOALS: { title: string; text: string; to: Record<string, string> | string 
   { title: "Stop a risky sequence", text: "After reading customer data, never email outside.", to: { from: "custom", kind: "sequence" } },
   { title: "Use a built-in check", text: "System prompt leaks, risky SQL, unsafe HTML, fuzzy word lists, LLM judges…", to: { from: "custom", kind: "validator" } },
   { title: "Apply a library", text: "Basic guardrails, prompt attacks, EU AI Act…", to: { from: "packs" } },
-  { title: "Bring rules you already have", text: "From Guardrails AI, or a workspace file.", to: { from: "import" } },
+  { title: "Bring rules you already have", text: "From Guardrails AI, or agent-governance YAML or a policy manifest.", to: { from: "import" } },
 ];
 
 function Start({ agent, surfaces }: { agent?: string; surfaces?: string }) {

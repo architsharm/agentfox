@@ -147,3 +147,16 @@ rules:
     assert pattern.surfaces_json == ["output"]
     body = client.get("/api/policies/imported-payables-guard", headers=ADMIN).json()["body"]
     assert "tool_args" not in body and "output" in body
+
+
+def test_an_imported_policy_can_be_removed_and_a_library_cannot(client):
+    r = client.post(URL, json={"source": RULES}, headers=ADMIN)
+    assert r.status_code == 200, r.text
+    assert r.json()["policies"][0]["name"]
+    gone = client.delete("/api/policies/imported-support-bot", headers=ADMIN)
+    assert gone.status_code == 200, gone.text
+    assert client.get("/api/policies/imported-support-bot", headers=ADMIN).json()["mode"] is None
+    rows = client.get("/api/policies/applied", headers=ADMIN).json()["rules"]
+    assert "no-refunds" not in {row["id"] for row in rows}
+    kept = client.delete("/api/policies/custom", headers=ADMIN)
+    assert kept.status_code in (404, 409)
