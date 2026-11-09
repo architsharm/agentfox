@@ -46,7 +46,7 @@ export function EnforceAgent({ agent }: { agent: string }) {
         <button className="k-btn-primary" disabled={busy} onClick={() => run(async () => setPreview(await callJson(`${base}/preview`, "POST", {})))}>
           {busy ? "Checking the last 7 days…" : "Review and turn on"}
         </button>
-        {error && <span className="k-act-error">{error}</span>}
+        {error && <span className="k-act-error" role="alert">{error}</span>}
       </div>
     );
 
@@ -89,7 +89,7 @@ export function EnforceAgent({ agent }: { agent: string }) {
       ) : (
         <div>Everything that protects this agent is already enforcing.</div>
       )}
-      {error && <div className="k-act-error">{error}</div>}
+      {error && <div className="k-act-error" role="alert">{error}</div>}
     </div>
   );
 }

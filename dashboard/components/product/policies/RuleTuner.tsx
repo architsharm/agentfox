@@ -314,7 +314,7 @@ export function RuleTuner({
       )}
 
       {busy && !preview && <div className="k-muted">Checking against the last 7 days…</div>}
-      {error && <div className="error">{error}</div>}
+      {error && <div className="error" role="alert">{error}</div>}
 
       {blocked && (
         <div className="k-preview">

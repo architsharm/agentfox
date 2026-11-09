@@ -118,7 +118,7 @@ export function AccessEditor({
 
   return (
     <>
-      {error && <div className="error">{error}</div>}
+      {error && <div className="error" role="alert">{error}</div>}
       {/* What the agent is waiting on comes first; granting moves a row down into
           the table below instead of shifting the rows still to decide. */}
       {tried.length > 0 && (

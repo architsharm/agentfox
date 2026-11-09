@@ -183,7 +183,7 @@ export function TryIt({ agents, tools: initialTools }: { agents: { slug: string;
           </button>
         )}
       </div>
-      {error && <div className="error">{error}</div>}
+      {error && <div className="error" role="alert">{error}</div>}
 
       {result && now && would && (
         <div className="k-preview" style={{ maxWidth: "none" }}>

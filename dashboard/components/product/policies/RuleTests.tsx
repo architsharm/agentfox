@@ -101,7 +101,7 @@ export function RuleTests({ ruleId, results, agents }: { ruleId: string; results
           Should not fire
         </button>
       </div>
-      {error && <div className="error">{error}</div>}
+      {error && <div className="error" role="alert">{error}</div>}
     </div>
   );
 }

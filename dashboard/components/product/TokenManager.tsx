@@ -133,7 +133,7 @@ export function TokenManager() {
               style={inputStyle}
             />
           </div>
-          {error && <div className="error small">{error}</div>}
+          {error && <div className="error small" role="alert">{error}</div>}
           <button type="submit" className="btn-primary" disabled={busy}>
             {busy ? "Generating…" : "Generate token"}
           </button>

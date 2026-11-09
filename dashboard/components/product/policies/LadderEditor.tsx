@@ -172,7 +172,7 @@ export function LadderEditor({ rule, tools }: { rule: any; tools: string[] }) {
         </button>
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {error && <div className="error" role="alert">{error}</div>}
       <div className="k-pills" style={{ gap: 8 }}>
         <button className="k-btn-primary" disabled={busy || !tool || !field} onClick={save}>
           {busy ? "Saving…" : "Save changes"}

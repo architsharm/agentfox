@@ -243,7 +243,7 @@ export function ProtectWizard({
         </>
       )}
 
-      {error && <div className="error">{error}</div>}
+      {error && <div className="error" role="alert">{error}</div>}
 
       {step < STEPS.indexOf("Review") && (
         <div className="k-pills" style={{ gap: 8 }}>
