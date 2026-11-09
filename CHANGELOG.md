@@ -29,6 +29,7 @@ the file it came from.
   page says who is told and links to where to set it up.
 
 ### Changed
+- **Sign-in page:** the side panel shows the product instead of benchmark figures: the agent map in a window, with example decisions (blocked, sent to a person, allowed) arriving one at a time. Still for visitors who prefer reduced motion.
 - **Privacy policy and terms, rewritten against the deployment.** The privacy page now
   names the controller (Nometria Inc.), every cookie, Google and Microsoft sign-in, the
   pricing list, the hosted judges (Anthropic, TypeSafe) and model server that read what
