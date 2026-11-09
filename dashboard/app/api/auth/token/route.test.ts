@@ -27,13 +27,32 @@ describe("sign in with an API token", () => {
 
   afterEach(() => vi.unstubAllGlobals());
 
-  it("sets the session cookie for a token the gateway accepts", async () => {
+  it("exchanges an accepted key for a session token of its own, so signing out never revokes the key", async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response("{}", { status: 200 }))
+      .mockResolvedValueOnce(new Response('{"token":"nom_api_session"}', { status: 201 }));
     const res = await POST(signIn("nom_api_good"));
     const [url, init] = fetchMock.mock.calls[0];
     expect(String(url)).toMatch(/\/api\/me$/);
     expect(init.headers.Authorization).toBe("Bearer nom_api_good");
-    expect(res.headers.get("location")).toMatch(/\/app\/start$/);
-    expect(res.headers.get("set-cookie") || "").toMatch(/agentfox_session=nom_api_good/);
+    const [mint, mintInit] = fetchMock.mock.calls[1];
+    expect(String(mint)).toMatch(/\/api\/tokens$/);
+    expect(mintInit.headers.Authorization).toBe("Bearer nom_api_good");
+    // The one first screen: Agents (/app), as after GitHub or Google.
+    expect(res.headers.get("location")).toMatch(/\/app$/);
+    const cookies = res.headers.get("set-cookie") || "";
+    expect(cookies).toMatch(/agentfox_session=nom_api_session/);
+    expect(cookies).not.toMatch(/agentfox_session=nom_api_good/);
+  });
+
+  it("keeps the pasted key as the session, marked kept, when the gateway can't mint one", async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response("{}", { status: 200 }))
+      .mockResolvedValueOnce(new Response("{}", { status: 404 }));
+    const res = await POST(signIn("nom_api_good"));
+    const cookies = res.headers.get("set-cookie") || "";
+    expect(cookies).toMatch(/agentfox_session=nom_api_good/);
+    expect(cookies).toMatch(/agentfox_session_kept=1/);
   });
 
   it("refuses a token the gateway rejects", async () => {

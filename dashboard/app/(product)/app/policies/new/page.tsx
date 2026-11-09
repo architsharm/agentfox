@@ -1,3 +1,4 @@
+import { isAdded } from "@/lib/product/proposedSystems";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { appPageMetadata } from "@/lib/site";
@@ -135,7 +136,7 @@ async function FromRun({ id }: { id: string }) {
 
 async function ToolAccess({ agent }: { agent?: string }) {
   const agents = await safeApi<any>("/api/agents", { agents: [] });
-  const list = (agents.agents || []).filter((a: any) => a.status !== "draft" && (!agent || a.slug === agent));
+  const list = (agents.agents || []).filter((a: any) => isAdded(a) && (!agent || a.slug === agent));
   return (
     <Card flush>
       {list.length ? (

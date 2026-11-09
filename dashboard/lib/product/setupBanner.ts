@@ -66,8 +66,8 @@ export function bannerFor(project: ProjectSetup | null, workspace: Onboarding | 
           body: "Send its requests through AgentFox with an API key. Here is a test request:",
           snippet: firstRequestSnippet(project.agent),
           actions: [
-            { label: "Get an API key", href: "/app/start?tab=tokens" },
-            { label: "Integration guide", href: "/app/start" },
+            { label: "Get an API key", href: "/app/settings?tab=tokens" },
+            { label: "Integration guide", href: "/app/map" },
           ],
         };
       case "tools":
@@ -98,8 +98,8 @@ export function bannerFor(project: ProjectSetup | null, workspace: Onboarding | 
       title: "Connect your first agent",
       body: "Scan a repo to find the agents in it, or connect one by hand. Each agent becomes a project. From a terminal: agentfox up",
       actions: [
-        { label: "Scan a repo", href: "/app/start?tab=connect" },
-        { label: "Connect by hand", href: "/app/start" },
+        { label: "Scan a repo", href: "/app/settings?tab=connect" },
+        { label: "Connect by hand", href: "/app/map" },
       ],
     };
   if (!workspace.connected)
@@ -108,7 +108,7 @@ export function bannerFor(project: ProjectSetup | null, workspace: Onboarding | 
       tone: "wait",
       title: "Nothing received yet",
       body: "Run your agent with an API key, or send a test request from Get started.",
-      actions: [{ label: "Get started", href: "/app/start" }],
+      actions: [{ label: "Get started", href: "/app/map" }],
     };
   if (workspace.next)
     return {
@@ -116,7 +116,7 @@ export function bannerFor(project: ProjectSetup | null, workspace: Onboarding | 
       tone: "act",
       title: `Setup ${workspace.completed} of ${workspace.total}`,
       body: `Next: ${workspace.next.title}`,
-      actions: [{ label: "Continue", href: "/app/start" }],
+      actions: [{ label: "Continue", href: "/app/map" }],
     };
   return null;
 }

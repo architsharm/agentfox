@@ -97,7 +97,7 @@ async function Overview({ f }: { f: Filters }) {
   if (!t.requests && !p.requests) {
     return (
       <Card>
-        <Empty action={<Link href="/app/start" className="k-btn-primary">Connect an agent</Link>}>
+        <Empty action={<Link href="/app/map" className="k-btn-primary">Connect an agent</Link>}>
           No requests in this period.
         </Empty>
       </Card>

@@ -356,3 +356,12 @@ export function pollDelay(tests: Tests | null, project: string, idlePolls: numbe
   if (idlePolls >= IDLE_POLLS) return null;
   return tests.runnerConnected ? WAIT_MS : IDLE_MS;
 }
+
+/**
+ * After the before/after pair (no guardrails, then basic guardrails) has finished, the
+ * panel's next step is the app itself: add `auto()`, run it, watch Activity. Nothing
+ * pointed there before, so the first wow ended on a number.
+ */
+export function readyForApp(o: { beforeRan: boolean; afterRan: boolean; basicOn: boolean; live: boolean }): boolean {
+  return o.beforeRan && o.afterRan && o.basicOn && !o.live;
+}

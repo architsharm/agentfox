@@ -45,7 +45,8 @@ agentfox init --key nom_api_… --server https://…`}</Code>
         <Step title="Add your agents">
           <p>
             Back on the card, press <strong>Add agents to AgentFox</strong>. Each agent may call the
-            tools its own code gives it, and nothing else.
+            tools its own code gives it, and nothing else. Until you do, every page asks again (also for
+            an init in a second repository); <strong>Not now</strong> leaves them under Agents → Proposed.
           </p>
           <Screenshot {...SCREENS.agentsArrive} />
         </Step>

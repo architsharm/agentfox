@@ -13,22 +13,25 @@ const ROWS = WORKSPACE_NAV.flatMap(({ items }) => items);
 const OPEN = ["/app/settings", "/app/start", "/app/sources", "/app/entitlement", "/app/projects/", "/app/welcome"];
 export const gateOpen = (pathname: string) => OPEN.some((p) => pathname.startsWith(p));
 
-/** What each page will show once the project is connected, for its empty cards. */
-const EMPTY: Record<string, string[]> = {
-  Agents: ["Agents", "Tools", "Guardrails"],
-  Policies: ["Rules", "Checks", "Packs"],
-  Approvals: ["Waiting", "History"],
-  Issues: ["Open", "Resolved"],
-  Testing: ["Last run", "Attacks blocked"],
-  Overview: ["Requests", "Blocked", "Held for a person", "Errors"],
-  Events: ["Events"],
-  Sessions: ["Sessions"],
-  Tools: ["Tool calls"],
-  Models: ["LLM calls"],
-  Errors: ["Errors"],
-  Security: ["Attacks", "Data leaks"],
-  Evaluations: ["Runs"],
+/**
+ * What each page will show once an agent is connected, said on the page while it is
+ * empty. Each page used to show the same line ("Connect your first agent to see its
+ * issues here") over dashed placeholder tiles that read as loading.
+ */
+export const PAGE_PROMISE: Record<string, string> = {
+  Agents: "Every agent agentfox init finds in your code: the map of what it talks to, the tools it can call, and the guardrails on each step.",
+  Policies: "The rules that check each message and tool call, which agents they apply to, and whether each one watches or blocks.",
+  Approvals: "Tool calls an agent was held on until a person allows or denies them, with what the agent was about to do.",
+  Issues: "What the attack test and your agents' traffic found: attacks that got through, data that leaked, tools used without permission.",
+  Testing: "Attack tests on your agents (before and after guardrails), and a box to try a message or a tool call against your real rules.",
+  Activity: "Each request your app makes: the model and tool calls, and every check each one went through.",
+  Reports: "What you show others: a summary of what was stopped, threat coverage, and the audit log.",
 };
+
+/** The one thing to do to fill a page: connect an agent (the setup card). */
+export function pagePromise(label: string): string {
+  return PAGE_PROMISE[label] ?? "What your agents do, once one is connected.";
+}
 
 /**
  * Every page while a new project is being added: its own title and its cards, empty,
@@ -55,27 +58,20 @@ export function NewProjectPage({ server, first = false, github = false }: { serv
     }),
   );
   const label = row?.[0] ?? "Agents";
-  const cards = EMPTY[label] ?? [label];
   return (
     <div className="np">
       <header className="page-head">
         <div className="page-head-row">
           <h1>{label}</h1>
         </div>
-        <p className="sub">{first ? "nothing here until your first agent is connected" : "new project · nothing here until its agents are connected"}</p>
+        <p className="sub">{pagePromise(label)}</p>
       </header>
-      <div className="np-cards" aria-hidden>
-        {cards.map((c) => (
-          <div key={c} className="np-card">
-            <span>{c}</span>
-            <b>—</b>
-            <i />
-          </div>
-        ))}
-      </div>
       {skipped ? (
         <div className="np-skipped">
-          <span>Connect your first agent to see its {label.toLowerCase()} here.</span>
+          <span>
+            {first ? "Empty until your first agent is connected." : "Empty until this project's agents are connected."} It takes about a minute:
+            create a key, run <code>agentfox init</code> where your agents live.
+          </span>
           <button type="button" className="btn-primary" onClick={unskip}>
             Connect an agent
           </button>

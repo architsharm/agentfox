@@ -142,7 +142,7 @@ const GROUPS: { id: string; title: string; rows: Row[] }[] = [
         "key": "onboarding_key_ttl_days",
         "env": "AGENTFOX_ONBOARDING_KEY_TTL_DAYS",
         "def": "30",
-        "what": "How long a setup key (agentfox init --key, afi_\u2026) stays valid after it is made or rotated. 0: never expires."
+        "what": "How long an older setup key (afi_\u2026) stays valid after it is made. 0: never expires. The key the setup card makes now (nom_api_\u2026, which init writes for your app) never expires: rotate or revoke it."
       }
     ]
   },

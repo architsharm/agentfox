@@ -11,6 +11,7 @@
  * which stays the only thing that reads or writes the database.
  */
 
+import { SIGNED_IN_LANDING } from "@/lib/product/session";
 import { NextRequest, NextResponse } from "next/server";
 import { apiBase, env } from "@/lib/env";
 import { SESSION_COOKIE } from "@/lib/product/api";
@@ -104,8 +105,8 @@ export async function GET(req: NextRequest) {
     body: JSON.stringify({ access_token: githubToken }),
   });
 
-  // The welcome page scans a repository and sets it up in one flow; a workspace
-  // that is already past that is sent on to Home from there.
+  // Every sign-in lands on the same first screen (Agents and its setup card, which
+  // leads with "Scan a repository" once GitHub is connected).
   // With `onboarding_on_signup` on (it is off), the new onboarding takes over
   // until it is finished or skipped.
   let toOnboarding = false;
@@ -118,7 +119,7 @@ export async function GET(req: NextRequest) {
       .catch(() => null);
     toOnboarding = Boolean(onboarding && !onboarding.completedAt && !onboarding.skipped);
   }
-  const res = NextResponse.redirect(new URL(toOnboarding ? "/app/onboarding" : "/app/welcome", origin));
+  const res = NextResponse.redirect(new URL(toOnboarding ? "/app/onboarding" : SIGNED_IN_LANDING, origin));
   res.cookies.delete(STATE_COOKIE);
   res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,

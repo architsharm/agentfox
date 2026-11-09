@@ -53,8 +53,13 @@ export AGENTFOX_AUDIT_SIGNING_KEY="$(openssl rand -hex 32)"`}</Code>
         <Step title="Sign in">
           <p>
             Open <code>http://localhost:3000/login</code>, choose{" "}
-            <strong>Self-hosted? Sign in with an API token</strong> and paste the token. Signing out
-            revokes it.
+            <strong>Self-hosted? Sign in with an API token</strong> and paste the token. You land on
+            Agents, with the setup card. The browser gets a session of its own: signing out ends that
+            session and never revokes the token you pasted, so the CLI and your app keep working.
+          </p>
+          <p>
+            To add a teammate, open <strong>Settings → Members</strong>, enter their email and a role,
+            and send them the sign-in key it shows once (it works for 7 days).
           </p>
         </Step>
 

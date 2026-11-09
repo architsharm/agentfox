@@ -237,7 +237,7 @@ export async function EscalationTab({ agent }: { agent?: string }) {
         ) : (
           <Empty>
             None in this window. Either escalation is working, or nothing has been
-            recorded yet. See <a href="/app/start">Get started</a>.
+            recorded yet. See <a href="/app/map">Agents</a> to connect one.
           </Empty>
         )}
       </Card>

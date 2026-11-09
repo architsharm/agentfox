@@ -91,7 +91,10 @@ export function Production() {
                 Try a blocked call
               </Link>
             </div>
-            <p className="lp-hero-fine">No account. No API key. Open source under <span style={{ whiteSpace: "nowrap" }}>Apache-2.0</span>.</p>
+            <p className="lp-hero-fine">
+              Or <Link href="/docs/quickstart/cli">start from the CLI</Link>: no account, no API key. Open source under{" "}
+              <span style={{ whiteSpace: "nowrap" }}>Apache-2.0</span>.
+            </p>
           </div>
           <div className="lp-logos">
             <span className="lp-logos-label">Works with</span>

@@ -13,7 +13,7 @@ import { TableLabels } from "@/components/product/TableLabels";
 import { AppChrome } from "@/components/product/AppChrome";
 import { Crumbs } from "@/components/product/Crumbs";
 import { WORKSPACE_NAV } from "@/lib/product/nav";
-import { MAP_PROJECT_COOKIE, NEW_PROJECT } from "@/lib/product/project";
+import { MAP_PROJECT_COOKIE, NEW_PROJECT, hasAddedAgent } from "@/lib/product/project";
 import { apiBase } from "@/lib/env";
 import { TopbarStats } from "@/components/product/TopbarStats";
 import { getEdition } from "@/lib/product/edition";
@@ -64,8 +64,8 @@ const NAV_SEARCH_ONLY: { label: string; href: string; group: string; feature?: s
   { label: "Threat coverage", href: "/app/coverage", group: "Reports" },
   { label: "Evidence", href: "/app/reports?tab=evidence", group: "Reports", feature: "evidence" },
   { label: "Audit log", href: "/app/reports?tab=audit", group: "Reports" },
-  { label: "Connections", href: "/app/start?tab=connect", group: "Settings" },
-  { label: "API keys", href: "/app/start?tab=tokens", group: "Settings" },
+  { label: "Connections", href: "/app/settings?tab=connect", group: "Settings" },
+  { label: "API keys", href: "/app/settings?tab=tokens", group: "Settings" },
   { label: "Alerts", href: "/app/settings?tab=alerts", group: "Settings", feature: "monitoring" },
   { label: "Verified sources", href: "/app/sources", group: "Settings" },
   { label: "Data access", href: "/app/entitlement", group: "Settings" },
@@ -115,14 +115,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // AppChrome drops the sidebar and topbar on full-screen routes (onboarding).
   // Adding a project, or having none yet: the same view either way — each page's own
   // empty cards and the connection card. A new signup and "+ Add a project" match.
-  const projectCount = signedIn ? ((await safeApi<any>("/api/projects", { projects: [] })).projects ?? []).length : 0;
-  const adding = signedIn && (project === NEW_PROJECT || projectCount === 0);
+  const projects: any[] = signedIn ? ((await safeApi<any>("/api/projects", { projects: [] })).projects ?? []) : [];
+  const projectCount = projects.length;
+  // The first init's agents are proposed, not added: until they are, the card stays
+  // (its Add step), across reloads, instead of giving way to a project of drafts.
+  const awaitingFirstAdd =
+    signedIn && projectCount > 0 && !hasAddedAgent(projects) && ((await safeApi<any>("/api/onboarding/structure", null))?.pending?.length ?? 0) > 0;
+  const adding = signedIn && (project === NEW_PROJECT || projectCount === 0 || awaitingFirstAdd);
   // With GitHub connected, the card leads with scanning a repository (/app/welcome).
   const github = adding ? githubConnected(await safeApi<any>("/api/me", null)) : false;
-  const newProject = adding ? { server: apiBase(), first: projectCount === 0, github } : null;
+  const newProject = adding ? { server: apiBase(), first: projectCount === 0 || awaitingFirstAdd, github } : null;
   return (
     <AppChrome
       newProject={newProject}
+      signedIn={signedIn}
       side={
         <nav className="side">
           {/* The mark and the name only. "by Nometria" sat under both of them
@@ -154,7 +160,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       topbar={
         signedIn && (
           <header className="topbar">
-            {/* Crumbs reads the query (Get started vs. the Settings tabs on /app/start). */}
+            {/* Crumbs reads the path (and asks for an agent's name). */}
             <Suspense fallback={<nav className="crumbs" aria-label="Breadcrumb" />}>
               <Crumbs />
             </Suspense>

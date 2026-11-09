@@ -1,3 +1,5 @@
+import { NoAgents } from "@/components/product/NoAgents";
+import { isAdded, isProposed } from "@/lib/product/proposedSystems";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { scorerName } from "@/lib/product/vocab";
@@ -29,16 +31,18 @@ export default async function Test({ searchParams }: { searchParams: Promise<SP>
   const sp = await searchParams;
   const tab = TABS.some((t) => t.key === sp.tab) ? sp.tab! : "try";
   const agents = await safeApi<any>("/api/agents", { agents: [] });
-  const live = (agents.agents || []).filter((a: any) => a.status !== "draft");
+  const live = (agents.agents || []).filter(isAdded);
+  // Agents init or a scan found that nobody has added yet: the empty states point there.
+  const proposed = (agents.agents || []).filter(isProposed).length;
 
   return (
     <>
       <Header title="Testing" />
       <Tabs items={TABS.map((t) => ({ ...t, href: href("/app/test", { tab: t.key === "try" ? undefined : t.key }) }))} active={tab} />
       <NoticeToast notice={sp.review_notice} error={sp.review_error} />
-      {tab === "try" && <Try agents={live} />}
-      {tab === "attacks" && <Attacks agents={live} />}
-      {tab === "paths" && <Paths agents={live} agent={sp.agent} days={sp.days} />}
+      {tab === "try" && <Try agents={live} proposed={proposed} />}
+      {tab === "attacks" && <Attacks agents={live} proposed={proposed} />}
+      {tab === "paths" && <Paths agents={live} proposed={proposed} agent={sp.agent} days={sp.days} />}
       {tab === "suites" && <Suites />}
       {tab === "reliability" && <Reliability agents={live} />}
       {tab === "ci" && <Ci />}
@@ -46,7 +50,7 @@ export default async function Test({ searchParams }: { searchParams: Promise<SP>
   );
 }
 
-async function Try({ agents }: { agents: any[] }) {
+async function Try({ agents, proposed }: { agents: any[]; proposed: number }) {
   // The first agent's own tools; the picker loads another agent's when it changes.
   const tools = agents.length ? await safeApi<any>(`/api/agents/${encodeURIComponent(agents[0].slug)}/tools`, { tools: [] }) : { tools: [] };
   return (
@@ -54,7 +58,7 @@ async function Try({ agents }: { agents: any[] }) {
       {agents.length ? (
         <TryIt agents={agents.map((a) => ({ slug: a.slug, name: a.name }))} tools={tools.tools || []} />
       ) : (
-        <Empty action={<Link href="/app/start" className="k-btn-primary">Connect an agent</Link>}>No agents yet.</Empty>
+        <NoAgents proposed={proposed} />
       )}
     </Card>
   );
@@ -64,11 +68,11 @@ async function Try({ agents }: { agents: any[] }) {
  * The tool-call paths each agent took in production. A path first seen this window
  * and expected by no test is a case the suites do not cover; one click adds it.
  */
-async function Paths({ agents, agent, days }: { agents: any[]; agent?: string; days?: string }) {
+async function Paths({ agents, proposed, agent, days }: { agents: any[]; proposed: number; agent?: string; days?: string }) {
   if (!agents.length) {
     return (
       <Card>
-        <Empty action={<Link href="/app/start" className="k-btn-primary">Connect an agent</Link>}>No agents yet.</Empty>
+        <NoAgents proposed={proposed} />
       </Card>
     );
   }
@@ -170,10 +174,17 @@ async function Paths({ agents, agent, days }: { agents: any[]; agent?: string; d
   );
 }
 
-async function Attacks({ agents }: { agents: any[] }) {
+async function Attacks({ agents, proposed }: { agents: any[]; proposed: number }) {
   const campaigns = await safeApi<any>("/api/redteam/campaigns", { campaigns: [] });
   const list: any[] = campaigns.campaigns || [];
   const last = list[0];
+  if (!agents.length && !list.length) {
+    return (
+      <Card>
+        <NoAgents proposed={proposed} />
+      </Card>
+    );
+  }
   return (
     <>
       <Card title="Run attack test" hint="Runs the built-in attack library against the agent's real permissions and rules. A pass means these attacks were stopped, not that every attack would be.">

@@ -292,6 +292,8 @@ def _agent_json(agent: Agent, session: Session | None = None) -> dict[str, Any]:
         "project": project_of(agent),
         "status": agent.status,
         "registered": agent.registered,
+        # Why a draft showed up: a repository scan (its run) or, with none, `agentfox init`.
+        "scan_run_id": agent.source_scan_run_id,
         "owned": agent.is_owned,
         "is_seed": agent.is_seed,
         "declared_models": agent.declared_models,
@@ -370,6 +372,8 @@ def get_agent(
 
 
 class AgentUpdate(BaseModel):
+    #: The display name the dashboard shows; the slug (what `auto()` names) never changes.
+    name: str | None = None
     owner_email: str | None = None
     owner_team: str | None = None
     risk_tier: str | None = None
@@ -385,6 +389,10 @@ def update_agent(
 ) -> dict[str, Any]:
     agent = get_agent_or_404(session, slug)
     changes = payload.model_dump(exclude_unset=True)
+    if "name" in changes:
+        changes["name"] = (changes["name"] or "").strip()[:200]
+        if not changes["name"]:
+            raise HTTPException(422, "A name can't be empty.")
     for field, value in changes.items():
         setattr(agent, field, value)
     session.flush()
@@ -398,6 +406,26 @@ def update_agent(
         payload=changes,
     )
     return _agent_json(agent, session)
+
+
+@router.delete("/agents/{slug}")
+def remove_agent(
+    slug: str, session: Session = Depends(db), user: User = Depends(require("registry"))
+) -> dict[str, Any]:
+    """Remove one agent from the dashboard (a duplicate, or one that is gone), the way
+    disconnecting its project removes each of its agents: its guardrails recorded and
+    emptied, its tool permissions revoked, what init declared for it cleared. Its
+    history (traffic, issues, audit) is kept, and `agentfox init` or ``agentfox up``
+    proposes it again. The rest of its project stays."""
+    from agentfox.capabilities.onboarding.projects import remove_agents
+    from agentfox.platform.registry.projects import REMOVED
+
+    agent = get_agent_or_404(session, slug)
+    if agent.status == REMOVED:
+        raise HTTPException(404, f"'{slug}' is already removed")
+    out = remove_agents(session, [agent], subject=slug, actor=user.email or user.id)
+    session.commit()
+    return out
 
 
 @router.get("/agents/{slug}/lineage")

@@ -11,6 +11,7 @@ import {
   controlsLine,
   plainError,
   pollDelay,
+  readyForApp,
   runNote,
   runState,
   shown,
@@ -250,5 +251,13 @@ describe("the panel's headline and notes", () => {
   it("shows progress as progress", () => {
     expect(progressText(row({ total: 36, done: 12 }))).toBe("testing 12 of 36");
     expect(progressText(row({ total: 36, done: 36 }))).toBeNull();
+  });
+});
+
+describe("the step after the before/after", () => {
+  it("points at running the app once both runs have finished with basic guardrails on", () => {
+    expect(readyForApp({ beforeRan: true, afterRan: true, basicOn: true, live: false })).toBe(true);
+    expect(readyForApp({ beforeRan: true, afterRan: false, basicOn: true, live: false })).toBe(false);
+    expect(readyForApp({ beforeRan: true, afterRan: true, basicOn: true, live: true })).toBe(false);
   });
 });
