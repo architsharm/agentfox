@@ -115,6 +115,27 @@ def test_an_argument_copied_from_a_tool_result_is_tainted_on_the_gateway(account
     assert "send_email" in str(excinfo.value)
 
 
+def test_a_tool_result_is_checked_on_the_tool_result_surface(account, fake_openai):
+    """A tool's output in the conversation is checked where the account's rules for
+    what the agent reads apply (basic guardrails' `basic.read.attacks`, the baseline's
+    indirect-injection rule), as the local path and the attack test check it. Sent as
+    a plain input, the rules for what users send judged it instead: the attack test
+    and live traffic applied different rules, and a planted instruction was refused as
+    "prompt attacks ... in what users send"."""
+    completions, script, _calls = fake_openai
+    messages, _attack = _exfiltration_turn()
+    script.append(_openai_response(content="Your order shipped."))
+    auto(agent="support-bot", quiet=True)
+
+    completions().create(model="gpt-4o", messages=messages, tools=TOOLS)
+
+    with session_scope() as session:
+        rows = session.scalars(select(Decision)).all()
+        read = [(d.surface, (d.taint_summary_json or {}).get("max_source")) for d in rows]
+    assert ("tool_result", "tool_result") in read
+    assert ("input", "tool_result") not in read
+
+
 def test_observe_mode_never_refuses(account, fake_openai):
     _grant("support-bot", "read_customer_record")
     completions, script, _calls = fake_openai

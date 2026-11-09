@@ -153,6 +153,7 @@ class _FindingsMixin:
         reason: str,
         rules_fired: list[dict[str, Any]],
         detections: list,
+        source: str | None = None,
     ) -> None:
         """The general-Findings counterpart to `_persist_detectors`.
 
@@ -180,6 +181,10 @@ class _FindingsMixin:
         if entity_types and all(e.upper().startswith("CUSTOM.") for e in entity_types):
             severity = "low" if applied == effective else "medium"
 
+        # A tool's result checked as an input (`auto()` checks it before the model reads
+        # it) is where it came from, not "a user message": an attack planted in a
+        # record is a different pattern from one a person typed, with its own count.
+        where = "tool_result" if surface == "input" and source == "tool_result" else surface
         # One finding per (agent, surface, verdict, entity set): the same detector firing
         # on the same kind of content is one pattern with a count, and the refreshed
         # evidence always points at the latest decision.
@@ -187,14 +192,15 @@ class _FindingsMixin:
             self.session,
             type="guardrail_detection",
             severity=severity,
-            title=_detection_title(effective, applied, surface, entity_types, rules_fired),
+            title=_detection_title(effective, applied, where, entity_types, rules_fired),
             subject_type="agent",
             subject_id=agent.id if agent else None,
-            fingerprint_parts=(surface, effective, *entity_types),
+            fingerprint_parts=(where, effective, *entity_types),
             evidence={
                 "trace_id": trace_id,
                 "decision_id": decision_id,
                 "surface": surface,
+                **({"source": source} if source and source != "user" else {}),
                 "verdict": effective,
                 "reason": reason,
                 "detections": [
