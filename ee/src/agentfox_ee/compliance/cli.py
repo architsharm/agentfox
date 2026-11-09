@@ -84,8 +84,12 @@ def compliance_status(framework: str | None = None, verbose: bool = False) -> No
         f"[red]{counts['failing']} failing[/] · "
         f"[dim]{counts['not_implemented']} not implemented[/]"
     )
-    if overall["effectiveness"] is not None:
-        console.print(f"  effectiveness {overall['effectiveness']:.0%}")
+    if overall["share"] is not None:
+        # The figure Reports -> Compliance shows: working out of every control that applies.
+        console.print(
+            f"  working: {overall['working']} of the {overall['applies']} controls that apply "
+            f"({overall['share']:.0%}; {overall['measured']} measured)"
+        )
 
     if verbose:
         table = Table(box=None, pad_edge=False)

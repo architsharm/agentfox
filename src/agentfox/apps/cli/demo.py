@@ -694,7 +694,7 @@ def _walkthrough() -> dict[str, Any]:
                     "same telemetry decides its status four times.[/]"
                 )
             console.print(
-                f"  overall control effectiveness: [bold]{(overall['effectiveness'] or 0):.0%}[/]"
+                f"  controls working: [bold]{(overall.get('share') or 0):.0%}[/] of those that apply"
             )
             console.print(
                 "  [dim]Every status is derived from telemetry — detector coverage, "

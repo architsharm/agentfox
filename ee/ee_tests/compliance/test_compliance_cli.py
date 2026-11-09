@@ -78,3 +78,29 @@ def test_compliance_status_verbose_honours_the_framework():
         assert key in result.output
     for key in outside:
         assert key not in result.output
+
+
+def test_report_status_prints_the_figure_the_compliance_page_shows():
+    """The CLI said 74% (working of measured) where Compliance said 47% (working of
+    every control that applies) on the same database. One function decides both."""
+    from agentfox_ee.compliance import posture
+
+    from agentfox.core.db import session_scope
+
+    _seed()
+    assert runner.invoke(app, ["admin", "catalog", "compute"]).exit_code == 0
+    with session_scope() as session:
+        overall = posture(session)
+
+    counts = overall["counts"]
+    applies = overall["controls"] - counts["not_applicable"]
+    assert overall["applies"] == applies
+    assert overall["working"] == counts["effective"]
+    assert overall["share"] == round(counts["effective"] / applies, 4)
+
+    result = runner.invoke(app, ["report", "status"])
+    assert result.exit_code == 0, result.output
+    text = flat(result.output)
+    assert f"working: {overall['working']} of the {applies} controls that apply" in text
+    assert f"({overall['share']:.0%};" in text
+    assert "effectiveness" not in text
