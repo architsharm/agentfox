@@ -109,9 +109,16 @@ def applied_rules(session: Session) -> dict[str, Any]:
         session.scalars(select(Agent).where(Agent.status.not_in(GONE)).order_by(Agent.name))
     )
     names = {p.key: p.name or p.key for p in session.scalars(select(Policy))}
+    # A rule of your own limited to some agents is in force on those only, not on
+    # every agent the `custom` pack is bound to (custom_store.scoped_rules).
+    from agentfox.capabilities.detection.custom_store import scoped_rules
+
+    only = scoped_rules(session)
     rows: dict[str, dict[str, Any]] = {}
     for agent in agents:
         for r in _in_force(session, agent):
+            if r["rule_id"] in only and agent.slug not in only[r["rule_id"]]:
+                continue
             row = rows.setdefault(
                 r["rule_id"],
                 {

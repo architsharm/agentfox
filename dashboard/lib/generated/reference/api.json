@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 343,
+ "count": 346,
  "routes": [
   {
    "method": "GET",
@@ -3479,6 +3479,12 @@
       "type": "string",
       "required": false,
       "description": ""
+     },
+     {
+      "name": "tool",
+      "type": "string",
+      "required": false,
+      "description": ""
      }
     ]
    }
@@ -4549,6 +4555,70 @@
      "in": "path",
      "required": true,
      "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "GET",
+   "path": "/api/custom-rules/{key}/history",
+   "section": "custom-rules",
+   "audience": "operator",
+   "summary": "Every saved version of a rule's words, patterns or condition, with what changed.",
+   "description": "Every saved version of a rule's words, patterns or condition, with what changed.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/custom-rules/{key}/versions/{version}/restore",
+   "section": "custom-rules",
+   "audience": "operator",
+   "summary": "Put an earlier version of a rule's definition back, as a new version.",
+   "description": "Put an earlier version of a rule's definition back, as a new version.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "version",
+     "in": "path",
+     "required": true,
+     "type": "integer"
     },
     {
      "name": "authorization",
@@ -6634,6 +6704,12 @@
     },
     {
      "name": "status",
+     "in": "query",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "trace_id",
      "in": "query",
      "required": false,
      "type": null
@@ -10288,6 +10364,35 @@
    }
   },
   {
+   "method": "DELETE",
+   "path": "/api/policies/{key}",
+   "section": "policies",
+   "audience": "operator",
+   "summary": "Stop applying an imported policy. Its versions stay, for the audit trail.",
+   "description": "Stop applying an imported policy. Its versions stay, for the audit trail.",
+   "params": [
+    {
+     "name": "key",
+     "in": "path",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": null
+  },
+  {
    "method": "GET",
    "path": "/api/policies/{key}",
    "section": "policies",
@@ -10632,6 +10737,12 @@
      },
      {
       "name": "overridable",
+      "type": "boolean",
+      "required": false,
+      "description": ""
+     },
+     {
+      "name": "watch",
       "type": "boolean",
       "required": false,
       "description": ""

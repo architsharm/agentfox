@@ -128,3 +128,35 @@ def test_unknown_user_cannot_import(client):
     stranger = as_user("stranger@example.com")
     r = client.post(f"{URL}/plan", json={"source": RULES}, headers=stranger)
     assert r.status_code in (401, 403)
+
+
+def test_a_condition_on_the_reply_keeps_its_surface(client, session):
+    source = """
+apiVersion: governance.toolkit/v1
+name: payables-guard
+default_action: allow
+rules:
+  - name: no-iban-in-replies
+    condition: "output contains 'IBAN'"
+    action: deny
+"""
+    r = client.post(URL, json={"source": source}, headers=ADMIN)
+    assert r.status_code == 200, r.text
+    [key] = r.json()["patterns"]
+    pattern = session.query(CustomRule).filter_by(key=key).one()
+    assert pattern.surfaces_json == ["output"]
+    body = client.get("/api/policies/imported-payables-guard", headers=ADMIN).json()["body"]
+    assert "tool_args" not in body and "output" in body
+
+
+def test_an_imported_policy_can_be_removed_and_a_library_cannot(client):
+    r = client.post(URL, json={"source": RULES}, headers=ADMIN)
+    assert r.status_code == 200, r.text
+    assert r.json()["policies"][0]["name"]
+    gone = client.delete("/api/policies/imported-support-bot", headers=ADMIN)
+    assert gone.status_code == 200, gone.text
+    assert client.get("/api/policies/imported-support-bot", headers=ADMIN).json()["mode"] is None
+    rows = client.get("/api/policies/applied", headers=ADMIN).json()["rules"]
+    assert "no-refunds" not in {row["id"] for row in rows}
+    kept = client.delete("/api/policies/custom", headers=ADMIN)
+    assert kept.status_code in (404, 409)

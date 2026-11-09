@@ -20,6 +20,7 @@ screen can show it.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -108,6 +109,20 @@ def compiled_rules(session: Session, agent_slug: str | None) -> list[CompiledRul
         if compiled is not None:
             out.append(compiled)
     return out
+
+
+def scoped_rules(session: Session) -> dict[str, list[str]]:
+    """The custom rules limited to some agents, by rule id (`custom.<key>`).
+
+    The one place a custom rule's scope is read for listing: the `custom` pack's
+    rules carry no agent condition (the detector and the sequence check filter by
+    agent), so a list of what applies where asks here.
+    """
+    return {
+        rule_id_for(row.key): list(row.agents_json)
+        for row in session.scalars(select(CustomRule))
+        if row.agents_json
+    }
 
 
 def sequence_rules(session: Session, agent_slug: str | None) -> list[tuple[str, SequenceSpec]]:
@@ -231,18 +246,137 @@ def delete_rule(session: Session, key: str, *, actor: str) -> SyncResult | None:
 
 
 def _row_json(row: CustomRule) -> dict[str, Any]:
+    """The whole definition, as each saved version is recorded: enough to say what
+    changed and to put it back (`history`, `restore_version`)."""
     return {
-        "key": row.key,
-        "kind": row.kind,
-        "polarity": row.polarity,
-        "entries": list(row.entries_json or []),
+        **spec_of(row).model_dump(mode="json", exclude={"sequence", "condition", "validator"}),
         "config": dict(row.config_json or {}),
-        "agents": list(row.agents_json or []),
-        "enabled": row.enabled,
+        "version": row.version or 1,
     }
 
 
-def _policy_rule(row: CustomRule, previous: Rule | None, seed: dict[str, Any]) -> Rule:
+# --- history ------------------------------------------------------------------
+
+_SURFACE_WORDS = {"input": "user messages", "output": "agent replies", "tool_args": "tool calls"}
+
+
+def _quoted(items: list[str]) -> str:
+    shown = ", ".join(f"“{x}”" for x in items[:3])
+    return shown + (f" and {len(items) - 3} more" if len(items) > 3 else "")
+
+
+def describe_change(before: dict[str, Any] | None, after: dict[str, Any]) -> str:
+    """One version of a rule against the one before, as a person says it:
+    "Added “Hooli”; removed “Initech”". The first version is "Created"."""
+    if before is None:
+        return "Created"
+    parts: list[str] = []
+    old, new = list(before.get("entries") or []), list(after.get("entries") or [])
+    if "entries" in before and old != new:
+        added = [e for e in new if e not in old]
+        removed = [e for e in old if e not in new]
+        if added:
+            parts.append(f"Added {_quoted(added)}")
+        if removed:
+            parts.append(f"removed {_quoted(removed)}" if parts else f"Removed {_quoted(removed)}")
+    if "name" in before and before.get("name") != after.get("name"):
+        parts.append(f"Renamed from “{before.get('name')}” to “{after.get('name')}”")
+    if "description" in before and before.get("description") != after.get("description"):
+        parts.append("Topic reworded")
+    if "surfaces" in before and before.get("surfaces") != after.get("surfaces"):
+        said = [_SURFACE_WORDS.get(s, s) for s in after.get("surfaces") or []]
+        parts.append(f"Now checks {', '.join(said) or 'the default places'}")
+    if before.get("agents") != after.get("agents"):
+        agents = after.get("agents") or []
+        parts.append(
+            f"Now applies to {', '.join(agents)}" if agents else "Now applies to every agent"
+        )
+    if before.get("config") != after.get("config"):
+        parts.append("Condition changed")
+    if before.get("enabled") != after.get("enabled"):
+        parts.append("Turned on" if after.get("enabled") else "Turned off")
+    if not parts:
+        return "Saved with no change"
+    return "; ".join(parts)
+
+
+def history(session: Session, key: str) -> list[dict[str, Any]]:
+    """Every saved version of one rule's definition, newest first: what it was, what
+    changed from the version before, who saved it and when. Read from the audit
+    chain, where `save_rules` records each save (``operator.custom_rule.saved``);
+    ``live`` marks the definition in force."""
+    from agentfox.core.models import AuditEntry
+
+    row = get_rule(session, key)
+    if row is None:
+        return []
+    entries = session.scalars(
+        select(AuditEntry)
+        .where(
+            AuditEntry.subject_type == "custom_rule",
+            AuditEntry.subject_id == row.id,
+            AuditEntry.action == "operator.custom_rule.saved",
+        )
+        .order_by(AuditEntry.seq.asc())
+    ).all()
+    out: list[dict[str, Any]] = []
+    previous: dict[str, Any] | None = None
+    for n, entry in enumerate(entries, start=1):
+        payload = entry.payload_json or {}
+        after = payload.get("after") or {}
+        version = after.get("version") if isinstance(after.get("version"), int) else n
+        change = describe_change(previous, after)
+        restored = re.search(r"restored to version (\d+)", str(payload.get("reason") or ""))
+        if restored:
+            change = f"Restored version {restored.group(1)}: {change[0].lower()}{change[1:]}"
+        out.append(
+            {
+                "version": version,
+                "definition": after,
+                "change": change,
+                "at": entry.occurred_at.isoformat() if entry.occurred_at else None,
+                "author": entry.actor_id,
+                "live": version == (row.version or 1),
+            }
+        )
+        previous = after
+    return list(reversed(out))
+
+
+def restore_version(
+    session: Session, key: str, version: int, *, actor: str
+) -> tuple[CustomRule, SyncResult]:
+    """Put an earlier version's definition back, as a new version. Its action,
+    message and mode stay as they are now (those are the Tune tab's). Raises
+    ValueError for an unknown rule or version, or the version already live."""
+    row = get_rule(session, key)
+    if row is None:
+        raise ValueError(f"no custom rule '{key}'")
+    saved = next((v for v in history(session, key) if v["version"] == version), None)
+    if saved is None:
+        raise ValueError(f"rule '{key}' has no recorded version {version}")
+    if saved["live"]:
+        raise ValueError(f"version {version} of '{key}' is already live")
+    then = saved["definition"]
+    current = spec_of(row).model_dump()
+    fields = set(CustomRuleSpec.model_fields) - {"key", "sequence", "condition", "validator"}
+    data = {**current, **{k: v for k, v in then.items() if k in fields}}
+    if "config" in then:
+        config = then.get("config") or {}
+        for part in ("sequence", "condition", "validator"):
+            data[part] = config.get(part)
+    rows, sync = save_rules(
+        session,
+        [(CustomRuleSpec(**data), RuleSeed())],
+        actor=actor,
+        reason=f"custom rule '{key}' restored to version {version}",
+    )
+    return rows[0], sync
+
+
+def _policy_rule(
+    row: CustomRule, previous: Rule | None, seed: dict[str, Any], *, enforcing: bool = False
+) -> Rule:
     spec = spec_of(row)
     rid = rule_id_for(row.key)
     if spec.kind == "sequence":
@@ -268,6 +402,10 @@ def _policy_rule(row: CustomRule, previous: Rule | None, seed: dict[str, Any]) -
         message=kept.message,
         on_block=kept.on_block,
         redaction=kept.redaction,
+        # A new rule starts by watching, as the form promises, even when Your rules
+        # already blocks: it records what it would do until someone starts blocking
+        # it (the rule's Tune tab). An existing rule keeps what it had.
+        watch=kept.watch if previous is not None else (True if enforcing else None),
     )
 
 
@@ -308,6 +446,8 @@ def sync_policy(
         previous = {r.id: r for r in load_version_document(live).rules}
 
     rows = list_rules(session)
+    binding = current_binding(session, policy.id)[0] if policy else None
+    enforcing = binding is not None and binding.mode == "enforce"
     doc = PolicyDocument(
         key=POLICY_KEY,
         name=POLICY_NAME,
@@ -316,7 +456,12 @@ def sync_policy(
             "sequences of actions, limits on values, and your own models."
         ),
         rules=[
-            _policy_rule(r, previous.get(rule_id_for(r.key)), seed.get(rule_id_for(r.key), {}))
+            _policy_rule(
+                r,
+                previous.get(rule_id_for(r.key)),
+                seed.get(rule_id_for(r.key), {}),
+                enforcing=enforcing,
+            )
             for r in rows
         ]
         + [

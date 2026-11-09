@@ -43,7 +43,9 @@ export default function Page() {
           <p>
             Every rule you write is saved watching, in the <strong>Your rules</strong> library. Open it from{" "}
             <strong>Policies → Libraries</strong> to see what each rule would have done, then press{" "}
-            <strong>Start blocking</strong>.
+            <strong>Start blocking</strong>. If Your rules is already blocking, a rule you add later still
+            starts watching on its own: open it and press <strong>Start blocking this rule</strong> on its{" "}
+            <strong>Tune</strong> tab, which replays the last 7 days first.
           </p>
           <Screenshot {...SCREENS.yourRules} />
         </Step>
@@ -82,6 +84,27 @@ agentfox policy import support.yaml --apply`}</Code>
       <p>
         Imported rules start watching. When several match, the strongest effect wins, so an allow never
         overrides a block. Check whether calls no rule matches pass: the preview says so first.
+      </p>
+      <p>An agent-governance rule file you can paste as it is:</p>
+      <Code>{`apiVersion: governance.toolkit/v1
+name: payables-guard
+default_action: allow
+rules:
+  - name: no-vendor-delete
+    condition: "tool_name == 'delete_vendor'"
+    action: deny
+  - name: big-payments
+    condition: "tool_name == 'pay_vendor' and amount > 25000"
+    action: require_approval
+  - name: no-iban-in-replies
+    condition: "output contains 'IBAN'"
+    action: deny`}</Code>
+      <p>
+        A rule with no <code>stage</code> checks tool calls, unless its condition reads the reply
+        (<code>output</code>, <code>response</code>) or the user&apos;s message (<code>input</code>,{" "}
+        <code>prompt</code>, <code>query</code>): then it checks that. The imported policy opens from the
+        import&apos;s result. On its page, <strong>Start blocking</strong> replays it over the last 7 days
+        first, and <strong>Remove</strong> stops it applying.
       </p>
 
       <h2 id="answers">Make the agent say &quot;I don&apos;t know&quot;</h2>

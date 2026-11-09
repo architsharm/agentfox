@@ -256,6 +256,30 @@ def approvals_show(
         console.print(f"  decided by {row['resolver'] or '—'}: {row['rationale'] or ''}")
 
 
+def _local_actor() -> str:
+    """Who is at this terminal, for the audit record when `--as` is not given: the git
+    identity (an email, as the dashboard records), else the login name. Never "cli",
+    which said where a decision was made but not who made it."""
+    import getpass
+    import shutil
+    import subprocess
+
+    git = shutil.which("git")
+    if git:
+        try:
+            email = subprocess.run(
+                [git, "config", "user.email"], capture_output=True, text=True, timeout=2
+            ).stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            email = ""
+        if email:
+            return email
+    try:
+        return getpass.getuser()
+    except Exception:  # no login name (a container): say where, at least
+        return "cli"
+
+
 def _decide(approval_id: str, approved: bool, rationale: str, actor: str | None) -> None:
     from agentfox.apps.cli import account as _account
     from agentfox.platform.identity import ApprovalAlreadyDecided, resolve_approval
@@ -265,7 +289,7 @@ def _decide(approval_id: str, approved: bool, rationale: str, actor: str | None)
     if remote is not None:
         _account_decide(remote, approval_id, approved, rationale, actor)
         return
-    who = actor or "cli"
+    who = actor or _local_actor()
     with _session() as session:
         approval = _find(session, approval_id)
         if approval.status != "pending":
@@ -346,7 +370,9 @@ def approvals_approve(
     approval_id: str = typer.Argument(..., help="Approval id, or a unique end of one."),
     rationale: str = typer.Option("", "--rationale", "-r", help="Why, for the audit record."),
     actor: str | None = typer.Option(
-        None, "--as", help="Who is deciding (an email), for the audit record."
+        None,
+        "--as",
+        help="Who is deciding (an email), for the audit record. Default: your git email.",
     ),
 ) -> None:
     """Let the held call run once: the same agent, tool and arguments, when retried."""
@@ -358,10 +384,12 @@ def approvals_deny(
     approval_id: str = typer.Argument(..., help="Approval id, or a unique end of one."),
     rationale: str = typer.Option("", "--rationale", "-r", help="Why, for the audit record."),
     actor: str | None = typer.Option(
-        None, "--as", help="Who is deciding (an email), for the audit record."
+        None,
+        "--as",
+        help="Who is deciding (an email), for the audit record. Default: your git email.",
     ),
 ) -> None:
-    """Refuse the held call. A retry of it presenting this approval is blocked, with your reason."""
+    """Refuse the held call. The same call retried within 30 minutes is blocked, with why."""
     _decide(approval_id, False, rationale, actor)
 
 

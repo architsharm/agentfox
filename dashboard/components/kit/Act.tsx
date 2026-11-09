@@ -38,6 +38,8 @@ export function Act({
   className = "k-btn",
   confirm,
   done,
+  disabled = false,
+  title,
 }: {
   url: string;
   method?: string;
@@ -47,6 +49,9 @@ export function Act({
   confirm?: string;
   /** Label shown briefly after success. */
   done?: string;
+  /** Not available yet (say why in ``title``). */
+  disabled?: boolean;
+  title?: string;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -83,7 +88,7 @@ export function Act({
           </button>
         </span>
       ) : (
-        <button type="button" className={className} disabled={busy} onClick={() => (confirm ? (setError(""), setAsking(true)) : run())}>
+        <button type="button" className={className} disabled={busy || disabled} title={title} onClick={() => (confirm ? (setError(""), setAsking(true)) : run())}>
           {busy ? "…" : ok && done ? done : children}
         </button>
       )}

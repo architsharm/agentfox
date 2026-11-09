@@ -687,6 +687,8 @@ a.gm-add { align-self: flex-start; text-decoration: none; }
 .lib-open:hover { border-color: var(--af-line-2); background: var(--af-subtle); }
 .lib-open:focus-visible { outline: 2px solid var(--af-brand); outline-offset: 2px; }
 .lib-open .lib-actions { cursor: default; }
+.lib-n-btn { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.lib-n-btn:focus-visible { outline: 2px solid var(--af-brand); outline-offset: 2px; border-radius: 2px; }
 .lib-apply { position: relative; display: inline-flex; align-items: center; gap: 4px; }
 .lib-apply-more { padding-inline: 8px; }
 .lib-apply-menu { position: absolute; top: calc(100% + 4px); right: 0; z-index: 5; padding: 6px; border: 1px solid var(--af-line); border-radius: 8px; background: var(--af-surface); box-shadow: 0 6px 20px rgb(0 0 0 / 0.12); white-space: nowrap; }

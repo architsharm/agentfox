@@ -33,10 +33,20 @@ function PackSwitches({ packs }: { packs: PackInfo[] }) {
  * business rules, as one library. Saved watching; blocking goes through the same
  * simulate-then-start as any library. This is where a new rule is switched on.
  */
-function ownLibrary(own: PackInfo | undefined, business: any[], project: string): Library {
-  const n = (own?.rules.length || 0) + business.length;
-  // Each rule's own mode: the words rules share the pack's, each business rule has its own.
-  const st = ownRulesState([...(own?.rules || []).map(() => own?.mode ?? null), ...business.map((b: any) => (b.enabled ? b.mode : null))]);
+function ownLibrary(own: PackInfo | undefined, business: any[], project: string, customs: any[] = [], agents: string[] = []): Library {
+  // Only what reaches this project: a rule limited to another project's agents is theirs.
+  const mine = new Set(agents);
+  const reaches = (scope: string[] | null | undefined) => !scope?.length || !mine.size || scope.some((a) => mine.has(a));
+  const spec = new Map<string, any>(customs.map((c: any) => [c.rule_id, c]));
+  const ownRules = (own?.rules || []).filter((r: any) => reaches(spec.get(r.id)?.agents));
+  business = business.filter((b: any) => reaches(b.agent ? [b.agent] : null));
+  const n = ownRules.length + business.length;
+  // Each rule's own mode: the words rules share the pack's (unless one was added while it
+  // blocked and still watches on its own); each business rule has its own.
+  const st = ownRulesState([
+    ...ownRules.map((r: any) => (own?.mode === "enforce" && r.watch ? "observe" : (own?.mode ?? null))),
+    ...business.map((b: any) => (b.enabled ? b.mode : null)),
+  ]);
   const mode = st.mode;
   return {
     id: OWN,
@@ -49,7 +59,8 @@ function ownLibrary(own: PackInfo | undefined, business: any[], project: string)
     on: n ? "Where each rule says (every agent, or the agents it names)" : "—",
     mode,
     contents: null,
-    ruleRows: (own?.rules || []).map((r: any) => ({ id: r.id, description: r.description, surfaces: r.when?.surface || [], effect: r.effect })),
+    // Where a rule of yours looks is on its definition (the pack's rule tests a detection).
+    ruleRows: ownRules.map((r: any) => ({ id: r.id, description: r.description, surfaces: spec.get(r.id)?.surfaces?.length ? spec.get(r.id).surfaces : r.when?.surface || [], effect: r.effect })),
     project,
     state: { text: st.text, tone: st.tone },
     extra: business.length ? (
@@ -98,7 +109,7 @@ const STARTER = "Starter rules (watch only)";
  * done), then someone allowed to change production policy starts it. The server's
  * refusal, if any, shows beside the button.
  */
-function ModeActions({ id, title, project, st, body }: { id: string; title: string; project: string; st: Status; body: object }) {
+function ModeActions({ id, title, project, st, body, simulated }: { id: string; title: string; project: string; st: Status; body: object; simulated?: boolean }) {
   if (!st.agents.length) return null;
   if (st.blocking)
     return (
@@ -110,6 +121,7 @@ function ModeActions({ id, title, project, st, body }: { id: string; title: stri
     <SimulateThenBlock
       library={id}
       body={body}
+      simulated={simulated}
       confirm={`Start blocking with ${title} on ${project}? Its rules will stop traffic, not just record it. It needs a simulation of these rules first, by anyone, and someone allowed to change production policy to start it.`}
     />
   );
@@ -141,12 +153,13 @@ type Library = LibraryView & { className?: string; tag?: string; state: { text: 
  */
 async function libraries(project: string, agents: string[]): Promise<Library[]> {
   const scope = `agents=${encodeURIComponent(agents.join(","))}`;
-  const [lib, status, applied, rules, business] = await Promise.all([
+  const [lib, status, applied, rules, business, customs] = await Promise.all([
     safeApi<any>("/api/library/packs", { packs: [] }),
     safeApi<Record<string, Status>>(`/api/policies/libraries/status?${scope}&project=${encodeURIComponent(project)}`, {}),
     safeApi<any>("/api/policies/applied", { rules: [] }),
     loadRules(),
     safeApi<any>("/api/business/rules", { rules: [] }),
+    safeApi<any>("/api/custom-rules", { rules: [] }),
   ]);
   const packOf = (key: string) => rules.packs.find((x) => x.key === key);
   const packs: any[] = lib.packs || [];
@@ -174,7 +187,7 @@ async function libraries(project: string, agents: string[]): Promise<Library[]> 
   const basicOn = basic.agents.length;
   const basicTitle = "the basic guardrails";
   const out: Library[] = [
-    ownLibrary(packOf(OWN), business.rules || [], project),
+    ownLibrary(packOf(OWN), business.rules || [], project, customs.rules || [], agents),
     {
       id: "basic",
       title: "Basic guardrails",
@@ -207,7 +220,7 @@ async function libraries(project: string, agents: string[]): Promise<Library[]> 
             />
           ) : null}
           <UpdateAction id="basic" title={basicTitle} st={basic} body={body} />
-          <ModeActions id="basic" title={basicTitle} project={project} st={basic} body={body} />
+          <ModeActions id="basic" title={basicTitle} project={project} st={basic} body={body} simulated={Boolean(contentsOf("basic")?.simulation)} />
         </>
       ),
     },
@@ -268,7 +281,12 @@ async function libraries(project: string, agents: string[]): Promise<Library[]> 
         <>
           {n < total && !(st.workspace && !n) ? (
             <ApplyChoice
-              project={{ url: `/api/policies/libraries/${id}/apply`, body, label: n ? `Apply to the rest of ${project}` : `Apply to ${project}` }}
+              project={{
+                url: `/api/policies/libraries/${id}/apply`,
+                body,
+                label: n ? `Apply to the rest of ${project}` : `Apply to ${project}`,
+                confirm: `Apply ${p.title} to ${project}? It starts by watching: it records what it would do, and stops nothing until it has been simulated and someone allowed to change production policy starts it.`,
+              }}
               every={{
                 url: `/api/policies/libraries/${id}/apply`,
                 body: everyBody,
@@ -278,7 +296,7 @@ async function libraries(project: string, agents: string[]): Promise<Library[]> 
             />
           ) : null}
           <UpdateAction id={id} title={p.title} st={st} body={body} />
-          <ModeActions id={id} title={p.title} project={project} st={st} body={body} />
+          <ModeActions id={id} title={p.title} project={project} st={st} body={body} simulated={Boolean(contentsOf(id)?.simulation)} />
           {/* Applied to every agent (before libraries were per project): its switch is
               the pack's own, the same one Settings → Detection shows. */}
           {st.workspace && !n ? <PackSwitches packs={p.policies.map((x: any) => packOf(x.key)).filter(Boolean)} /> : null}
@@ -305,7 +323,8 @@ export async function Libraries({ project, agents }: { project: string | null; a
     <section className="pol">
       <p className="pol-summary">
         A library is a set of rules you switch on together. <b>Your rules</b> holds the ones you write; the others ship with AgentFox. Applying one here puts it on{" "}
-        <b>{project}</b>&apos;s {total === 1 ? "agent" : `${total} agents`}, watching first, so you see what it would stop before it blocks. Click one to see its rules.
+        <b>{project}</b>&apos;s {total === 1 ? "agent" : `${total} agents`}, watching first, so you see what it would stop before it blocks. Click one to see its rules.{" "}
+        <Link href="/docs/protect">How libraries work</Link>
       </p>
       <div className="lib-grid">
         {all.map((l) => (
@@ -315,19 +334,13 @@ export async function Libraries({ project, agents }: { project: string | null; a
             title={l.title}
             className={l.className}
             head={
-              <>
-                <div className="lib-head">
-                  <span className="lib-head-title">
-                    <strong>{l.title}</strong>
-                    {l.tag ? <span className="lib-tag" title="The set we suggest every agent starts with">{l.tag}</span> : null}
-                  </span>
-                  <span className="lib-n">
-                    {l.rules} {l.rules === 1 ? "rule" : "rules"}
-                  </span>
-                </div>
-                <p>{l.description}</p>
-              </>
+              <span className="lib-head-title">
+                <strong>{l.title}</strong>
+                {l.tag ? <span className="lib-tag" title="The set we suggest every agent starts with">{l.tag}</span> : null}
+              </span>
             }
+            count={`${l.rules} ${l.rules === 1 ? "rule" : "rules"}`}
+            description={l.description}
             state={
               <span className={`lib-state ${l.state.tone}`} title={l.state.title}>
                 {l.state.text}

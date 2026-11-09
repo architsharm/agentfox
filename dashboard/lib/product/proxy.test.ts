@@ -79,7 +79,7 @@ describe("proxy auth/mutation boundary", () => {
       const res = await proxyReviewAction(req(), "/api/agents/x/approve", "/app/projects");
 
       const location = new URL(res.headers.get("location")!);
-      expect(location.searchParams.get("review_error")).toBe("agent already approved");
+      expect(location.searchParams.get("review_error")).toBe("Agent already approved");
     });
 
     it("a network exception is caught and surfaced as an error redirect, not an unhandled rejection", async () => {
@@ -143,7 +143,7 @@ describe("proxy auth/mutation boundary", () => {
       const res = await proxyReviewAction(r, "/api/agents/x/approve", "/app/projects");
 
       expect(res.status).toBe(303);
-      expect(new URL(res.headers.get("location")!).searchParams.get("review_error")).toBe("no such draft");
+      expect(new URL(res.headers.get("location")!).searchParams.get("review_error")).toBe("No such draft");
     });
   });
 
@@ -182,7 +182,7 @@ describe("detailText", () => {
     expect(detailText([{ loc: ["body", "name"], msg: "Field required" }, { loc: ["body", "key"], msg: "too short" }])).toBe(
       "name: Field required; key: too short",
     );
-    expect(detailText("plain")).toBe("plain");
+    expect(detailText("plain")).toBe("Plain"); // shown as a sentence
     expect(detailText(undefined)).toBe("");
   });
 });

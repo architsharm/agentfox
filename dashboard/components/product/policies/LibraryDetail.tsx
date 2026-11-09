@@ -116,7 +116,8 @@ export function LibraryDetail({ v }: { v: LibraryView }) {
           </tbody>
         </table>
       ) : v.id === "custom" ? (
-        <p className="muted">No rules yet. Add one and it lands here, watching.</p>
+        // Business rules are listed below; "no rules yet" above them read as a contradiction.
+        v.extra ? null : <p className="muted">No rules yet. Add one and it lands here, watching.</p>
       ) : (
         <p className="muted">Its rules could not be listed.</p>
       )}

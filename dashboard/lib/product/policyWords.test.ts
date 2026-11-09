@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { businessRuleName, defaultRuleScope, inlineMarkdown, parsePyDict, splitControls, suggestedLadderName, unusedSentences, versionNote } from "./policyWords";
+import { businessRuleName, defaultRuleScope, inlineMarkdown, ladderNameAfterEdit, parsePyDict, ruleEntries, splitControls, suggestedLadderName, unusedSentences, versionNote } from "./policyWords";
 
 describe("a rule's description", () => {
   it("renders the inline marks rule docstrings use", () => {
@@ -87,5 +87,29 @@ describe("sentences that compiled to nothing", () => {
       "Transfers up to $250 run automatically.",
     ]);
     expect(unusedSentences(["Anything."], [])).toEqual(["Anything."]);
+  });
+});
+
+describe("a rule's entries", () => {
+  it("keeps a regex with a comma as one pattern", () => {
+    expect(ruleEntries("patterns", "\\b\\d{8,12}\\b\nACC-\\d{6}\n")).toEqual(["\\b\\d{8,12}\\b", "ACC-\\d{6}"]);
+  });
+  it("splits words on lines and commas", () => {
+    expect(ruleEntries("terms", "Globex, Initech\nHooli")).toEqual(["Globex", "Initech", "Hooli"]);
+  });
+  it("keeps an example question's comma", () => {
+    expect(ruleEntries("examples", "Can I return it, and how?")).toEqual(["Can I return it, and how?"]);
+  });
+});
+
+describe("a limit's name after an edit", () => {
+  const before = { tool: "pay_vendor", unit: "USD", bands: [{ upto: 1000, outcome: "allow" }, { outcome: "escalate" }] };
+  const after = { tool: "pay_vendor", unit: "USD", bands: [{ upto: 2000, outcome: "allow" }, { outcome: "escalate" }] };
+  it("says a suggested name again from the new bands", () => {
+    expect(ladderNameAfterEdit("Approval above $1,000 on pay_vendor", before, after, "custom-pay_vendor")).toBe("Approval above $2,000 on pay_vendor");
+    expect(ladderNameAfterEdit("custom-pay_vendor", before, after, "custom-pay_vendor")).toBe("Approval above $2,000 on pay_vendor");
+  });
+  it("keeps a name the person wrote", () => {
+    expect(ladderNameAfterEdit("Big vendor payments", before, after)).toBe("Big vendor payments");
   });
 });

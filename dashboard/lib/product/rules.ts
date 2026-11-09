@@ -24,6 +24,8 @@ export type RulePack = {
   onBlock: string;
   /** Detection threshold, when the rule tests a detection; null otherwise. */
   minScore: number | null;
+  /** This rule only watches, even though its pack enforces (a new rule in Your rules). */
+  watch?: boolean;
 };
 
 export type RuleInfo = {
@@ -81,6 +83,7 @@ export async function loadRules(): Promise<{ packs: PackInfo[]; rules: RuleInfo[
         message: r.message || "",
         onBlock: r.on_block || "refuse",
         minScore: typeof minScore === "number" ? minScore : null,
+        watch: Boolean(r.watch),
       });
       byId.set(r.id, entry);
     }
@@ -97,11 +100,16 @@ export async function loadRules(): Promise<{ packs: PackInfo[]; rules: RuleInfo[
   return { packs, rules: Array.from(byId.values()) };
 }
 
-/** Watching or enforcing, for a rule: enforcing if any pack it is on in enforces. */
+/** The mode one pack applies this rule in: a rule that watches on its own does not enforce. */
+export function packRuleMode(p: RulePack): string | null {
+  return p.mode === "enforce" && p.watch ? "observe" : p.mode;
+}
+
+/** Watching or enforcing, for a rule: enforcing if any pack it is on in enforces it. */
 export function ruleMode(r: RuleInfo): string | null {
   const on = r.packs.filter((p) => p.enabled);
   if (!on.length) return null;
-  return on.some((p) => p.mode === "enforce") ? "enforce" : "observe";
+  return on.some((p) => packRuleMode(p) === "enforce") ? "enforce" : "observe";
 }
 
 /** The library a business rule lives in, as the rule's page and Applied rules name it. */

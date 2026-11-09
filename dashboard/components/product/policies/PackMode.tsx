@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { callJson } from "@/components/kit/Act";
+import { Act, callJson } from "@/components/kit/Act";
 import { packWouldStop } from "@/lib/product/libraries";
 
 /**
@@ -45,23 +45,11 @@ export function PackMode({
   };
 
   if (mode === "enforce") {
+    // Asked in the page, as every other switch is: a native dialog can be suppressed.
     return (
-      <span className="k-act">
-        <button
-          className="k-btn"
-          disabled={busy}
-          onClick={() =>
-            window.confirm("Switch to watching? Its rules will record what they would do, and stop nothing.") &&
-            run(async () => {
-              await callJson(`/api/policies/${encodeURIComponent(packKey)}/mode`, "POST", { mode: "observe" });
-              router.refresh();
-            })
-          }
-        >
-          Switch to watching
-        </button>
-        {error && <span className="k-act-error" role="alert">{error}</span>}
-      </span>
+      <Act url={`/api/policies/${encodeURIComponent(packKey)}/mode`} body={{ mode: "observe" }} className="k-btn" done="Watching" confirm="Back to watching? Its rules will record what they would do, and stop nothing.">
+        Back to watching
+      </Act>
     );
   }
 
@@ -77,12 +65,13 @@ export function PackMode({
             })
           }
         >
-          {busy ? "Checking…" : "Start blocking"}
+          {busy ? "Checking…" : "Simulate"}
         </button>
       ) : (
         <span className="k-preview k-preview-inline">
           <span>
             Last 7 days: <strong>{wouldStop ?? packWouldStop(sim)}</strong> would have been stopped
+            {sim?.counts?.already_stopped ? `; it also catches ${sim.counts.already_stopped} that other rules already stopped` : ""}
           </span>
           <button
             className="k-btn-primary"

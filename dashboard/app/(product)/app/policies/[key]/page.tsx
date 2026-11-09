@@ -3,7 +3,9 @@ import { appPageMetadata } from "@/lib/site";
 import { api, safeApi, ApiError, apiErrorProps } from "@/lib/product/api";
 import { ApiDown, Panel, ts } from "@/components/ui";
 import { PolicyEditor } from "@/components/product/PolicyEditor";
-import { Header } from "@/components/kit";
+import { Header, ModePill } from "@/components/kit";
+import { Act } from "@/components/kit/Act";
+import { PackMode } from "@/components/product/policies/PackMode";
 import { CanaryPanel } from "@/components/product/CanaryPanel";
 import { LibraryPage, findLibrary } from "@/components/product/policies/Libraries";
 import { observeScope } from "@/lib/product/observeScope";
@@ -69,10 +71,12 @@ function RuleWhen({ when }: { when: any }) {
 
   const bits: string[] = [];
   const surfaces = when.surface;
-  if (surfaces?.length) bits.push(`on ${surfaces.join(", ")}`);
+  if (surfaces?.length) bits.push(`on ${surfaces.map((x: string) => SURFACE_WORDS[x] || x.replace(/_/g, " ")).join(", ")}`);
   if (when.detection) {
     const d = when.detection;
-    const what = d.entity || d.entity_prefix;
+    // `CUSTOM.IMP_…` is the id of a text pattern an import saved: say what it is.
+    const raw = String(d.entity || d.entity_prefix || "");
+    const what = raw.toUpperCase().startsWith("CUSTOM.") ? "its text pattern" : raw;
     const parts: string[] = [];
     if (what) parts.push(`${what} detected`);
     if (d.min_score != null) parts.push(`score \u2265 ${d.min_score}`);
@@ -98,6 +102,14 @@ function RuleWhen({ when }: { when: any }) {
   if (!bits.length) return <span className="muted">every request</span>;
   return <>{bits.join(" \u00b7 ")}</>;
 }
+
+const SURFACE_WORDS: Record<string, string> = {
+  input: "user messages",
+  output: "agent replies",
+  tool_args: "tool calls",
+  tool_result: "tool results",
+  retrieved: "retrieved documents",
+};
 
 /** A route segment as the library id it may name: `payments%2Frefunds` is `payments/refunds`. */
 function decodeKey(key: string): string {
@@ -182,13 +194,8 @@ export default async function PolicyDetail({
           : policy.description || "No description."}
       </p>
 
-      <div className="row small" style={{ gap: 16, marginBottom: 16 }}>
-        <span>
-          <span className="muted">mode </span>
-          <span className={`tag ${binding?.mode === "enforce" ? "ok" : "warn"}`}>
-            {binding?.mode || "unbound"}
-          </span>
-        </span>
+      <div className="row small" style={{ gap: 16, marginBottom: 16, alignItems: "center", flexWrap: "wrap" }}>
+        <ModePill mode={binding?.mode} />
         {binding?.bound_version != null && (
           <span>
             <span className="muted">live </span>
@@ -202,6 +209,21 @@ export default async function PolicyDetail({
           <span className="muted">rules </span>
           <span className="mono">{binding?.rules ?? 0}</span>
         </span>
+        {/* Watching → blocking goes through the same replay-then-confirm gate as a library. */}
+        {binding?.mode && policy.live_body && (
+          <PackMode packKey={key} mode={binding.mode} body={policy.live_body} version={policy.bound_version ?? null} />
+        )}
+        {binding?.mode && key.startsWith("imported-") && (
+          <Act
+            url={`/api/policies/${encodeURIComponent(key)}`}
+            method="DELETE"
+            className="k-btn-danger"
+            done="Removed"
+            confirm={`Remove ${policy.name || key}? Its rules stop applying now; its versions stay in the history.`}
+          >
+            Remove
+          </Act>
+        )}
       </div>
 
       {/* This page is reached from "Review & edit" on a policy with, in this

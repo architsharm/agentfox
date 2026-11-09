@@ -405,6 +405,7 @@ def simulate_library(
                 if len(row["examples"]) < 5:
                     row["examples"].append(record)
         seen["hide"].update(r["decision_id"] for r in diff.would_hide)
+        seen.setdefault("already", set()).update(r["decision_id"] for r in diff.already_stopped)
         row["policies"].append(
             {
                 "key": copy.key,
@@ -418,7 +419,15 @@ def simulate_library(
         seen = acted[slug]
         held = seen["escalate"] - seen["block"]
         hidden = seen["hide"] - seen["block"] - held
-        out.append({**row, "blocked": len(seen["block"]), "held": len(held), "hidden": len(hidden)})
+        out.append(
+            {
+                **row,
+                "blocked": len(seen["block"]),
+                "held": len(held),
+                "hidden": len(hidden),
+                "already_stopped": len(seen.get("already", set())),
+            }
+        )
     return {
         "library": pack_id,
         "since_days": since_days,
@@ -427,6 +436,7 @@ def simulate_library(
         "blocked": sum(r["blocked"] for r in out),
         "held": sum(r["held"] for r in out),
         "hidden": sum(r["hidden"] for r in out),
+        "already_stopped": sum(r["already_stopped"] for r in out),
     }
 
 
@@ -559,8 +569,12 @@ def last_simulation(session: Any, pack_id: str, slugs: list[str]) -> dict[str, A
             if record.get("own") in ("block", "escalate"):
                 acted[record["own"]].add(record.get("decision_id"))
         acted["hide"].update(r.get("decision_id") for r in diff.get("would_hide") or [])
-    blocked = held = hidden = 0
+        acted.setdefault("already", set()).update(
+            r.get("decision_id") for r in diff.get("already_stopped") or []
+        )
+    blocked = held = hidden = already = 0
     for acted in seen.values():
+        already += len(acted.get("already", set()))
         held_here = acted["escalate"] - acted["block"]
         blocked += len(acted["block"])
         held += len(held_here)
@@ -571,6 +585,7 @@ def last_simulation(session: Any, pack_id: str, slugs: list[str]) -> dict[str, A
         "blocked": blocked,
         "held": held,
         "hidden": hidden,
+        "already_stopped": already,
         "at": newest.isoformat(),
         "run_by": runs[0].run_by,
     }

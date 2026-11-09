@@ -414,6 +414,46 @@ def get_policy(
     }
 
 
+#: Policies a person may remove outright: the ones they brought in with an import.
+#: Shipped libraries, the managed packs (`custom`, an agent's own layer) and packs
+#: with a protected rule are switched to watching or tuned instead.
+_REMOVABLE_PREFIX = "imported-"
+
+
+@router.delete("/{key}")
+def remove_policy(
+    key: str, session: Session = Depends(db), user: User = Depends(require("policy"))
+) -> dict[str, Any]:
+    """Stop applying an imported policy. Its versions stay, for the audit trail."""
+    from agentfox.platform.policy.store import _close_open_bindings
+
+    policy = session.scalar(select(Policy).where(Policy.key == key))
+    if policy is None:
+        raise HTTPException(404, f"unknown policy '{key}'")
+    if not key.startswith(_REMOVABLE_PREFIX):
+        raise HTTPException(
+            409,
+            "Only an imported policy can be removed. Switch this one to watching, or "
+            "turn its rules off one by one.",
+        )
+    binding, _bound = current_binding(session, policy.id)
+    if binding is not None and binding.mode == "enforce" and user.role not in _GRANT_ROLES:
+        raise HTTPException(
+            403, "This policy is blocking; removing it needs a production policy role."
+        )
+    _close_open_bindings(session, policy.id)
+    chain.append(
+        session,
+        "policy.removed",
+        actor_type="user",
+        actor_id=user.email or user.id,
+        subject_type="policy",
+        subject_id=policy.id,
+        payload={"policy": key, "mode": binding.mode if binding else None},
+    )
+    return {"removed": key}
+
+
 class PolicyIn(BaseModel):
     body: str
     notes: str = ""
@@ -513,6 +553,8 @@ class RulePatchIn(BaseModel):
     #: Let narrower levels (one agent, say) loosen this rule. A grant, so it needs a
     #: role that may bind policies to enforce.
     overridable: bool | None = None
+    #: False starts blocking a rule that only watches inside an enforcing pack.
+    watch: bool | None = None
     notes: str = ""
 
 
@@ -578,6 +620,8 @@ def patch_rule(
                     r["when"]["detection"]["min_score"] = payload.min_score
                 if payload.overridable is not None:
                     r["overridable"] = payload.overridable
+                if payload.watch is not None:
+                    r["watch"] = payload.watch or None
         patched = PolicyDocument.model_validate(data)
     except HTTPException:
         raise
@@ -593,6 +637,7 @@ def patch_rule(
             "on_block": payload.on_block,
             "min_score": payload.min_score,
             "overridable": payload.overridable,
+            "watch": payload.watch,
         }.items()
         if v is not None
     }
@@ -604,6 +649,7 @@ def patch_rule(
         "on_block": rule.on_block,
         "min_score": rule.when.detection.min_score if rule.when.detection else None,
         "overridable": rule.overridable,
+        "watch": bool(rule.watch),
     }
     was = {k: old[k] for k in changes if old.get(k) is not None}
     _policy, version = save_policy(
@@ -930,9 +976,9 @@ def change_mode(
     if not simulated:
         raise HTTPException(
             409,
-            f"version {target.version} of '{key}' has not been simulated: replay recent "
-            "traffic against it first (POST /api/policies/simulate with its body, or "
-            "Simulate in the editor), then promote",
+            f"Version {target.version} of '{key}' has not been simulated. Simulate it "
+            "first to see what it would have stopped in recent traffic, then start "
+            "blocking (API: POST /api/policies/simulate with its body and persist=true).",
         )
 
     binding = set_mode(

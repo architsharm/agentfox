@@ -66,6 +66,15 @@ def _rule_entities(rule: Rule) -> tuple[list[str], list[str]]:
     return exact, prefixes
 
 
+def applied_effect(policy: PolicyDocument, fired: list[FiredRule]) -> str:
+    """The strongest effect among the rules that apply: a watching rule does not."""
+    effective = policy.default_effect
+    for f in fired:
+        if f.mode == "enforce" and EFFECT_RANK[f.effect] > EFFECT_RANK[effective]:
+            effective = f.effect
+    return effective
+
+
 class NativePolicyEngine:
     name = "native"
 
@@ -86,7 +95,7 @@ class NativePolicyEngine:
                     severity=rule.severity,
                     controls=list(rule.controls),
                     redaction=rule.redaction,
-                    mode=policy.mode,
+                    mode="observe" if rule.watch else policy.mode,
                     entities=entities,
                     entity_prefixes=entity_prefixes,
                     message=rule.message,
@@ -101,8 +110,9 @@ class NativePolicyEngine:
 
         # Observe mode records the counterfactual but never blocks the caller.
         # A customer turns enforcement on deliberately, after simulating it, not by
-        # installing us.
-        verdict = effective if policy.mode == "enforce" else "allow"
+        # installing us. A rule that watches on its own (`Rule.watch`) is the same
+        # counterfactual inside an enforcing pack.
+        verdict = applied_effect(policy, fired) if policy.mode == "enforce" else "allow"
 
         return PolicyDecision(
             verdict=verdict,

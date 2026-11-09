@@ -130,6 +130,7 @@ def apply(
         saved.append(
             {
                 "key": policy.key,
+                "name": policy.name or policy.key,
                 "version": version.version,
                 "live_version": live.version if live else None,
                 "mode": binding.mode if binding else None,

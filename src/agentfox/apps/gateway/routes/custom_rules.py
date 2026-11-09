@@ -26,7 +26,13 @@ from agentfox.capabilities.detection.custom import (
 )
 from agentfox.capabilities.detection.custom_conditions import observed_values
 from agentfox.capabilities.detection.custom_models import get_model
-from agentfox.capabilities.detection.custom_store import delete_rule, list_rules, save_rule, spec_of
+from agentfox.capabilities.detection.custom_store import (
+    delete_rule,
+    get_rule,
+    list_rules,
+    save_rule,
+    spec_of,
+)
 from agentfox.capabilities.detection.detector_settings import set_enabled
 from agentfox.core.models import User
 
@@ -92,9 +98,12 @@ def post_custom_rule(
         on_block=payload.on_block,
         severity=payload.severity,
     )
+    rule_id = rule_id_for(row.key)
     return {
         "rule": _json(row),
         "policy": {"version": sync.version, "mode": sync.mode, "simulation": sync.simulation},
+        # What this rule does now: a new rule watches even while Your rules blocks.
+        "mode": "observe" if sync.mode != "enforce" or rule_id in sync.watching else "enforce",
     }
 
 
@@ -106,6 +115,38 @@ def remove_custom_rule(
     if sync is None:
         raise HTTPException(404, f"no custom rule '{key}'")
     return {"deleted": key, "policy": {"version": sync.version, "mode": sync.mode}}
+
+
+@router.get("/custom-rules/{key}/history")
+def custom_rule_history(
+    key: str, session: Session = Depends(db), _user: User = Depends(current_user)
+) -> dict[str, Any]:
+    """Every saved version of a rule's words, patterns or condition, with what changed."""
+    from agentfox.capabilities.detection.custom_store import history
+
+    if get_rule(session, key) is None:
+        raise HTTPException(404, f"no custom rule '{key}'")
+    return {"key": key, "versions": history(session, key)}
+
+
+@router.post("/custom-rules/{key}/versions/{version}/restore", status_code=201)
+def restore_custom_rule(
+    key: str,
+    version: int,
+    session: Session = Depends(db),
+    user: User = Depends(require("policy")),
+) -> dict[str, Any]:
+    """Put an earlier version of a rule's definition back, as a new version."""
+    from agentfox.capabilities.detection.custom_store import restore_version
+
+    try:
+        row, sync = restore_version(session, key, version, actor=user.email or user.id)
+    except ValueError as exc:
+        raise HTTPException(404 if "no " in str(exc) else 409, str(exc)) from exc
+    return {
+        "rule": _json(row),
+        "policy": {"version": sync.version, "mode": sync.mode, "simulation": sync.simulation},
+    }
 
 
 class TryIn(BaseModel):
@@ -124,8 +165,10 @@ def try_custom_rule(payload: TryIn, _user: User = Depends(current_user)) -> dict
     except ValidationError as exc:
         raise HTTPException(400, exc.errors()[0]["msg"]) from exc
     compiled = compile_rule(spec)
+    if compiled is None and spec.sequence is not None:
+        return _try_sequence(spec, payload.text)
     if compiled is None:
-        raise HTTPException(400, "a sequence rule is checked against a run, not a text")
+        raise HTTPException(400, "This rule is checked against a run, not a text.")
     tool = payload.tool or (
         spec.condition.tool
         if spec.condition and spec.condition.tool and "*" not in spec.condition.tool
@@ -167,6 +210,37 @@ def try_custom_rule(payload: TryIn, _user: User = Depends(current_user)) -> dict
             }
             for d in result.detections
         ],
+    }
+
+
+def _try_sequence(spec: CustomRuleSpec, text: str) -> dict[str, Any]:
+    """Try a sequence rule on a made-up run: one tool call per line (or separated by
+    commas or "->"), each optionally followed by its arguments as JSON."""
+    import json
+    import re
+
+    from agentfox.capabilities.containment.checks import sequence_hit
+
+    items = re.split(r"\n|->|→" + ("" if "{" in text else "|,"), text)
+    calls: list[tuple[str, dict[str, Any]]] = []
+    for item in items:
+        item = item.strip()
+        if not item:
+            continue
+        name, _, rest = item.partition(" ")
+        try:
+            arguments = json.loads(rest) if rest.strip().startswith("{") else {}
+        except ValueError as exc:
+            raise HTTPException(400, f"The arguments after {name} are not JSON.") from exc
+        calls.append((name, arguments if isinstance(arguments, dict) else {}))
+    if not calls:
+        raise HTTPException(400, "Write the calls of a run, one per line.")
+    assert spec.sequence is not None
+    hit = sequence_hit(spec.sequence, calls)
+    return {
+        "matched": hit is not None,
+        "observed": [],
+        "matches": [{"start": 0, "end": 0, "reason": f"{hit[1]} after {hit[0]}"}] if hit else [],
     }
 
 

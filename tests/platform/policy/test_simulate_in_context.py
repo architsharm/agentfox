@@ -77,3 +77,38 @@ def test_cli_lists_newly_allowed_and_escalated_decisions(session, tmp_path):
     out = CliRunner().invoke(app, ["policy", "simulate", "--file", str(path)]).output
     assert "would allow" in out
     assert "sim-bot" in out
+
+
+def test_what_another_pack_already_stopped_is_counted_not_hidden(session):
+    _record(session)
+    also = PolicyDocument.from_yaml(
+        """
+key: pack-c
+mode: observe
+rules:
+  - id: c.block
+    when: {surface: [input]}
+    effect: block
+"""
+    )
+    diff = simulate(session, also)
+    assert diff.would_stop == []  # pack a already blocked it
+    assert [r["own"] for r in diff.already_stopped] == ["block"]
+    assert diff.to_json()["counts"]["already_stopped"] == 1
+
+
+def test_a_watching_rule_is_replayed_as_watching(session):
+    _record(session)
+    watching = PolicyDocument.from_yaml(
+        """
+key: pack-c
+mode: enforce
+rules:
+  - id: c.block
+    when: {surface: [input]}
+    effect: block
+    watch: true
+"""
+    )
+    diff = simulate(session, watching)
+    assert diff.already_stopped == []
