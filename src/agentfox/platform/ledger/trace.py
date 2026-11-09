@@ -338,6 +338,8 @@ def full_trace(
             "status": trace.status,
             "verdict": trace.verdict,
             "intent": trace.intent,
+            # What the person asked in the turn this run belongs to: its page's title.
+            "asked": _turn_message(session, trace, spans),
             "model": trace.model,
             "provider": trace.provider,
             "usage": trace.token_usage_json,
@@ -364,6 +366,40 @@ def full_trace(
             for t in taints
         ],
     }
+
+
+def _turn_message(session: Session, trace: Trace, spans: list[Span]) -> str | None:
+    """What the person asked in the turn ``trace`` is part of (masked).
+
+    ``auto()`` checks a message, each tool call and each tool's result as separate
+    runs; a tool call's page was titled with the tool's name. Its own message when it
+    has one (its summary, else an ``agentfox.input`` span), otherwise that of the
+    latest run before it on the same conversation: its session, else the same agent
+    and environment within `TURN_GAP` (how Activity folds a turn, `_group_turns`).
+    """
+    if trace.summary:
+        return trace.summary
+    for sp in spans:
+        text = (sp.attributes_json or {}).get("agentfox.input")
+        if text:
+            return str(text)[:200]
+    query = select(Trace.summary).where(
+        Trace.id != trace.id,
+        Trace.summary.is_not(None),
+        Trace.started_at <= trace.started_at,
+    )
+    if trace.session_id:
+        query = query.where(Trace.session_id == trace.session_id)
+    elif trace.agent_slug:
+        query = query.where(
+            Trace.session_id.is_(None),
+            Trace.agent_slug == trace.agent_slug,
+            Trace.environment == trace.environment,
+            Trace.started_at >= trace.started_at - TURN_GAP,
+        )
+    else:
+        return None
+    return session.scalar(query.order_by(Trace.started_at.desc()).limit(1))
 
 
 def _approvals_of(session: Session, decisions: list[Decision]) -> dict[str, dict[str, Any]]:

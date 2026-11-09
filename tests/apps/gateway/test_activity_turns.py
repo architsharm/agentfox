@@ -89,3 +89,26 @@ def test_a_session_still_groups_by_turn_not_whole_conversation(client):
         ("second question", 2),
         ("first question", 2),
     ]
+
+
+def test_a_tool_calls_run_page_is_titled_with_the_turns_message(client):
+    """The run page of a hand-off was titled "transfer_to_restaurant_scout"."""
+    agent = "title-bot"
+    asked = client.post(
+        "/v1/guard/input", json={"agent": agent, "content": "plan a weekend in Lisbon"}
+    ).json()["trace_id"]
+    call = client.post(
+        "/v1/guard/tool_call",
+        json={"agent": agent, "tool": "transfer_to_restaurant_scout", "arguments": {}},
+    ).json()["trace_id"]
+    other = client.post(
+        "/v1/guard/tool_call", json={"agent": "someone-else", "tool": "lookup", "arguments": {}}
+    ).json()["trace_id"]
+
+    def asked_of(trace_id):
+        return client.get(f"/api/traces/{trace_id}", headers=ADMIN).json()["trace"]["asked"]
+
+    assert asked_of(asked) == "plan a weekend in Lisbon"
+    assert asked_of(call) == "plan a weekend in Lisbon"
+    # Another agent's run is not part of that turn.
+    assert asked_of(other) is None

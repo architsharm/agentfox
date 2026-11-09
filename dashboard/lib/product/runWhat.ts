@@ -8,17 +8,33 @@
  * now reads "Handed off to FAQ Agent", and JSON is never the headline.
  */
 
-export function handoffTarget(tool?: string | null, names?: Map<string, string>): string | null {
-  const m = /^transfer_to_(.+)$/.exec(String(tool || ""));
-  if (!m) return null;
-  // The agent it hands to, by the name people gave it, when it is one of theirs.
-  const named = names?.get(m[1].replace(/_/g, "-")) || names?.get(m[1]);
-  if (named) return named;
-  return m[1]
+/**
+ * The registry key for a name, as `core/naming.py` `slug` makes it: `RestaurantScout`,
+ * `restaurant_scout` and "Restaurant scout" are all `restaurant-scout`.
+ */
+export function slugOf(value: string): string {
+  const words = value.trim().replace(/(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/g, "-");
+  return words.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+/** A code name in words: `restaurant_scout` -> "Restaurant Scout", `faq_agent` -> "FAQ Agent". */
+function humanise(code: string): string {
+  return code
     .split(/[_-]+/)
     .filter(Boolean)
     .map((w) => (w.length <= 3 && w !== "the" ? w.toUpperCase() : w[0].toUpperCase() + w.slice(1)))
     .join(" ");
+}
+
+export function handoffTarget(tool?: string | null, names?: Map<string, string>): string | null {
+  const m = /^transfer_to_(.+)$/.exec(String(tool || ""));
+  if (!m) return null;
+  // The agent it hands to, by the name people gave it, when it is one of theirs.
+  const named = names?.get(slugOf(m[1])) || names?.get(m[1]);
+  // A display name that is itself a code name (`agentfox init` keeps the name as the
+  // code wrote it) reads as words too.
+  if (named) return /^[A-Za-z0-9]+(_[A-Za-z0-9]+)+$/.test(named) ? humanise(named) : named;
+  return humanise(m[1]);
 }
 
 function looksLikeJson(s: string): boolean {
@@ -56,6 +72,27 @@ export function runWhat(t: any, surfaces: Record<string, string> = {}, names?: M
   }
   const s = (t.surfaces || []).map((x: string) => surfaces[x] || x).filter((v: string, i: number, a: string[]) => a.indexOf(v) === i).join(" · ");
   return s || "Model call";
+}
+
+/**
+ * A run page's title: what the person asked in its turn (`trace.asked`, recorded by
+ * the gateway from `agentfox.input`), else what the run did in words. A tool call's
+ * page used to be titled with the tool's name ("transfer_to_restaurant_scout").
+ */
+export function runTitle(t: any, decisions: any[] = [], surfaces: Record<string, string> = {}, names?: Map<string, string>): string {
+  const asked = typeof t?.asked === "string" ? t.asked.replace(/\s+/g, " ").trim() : "";
+  if (asked) return asked.length > 120 ? `${asked.slice(0, 119).trimEnd()}…` : asked;
+  if (typeof t?.intent === "string" && t.intent.trim() && !looksLikeJson(t.intent)) return t.intent.trim();
+  const tools = Array.from(new Set(decisions.map((d) => d?.tool).filter(Boolean))) as string[];
+  if (tools.length) {
+    const handoffs = tools.map((x) => handoffTarget(x, names)).filter(Boolean) as string[];
+    const rest = tools.filter((x) => !handoffTarget(x));
+    const parts = [...(rest.length ? [`Called ${rest.join(", ")}`] : []), ...handoffs.map((h) => `handed off to ${h}`)];
+    const text = parts.join(", ");
+    return text[0].toUpperCase() + text.slice(1);
+  }
+  const s = Array.from(new Set(decisions.map((d) => surfaces[d?.surface] || d?.surface).filter(Boolean)));
+  return s.length ? s.join(" · ") : "Run";
 }
 
 /**

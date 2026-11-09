@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { handoffTarget, runSteps, runWhat } from "./runWhat";
+import { handoffTarget, runSteps, runTitle, runWhat, slugOf } from "./runWhat";
 
 describe("runWhat", () => {
   it("keeps what the person asked", () => {
@@ -19,6 +19,31 @@ describe("runWhat", () => {
     const names = new Map([["faq-agent", "Help Desk"]]);
     expect(runWhat({ tools: ["transfer_to_faq_agent"] }, {}, names)).toBe("Handed off to Help Desk");
     expect(handoffTarget("transfer_to_seat_booking_agent", names)).toBe("Seat Booking Agent");
+  });
+  it("finds the agent by its slug however the code wrote the name, and never shows a code name", () => {
+    // `agentfox init` keeps the name as the code wrote it: restaurant_scout, slug restaurant-scout.
+    const names = new Map([
+      ["restaurant-scout", "restaurant_scout"],
+      ["currency-agent", "CurrencyAgent"],
+    ]);
+    expect(handoffTarget("transfer_to_restaurant_scout", names)).toBe("Restaurant Scout");
+    expect(handoffTarget("transfer_to_CurrencyAgent", names)).toBe("CurrencyAgent");
+    expect(handoffTarget("transfer_to_restaurant_scout")).toBe("Restaurant Scout");
+    expect(slugOf("FinancialPlannerAgent")).toBe("financial-planner-agent");
+    expect(slugOf("restaurant_scout")).toBe("restaurant-scout");
+  });
+});
+
+describe("runTitle", () => {
+  it("is what the person asked in the turn, when recorded", () => {
+    expect(runTitle({ asked: "plan a weekend in Lisbon" }, [{ tool: "transfer_to_restaurant_scout" }])).toBe("plan a weekend in Lisbon");
+    expect(runTitle({ asked: "x".repeat(200) }).length).toBe(120);
+  });
+  it("otherwise says what the run did, in words", () => {
+    expect(runTitle({}, [{ tool: "transfer_to_restaurant_scout", surface: "tool_args" }])).toBe("Handed off to Restaurant Scout");
+    expect(runTitle({}, [{ tool: "file_read" }])).toBe("Called file_read");
+    expect(runTitle({}, [{ surface: "input" }], { input: "User message" })).toBe("User message");
+    expect(runTitle({}, [])).toBe("Run");
   });
 });
 

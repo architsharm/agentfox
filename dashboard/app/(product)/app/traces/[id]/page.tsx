@@ -22,6 +22,7 @@ import type { ReactNode } from "react";
 import { NoticeToast } from "@/components/product/NoticeToast";
 import { approvalOutcome } from "@/lib/product/approvals";
 import { agentNames, withAgentNames } from "@/lib/product/names";
+import { handoffTarget, runTitle } from "@/lib/product/runWhat";
 
 export const metadata: Metadata = appPageMetadata("Run");
 export const dynamic = "force-dynamic";
@@ -95,12 +96,12 @@ export default async function RunDetail({
 
   const t = d.trace;
   // Issue titles carry the agent's slug; on screen it has its display name.
-  const names = (d.findings || []).length ? agentNames((await safeApi<any>("/api/agents", { agents: [] })).agents) : new Map<string, string>();
   const decisions: any[] = d.decisions || [];
+  // ...and so does an agent a hand-off names, in the title when nothing was asked.
+  const handsOff = !t.asked && decisions.some((x) => handoffTarget(x.tool));
+  const names = (d.findings || []).length || handsOff ? agentNames((await safeApi<any>("/api/agents", { agents: [] })).agents) : new Map<string, string>();
   const outcome = outcomeOf(t.verdict);
-  const surfaces = Array.from(new Set(decisions.map((x) => SURFACES[x.surface] || x.surface)));
-  const tools = Array.from(new Set(decisions.map((x) => x.tool).filter(Boolean)));
-  const title = t.intent || (tools.length ? tools.join(", ") : surfaces.join(" · ")) || "Run";
+  const title = runTitle(t, decisions, SURFACES, names);
   const fired = decisions.flatMap((x) => (x.rules_fired || []).map((r: any) => ({ ...r, decision: x })));
   const watchedEffect = fired.find((r) => r.mode === "observe" && ["block", "escalate"].includes(r.effect))?.effect;
   const denied = fired.find((r) => r.rule_id === "capability.denied");
