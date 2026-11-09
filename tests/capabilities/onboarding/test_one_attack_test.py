@@ -58,6 +58,9 @@ def test_an_agents_page_shows_its_own_attacks(client, tmp_path):
     # The planner has no tools: two sets don't apply; the rest couldn't run. Each
     # reason is said once, without a second "Not run:" lead.
     assert "AgentFox couldn't find where Planner is created." in reasons
+    # Nothing ran for the planner: its page says why, not a generic line.
+    assert "couldn't find where Planner is created" in (planner["error"] or "")
+    assert loop["error"] is None
     assert not any(r.lower().startswith("not run") for r in reasons)
 
 

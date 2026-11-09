@@ -38,7 +38,8 @@ export default async function Test({ searchParams }: { searchParams: Promise<SP>
       <Tabs items={TABS.map((t) => ({ ...t, href: href("/app/test", { tab: t.key === "try" ? undefined : t.key }) }))} active={tab} />
       <NoticeToast notice={sp.review_notice} error={sp.review_error} />
       {tab === "try" && <Try agents={live} />}
-      {tab === "attacks" && <Attacks agents={live} />}
+      {/* Every agent init mapped, proposed ones too: their first attack test runs before they are added. */}
+      {tab === "attacks" && <Attacks agents={agents.agents || []} />}
       {tab === "paths" && <Paths agents={live} agent={sp.agent} days={sp.days} />}
       {tab === "suites" && <Suites />}
       {tab === "reliability" && <Reliability agents={live} />}

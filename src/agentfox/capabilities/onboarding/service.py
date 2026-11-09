@@ -345,12 +345,17 @@ def for_agent(run: dict[str, Any], agent: str | None) -> dict[str, Any]:
     totals: dict[str, Any] = dict(counts(suite))
     totals["_controls"] = control_counts(suite)
     totals["_skipped"] = skipped(suite)
-    return {
-        **run,
-        "results": [r for r in run.get("results") or [] if r.get("agent") in names],
-        "totals": totals,
-        "total": len(suite),
-    }
+    results = [r for r in run.get("results") or [] if r.get("agent") in names]
+    error = run.get("error")
+    attacks = [r for r in results if not r.get("control")]
+    finished = run.get("status") in ("done", "failed")
+    if finished and attacks and all(outcome_of(r) == "not_run" for r in attacks):
+        # The project's run went fine; this agent's part didn't run at all: why.
+        error = nothing_ran(attacks)
+    elif not attacks or any(outcome_of(r) != "not_run" for r in attacks):
+        # The project's error may be another agent's ("couldn't import planner").
+        error = error if error and not str(error).startswith("No attack could be run") else None
+    return {**run, "results": results, "totals": totals, "total": len(suite), "error": error}
 
 
 def not_run_reason(results: list[dict[str, Any]]) -> str | None:
