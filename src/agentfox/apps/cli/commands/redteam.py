@@ -31,8 +31,13 @@ _TABLE_ROWS = 25
 
 @redteam_app.command("run")
 def redteam_run(
-    agent: str,
-    probes: str | None = None,
+    agent: str = typer.Argument(..., help="The agent to attack: its name, as `agents list` shows."),
+    probes: str | None = typer.Option(
+        None,
+        "--probes",
+        help="Run only these built-in probes, comma-separated keys from `agentfox test "
+        "probes` (they run alongside the attacks written from the agent's tools).",
+    ),
     adaptive: bool = typer.Option(
         False,
         "--adaptive",

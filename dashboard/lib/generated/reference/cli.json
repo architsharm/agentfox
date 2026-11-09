@@ -2683,7 +2683,7 @@
       "path": "policy simulate",
       "name": "simulate",
       "summary": "Replay recorded traffic against a candidate policy.",
-      "help": "Replay recorded traffic against a candidate policy.\n\nExits non-zero when the change would newly block production traffic, so it can\ngate a policy PR the same way `eval gate` gates a code PR.",
+      "help": "Replay recorded traffic against a candidate policy.\n\nExits non-zero when the change would newly block production traffic, so it can\ngate a policy PR the same way `agentfox test gate` gates a code PR.",
       "panel": null,
       "params": [
        {
@@ -2693,7 +2693,7 @@
          "--file",
          "-f"
         ],
-        "type": "path",
+        "type": "file",
         "choices": [],
         "required": true,
         "multiple": false,
@@ -2711,7 +2711,7 @@
         "required": false,
         "multiple": false,
         "default": null,
-        "help": ""
+        "help": "Replay one agent's traffic only."
        },
        {
         "kind": "option",
@@ -2724,7 +2724,7 @@
         "required": false,
         "multiple": false,
         "default": 30,
-        "help": ""
+        "help": "How far back to replay."
        },
        {
         "kind": "option",
@@ -2737,7 +2737,7 @@
         "required": false,
         "multiple": false,
         "default": 1000,
-        "help": ""
+        "help": "The most recorded calls to replay."
        }
       ],
       "default_subcommand": null,
@@ -4411,7 +4411,7 @@
         "required": true,
         "multiple": false,
         "default": null,
-        "help": ""
+        "help": "The agent to attack: its name, as `agents list` shows."
        },
        {
         "kind": "option",
@@ -4424,7 +4424,7 @@
         "required": false,
         "multiple": false,
         "default": null,
-        "help": ""
+        "help": "Run only these built-in probes, comma-separated keys from `agentfox test probes` (they run alongside the attacks written from the agent's tools)."
        },
        {
         "kind": "option",

@@ -228,15 +228,17 @@ def policy_effective(
 
 @policy_app.command("simulate")
 def policy_simulate(
-    file: Path = typer.Option(..., "--file", "-f", help="Candidate policy YAML."),
-    agent: str | None = None,
-    since_days: int = 30,
-    limit: int = 1000,
+    file: Path = typer.Option(
+        ..., "--file", "-f", exists=True, dir_okay=False, help="Candidate policy YAML."
+    ),
+    agent: str | None = typer.Option(None, "--agent", help="Replay one agent's traffic only."),
+    since_days: int = typer.Option(30, "--since-days", help="How far back to replay."),
+    limit: int = typer.Option(1000, "--limit", help="The most recorded calls to replay."),
 ) -> None:
     """Replay recorded traffic against a candidate policy.
 
     Exits non-zero when the change would newly block production traffic, so it can
-    gate a policy PR the same way `eval gate` gates a code PR.
+    gate a policy PR the same way `agentfox test gate` gates a code PR.
     """
     from agentfox.platform.policy import PolicyDocument, record_simulation, simulate
 
