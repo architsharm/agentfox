@@ -63,7 +63,9 @@ export async function AppliedRules({
   if (!data) return <Empty>Couldn&apos;t load the rules in force right now. Reload the page to try again.</Empty>;
   // Only this project's agents: a rule counts here where it reaches one of them, and
   // "all agents" means all of this project's.
-  const mine = new Set(projectAgents);
+  // An agent named in the URL (an agent's "Applied rules" link) counts even when the
+  // sidebar has another project chosen: its rules, not an empty list.
+  const mine = new Set(agent && !projectAgents.includes(agent) ? [agent] : projectAgents);
   const scoped = data.rules
     .map((r) => {
       const here = r.agents.filter((a) => mine.has(a.slug));

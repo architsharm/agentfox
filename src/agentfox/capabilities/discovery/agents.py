@@ -164,7 +164,9 @@ class AgentSpec:
     default_model: bool = False
     #: Where a local runner finds the live object: the importable module, the name in
     #: it, and how to use that name — ``object`` (the agent itself), ``factory`` (call
-    #: it to get the agent) or ``function`` (it runs a function-calling loop).
+    #: it to get the agent) or ``function`` (it runs a function-calling loop). A
+    #: ``Class.method`` name is a method of a ``@CrewBase`` class: the factory builds
+    #: the class with no arguments and calls the method.
     module: str | None = None
     attr: str | None = None
     attr_kind: str | None = None
@@ -956,6 +958,10 @@ class _Extractor:
         self.functions: dict[str, ast.FunctionDef | ast.AsyncFunctionDef] = {}
         #: id(call) of every `return Crew(...)` inside a CrewBase `@crew` method
         self.crew_methods: set[int] = set()
+        #: id(call) a method of a module-level ``@CrewBase`` class returns -> that
+        #: ``Class.method``: how a runner reaches a crew or crew member built there
+        #: (the class is built with no arguments, as ``crewai run`` builds it).
+        self.crewbase_returns: dict[int, str] = {}
         #: raw index -> (its constructor call, its role)
         self.made: dict[int, tuple[ast.Call, str]] = {}
         #: Every name an import binds, relative imports included.
@@ -1140,6 +1146,10 @@ class _Extractor:
     def _walk_scope(self, body: list[ast.stmt], cls: str | None) -> None:
         for stmt in body:
             if isinstance(stmt, ast.ClassDef):
+                if body is self.tree.body and any(
+                    _decorator_name(d).rsplit(".", 1)[-1] == "CrewBase" for d in stmt.decorator_list
+                ):
+                    self._crewbase_methods(stmt)
                 self._walk_scope(stmt.body, cls=stmt.name)
                 continue
             if isinstance(stmt, ast.FunctionDef | ast.AsyncFunctionDef):
@@ -1158,6 +1168,15 @@ class _Extractor:
             self._note_assign(stmt, cls)
             for child_body in _child_bodies(stmt):
                 self._walk_scope(child_body, cls=cls)
+
+    def _crewbase_methods(self, node: ast.ClassDef) -> None:
+        """The calls each method of a ``@CrewBase`` class returns (its ``@agent``
+        Agents, its ``@crew`` Crew), each reached as ``Class.method``."""
+        for stmt in node.body:
+            if isinstance(stmt, ast.FunctionDef | ast.AsyncFunctionDef):
+                for sub in ast.walk(stmt):
+                    if isinstance(sub, ast.Return) and isinstance(sub.value, ast.Call):
+                        self.crewbase_returns.setdefault(id(sub.value), f"{node.name}.{stmt.name}")
 
     def _note_assign(self, stmt: ast.stmt, cls: str | None) -> None:
         value: ast.AST | None = None
@@ -1329,6 +1348,8 @@ class _Extractor:
             )
             if cls is None and id(node) in self.module_calls:
                 raw.attr, raw.attr_kind = var, "object"
+            elif id(node) in self.crewbase_returns:
+                raw.attr, raw.attr_kind = self.crewbase_returns[id(node)], "factory"
             elif id(node) in self.factory_calls:
                 factory = self.factory_calls[id(node)]
                 # `agent = build_agent()` at module level: the module already builds it.
@@ -2160,14 +2181,12 @@ _FRAMEWORK_LABELS = {
 
 
 #: Frameworks (by the label above) whose model calls `agentfox.auto()` does not see,
-#: and the client they reach the model through by default, which it does not patch:
-#: Google ADK calls Gemini through google-genai, smolagents' default model goes through
-#: huggingface_hub. `agentfox up` and `agentfox init` say so instead of promising that
-#: `auto()` records every call; the gateway route governs them.
-UNPATCHED_FRAMEWORKS: dict[str, str] = {
-    "Google ADK": "google-genai",
-    "smolagents": "huggingface_hub",
-}
+#: and the client they reach the model through by default, which it does not patch.
+#: `agentfox up` and `agentfox init` say so instead of promising that `auto()` records
+#: every call; the gateway route governs them. None today: Google ADK (google-genai)
+#: and smolagents (huggingface_hub, and its tools) are patched, see
+#: `frameworks.autoguard.genai` and `frameworks.autoguard.smol`.
+UNPATCHED_FRAMEWORKS: dict[str, str] = {}
 
 #: What a repository's own agent class talks to, by the package its module imports,
 #: first match wins: the label of an agent built on a local ``Agent`` class.

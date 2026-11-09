@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { safeApi } from "@/lib/product/api";
-import { MAP_PROJECT_COOKIE, NEW_PROJECT, defaultProject } from "@/lib/product/project";
+import { MAP_PROJECT_COOKIE, NEW_PROJECT, chosenOption } from "@/lib/product/project";
 
 /**
  * Which agents an Observe page shows: the project chosen in the sidebar's switcher
@@ -10,8 +10,8 @@ export async function observeScope(agent?: string): Promise<{ project: string | 
   if (agent) return { project: null, agents: [agent] };
   const [jar, { projects }] = await Promise.all([cookies(), safeApi<any>("/api/projects", { projects: [] })]);
   if (jar.get(MAP_PROJECT_COOKIE)?.value === NEW_PROJECT) return { project: null, agents: [] };
-  const names: string[] = (projects ?? []).map((p: any) => p.project);
-  const project = [jar.get(MAP_PROJECT_COOKIE)?.value].find((p) => p && names.includes(p)) ?? defaultProject(projects ?? [])?.project ?? null;
+  // The option the sidebar's switcher shows (one per repository), not a system of it.
+  const project = chosenOption(projects ?? [], jar.get(MAP_PROJECT_COOKIE)?.value)?.project ?? null;
   if (!project) return { project: null, agents: [] };
   const map = await safeApi<any>(`/api/projects/${encodeURIComponent(project)}/map`, null);
   return { project, agents: (map?.agents ?? []).map((a: any) => a.slug) };

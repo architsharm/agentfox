@@ -204,10 +204,20 @@ _FROM_CREWAI: contextvars.ContextVar[bool] = contextvars.ContextVar(
 )
 
 
+#: Set while a smolagents agent runs (`smol._run_scope`), for the same reason.
+_FROM_SMOLAGENTS: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "agentfox_from_smolagents", default=False
+)
+
+
 def _tools_governed_where_they_run(state: AutoState) -> bool:
     """Whether the tool calls in the current model reply are left to the tool-level
     guard: the reply came from a framework whose tools are patched where they run."""
-    return (state.lc_tools and _FROM_LANGCHAIN.get()) or (state.crew_tools and _FROM_CREWAI.get())
+    return (
+        (state.lc_tools and _FROM_LANGCHAIN.get())
+        or (state.crew_tools and _FROM_CREWAI.get())
+        or (state.smol_tools and _FROM_SMOLAGENTS.get())
+    )
 
 
 def _agent_of(state: AutoState) -> str:
@@ -286,6 +296,11 @@ class AutoState:
     #: CrewAI tools are governed where they run (`CrewStructuredTool.invoke`,
     #: `BaseTool.run`), the same way.
     crew_tools: bool = False
+    #: smolagents tools are governed where they run (`Tool.__call__`), the same way.
+    smol_tools: bool = False
+    #: Functions google-genai runs itself (automatic function calling) are governed
+    #: where they run.
+    genai_functions: bool = False
     #: What a refused LangChain tool call does: "message" hands the agent the refusal
     #: as the tool's result and the run carries on; "raise" raises `Blocked`.
     tool_refusals: str = "message"
@@ -444,7 +459,8 @@ class AutoState:
             lines.append(
                 "  Governed per call: request messages, response text, and the tool "
                 "calls in the response (OpenAI tool_calls and Responses API "
-                "function_call items, Anthropic tool_use) before your code can run "
+                "function_call items, Anthropic tool_use, Gemini function_call parts) "
+                "before your code can run "
                 "them."
             )
             if by_label.get("openai.responses") and by_label["openai.responses"].patched:
@@ -452,10 +468,15 @@ class AutoState:
                     "  OpenAI-hosted tools (web search, file search, code interpreter) "
                     "run at OpenAI, so they are recorded, not stopped."
                 )
-            if self.lc_tools or self.crew_tools:
+            if self.lc_tools or self.crew_tools or self.smol_tools or self.genai_functions:
                 where = " and ".join(
                     name
-                    for name, on in (("LangChain", self.lc_tools), ("CrewAI", self.crew_tools))
+                    for name, on in (
+                        ("LangChain", self.lc_tools),
+                        ("CrewAI", self.crew_tools),
+                        ("smolagents", self.smol_tools),
+                        ("google-genai automatic-function-calling", self.genai_functions),
+                    )
                     if on
                 )
                 lines.append(
@@ -2870,6 +2891,26 @@ def _patch_crewai_tools(state: AutoState) -> list[PatchResult]:
     return results
 
 
+def _patch_google_genai(state: AutoState) -> list[PatchResult]:
+    """google-genai, and Google ADK on top of it: see `autoguard.genai`."""
+    from agentfox.frameworks.autoguard import genai
+
+    return genai.patch(state)
+
+
+def _patch_huggingface_hub(state: AutoState) -> list[PatchResult]:
+    """huggingface_hub's chat client, smolagents' default model: see `autoguard.smol`."""
+    from agentfox.frameworks.autoguard import smol
+
+    return smol.patch_hub(state)
+
+
+def _patch_smolagents_tools(state: AutoState) -> list[PatchResult]:
+    from agentfox.frameworks.autoguard import smol
+
+    return smol.patch_tools(state)
+
+
 _PATCHERS = (
     _patch_openai,
     _patch_anthropic,
@@ -2877,6 +2918,9 @@ _PATCHERS = (
     _patch_langchain,
     _patch_langchain_tools,
     _patch_crewai_tools,
+    _patch_google_genai,
+    _patch_huggingface_hub,
+    _patch_smolagents_tools,
 )
 
 

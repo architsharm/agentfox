@@ -13018,8 +13018,8 @@
    "path": "/api/traces",
    "section": "traces",
    "audience": "operator",
-   "summary": "Runs, newest first. ``group=true`` gives one row per conversation.",
-   "description": "Runs, newest first. ``group=true`` gives one row per conversation.",
+   "summary": "Runs, newest first. ``group=true`` gives one row per conversation turn.",
+   "description": "Runs, newest first. ``group=true`` gives one row per conversation turn.",
    "params": [
     {
      "name": "agent",

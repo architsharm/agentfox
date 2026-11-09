@@ -35,16 +35,14 @@ rules:
     action_risk: ghana-dpa.block-cross-border-transfer-non-permitted
   effect: block
   severity: high
-  reason: 'Ghana DPA Act 843 s.18(2): Cross-border transfer to region <value> blocked - destination country
-    adequacy not verified with DPC'
+  reason: 'Ghana DPA Act 843 s.18(2): Cross-border transfer to region <value> - destination country adequacy not verified with DPC, so it may not go ahead'
 - id: ghana-dpa.block-transfer-non-gh-country-without
   description: 's.18(2): Block transfer to non-GH country without documented consent'
   when:
     action_risk: ghana-dpa.block-transfer-non-gh-country-without
   effect: block
   severity: high
-  reason: 'Ghana DPA Act 843 s.18(2): Transfer to <value> blocked - no documented consent or adequacy
-    basis on file'
+  reason: 'Ghana DPA Act 843 s.18(2): Transfer to <value> with no documented consent or adequacy basis on file - needs one before it goes ahead'
 - id: ghana-dpa.block-ghana-card-national-id-output
   description: 'NIA Act 707: Block Ghana Card national ID in output Format: GHA-XXXXXXXXX-X (GHA prefix
     + 9 digits + 1 check digit)'
@@ -52,8 +50,7 @@ rules:
     action_risk: ghana-dpa.block-ghana-card-national-id-output
   effect: block
   severity: high
-  reason: 'Ghana DPA Act 843 / NIA Act 707: Ghana Card national ID detected in agent output - blocked
-    to prevent identity data exposure'
+  reason: 'Ghana DPA Act 843 / NIA Act 707: Ghana Card national ID detected in agent output; blocking keeps it out of the reply to prevent identity data exposure'
 - id: ghana-dpa.block-disproportionate-record-exports
   description: 's.17: Block disproportionate record exports (data minimisation)'
   when:

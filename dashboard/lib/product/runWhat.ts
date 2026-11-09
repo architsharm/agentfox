@@ -8,9 +8,12 @@
  * now reads "Handed off to FAQ Agent", and JSON is never the headline.
  */
 
-export function handoffTarget(tool?: string | null): string | null {
+export function handoffTarget(tool?: string | null, names?: Map<string, string>): string | null {
   const m = /^transfer_to_(.+)$/.exec(String(tool || ""));
   if (!m) return null;
+  // The agent it hands to, by the name people gave it, when it is one of theirs.
+  const named = names?.get(m[1].replace(/_/g, "-")) || names?.get(m[1]);
+  if (named) return named;
   return m[1]
     .split(/[_-]+/)
     .filter(Boolean)
@@ -34,7 +37,7 @@ function handoffFromOutput(s: string): string | null {
   return null;
 }
 
-export function runWhat(t: any, surfaces: Record<string, string> = {}): string {
+export function runWhat(t: any, surfaces: Record<string, string> = {}, names?: Map<string, string>): string {
   const summary = typeof t.summary === "string" ? t.summary.trim() : "";
   const tools: string[] = Array.isArray(t.tools) ? t.tools : [];
   if (summary && looksLikeJson(summary)) {
@@ -45,7 +48,7 @@ export function runWhat(t: any, surfaces: Record<string, string> = {}): string {
   }
   if (typeof t.intent === "string" && t.intent.trim() && !looksLikeJson(t.intent)) return t.intent.trim();
   if (tools.length) {
-    const handoffs = tools.map(handoffTarget).filter(Boolean) as string[];
+    const handoffs = tools.map((x) => handoffTarget(x, names)).filter(Boolean) as string[];
     const rest = tools.filter((x) => !handoffTarget(x));
     const parts = [...rest, ...handoffs.map((h) => `handed off to ${h}`)];
     const text = parts.join(", ");
@@ -53,4 +56,22 @@ export function runWhat(t: any, surfaces: Record<string, string> = {}): string {
   }
   const s = (t.surfaces || []).map((x: string) => surfaces[x] || x).filter((v: string, i: number, a: string[]) => a.indexOf(v) === i).join(" · ");
   return s || "Model call";
+}
+
+/**
+ * The line under a turn's "What": how many runs it folds and the tools it used,
+ * hand-offs in words ("3 steps · file_read · handed off to FAQ Agent").
+ */
+export function runSteps(t: any, names?: Map<string, string>): string {
+  // When the tools already are the headline (nothing asked), only the count is new.
+  const what = runWhat(t, {}, names);
+  const tools: string[] = Array.isArray(t.tools) && !t.tools.some((x: string) => what.includes(handoffTarget(x, names) || x)) ? t.tools : [];
+  const runs = Number(t.runs) || 1;
+  const parts: string[] = [];
+  if (runs > 1) parts.push(`${runs} steps`);
+  const rest = tools.filter((x) => !handoffTarget(x));
+  const handoffs = tools.map((x) => handoffTarget(x, names)).filter(Boolean) as string[];
+  if (rest.length) parts.push(rest.length > 3 ? `${rest.slice(0, 3).join(", ")} +${rest.length - 3}` : rest.join(", "));
+  for (const h of handoffs) parts.push(`handed off to ${h}`);
+  return parts.join(" · ");
 }

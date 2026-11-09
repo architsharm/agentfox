@@ -23,6 +23,7 @@ import subprocess
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from urllib.parse import urlparse
 
 import httpx
 from rich.console import Console
@@ -34,6 +35,8 @@ from agentfox.core.config import api_url_from_env
 
 #: AgentFox Cloud's web app. Overridable for a staging workspace.
 CLOUD_APP_URL = os.environ.get("AGENTFOX_CLOUD_URL", "https://useagentfox.com").rstrip("/")
+#: AgentFox Cloud's gateway, the address Get started shows beside a Cloud key.
+CLOUD_API_URL = os.environ.get("AGENTFOX_CLOUD_API_URL", "https://guardrails-api.vercel.app")
 LOCAL_API_URL = "http://127.0.0.1:8080"
 SELFHOST_API_URL = "http://localhost:8080"
 SELFHOST_DASHBOARD_URL = "http://localhost:3000"
@@ -54,6 +57,33 @@ TARGETS = (
         "AgentFox Cloud",
         "Hosted. Compliance, evidence and monitoring included. Needs an API key.",
     ),
+)
+
+
+def is_cloud_gateway(api_url: str) -> bool:
+    """Whether ``api_url`` is AgentFox Cloud's gateway, whose dashboard is
+    `CLOUD_APP_URL`. Any other address is a server someone runs: its dashboard, if it
+    has one, is wherever that team put it, and no link to Cloud's pages is right for it.
+    """
+    url = (api_url or "").strip()
+    host = (urlparse(url if "//" in url else f"//{url}").hostname or "").lower()
+    if not host:
+        return False
+    site = (urlparse(CLOUD_APP_URL).hostname or "").lower().removeprefix("www.")
+    gateway = (urlparse(CLOUD_API_URL).hostname or "").lower()
+    return host in (site, gateway) or (bool(site) and host.endswith(f".{site}"))
+
+
+def cloud_dashboard_for(api_url: str) -> str:
+    """Cloud's dashboard when ``api_url`` is Cloud's gateway, else "" (not known)."""
+    return CLOUD_APP_URL if is_cloud_gateway(api_url) else ""
+
+
+#: Said when a server's dashboard address is not known: links to it are left out
+#: rather than pointed at AgentFox Cloud's pages.
+NO_DASHBOARD_NOTE = (
+    "No dashboard address for {server}, so no links to it are printed. Run `agentfox up` "
+    "again and give it, or set AGENTFOX_DASHBOARD_URL."
 )
 
 
@@ -137,23 +167,44 @@ def _cloud(
     api_url: str | None,
     api_token: str | None,
 ) -> Target:
-    keys_page = f"{CLOUD_APP_URL}/app/start?tab=tokens"
-    console.print(
-        f"\n  Create an API key at [link={keys_page}]{keys_page}[/link] — the same page shows "
-        "your workspace's gateway address."
-    )
+    if not api_url or is_cloud_gateway(api_url):
+        keys_page = f"{CLOUD_APP_URL}/app/start?tab=tokens"
+        console.print(
+            f"\n  Create an API key at [link={keys_page}]{keys_page}[/link] — the same page "
+            "shows your workspace's gateway address."
+        )
+    else:
+        # Not Cloud's gateway: its keys come from that server, never from Cloud's pages.
+        console.print(
+            f"\n  {api_url} is not AgentFox Cloud's gateway: use a key from that server "
+            "(Get started → Create a key on its dashboard, or `agentfox admin auth issue "
+            "<email>` on it)."
+        )
     url = api_url or prompter.text(
         "Gateway address",
         ctx.saved.get("api_url") or (api_url_from_env() or ""),
     )
     token = api_token or prompter.text("API key", _saved_token(ctx), secret=True)
     backend = _connect(url, token, console)
+    dashboard = cloud_dashboard_for(backend.where)
+    notes: list[str] = []
+    if not dashboard:
+        # A server someone runs: its dashboard is wherever they put it, if anywhere. A
+        # saved Cloud address (an earlier run against Cloud) is not offered for it.
+        saved = str(ctx.saved.get("dashboard_url") or "").rstrip("/")
+        dashboard = prompter.text(
+            "Dashboard address, if this server has one (Enter to skip)",
+            "" if saved == CLOUD_APP_URL else saved,
+        ).rstrip("/")
+        if not dashboard:
+            notes.append(NO_DASHBOARD_NOTE.format(server=backend.where))
     return Target(
         "cloud",
         backend,
         backend.where,
-        dashboard_url=CLOUD_APP_URL,
+        dashboard_url=dashboard,
         env={"AGENTFOX_URL": backend.where, "AGENTFOX_API_KEY": token},
+        notes=notes,
     )
 
 

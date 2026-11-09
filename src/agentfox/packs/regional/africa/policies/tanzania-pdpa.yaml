@@ -35,16 +35,14 @@ rules:
     action_risk: tanzania-pdpa.block-transfer-non-permitted-region
   effect: block
   severity: high
-  reason: 'Tanzania PDPA s.13: Cross-border transfer to <value> blocked - region not in PDPC adequacy-approved
-    list'
+  reason: 'Tanzania PDPA s.13: Cross-border transfer to <value> - region not in PDPC adequacy-approved list, so it may not go ahead'
 - id: tanzania-pdpa.block-transfer-non-tz-country-without
   description: 'PDPA s.13: Block transfer to non-TZ country without consent'
   when:
     action_risk: tanzania-pdpa.block-transfer-non-tz-country-without
   effect: block
   severity: high
-  reason: 'Tanzania PDPA s.13: Transfer to country <value> blocked - no documented consent or adequacy
-    basis on file'
+  reason: 'Tanzania PDPA s.13: Transfer to country <value> with no documented consent or adequacy basis on file - needs one before it goes ahead'
 - id: tanzania-pdpa.block-processing-without-consent
   description: 'PDPA s.8: Block processing without consent'
   when:
@@ -59,8 +57,7 @@ rules:
     action_risk: tanzania-pdpa.block-nida-national-id-output
   effect: block
   severity: high
-  reason: 'Tanzania PDPA: NIDA national ID number detected in agent output - blocked to prevent identity
-    exposure'
+  reason: 'Tanzania PDPA: NIDA national ID number detected in agent output; blocking keeps it out of the reply to prevent identity exposure'
 - id: tanzania-pdpa.block-large-record-exports
   description: 'PDPA s.30: Block large record exports (>1000 records)'
   when:

@@ -12,6 +12,14 @@ the file it came from.
 ## [Unreleased]
 
 ### Added
+- **`agentfox.auto()` governs Google ADK (google-genai) and smolagents (huggingface_hub
+  and smolagents tools)**: model calls, streams, function calls and automatic function
+  calling for google-genai; chat completions and each tool where it runs for smolagents.
+- **The attack test runs CrewAI.** `@CrewBase` crews (crew.py with config YAML), their
+  agents and hierarchical crews are found, built, run with tools faked, and graded like
+  the other frameworks.
+- **Rules on this agent**: an agent's Controls and Access tabs say how many rules apply
+  (act now / only watch) and link to them.
 - **`agentfox login`**, and one key for the whole CLI. With an account key configured
   (`login`, `init --key`, or `AGENTFOX_URL` + `AGENTFOX_API_KEY`), `findings`,
   `agents list`, `permit`, `declare`, `policy`, `report` and `test suites` read and write
@@ -43,6 +51,10 @@ the file it came from.
   page says who is told and links to where to set it up.
 
 ### Changed
+- **Activity shows one row per conversation turn**, headed by what the person asked, with
+  its tool calls and hand-offs folded in and agents by display name.
+- Regional and industry pack reasons say what was found and what the action is for, not
+  that it was blocked, so they read right while watching.
 - **Watch means watch.** A missing grant, an approval asked for only because of where an
   argument came from, and `composition.escalation` belong to Tool containment and follow
   its mode: while it watches they record "would block" and the call goes through;
@@ -215,6 +227,12 @@ the file it came from.
   uses `$AGENTFOX_URL` and says so.
 
 ### Fixed
+- `up`, `login`, `doctor` and key errors link to useagentfox.com only for AgentFox Cloud's
+  own gateway; a self-hosted server gets its own address, or a plain note that it is
+  unknown.
+- Policies and every scoped page count the project's agents the way the switcher does.
+- The pending-agents prompt counts an agent defined in two files once; Cmd-K finds
+  Members and Retention.
 - **The injection heuristic no longer reads an ordinary "send an email to …" request as
   exfiltration**: taking data out needs something taken (the agent's context, secrets,
   other people's data in bulk). Held-out results are unchanged.

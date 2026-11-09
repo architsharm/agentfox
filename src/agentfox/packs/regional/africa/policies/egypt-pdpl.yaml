@@ -36,24 +36,21 @@ rules:
     action_risk: egypt-pdpl.block-egypt-national-id-output-format
   effect: block
   severity: high
-  reason: 'Egypt PDPL No. 151/2020 Art. 1/7: Egyptian National ID (14-digit) detected in agent output
-    — blocked; triggers 72h PDPC breach notification'
+  reason: 'Egypt PDPL No. 151/2020 Art. 1/7: Egyptian National ID (14-digit) detected in agent output; blocking keeps it out of the reply, and a disclosure triggers 72h PDPC breach notification'
 - id: egypt-pdpl.block-cross-border-transfer-non-permitted
   description: 'Art. 14: Block cross-border transfer to non-permitted region'
   when:
     action_risk: egypt-pdpl.block-cross-border-transfer-non-permitted
   effect: block
   severity: high
-  reason: 'Egypt PDPL No. 151/2020 Art. 14: Cross-border transfer to region <value> blocked - PDPC approval
-    or equivalent protection documentation required'
+  reason: 'Egypt PDPL No. 151/2020 Art. 14: Cross-border transfer to region <value> - needs PDPC approval or equivalent protection documentation before it goes ahead'
 - id: egypt-pdpl.block-transfer-non-eg-country-without
   description: 'Art. 14/15: Block transfer to non-EG country without documented consent/derogation'
   when:
     action_risk: egypt-pdpl.block-transfer-non-eg-country-without
   effect: block
   severity: high
-  reason: 'Egypt PDPL No. 151/2020 Arts. 14-15: Transfer to <value> blocked - no documented consent or
-    Art. 15 derogation (vital interest, legal necessity, contract) on file'
+  reason: 'Egypt PDPL No. 151/2020 Arts. 14-15: Transfer to <value> with no documented consent or Art. 15 derogation (vital interest, legal necessity, contract) on file - needs one before it goes ahead'
 - id: egypt-pdpl.block-agents-advising-unlicensed-data-processing
   description: 'Art. 26: Block agents advising unlicensed data processing'
   when:

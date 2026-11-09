@@ -1291,7 +1291,10 @@ def guard_content(
             intent=payload.intent,
             trace_id=payload.trace_id,
         )
-    if surface == "input" and not trace.summary:
+    # What the person asked, not a tool's output checked as input (``auto()`` checks a
+    # tool's result this way before the model reads it): that read as the run's
+    # request on Activity.
+    if surface == "input" and payload.taint_source == "user" and not trace.summary:
         trace.summary = summarize(payload.content)
         record_input(session, trace, payload.content)
     if surface == "tool_result" and (payload.tool or payload.error):

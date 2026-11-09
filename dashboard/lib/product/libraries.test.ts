@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { businessWouldStop, checksLabel, doesLabel, groupApplied, libraryPath, libraryState, ownRulesState, packWouldStop, simulationSummary, whereOn, wouldDoLabel } from "./libraries";
+import { agentRuleCounts, businessWouldStop, checksLabel, doesLabel, groupApplied, libraryPath, libraryState, ownRulesState, packWouldStop, simulationSummary, whereOn, wouldDoLabel } from "./libraries";
 
 describe("checksLabel", () => {
   it("names each surface once, in people's words", () => {
@@ -111,5 +111,19 @@ describe("applied rules by library", () => {
   it("puts a rule with no library under Other rules, and an allow rule never counts as acting", () => {
     const [g] = groupApplied([{ id: "x", effect: "allow", mode: "enforce", libraries: [] }]);
     expect(g).toEqual({ library: "Other rules", rules: [{ id: "x", effect: "allow", mode: "enforce", libraries: [] }], blocking: 0 });
+  });
+});
+
+describe("agentRuleCounts", () => {
+  it("counts the applied rules that reach one agent, and those that act now", () => {
+    const rules = [
+      { effect: "block", mode: "enforce", agents: [{ slug: "a" }, { slug: "b" }] },
+      { effect: "block", mode: "observe", agents: [{ slug: "a" }] },
+      { effect: "allow", mode: "enforce", agents: [{ slug: "a" }] },
+      { effect: "redact", mode: "mixed", agents: [{ slug: "b" }] },
+    ];
+    expect(agentRuleCounts(rules, "a")).toEqual({ total: 3, acting: 1 });
+    expect(agentRuleCounts(rules, "b")).toEqual({ total: 2, acting: 2 });
+    expect(agentRuleCounts(rules, "c")).toEqual({ total: 0, acting: 0 });
   });
 });

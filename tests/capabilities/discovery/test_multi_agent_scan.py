@@ -475,6 +475,13 @@ def test_crewai_crewbase_class_layout(tmp_path):
     agents = _agents(report)
     assert agents["researcher"]["tools"] == ["SerperDevTool"]
     assert agents["research-crew"]["kind"] == "crew"
+    # A runner reaches each one: the class built with no arguments, then the method.
+    assert agents["research-crew"]["ref"] == {
+        "module": "research_crew.crew",
+        "attr": "ResearchCrew.crew",
+        "kind": "factory",
+    }
+    assert agents["researcher"]["ref"]["attr"] == "ResearchCrew.researcher"
     assert _edges(report) == {
         ("research-crew", "researcher", "member"),
         ("research-crew", "reporting-analyst", "member"),
@@ -747,3 +754,23 @@ def test_tool_names_go_only_where_asked(tmp_path):
     }
     assert "search_kb" in local["knowledge"]["tools"]
     assert report.agent_summary()[1] == "triage uses knowledge as a tool"
+
+
+def test_only_a_crewbase_class_method_is_a_runner_reference(tmp_path):
+    """A method of any other class may need arguments or state: not a reference."""
+    _write(
+        tmp_path,
+        "app/crew.py",
+        """
+        from crewai import Agent
+
+        class Builder:
+            def __init__(self, llm):
+                self.llm = llm
+
+            def researcher(self) -> Agent:
+                return Agent(role="Researcher", goal="g", backstory="b", tools=[search])
+        """,
+    )
+    agents = _agents(scan(tmp_path))
+    assert agents["researcher"]["ref"] is None

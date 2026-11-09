@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from agentfox.capabilities.detection.taint import TaintTracker
-from agentfox.frameworks.autoguard.shapes import _get, _plain
+from agentfox.frameworks.autoguard.shapes import _genai_parts, _get, _plain
 
 log = logging.getLogger("agentfox.runtime.autoguard")
 
@@ -178,6 +178,13 @@ def _tool_calls_of(response: Any) -> list[_ToolCall]:
         choices = getattr(response, "choices", None)
         if choices:
             return [c for choice in choices for c in _calls_in_message(_get(choice, "message"))]
+        parts = _genai_parts(response)
+        if parts is not None:  # google-genai: the first candidate's function_call parts
+            return [
+                _ToolCall(str(_get(call, "name")), _arguments(_get(call, "args")), _get(call, "id"))
+                for call in (_get(part, "function_call") for part in parts)
+                if call is not None and _get(call, "name")
+            ]
         items = _get(response, "output")
         if isinstance(items, list):  # the Responses API
             return _responses_calls(items)

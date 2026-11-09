@@ -20,7 +20,7 @@ rules:
     action_risk: africa-model-routing.model-v-not-approved-sensitive-task
   effect: block
   severity: high
-  reason: 'Model routing denied: model <value> is not approved for sensitive task type <value>.'
+  reason: 'Model routing: model <value> is not approved for sensitive task type <value>; route it to an approved model.'
 - id: africa-model-routing.sensitive-task-type-v-requires-explicitly
   description: 'Model routing: sensitive task type ''%v'' requires an explicitly approved model - none
     specified.'

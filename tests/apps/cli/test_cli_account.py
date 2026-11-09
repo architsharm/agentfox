@@ -305,3 +305,25 @@ def test_agentfox_local_reads_this_machine_with_a_key_configured(account, monkey
     assert result.exit_code == 0, result.output
     assert "Local:" in result.output
     assert not account
+
+
+def test_a_key_for_a_server_of_your_own_is_not_sent_to_clouds_pages(monkeypatch, tmp_path):
+    from agentfox.apps.cli.account import keys_page
+    from agentfox.apps.cli.wizard.targets import CLOUD_API_URL, CLOUD_APP_URL
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("AGENTFOX_DASHBOARD_URL", raising=False)
+    monkeypatch.delenv("AGENTFOX_API_KEY", raising=False)
+    monkeypatch.delenv("AGENTFOX_API_TOKEN", raising=False)
+    result = runner.invoke(
+        app, ["login", "--server", "http://127.0.0.1:8412", "--path", str(tmp_path)]
+    )
+    assert result.exit_code == 2
+    flat = " ".join(result.output.split())
+    assert "useagentfox.com" not in flat
+    assert "dashboard for http://127.0.0.1:8412 (its address is not set here" in flat
+
+    assert "useagentfox.com" not in keys_page("http://localhost:8080")
+    assert keys_page(CLOUD_API_URL).endswith(f"({CLOUD_APP_URL}/app/start)")
+    monkeypatch.setenv("AGENTFOX_DASHBOARD_URL", "https://agentfox.acme.test")
+    assert "(https://agentfox.acme.test/app/start)" in keys_page("https://gw.acme.test")
