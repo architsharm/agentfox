@@ -1072,10 +1072,10 @@ function StagePanel({ stage, map, catalog, back }: { stage: Stage; map: AgentMap
 
 // --- guide (nothing selected) -----------------------------------------------------
 
-function Guide({ project, paused }: { project: string; paused?: string | null }) {
+function Guide({ project, agent, agentName, paused }: { project: string; agent?: string; agentName?: string; paused?: string | null }) {
   return (
     <div className="gm-panel gm-guide">
-      <AttackTests project={project} paused={paused} />
+      <AttackTests project={project} agent={agent} agentName={agentName} paused={paused} />
 
       <section className="gm-more-agents">
         <h4>Add more agents</h4>
@@ -1288,7 +1288,7 @@ function Panel({
     // The attack test sends real calls: none get through while an agent here is paused.
     const halted = Object.entries(facts || {}).find(([, f]) => isHalted(f.state));
     const paused = halted ? `${halted[0] === slug ? map.agent.name || slug : halted[0]} is ${stateLabel(halted[1].state).toLowerCase()}: resume it to run the attack test` : null;
-    return <Guide project={project} paused={paused} />;
+    return <Guide project={project} agent={slug} agentName={map.agent.name || slug} paused={paused} />;
   }
   const limits = Object.entries(tl.limits || {});
   return (

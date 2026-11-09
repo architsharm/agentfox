@@ -7,6 +7,7 @@ import { Card, Empty, Grid, Header, Kpi, Pill, Tabs, ago, href, num } from "@/co
 import { CodeSnippet } from "@/components/product/start/CodeSnippet";
 import { TryIt } from "@/components/product/test/TryIt";
 import { AddPathToTests } from "@/components/product/test/AddPathToTests";
+import { AttackRuns } from "@/components/product/test/AttackRuns";
 import { remoteApiBase } from "@/lib/env";
 import { NoticeToast } from "@/components/product/NoticeToast";
 import { campaignNumbers } from "@/lib/product/attackTest";
@@ -171,47 +172,19 @@ async function Paths({ agents, agent, days }: { agents: any[]; agent?: string; d
 }
 
 async function Attacks({ agents }: { agents: any[] }) {
+  // `agentfox test redteam` (the CLI) checks the same attacks with no model: listed
+  // apart, labelled as that, so its numbers are never read as the test above.
   const campaigns = await safeApi<any>("/api/redteam/campaigns", { campaigns: [] });
-  const list: any[] = campaigns.campaigns || [];
-  const last = list[0];
+  const cli: any[] = (campaigns.campaigns || []).filter((c: any) => !c.summary?.adaptive);
   return (
     <>
-      <Card title="Run attack test" hint="Runs the built-in attack library against the agent's real permissions and rules. A pass means these attacks were stopped, not that every attack would be.">
-        <form action="/api/redteam/campaigns" method="POST" className="k-pills" style={{ gap: 8 }}>
-          <select className="k-select" name="agent" required defaultValue="" aria-label="Agent">
-            <option value="" disabled>Choose an agent</option>
-            {agents.map((a) => (
-              <option key={a.slug} value={a.slug}>{a.name || a.slug}</option>
-            ))}
-          </select>
-          <button type="submit" className="k-btn-primary">Run</button>
-        </form>
-      </Card>
-      {last && (() => {
-        const n = campaignNumbers(last.summary);
-        return (
-          <Grid cols={3}>
-            <Kpi
-              label="Attacks (last run)"
-              value={num(n.ran)}
-              hint={n.controls ? `plus ${n.controls} normal requests: ${n.answered} of ${n.controls} answered` : undefined}
-            />
-            <Kpi
-              label="Stopped"
-              value={num(n.stopped)}
-              hint={n.watching ? `${n.watching} more caught by watching rules: they count as got through until those rules block` : undefined}
-            />
-            <Kpi
-              label="Got through"
-              value={n.ran ? num(n.through) : "—"}
-              tone={n.tone}
-              hint={n.ran ? "Not stopped in live traffic" : "No attack ran"}
-            />
-          </Grid>
-        );
-      })()}
-      <Card title="Past runs" flush>
-        {list.length ? (
+      <AttackRuns agents={agents.map((a) => ({ slug: a.slug, name: a.name }))} />
+      {cli.length ? (
+        <Card
+          title="Checked without a model"
+          hint="From agentfox test redteam: the same attacks, each message and the tool call it is after checked against the agent's rules as live traffic is, with no model. It measures the rules; the test above measures the agent."
+          flush
+        >
           <table className="k-table">
             <thead>
               <tr>
@@ -219,40 +192,26 @@ async function Attacks({ agents }: { agents: any[] }) {
                 <th className="num">Attacks</th>
                 <th className="num">Stopped</th>
                 <th className="num">Got through</th>
-                <th className="tight" title="Share of attacks stopped in live traffic. A catch by a rule that only watches does not count.">Stopped live</th>
-                <th className="num">Normal requests answered</th>
                 <th className="tight">When</th>
               </tr>
             </thead>
             <tbody>
-              {list.map((c) => {
+              {cli.map((c) => {
                 const n = campaignNumbers(c.summary);
                 return (
                   <tr key={c.id}>
                     <td>{c.name}</td>
                     <td className="num">{num(n.ran)}</td>
                     <td className="num">{num(n.stopped)}</td>
-                    <td className="num">
-                      {n.through ? <Pill tone="bad">{n.through}</Pill> : n.ran ? "0" : "—"}
-                    </td>
-                    <td className="tight">
-                      {n.stoppedShare != null ? (
-                        <Pill tone={n.through ? "warn" : "ok"}>{Math.round(n.stoppedShare * 100)}%</Pill>
-                      ) : (
-                        <span className="muted">—</span>
-                      )}
-                    </td>
-                    <td className="num">{n.controls ? `${n.answered} of ${n.controls}` : "—"}</td>
+                    <td className="num">{n.through ? <Pill tone="bad">{n.through}</Pill> : n.ran ? "0" : "—"}</td>
                     <td className="tight muted">{ago(c.created_at)}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-        ) : (
-          <Empty>No attack tests yet.</Empty>
-        )}
-      </Card>
+        </Card>
+      ) : null}
     </>
   );
 }

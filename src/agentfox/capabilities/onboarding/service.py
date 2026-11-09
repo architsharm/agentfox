@@ -325,7 +325,53 @@ def _legacy_feed(outcome: str) -> str:
     return "resisted"
 
 
-def to_test_run(run: dict[str, Any], *, runner_connected: bool, now: dt.datetime) -> dict[str, Any]:
+def for_agent(run: dict[str, Any], agent: str | None) -> dict[str, Any]:
+    """The run as one of its agents saw it: that agent's results, and the totals of its
+    own attacks. A project's test covers every agent in it, and the agent page showed
+    them all ("couldn't find where restaurant_scout is created" on another agent).
+    Unchanged for a run with one agent, or one that doesn't hold ``agent``."""
+    structure = run.get("structure") or {}
+    agents = list(structure.get("agents") or [])
+    mine = [a for a in agents if agent and agent in (a.get("slug"), a.get("name"), a.get("id"))]
+    if not mine or len(agents) <= 1:
+        return run
+    ids = {a.get("id") for a in mine}
+    names = {a.get("name") for a in mine}
+    sub = {
+        "agents": mine,
+        "tools": [t for t in structure.get("tools") or [] if t.get("agentId") in ids],
+    }
+    suite = build_suite(sub, run.get("sets") or None)
+    totals: dict[str, Any] = dict(counts(suite))
+    totals["_controls"] = control_counts(suite)
+    totals["_skipped"] = skipped(suite)
+    return {
+        **run,
+        "results": [r for r in run.get("results") or [] if r.get("agent") in names],
+        "totals": totals,
+        "total": len(suite),
+    }
+
+
+def not_run_reason(results: list[dict[str, Any]]) -> str | None:
+    """The one reason a set's attacks weren't run, as the CLI says it: the most common
+    one, without its "Not run:" lead (the panel says "N not run: ..." itself, which
+    read "20 not run: Not run: it needs ...")."""
+    reasons = [
+        str(r.get("reason") or "").strip()
+        for r in results
+        if outcome_of(r) == "not_run" and r.get("reason")
+    ]
+    if not reasons:
+        return None
+    why = max(set(reasons), key=reasons.count)
+    return why[len("Not run:") :].strip() if why.lower().startswith("not run:") else why
+
+
+def to_test_run(
+    run: dict[str, Any], *, runner_connected: bool, now: dt.datetime, agent: str | None = None
+) -> dict[str, Any]:
+    run = for_agent(run, agent)
     results = run["results"]
     totals = run["totals"] or {}
     control_totals = totals.get("_controls") or {}
@@ -344,9 +390,7 @@ def to_test_run(run: dict[str, Any], *, runner_connected: bool, now: dt.datetime
                 "done": len(attacks),
                 **counted,
                 "controlsTotal": control_totals.get(kind, 0),
-                "notRunReason": next(
-                    (r.get("reason") for r in attacks if outcome_of(r) == "not_run"), None
-                ),
+                "notRunReason": not_run_reason(attacks),
             }
         )
     done = len(results)

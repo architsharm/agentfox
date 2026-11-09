@@ -138,7 +138,7 @@ from the code. Regenerate after changing any route:
 
 <!-- BEGIN GENERATED ROUTES: scripts/gen/api_routes.py --write -->
 
-337 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
+339 operations, generated from the running app's OpenAPI document. Request and response schemas: `GET /openapi.json` or the interactive `/docs`.
 
 ### Inline enforcement (`/v1`)
 
@@ -179,6 +179,7 @@ from the code. Regenerate after changing any route:
 | `GET` | `/api/metrics/rules` | How each rule behaved: fired, stopped something, or only watched. |
 | `GET` | `/api/metrics/summary` | Summary |
 | `GET` | `/api/onboarding` | Install state as a checklist, computed live. |
+| `POST` | `/api/onboarding/agents/{slug}/tests` | Run the attack test of the project this agent is in: the same test as the |
 | `GET` | `/api/onboarding/guardrails` | The setup wizard's suggested guardrails, as a list to show. No test reads them: |
 | `POST` | `/api/onboarding/guardrails` | Saves the wizard's toggles. They change what the wizard shows, nothing else. |
 | `GET` | `/api/onboarding/key` | This user's setup key. Made the first time it is asked for (or after the last |
@@ -191,6 +192,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/onboarding/runner/poll` | Heartbeat, and the next test to run if one is waiting. |
 | `POST` | `/api/onboarding/runner/runs/{run_id}/guard` | Check one surface of one attack against an agent's real policies, persisting nothing. |
 | `POST` | `/api/onboarding/runner/runs/{run_id}/results` | Runner Results |
+| `GET` | `/api/onboarding/runs` | Every attack test the projects' panels ran, latest first (Testing → Attack |
 | `DELETE` | `/api/onboarding/state` | Start over at step 1. The key survives, so a running `agentfox init` stays valid |
 | `GET` | `/api/onboarding/state` | Get State |
 | `PATCH` | `/api/onboarding/state` | Save State |

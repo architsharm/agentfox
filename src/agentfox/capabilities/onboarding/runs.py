@@ -65,6 +65,8 @@ def as_dict(run: OnboardingRun) -> dict[str, Any]:
         "createdAt": _iso(run.created_at),
         "startedAt": _iso(run.started_at),
         "finishedAt": _iso(run.finished_at),
+        # The map it ran on: which agent each attack was for (`service.for_agent`).
+        "structure": run.structure or {},
     }
 
 

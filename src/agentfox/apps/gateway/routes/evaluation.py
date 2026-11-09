@@ -608,7 +608,20 @@ def _run_redteam_sweep(session: Session, payload: dict[str, Any]) -> dict[str, A
     """The job's handler. See governance.py's _run_evidence_package for
     why the audit-chain entry lives here rather than in the route: this is what
     actually ran, whether that happened synchronously in the enqueueing
-    request or later via the cron backstop."""
+    request or later via the cron backstop.
+
+    A static campaign with no probes named runs what `agentfox test redteam` runs:
+    attacks written from the agent's own tools, each checked with the call it is
+    after (`agent_tool_probes`), so the API and the CLI give one set of numbers. The
+    built-in generic probes run when AgentFox knows none of the agent's tools."""
+    from agentfox.capabilities.evaluation.redteam import agent_tool_probes
+    from agentfox.platform.registry.service import slugify
+
+    own: dict[str, Any] = {}
+    if not payload.get("adaptive") and not payload.get("probes"):
+        written, _not_run = agent_tool_probes(session, slugify(payload["agent"]))
+        if written:
+            own = {"extra_probes": written, "builtin": False}
     campaign = run_campaign(
         session,
         payload["agent"],
@@ -619,6 +632,7 @@ def _run_redteam_sweep(session: Session, payload: dict[str, Any]) -> dict[str, A
         budget=int(payload.get("budget", 3)),
         seed=int(payload.get("seed", 1337)),
         include_deployment_probes=bool(payload.get("include_deployment_probes", True)),
+        **own,
     )
     findings = list(
         session.scalars(select(RedTeamFinding).where(RedTeamFinding.campaign_id == campaign.id))

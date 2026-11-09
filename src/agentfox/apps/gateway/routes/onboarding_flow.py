@@ -45,10 +45,13 @@ def _runner_connected(seen: Any) -> bool:
     return service.runner_fresh(seen, utcnow())
 
 
-def _show(run: OnboardingRun, *, runner_seen: Any) -> dict[str, Any]:
+def _show(run: OnboardingRun, *, runner_seen: Any, agent: str | None = None) -> dict[str, Any]:
     now = utcnow()
     return service.to_test_run(
-        runs.view(run, now), runner_connected=service.runner_fresh(runner_seen, now), now=now
+        runs.view(run, now),
+        runner_connected=service.runner_fresh(runner_seen, now),
+        now=now,
+        agent=agent,
     )
 
 
@@ -267,24 +270,32 @@ def _basic(session: Session, project: str) -> tuple[bool, bool]:
     )
 
 
-def _previous(phase_runs: list[OnboardingRun], seen: Any) -> dict[str, Any] | None:
+def _previous(
+    phase_runs: list[OnboardingRun], seen: Any, agent: str | None = None
+) -> dict[str, Any] | None:
     """The latest finished run before ``phase_runs[-1]``, when that one is still going."""
     if not phase_runs or phase_runs[-1].status not in runs.ACTIVE:
         return None
     if runs.stale_reason(phase_runs[-1], utcnow()):
         return None  # shown as failed already: nothing is running
     finished = [r for r in phase_runs[:-1] if r.status in runs.TERMINAL]
-    return _show(finished[-1], runner_seen=seen) if finished else None
+    return _show(finished[-1], runner_seen=seen, agent=agent) if finished else None
 
 
 @router.get("/projects/{project}/tests")
 def project_tests(
-    project: str, session: Session = Depends(db), user: User = Depends(current_user)
+    project: str,
+    agent: str | None = None,
+    session: Session = Depends(db),
+    user: User = Depends(current_user),
 ) -> dict[str, Any]:
     """The project's first test (as it was) and its latest one with the basic
     guardrails, whether those are on (``basicOn``: watching or blocking;
     ``basicEnforcing``: blocking), and whether this project's `agentfox init` is
-    connected (only it can run a test)."""
+    connected (only it can run a test).
+
+    ``agent`` (a slug): each run as that agent saw it, its own attacks and results
+    only. The test covers every agent in the project; an agent's page shows its own."""
     row = sessions.find(session, user)
     connected = sessions.find_project(session, project)
     seen = connected.runner_seen_at if connected else None
@@ -295,12 +306,12 @@ def project_tests(
     basic_on, basic_enforcing = _basic(session, project)
     return {
         "project": project,
-        "first": _show(before[-1], runner_seen=seen) if before else None,
-        "withBasic": _show(after[-1], runner_seen=seen) if after else None,
+        "first": _show(before[-1], runner_seen=seen, agent=agent) if before else None,
+        "withBasic": _show(after[-1], runner_seen=seen, agent=agent) if after else None,
         # While a test runs again, the last one that finished, so its numbers stay on
         # screen until the new ones are in.
-        "firstPrevious": _previous(before, seen),
-        "withBasicPrevious": _previous(after, seen),
+        "firstPrevious": _previous(before, seen, agent),
+        "withBasicPrevious": _previous(after, seen, agent),
         "basicOn": basic_on,
         "basicEnforcing": basic_enforcing,
         # This project when its own `agentfox init` has connected; else the project
@@ -312,6 +323,69 @@ def project_tests(
         "sets": service.project_sets(row.state if row else None, project),
         "library": library(connected.structure if connected is not None else None),
     }
+
+
+@router.get("/runs")
+def list_test_runs(
+    agent: str | None = None,
+    limit: int = 50,
+    session: Session = Depends(db),
+    user: User = Depends(current_user),
+) -> dict[str, Any]:
+    """Every attack test the projects' panels ran, latest first (Testing → Attack
+    tests). ``agent`` (a slug): only the runs that tested it, each as it saw it.
+
+    There used to be two attack tests that didn't know about each other: the agent
+    panel's, which sends the attacks to the real agent, and a different built-in one
+    behind Testing's Run button with its own numbers. Testing now lists these runs and
+    starts the same test (``POST /agents/{slug}/tests``)."""
+    from sqlalchemy import select
+
+    rows = list(
+        session.scalars(
+            select(OnboardingRun)
+            .where(OnboardingRun.project.is_not(None))
+            .order_by(OnboardingRun.created_at.desc(), OnboardingRun.id.desc())
+            .limit(max(1, min(limit, 200)) * (4 if agent else 1))
+        )
+    )
+    seen: dict[str, Any] = {}
+    out = []
+    for run in rows:
+        names = run.structure.get("agents") if isinstance(run.structure, dict) else None
+        agents = [a for a in names or [] if isinstance(a, dict)]
+        if agent and not any(agent in (a.get("slug"), a.get("name")) for a in agents):
+            continue
+        if run.project not in seen:
+            connected = sessions.find_project(session, run.project)
+            seen[run.project] = connected.runner_seen_at if connected else None
+        shown = _show(run, runner_seen=seen[run.project], agent=agent)
+        shown["agents"] = [
+            {"slug": a.get("slug"), "name": a.get("name")}
+            for a in agents
+            if not agent or agent in (a.get("slug"), a.get("name"))
+        ]
+        out.append(shown)
+        if len(out) >= limit:
+            break
+    return {"runs": out}
+
+
+@router.post("/agents/{slug}/tests")
+def start_agent_test(
+    slug: str, session: Session = Depends(db), user: User = Depends(current_user)
+) -> dict[str, Any]:
+    """Run the attack test of the project this agent is in: the same test as the
+    agent page's panel, against the real agent through its `agentfox init`."""
+    from sqlalchemy import select
+
+    from agentfox.core.models import Agent
+    from agentfox.platform.registry.projects import project_of
+
+    agent = session.scalar(select(Agent).where(Agent.slug == slug))
+    if agent is None:
+        raise HTTPException(404, f"No agent '{slug}'.")
+    return start_project_test(project_of(agent), session=session, user=user)
 
 
 class Sets(BaseModel):
