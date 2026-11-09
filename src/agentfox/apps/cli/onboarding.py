@@ -1324,9 +1324,59 @@ def findings_show(
     """One finding in full: its whole id, what it is about, when, and the evidence."""
     from sqlalchemy import select
 
+    from agentfox.apps.cli import account as _account
     from agentfox.apps.cli._style import match_id
     from agentfox.core.models import Finding
 
+    remote = _account.use(console, quiet=as_json)
+    if remote is not None:
+        record = _account_finding(remote, finding_id)
+    else:
+        record = _local_finding(finding_id, select, match_id, Finding)
+    _print_finding(record, as_json)
+
+
+def _account_finding(remote: Any, finding_id: str) -> dict[str, Any]:
+    """One finding from the account: the whole id, or the tail `findings` prints."""
+    from agentfox.apps.cli._style import match_id
+    from agentfox.apps.cli.account import AccountError, fail
+
+    try:
+        listed = remote.get("/api/findings", limit=ACCOUNT_FETCH).get("findings") or []
+        ids = [f["id"] for f in listed if match_id(finding_id, f["id"])]
+        if finding_id not in ids and not ids:
+            ids = [finding_id]  # maybe resolved or old: ask for it by the id given
+        if len(ids) > 1:
+            console.print(
+                f"[yellow]'{escape(finding_id)}' matches {len(ids)} findings[/]; give more "
+                "of the id: " + ", ".join(ids[:5])
+            )
+            raise typer.Exit(2)
+        f = remote.get(f"/api/findings/{ids[0]}")
+    except AccountError as exc:
+        if exc.status == 404:
+            console.print(
+                f"[red]no finding '{escape(finding_id)}'[/] — `agentfox findings` lists them"
+            )
+            raise typer.Exit(2) from None
+        fail(console, exc)
+    return {
+        "id": f["id"],
+        "type": f.get("type"),
+        "severity": f.get("severity"),
+        "status": f.get("status"),
+        "title": f.get("title") or "",
+        "subject": f"{f.get('subject_type')}:{f.get('subject_id')}",
+        "occurrences": f.get("occurrences") or 1,
+        "created_at": f.get("created_at"),
+        "last_seen_at": f.get("last_seen_at"),
+        "controls": list(f.get("controls") or []),
+        "evidence": f.get("evidence") or {},
+        "fingerprint": None,
+    }
+
+
+def _local_finding(finding_id: str, select: Any, match_id: Any, Finding: Any) -> dict[str, Any]:  # noqa: N803
     with _session() as session:
         matches = [f for f in session.scalars(select(Finding)) if match_id(finding_id, f.id)]
         if not matches:
@@ -1355,7 +1405,10 @@ def findings_show(
             "evidence": f.evidence_json or {},
             "fingerprint": f.fingerprint,
         }
+    return record
 
+
+def _print_finding(record: dict[str, Any], as_json: bool) -> None:
     if as_json:
         console.print_json(json.dumps(record, default=str))
         return

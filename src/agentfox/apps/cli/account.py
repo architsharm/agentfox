@@ -189,11 +189,9 @@ def local_label() -> str:
     raw = get_settings().database_url
     if raw.startswith("sqlite:///"):
         path = Path(raw.removeprefix("sqlite:///"))
-        try:
-            shown = "~/" + str(path.relative_to(Path.home()))
-        except ValueError:
-            shown = str(path)
-        return f"Local: {shown}"
+        from agentfox.apps.cli._style import display_path
+
+        return f"Local: {display_path(path)}"
     try:
         from sqlalchemy.engine import make_url
 
