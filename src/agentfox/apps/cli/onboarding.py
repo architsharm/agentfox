@@ -691,6 +691,15 @@ def doctor(
                 .count()
             )
             grants = session.query(Capability).count()
+            # `agentfox up` declares the tools it found with an impact guessed from the
+            # name, marked inferred, and says doctor will flag them until confirmed.
+            from agentfox.platform.registry.service import impact_source_of
+
+            inferred = sorted(
+                tool.key
+                for tool in session.query(Tool).all()
+                if impact_source_of(tool) == "inferred"
+            )
             scoped_tables = session.query(AccessScopeRule).count()
             enforcing = (
                 session.query(Decision).filter_by(mode="enforce").count() if decisions else 0
@@ -700,6 +709,7 @@ def doctor(
         add("bad", "database", f"unreachable: {database_error_hint(exc, settings.database_url)}")
         agents = traces = decisions = findings = boundaries = enforcing = 0
         tools_declared = tools_acting = grants = scoped_tables = 0
+        inferred = []
 
     if decisions == 0:
         add(
@@ -723,17 +733,27 @@ def doctor(
     from agentfox.platform.identity.operators import header_identity_allowed
 
     if header_identity_allowed():
-        add(
-            "info"
-            if settings.environment.lower() in ("development", "dev", "test", "local")
-            else "bad",
-            "authentication",
-            f"DEVELOPMENT auth is active (environment={settings.environment}, "
-            f"auth_mode={settings.auth_mode}): an /api request with no token acts as the "
-            "user named in X-AgentFox-User, or as admin@example.com (an owner, once "
-            "seeded) — anyone who can reach this port is any user they name. Fine "
-            "locally, unacceptable anywhere else.",
-        )
+        local = settings.environment.lower() in ("development", "dev", "test", "local")
+        if local:
+            # Plain words for someone who has never started a server: the mechanism
+            # (the identity header, the seeded admin) only matters once one is exposed.
+            add(
+                "info",
+                "authentication",
+                "development: a server started here (`agentfox serve`) answers API calls "
+                "without a token, so anyone who can reach this port can act as its owner. "
+                "Fine on this machine; set AGENTFOX_AUTH_MODE=token before anyone else "
+                "can reach it.",
+            )
+        else:
+            add(
+                "bad",
+                "authentication",
+                f"development auth is on in {settings.environment} "
+                f"(auth_mode={settings.auth_mode}): anyone who can reach this port can act "
+                "as any user, named in X-AgentFox-User, with no token. Set "
+                "AGENTFOX_AUTH_MODE=token.",
+            )
     else:
         add("ok", "authentication", "API tokens required; the identity header is refused")
 
@@ -829,6 +849,18 @@ def doctor(
             f"{tools_acting} of {plural(tools_declared, 'tool')} can act, "
             f"{plural(grants, 'capability grant')} — an action outside these is refused "
             "whether or not a detector fires",
+        )
+
+    if inferred:
+        shown = ", ".join(inferred[:4]) + (
+            f" and {len(inferred) - 4} more" if len(inferred) > 4 else ""
+        )
+        add(
+            "warn",
+            "tool impacts",
+            f"{plural(len(inferred), 'tool impact')} guessed from the name, not confirmed: "
+            f"{shown}. Check each with `agentfox declare list tools` and confirm or correct "
+            "it with `agentfox declare tool <name> --impact <impact>`.",
         )
 
     add(

@@ -500,11 +500,10 @@ For the one-page version to forward to whoever signs off, run `agentfox report` 
 ```
   ✓    database            reachable — 5 agents, 11 traces
   ✓    enforcement         17 of 22 decisions enforced
-  i    authentication      DEVELOPMENT auth is active (environment=development, auth_mode=auto):
-                           an /api request with no token acts as the user named in
-                           X-AgentFox-User, or as admin@example.com (an owner, once seeded) —
-                           anyone who can reach this port is any user they name. Fine locally,
-                           unacceptable anywhere else.
+  i    authentication      development: a server started here (`agentfox serve`) answers API
+                           calls without a token, so anyone who can reach this port can act as
+                           its owner. Fine on this machine; set AGENTFOX_AUTH_MODE=token before
+                           anyone else can reach it.
   ✓    secrets             development: the published default secrets are allowed here, and
                            refused (the gateway will not start) in any other environment
   ✓    containment         11 of 16 tools can act, 16 capability grants — an action outside

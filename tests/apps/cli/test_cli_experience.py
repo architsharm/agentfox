@@ -660,3 +660,38 @@ def test_scan_names_each_agent_it_found_even_when_there_is_one(tmp_path):
     assert "support" in output and "LangGraph" in output
     assert "Start watching these 1 agent" not in output  # the count reads naturally
     assert "agentfox up" in output
+
+
+def test_doctor_says_local_auth_in_plain_words():
+    """A user who never started a server read "DEVELOPMENT auth … X-AgentFox-User …
+    admin@example.com"; the local line says what it means for them."""
+    checks = {c["check"]: c for c in _json(runner.invoke(app, ["doctor", "--json"]).output)}
+    detail = checks["authentication"]["detail"]
+    assert "X-AgentFox-User" not in detail
+    assert "admin@example.com" not in detail
+    assert "AGENTFOX_AUTH_MODE=token" in detail
+
+
+def test_doctor_flags_tool_impacts_up_guessed():
+    """`agentfox up` declares the tools it finds with a guessed impact and says doctor
+    will flag them until someone confirms each one."""
+    from agentfox.core.db import session_scope
+    from agentfox.platform.registry.service import upsert_tool
+
+    with session_scope() as session:
+        upsert_tool(
+            session,
+            "refund_payment",
+            name="refund_payment",
+            impact="irreversible",
+            description="",
+            impact_source="inferred",
+            actor="agentfox up",
+        )
+    checks = {c["check"]: c for c in _json(runner.invoke(app, ["doctor", "--json"]).output)}
+    assert checks["tool impacts"]["state"] == "warn"
+    assert "refund_payment" in checks["tool impacts"]["detail"]
+
+    runner.invoke(app, ["declare", "tool", "refund_payment", "--impact", "irreversible"])
+    checks = {c["check"]: c for c in _json(runner.invoke(app, ["doctor", "--json"]).output)}
+    assert "tool impacts" not in checks
