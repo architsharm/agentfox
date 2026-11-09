@@ -89,8 +89,8 @@ agentfox policy enforce baseline           # prompt attacks, personal data, secr
         <Step title="Attack-test it">
           <Code>{`agentfox test redteam <agent>`}</Code>
           <p>
-            Writes attacks from the agent&apos;s own tools (unsafe tool use, prompt injection, data
-            leaks, jailbreaks) and checks each one the way live traffic checks it: the message,
+            Writes attacks from the agent&apos;s own tools and the ones it reaches by handing off
+            (unsafe tool use, prompt injection, data leaks, jailbreaks) and checks each one the way live traffic checks it: the message,
             then the tool call it is after. No model runs, so it measures your rules, not how
             your model answers; the dashboard&apos;s attack test sends the same attacks to the real
             agent. <code>up</code> prints the command with your agent&apos;s name filled in.

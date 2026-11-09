@@ -48,6 +48,17 @@ export default function Page() {
         are reported as not run, with the reason.
       </p>
 
+      <h3>Agents that hand off</h3>
+      <p>
+        An agent is attacked through the tools it reaches by handing off too (Agents SDK handoffs
+        and agents used as tools, LangGraph supervisor and swarm hand-offs, CrewAI delegation),
+        not only its own. A triage agent that can only look up an order but hands refunds to
+        another agent is attacked with unsafe refunds: the attack goes to the triage agent, the
+        hand-off happens inside the run, and a refund there counts against the triage agent,
+        read as <em>reached issue_refund through Refunds specialist</em>. The call is checked
+        under the agent that makes it. The agents it hands off to are still attacked on their own.
+      </p>
+
       <Steps>
         <Step title="Run the attack test">
           <p>
