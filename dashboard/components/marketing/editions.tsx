@@ -134,7 +134,7 @@ export function Editions({
               <span className="mk-chip mk-chip-accent">Free while in preview</span>
             </div>
             <p className="mk-body">
-              AgentFox with Enterprise included, run by us. Sign in with GitHub to get a workspace.
+              AgentFox with Enterprise included, run by us. Sign in to get a workspace.
             </p>
             <ul className="ed-terms">
               <li>No card</li>

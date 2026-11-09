@@ -26,6 +26,7 @@ should happen, which in observe mode is the one that did not take effect). See
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
@@ -124,6 +125,37 @@ def create_session(request: Request, background: BackgroundTasks) -> dict[str, A
     }
 
 
+#: A visitor telling the demo agent they want to hurt themselves, or mentioning
+#: suicide. The playground's agent is the offline `echo` model, which would otherwise
+#: answer "Acknowledged:" followed by their words. Narrow on purpose (first-person
+#: intent, or the word itself): it replaces the demo's reply and nothing else. It is
+#: not a detector, feeds no verdict and no benchmark, and the guardrail verdict
+#: returned with it is unchanged.
+_SELF_HARM = re.compile(
+    r"\b(?:"
+    r"(?:i\s*(?:'?m|am)\s+(?:going|gonna)\s+to|i\s+(?:want|wanna|plan|intend|need)\s+to|"
+    r"i\s*(?:'?m|am)\s+(?:thinking\s+(?:about|of)|planning\s+(?:to|on)))\s+"
+    r"(?:kill(?:ing)?\s+myself|end(?:ing)?\s+(?:my\s+life|it\s+all)|"
+    r"hurt(?:ing)?\s+myself|harm(?:ing)?\s+myself|die\b|"
+    r"commit(?:ting)?\s+suicide|take\s+my\s+(?:own\s+)?life)"
+    r"|suicid(?:e|al)|kill\s+myself|self[-\s]?harm(?:ing)?\b"
+    r")",
+    re.I,
+)
+
+SELF_HARM_REPLY = (
+    "It sounds like you might be going through something really hard. This is a demo "
+    "agent and can't help, but people can: if you are in danger, call your local "
+    "emergency number now. You can find a free, confidential crisis line in your "
+    "country at https://findahelpline.com."
+)
+
+
+def self_harm_reply(message: str) -> str | None:
+    """The supportive reply for a message that states an intent to self-harm, else None."""
+    return SELF_HARM_REPLY if _SELF_HARM.search(message or "") else None
+
+
 class PlaygroundChatRequest(BaseModel):
     agent: str = "support-triage"
     message: str
@@ -172,6 +204,10 @@ def chat(
         record.remember_trace(session, result.trace_id)
 
         answer = response.text if response is not None else None
+        # The demo agent has no judgment of its own: never echo a crisis back.
+        support = self_harm_reply(payload.message)
+        if support:
+            answer = support
         if answer:
             agent_row = session.scalar(select(Agent).where(Agent.slug == payload.agent))
             record_turn(

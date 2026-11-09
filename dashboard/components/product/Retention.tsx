@@ -187,3 +187,51 @@ export function Retention({ retention }: { retention: any }) {
   );
 }
 
+/**
+ * Deleting your own account, which for a workspace's only owner is the whole
+ * workspace. Behind a disclosure and a typed email, the same deliberate second step
+ * the gateway checks (POST /api/account/delete). Shown to owners of their own
+ * workspace only; the deployment's default workspace is removed on the server.
+ */
+export function DeleteAccount({ me }: { me: { email?: string; role?: string; org_id?: string } | null }) {
+  if (!me?.email || me.role !== "owner" || !me.org_id || me.org_id === "org_default") return null;
+  return (
+    <>
+      <h2>Delete account</h2>
+      <p className="sub">
+        Deletes your account and everything in this workspace: agents, policies, traces,
+        findings, keys, the GitHub connection and the audit log. It cannot be undone, and it
+        is refused while a legal hold is active or another member remains.
+      </p>
+      <Card>
+        <details>
+          <summary className="k-btn-danger" style={{ display: "inline-block", cursor: "pointer" }}>
+            Delete my account
+          </summary>
+          <form action="/api/account/delete" method="POST" className="k-form" style={{ marginTop: 14 }}>
+            <div className="k-field">
+              <label htmlFor="delete-confirm">Type {me.email} to confirm</label>
+              <input
+                id="delete-confirm"
+                className="k-input"
+                type="text"
+                name="confirm"
+                required
+                autoComplete="off"
+                spellCheck={false}
+                placeholder={me.email}
+              />
+            </div>
+            <div className="k-field">
+              <span />
+              <div>
+                <button type="submit" className="k-btn-danger">Delete account and workspace</button>
+              </div>
+            </div>
+          </form>
+        </details>
+      </Card>
+    </>
+  );
+}
+

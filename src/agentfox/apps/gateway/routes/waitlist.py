@@ -173,8 +173,10 @@ def join_waitlist(
         "email": payload.email,
         "source": payload.source,
         "message": (
-            "You're already on the list — we'll email you when hosted AgentFox opens."
+            # What the form promised: one email, when pricing is announced. The old
+            # wording ("when hosted AgentFox opens") predated sign-in being open.
+            "You're already on the list. We'll send one email when pricing is announced."
             if existing is not None
-            else "You're on the list. We'll email you when hosted AgentFox opens."
+            else "You're on the list. We'll send one email when pricing is announced."
         ),
     }

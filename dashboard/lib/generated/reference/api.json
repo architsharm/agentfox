@@ -1,6 +1,6 @@
 {
  "generated_by": "scripts/gen/docs_reference.py",
- "count": 336,
+ "count": 337,
  "routes": [
   {
    "method": "GET",
@@ -823,6 +823,39 @@
     }
    ],
    "body": null
+  },
+  {
+   "method": "POST",
+   "path": "/api/account/delete",
+   "section": "account",
+   "audience": "operator",
+   "summary": "Delete the caller's account and the whole workspace it owns. Irreversible.",
+   "description": "Delete the caller's account and the whole workspace it owns. Irreversible.\n\nThe self-service half of the privacy page's \"getting your data deleted\": every row\nunder the workspace's ``org_id`` goes, in every tenant-scoped table\n(`tenancy.delete_tenant_rows`, the same routine that disposes of an expired\nplayground sandbox), including the user row, its tokens, the encrypted GitHub\ngrant and the workspace's own audit chain. Nothing outside the workspace is\ntouched: audit chains are per tenant, so no other chain loses an entry.\n\nRefused, with the reason, rather than half-done:\n\n* by anyone but an owner, because it removes everyone's data in the workspace;\n* while the workspace has another member, whose data it also is;\n* while a legal hold is active, which is the one thing that stops the retention\n  purge too (release it in Settings, Retention first);\n* for the deployment's default workspace, which a self-hosted operator removes\n  on the host, not from a browser.",
+   "params": [
+    {
+     "name": "authorization",
+     "in": "header",
+     "required": false,
+     "type": null
+    },
+    {
+     "name": "x-agentfox-user",
+     "in": "header",
+     "required": false,
+     "type": null
+    }
+   ],
+   "body": {
+    "model": "DeleteAccountIn",
+    "fields": [
+     {
+      "name": "confirm",
+      "type": "string",
+      "required": false,
+      "description": ""
+     }
+    ]
+   }
   },
   {
    "method": "GET",

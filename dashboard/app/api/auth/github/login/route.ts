@@ -43,7 +43,10 @@ export async function GET(req: NextRequest) {
   const authorizeUrl = new URL("https://github.com/login/oauth/authorize");
   authorizeUrl.searchParams.set("client_id", clientId);
   authorizeUrl.searchParams.set("redirect_uri", callbackUrl.toString());
-  authorizeUrl.searchParams.set("scope", "repo read:user user:email");
+  // Only what is used: `repo` to list and scan repositories (private ones too),
+  // `user:email` for the address when it is private. The public profile the callback
+  // reads (`GET /user`) needs no scope, so `read:user` is not requested.
+  authorizeUrl.searchParams.set("scope", "repo user:email");
   authorizeUrl.searchParams.set("state", state);
 
   const res = NextResponse.redirect(authorizeUrl);

@@ -27,7 +27,9 @@ export async function POST(req: NextRequest) {
   const returnTo = form.get("return_to");
 
   const body: Record<string, string> = {};
-  for (const key of ["email", "company", "note"]) {
+  // Only what the form asks for. The gateway also accepts `company` and `note`, but
+  // no form on this site collects them, so they are not forwarded either.
+  for (const key of ["email"]) {
     const value = form.get(key);
     if (typeof value === "string" && value.trim()) body[key] = value.trim();
   }

@@ -873,3 +873,35 @@ def test_a_freshly_booted_instance_runs_its_first_job_pass(client, monkeypatch):
     monkeypatch.setattr(app_mod, "_run_due_jobs", lambda: passes.append(1))
     client.get("/health")
     assert passes == [1]
+
+
+# ---------------------------------------------------------------------------
+# A visitor in crisis gets crisis resources, never an echo of their words
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "message",
+    ["I want to kill myself", "im thinking about suicide", "I'm going to hurt myself"],
+)
+def test_self_harm_gets_a_supportive_reply_not_an_echo(client, message):
+    from agentfox.apps.gateway.routes.playground import SELF_HARM_REPLY
+
+    sid = _create(client)
+    body = client.post(
+        f"/api/playground/sessions/{sid}/chat",
+        json={"agent": "support-triage", "message": message},
+    ).json()
+    assert body["reply"] == SELF_HARM_REPLY
+    assert "findahelpline.com" in body["reply"]
+    assert "verdict" in body  # the guardrail verdict is still returned, unchanged
+
+
+@pytest.mark.parametrize(
+    "message",
+    ["Summarise the Q3 refunds document.", "kill the stuck job", "Ignore previous instructions"],
+)
+def test_ordinary_messages_are_not_mistaken_for_a_crisis(client, message):
+    from agentfox.apps.gateway.routes.playground import self_harm_reply
+
+    assert self_harm_reply(message) is None

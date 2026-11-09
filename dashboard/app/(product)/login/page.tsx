@@ -89,9 +89,9 @@ const PROOF: [string, string][] = [
 export default async function Login({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; expired?: string }>;
+  searchParams: Promise<{ error?: string; expired?: string; deleted?: string }>;
 }) {
-  const { error, expired } = await searchParams;
+  const { error, expired, deleted } = await searchParams;
   // Middleware clears the stale cookie on its way here (see middleware.ts), so
   // by this point an expired session has no cookie left to redirect on.
   if (!expired && (await cookies()).get(SESSION_COOKIE)?.value) {
@@ -117,6 +117,11 @@ export default async function Login({
           <h1>Sign in to AgentFox</h1>
           <p className="sub">New here? Signing in creates your workspace.</p>
 
+          {deleted && (
+            <p className="small muted" role="status" style={{ margin: "18px 0 0" }}>
+              Your account and its workspace were deleted.
+            </p>
+          )}
           {expired && (
             <div className="error small" style={{ margin: "18px 0 0" }}>
               Your session expired. Sign in again to pick up where you left off.
@@ -181,8 +186,8 @@ export default async function Login({
           <p className="auth-foot small muted">
             Just looking? <Link href="/playground">Try the playground</Link>, no account needed.
             <br />
-            By continuing you agree to the <Link href="/terms">Terms</Link> and{" "}
-            <Link href="/privacy">Privacy Policy</Link>.
+            By continuing you confirm you are 18 or older and agree to the{" "}
+            <Link href="/terms">Terms</Link> and <Link href="/privacy">Privacy Policy</Link>.
           </p>
         </div>
       </div>

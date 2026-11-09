@@ -43,7 +43,7 @@ export function WaitlistForm({ returnTo = "/pricing#editions" }: { returnTo?: st
       </div>
       <input type="hidden" name="return_to" value={returnTo} />
       <p className="wl-fine">
-        One email when pricing is announced. Nothing else.
+        One email when pricing is announced. Nothing else. <a href="/privacy">Privacy policy</a>.
       </p>
     </form>
   );

@@ -823,6 +823,10 @@ export function Playground({ apiBase }: { apiBase: string }) {
                     Send
                   </button>
                 </form>
+                <p className="mk-fine" style={{ margin: "8px 0 0" }}>
+                  What you send is kept in your sandbox until it expires, 30 minutes after your last
+                  message. Don&apos;t paste personal data. <a href="/privacy">Privacy policy</a>.
+                </p>
               </section>
 
               <aside className="pg-rail" aria-label="Sandbox">

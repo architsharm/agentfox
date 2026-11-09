@@ -12,6 +12,13 @@ the file it came from.
 ## [Unreleased]
 
 ### Added
+- **Delete my account.** A workspace's owner can delete their account and the whole
+  workspace from Settings → Retention, after typing their email
+  (`POST /api/account/delete`). It is refused while a legal hold is active, while another
+  member remains, and for the deployment's default workspace.
+- **Crisis resources in the playground.** A playground message about self-harm or suicide
+  gets a reply pointing to local emergency services and findahelpline.com instead of the
+  demo agent's echo. The guardrail verdict is unchanged.
 - **Restore this version.** A pack's or a business rule's History has "Restore this
   version": the old rules go live again as a new version, in the current mode
   (`POST /api/policies/{key}/versions/{version}/restore`,
@@ -22,6 +29,18 @@ the file it came from.
   page says who is told and links to where to set it up.
 
 ### Changed
+- **Privacy policy and terms, rewritten against the deployment.** The privacy page now
+  names the controller (Nometria Inc.), every cookie, Google and Microsoft sign-in, the
+  pricing list, the hosted judges (Anthropic, TypeSafe) and model server that read what
+  you send, Render as the dashboard host, retention per data type, self-service
+  deletion, and rights under GDPR/UK GDPR, California law and India's DPDP Act. The terms
+  name Nometria Inc., state that the service is free with nothing to cancel, set 18 as
+  the minimum age, add a copyright-complaint route and drop the unfilled governing-law
+  placeholder.
+- **Less asked for at sign-in.** GitHub sign-in no longer requests `read:user`; the
+  pricing-list form forwards only the email it asks for. The playground composer and the
+  pricing-list form link to the privacy policy, and sign-in confirms you are 18 or older.
+- The docs' terminal screenshots no longer reference a font on cdnjs.
 - **One rule model for business rules.** An approval limit written in New rule is
   listed in Applied rules (in Your rules), its page
   (`/app/policies/rules/business.<key>`) shows its real mode, hits and history, and
