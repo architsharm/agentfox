@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Code, NextSteps, Screenshot, Step, Steps } from "@/components/docs/blocks";
+import { Code, DemoAgentNames, NextSteps, Screenshot, Step, Steps } from "@/components/docs/blocks";
 import { Tab, Tabs } from "@/components/docs/tabs";
 import { SCREENS } from "@/lib/docs/screens";
 import { publicPageMetadata } from "@/lib/site";
@@ -21,6 +21,8 @@ export default function Page() {
         Decide which tools each agent may call and with what, so a model that has been talked into
         something still cannot do it.
       </p>
+
+      <DemoAgentNames />
 
       <Steps topLevel>
         <Step title="See what an agent may call">

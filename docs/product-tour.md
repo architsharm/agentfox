@@ -202,8 +202,8 @@ cannot exceed the ceiling for tool-sourced data.
 
 ```bash
 agentfox admin hooks daemon                             # the warm process, once
-agentfox admin hooks install --agent my-agent --write   # writes .claude/settings.json
-agentfox admin hooks install --harness codex --agent my-agent --write   # Codex CLI
+agentfox admin hooks install --agent claude-dev --write   # writes .claude/settings.json; name it as you like
+agentfox admin hooks install --harness codex --agent codex-dev --write   # Codex CLI
 ```
 
 For Claude Code, four events, because one event is one surface:
@@ -287,7 +287,9 @@ connection. The hosted runner is triggered by
 
 `agentfox --help` lists fourteen top-level commands in six groups: Start (`up`, `init`, `demo`), See (`scan`,
 `agents`), Watch (`serve`, `findings`), Contain (`permit`, `declare`, `policy`), Prove (`test`,
-`report`) and Operate (`doctor`, `admin`). Below, the same commands by task.
+`report`) and Operate (`doctor`, `admin`). Below, the same commands by task. They name the demo's
+agents (`support-triage`, `payments-ops`): use your own agent's name (`agentfox agents list`), or run
+`agentfox demo --in-workspace` first to follow along.
 
 Every decision lands in a tamper-evident audit chain and maps to the controls you answer to.
 Evidence packages (Enterprise) ship with a stdlib-only `verify_chain.py`, so an auditor re-derives

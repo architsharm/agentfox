@@ -69,6 +69,23 @@ export function Callout({
   );
 }
 
+/**
+ * For pages whose commands name the demo's agents: a command such as
+ * `permit grant support-triage …` fails with "unknown agent" on a reader's own data.
+ */
+export function DemoAgentNames() {
+  return (
+    <Callout kind="note" title="Agent names in these examples">
+      <p>
+        The commands name the demo&apos;s agents, <code>support-triage</code> and{" "}
+        <code>payments-ops</code>. Use your own agent&apos;s name instead (
+        <code>agentfox agents list</code> shows them), or run{" "}
+        <code>agentfox demo --in-workspace</code> first to follow along with the demo&apos;s.
+      </p>
+    </Callout>
+  );
+}
+
 /** A numbered walkthrough. Each <Step> is one thing the reader does. */
 export function Steps({ children, topLevel = false }: { children: ReactNode; topLevel?: boolean }) {
   return (
