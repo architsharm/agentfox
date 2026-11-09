@@ -37,7 +37,7 @@ CONTAINMENT_POLICY = "tool-containment"
 BUILT_IN = (
     (
         "capability.default_deny",
-        "A tool the agent was not granted is refused, once it holds any grant.",
+        "A tool the agent was not granted is refused.",
         "capability.denied",
     ),
     (

@@ -56,11 +56,12 @@ export default function Page() {
         choose <strong>Approve above an amount</strong>. From the CLI, write it as a file and test values
         before it runs:
       </p>
-      <Code>{`agentfox policy rules apply credit-limits.yaml
-agentfox policy rules test billing-credit-limits "50,50.01,5000.01"`}</Code>
+      <Code>{`agentfox policy rules apply credit-ladder.yaml
+agentfox policy rules test billing-credit-ladder "50,50.01,5000.01"`}</Code>
       <p>
-        A missing or unreadable amount is sent for approval, never let through. The file format is in the{" "}
-        <Link href="/docs/reference/policies">policy reference</Link>.
+        A missing or unreadable amount is sent for approval, never let through. The file format, and{" "}
+        <code>credit-ladder.yaml</code> itself, are in the{" "}
+        <Link href="/docs/reference/policies#business-rules">policy reference</Link>.
       </p>
 
       <h2 id="import">Import rules from another tool</h2>

@@ -62,7 +62,8 @@ export default function Page() {
       <p id="grant">
         Which tools an agent may call. Access to a tool can carry limits on the arguments (an amount
         under 1,000, one email domain) and can require a person to approve each call. A call to a tool
-        the agent was not given is refused. You see and change it on the agent&apos;s{" "}
+        the agent was not given is refused once Tool containment blocks; while it watches, the call is
+        recorded as what it would have stopped. You see and change it on the agent&apos;s{" "}
         <strong>Access</strong> tab. See <Link href="/docs/govern">Tool access</Link>.
       </p>
 
@@ -100,8 +101,11 @@ export default function Page() {
         </li>
       </ul>
       <p>
-        Start in Watch, look at what it would have stopped, then switch to Block. Tool access applies
-        from the start. See <Link href="/docs/protect">Guardrails</Link>.
+        Every library starts in Watch, Tool containment included: look at what it would have stopped,
+        then switch it to Block. Only destructive commands, turning AgentFox off, and a limit or Ask
+        first set on a grant apply from the start. In the CLI, Watch is <code>observe</code> and Block
+        is <code>enforce</code> (<code>agentfox policy enforce &lt;library&gt;</code>). See{" "}
+        <Link href="/docs/protect">Guardrails</Link>.
       </p>
 
       <h2 id="issues">Issues</h2>

@@ -405,15 +405,19 @@ with fox.session(intent="reply to a customer about their order") as s:
     except ApprovalRequired as exc:
         print("held:", [r["rule_id"] for r in exc.result.rules_fired])`}</Code>
       <p>
-        With <code>agentfox permit grant support-bot email.send</code> made (after the
-        agent has run once, so it is registered):
+        Run it once, so the agent is registered, then give it the tool and start Tool
+        containment blocking:
       </p>
+      <Code>{`agentfox permit grant support-bot email.send --yes
+agentfox policy enforce tool-containment
+python contain.py`}</Code>
       <Output>{`sent to ada@example.com
 held: ['intent.misaligned', 'taint.irreversible_tool', 'capability.approval_required']`}</Output>
       <p>
         The second call is held for a person even though no content detector has to fire:
         the address was copied out of retrieved text, and the tool is irreversible.
-        Without the grant, even the first call is refused by default deny. The full model is in{" "}
+        Before <code>policy enforce</code>, Tool containment only watches: both calls run, and
+        the second is recorded as what it would have held. The full model is in{" "}
         <Link href="/docs/govern">Tool access</Link>.
       </p>
       <p>

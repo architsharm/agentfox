@@ -70,7 +70,16 @@ agentfox policy enforce baseline`}</Code>
 
       <h2>What is on by default</h2>
       <ul>
-        <li>Tool access blocks from the start: a tool the agent was not given is refused.</li>
+        <li>
+          Tool containment watches until you switch it to Block: a tool the agent was not given, and a tool that changes something driven by untrusted content or by another
+          tool&apos;s output, are recorded as what they would have stopped. Its built-in checks are
+          listed under Tool containment in Applied rules and follow its mode.
+        </li>
+        <li>
+          Destructive commands (<code>rm -rf ~/</code>, <code>DROP TABLE</code>) and turning AgentFox
+          off are refused from the start, and so is anything a person set on a grant: a limit, or Ask
+          first.
+        </li>
         <li>
           The basic guardrails stop prompt attacks and hide personal data and secrets in replies. On an
           agent with real traffic they watch first.

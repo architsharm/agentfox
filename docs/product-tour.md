@@ -61,13 +61,21 @@ budget charging and no conversation-window check.
 
 ```bash
 agentfox serve                        # gateway + control-plane API on 127.0.0.1:8080
+# in a second terminal:
 agentfox admin users create you@example.com --token  # first operator + API token, shown once
+export AGENTFOX_API_KEY=…             # the token it printed
 ```
 
 Point an existing OpenAI or Anthropic client at `http://localhost:8080/v1` and change nothing else,
-or ask about a single tool call:
+or ask about a single tool call. Declare the tool, give the agent access to it and start Tool
+containment blocking first; until then it only watches, and the call below returns `allow` with
+`"effective_verdict": "escalate"`:
 
 ```bash
+agentfox declare tool payments.transfer --impact irreversible
+agentfox permit grant payments-ops payments.transfer --yes
+agentfox policy enforce tool-containment
+
 curl -s -X POST http://localhost:8080/v1/guard/tool_call \
   -H "Authorization: Bearer $AGENTFOX_API_KEY" -H "Content-Type: application/json" \
   -d '{"agent":"payments-ops","tool":"payments.transfer",

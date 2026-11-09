@@ -70,7 +70,11 @@ agentfox init --key nom_api_… --server https://…`}</Code>
 
       <h2>What is on by default</h2>
       <ul>
-        <li>A call to a tool the agent was not given is refused.</li>
+        <li>
+          Tool containment watches: a call to a tool the agent was not given, or a
+          tool that changes something driven by untrusted content, is recorded as what it would have
+          stopped. It blocks once you <Link href="/docs/protect">switch it to block</Link>.
+        </li>
         <li>
           The basic guardrails block prompt attacks and hide personal data and secrets in replies. On an
           agent with real traffic they watch first, so nothing changes until you{" "}
