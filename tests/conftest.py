@@ -115,6 +115,13 @@ def isolated_db(tmp_path, monkeypatch, schema_template) -> Iterator[None]:
     reset_admission_controller()
     # One test's timed-out checks must not count against the next one's health.
     reset_check_meter()
+    # Nor one test's refused credentials against the next one's (gateway/deps.py).
+    try:
+        from agentfox.apps.gateway.deps import failed_auth_limiter
+
+        failed_auth_limiter._hits.clear()
+    except ImportError:  # the gateway's dependencies are an extra
+        pass
     yield
     db.reset_engine()
     reset_settings_cache()

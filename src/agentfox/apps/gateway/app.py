@@ -260,6 +260,43 @@ class RunDueJobsOnTraffic:
             await run_in_threadpool(_run_due_jobs)
 
 
+#: Sent on every gateway response. The gateway serves JSON and the API docs; nothing
+#: legitimately frames it, so framing is refused, and nothing it returns should be
+#: sniffed into another content type. Only `frame-ancestors` in the CSP: a script
+#: policy would break the bundled API docs page for no gain on a JSON API.
+SECURITY_HEADERS: tuple[tuple[bytes, bytes], ...] = (
+    (b"x-content-type-options", b"nosniff"),
+    (b"x-frame-options", b"DENY"),
+    (b"content-security-policy", b"frame-ancestors 'none'"),
+    (b"referrer-policy", b"no-referrer"),
+)
+
+
+class SecurityHeaders:
+    """Add :data:`SECURITY_HEADERS` to every HTTP response that does not set its own.
+
+    Plain ASGI for the reason `RunDueJobsOnTraffic` gives: no `BaseHTTPMiddleware`.
+    """
+
+    def __init__(self, app: Any) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def send_with_headers(message: Any) -> None:
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers") or [])
+                present = {k.lower() for k, _ in headers}
+                headers.extend((k, v) for k, v in SECURITY_HEADERS if k not in present)
+                message = {**message, "headers": headers}
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)
+
+
 def create_app() -> FastAPI:
     # Before anything else, and here rather than in `lifespan`: a serverless host may
     # never run the lifespan, and a process that is going to refuse should refuse
@@ -409,6 +446,9 @@ def create_app() -> FastAPI:
             return await call_next(request)
         finally:
             controller.leave()
+
+    # Added last, so outermost: the gates' own 429 and 503 answers get the headers too.
+    app.add_middleware(SecurityHeaders)
 
     app.include_router(inline.router)
     app.include_router(registry.router)

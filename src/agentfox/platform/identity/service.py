@@ -645,14 +645,36 @@ def resolve_approval(
         stopped = _stopped_state(session, request.agent_id)
         if stopped is not None:
             raise AgentStopped(*stopped)
-    request.status = "approved" if approved else "denied"
-    request.resolver_user_id = resolver_user_id
-    request.resolution_rationale = rationale
+    values: dict[str, Any] = {
+        "status": "approved" if approved else "denied",
+        "resolver_user_id": resolver_user_id,
+        "resolution_rationale": rationale,
+    }
     if approved:
         # From here `expires_at` is how long the approval may be redeemed.
-        request.expires_at = utcnow() + dt.timedelta(minutes=REDEEM_WINDOW_MINUTES)
-    session.flush()
+        values["expires_at"] = utcnow() + dt.timedelta(minutes=REDEEM_WINDOW_MINUTES)
+    # Conditional on the status still reading `pending`, like `redeem_approval`: two
+    # people deciding at once (or one approving while another denies) must not both
+    # be told their decision stood, nor both be recorded as having made it.
+    decided = session.execute(
+        update(ApprovalRequest)
+        .where(ApprovalRequest.id == request.id, ApprovalRequest.status == "pending")
+        .values(**values)
+        .execution_options(synchronize_session=False)
+    )
+    session.refresh(request)
+    if decided.rowcount != 1:
+        raise ApprovalAlreadyDecided(request.id, request.status)
     return request
+
+
+class ApprovalAlreadyDecided(Exception):
+    """Someone else decided this approval between it being read and being decided."""
+
+    def __init__(self, approval_id: str, status: str) -> None:
+        self.approval_id = approval_id
+        self.status = status
+        super().__init__(f"approval '{approval_id}' is already {status}")
 
 
 def _canonical(arguments: Any) -> str:

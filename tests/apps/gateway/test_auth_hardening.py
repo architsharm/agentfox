@@ -325,3 +325,50 @@ def test_token_mode_401_names_auth_mode_not_the_environment(ready, monkeypatch):
 def test_production_401_names_the_environment(ready, production):
     detail = _app().get("/api/agents").json()["detail"]
     assert "'production'" in detail
+
+
+# ---------------------------------------------------------------------------
+# Launch audit — failed authentication is logged and throttled; security headers
+# ---------------------------------------------------------------------------
+
+
+def test_failed_authentication_is_logged_without_the_credential(ready, production, caplog):
+    forged = "nom_api_" + "x" * 40
+    with caplog.at_level("WARNING", logger="agentfox.apps.gateway.deps"):
+        response = _app().get("/api/agents", headers={"Authorization": f"Bearer {forged}"})
+    assert response.status_code == 401
+    lines = [r.getMessage() for r in caplog.records if "refused" in r.getMessage()]
+    assert lines and "/api/agents" in lines[0]
+    assert all("xxxxxxxx" not in line and "nom_api_" not in line for line in lines)
+
+
+def test_repeated_bad_credentials_are_throttled_but_a_good_one_still_works(ready, production):
+    from agentfox.apps.gateway.deps import failed_auth_limiter
+
+    client = _app()
+    good = {"Authorization": f"Bearer {_provision(client).json()['token']}"}
+    bad = {"Authorization": "Bearer nom_api_" + "y" * 40}
+    statuses = [
+        client.get("/api/agents", headers=bad).status_code
+        for _ in range(failed_auth_limiter.limit + 1)
+    ]
+    assert statuses[:-1] == [401] * failed_auth_limiter.limit
+    assert statuses[-1] == 429
+    # The same address with a valid token is never locked out by someone's guessing.
+    assert client.get("/api/me", headers=good).status_code == 200
+    throttled = client.post(
+        "/v1/guard/input",
+        json={"agent": "a", "content": "hi"},
+        headers={"Authorization": f"Bearer {BOGUS_AGENT_KEY}"},
+    )
+    assert throttled.status_code == 429
+    assert int(throttled.headers["Retry-After"]) >= 1
+
+
+@pytest.mark.parametrize("path", ["/api/health", "/api/agents", "/docs"])
+def test_gateway_responses_carry_security_headers(ready, production, path):
+    response = _app().get(path)
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
+    assert response.headers["referrer-policy"] == "no-referrer"

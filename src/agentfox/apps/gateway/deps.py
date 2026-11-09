@@ -16,6 +16,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from agentfox.apps.gateway.auth import AuthenticationRequired, authenticate, resolve_agent
+from agentfox.apps.gateway.client_address import client_address
+from agentfox.apps.gateway.playground_sessions import RateLimiter
 from agentfox.core.db import get_session
 from agentfox.core.models import Agent, Identity, User
 from agentfox.core.tenancy import bind_session
@@ -80,6 +82,35 @@ def get_agent_or_404(session: Session, slug: str) -> Agent:
     return agent
 
 
+#: Failed authentications per client address (`client_address.client_address`). Only
+#: failures count and only failures are refused: a valid credential is never turned
+#: away, so an address shared by many callers (an office NAT, the dashboard's own
+#: server calling on behalf of every browser) cannot be locked out by one of them
+#: guessing. Past the limit a bad credential gets 429 instead of 401, which caps how
+#: fast anyone learns that a guess was wrong. Per process, like every limiter here.
+failed_auth_limiter = RateLimiter(limit=30, window_seconds=300)
+
+
+def refuse_credential(request: Request, detail: str, *, kind: str) -> HTTPException:
+    """The 401 for a credential that did not verify: logged, and throttled per address.
+
+    The log line names the kind of credential, the address and the route; never the
+    credential or any part of it.
+    """
+    address = client_address(request)
+    log.warning(
+        "auth: %s refused from %s on %s %s", kind, address, request.method, request.url.path
+    )
+    if not failed_auth_limiter.check(address):
+        wait = failed_auth_limiter.retry_after(address)
+        return HTTPException(
+            status_code=429,
+            detail=f"Too many failed authentication attempts from this address. {detail}",
+            headers={"Retry-After": str(max(1, wait))},
+        )
+    return HTTPException(status_code=401, detail=detail)
+
+
 def current_user(
     request: Request,
     session: Session = Depends(get_session),
@@ -96,7 +127,7 @@ def current_user(
     try:
         user = authenticate(session, authorization=authorization, header_user=x_agentfox_user)
     except AuthenticationRequired as exc:
-        raise HTTPException(status_code=401, detail=exc.detail) from exc
+        raise refuse_credential(request, exc.detail, kind="operator credential") from exc
     request.state.user = user
     request.state.org_id = user.org_id
     activate_posture(session)
@@ -156,6 +187,7 @@ def require(family: str):
 
 
 def agent_credential(
+    request: Request,
     session: Session = Depends(get_session),
     authorization: Annotated[str | None, Header()] = None,
 ) -> str | None:
@@ -181,7 +213,9 @@ def agent_credential(
         # on their dashboard. It names no agent, so the agent is the one in the body.
         user = resolve_token(session, token)
         if user is None:
-            raise HTTPException(status_code=401, detail="invalid, expired or revoked API token")
+            raise refuse_credential(
+                request, "invalid, expired or revoked API token", kind="operator token"
+            )
         bind_session(session, user.org_id)
         activate_posture(session)
         return None
@@ -196,13 +230,12 @@ def agent_credential(
         # named, so a made-up `nom_agt_` string would work exactly as well as the
         # real one. "No credential" (shadow traffic, served and
         # observed) and "a bad credential" are different things.
-        raise HTTPException(
-            status_code=401,
-            detail=(
-                "invalid, expired or revoked agent key. Issue a new one from the "
-                "agent's Identity page (POST /api/identities/{id}/credentials), or "
-                "send no Authorization header to be governed as an unregistered agent."
-            ),
+        raise refuse_credential(
+            request,
+            "invalid, expired or revoked agent key. Issue a new one from the "
+            "agent's Identity page (POST /api/identities/{id}/credentials), or "
+            "send no Authorization header to be governed as an unregistered agent.",
+            kind="agent key",
         )
     _identity, org_id = resolved
     bind_session(session, org_id)
@@ -230,7 +263,9 @@ def operator_or_agent(
         if token.startswith("nom_agt_"):
             resolved = resolve_agent(session, token)
             if resolved is None:
-                raise HTTPException(status_code=401, detail="invalid, expired or revoked agent key")
+                raise refuse_credential(
+                    request, "invalid, expired or revoked agent key", kind="agent key"
+                )
             identity, org_id = resolved
             bind_session(session, org_id)
             request.state.org_id = org_id
