@@ -30,6 +30,8 @@ _FRAMEWORK_MODULES = {
     "mcp": "mcp",
     "ragas": "ragas",
     "litellm": "litellm",
+    "google.adk": "google-adk",
+    "smolagents": "smolagents",
 }
 
 
@@ -46,6 +48,11 @@ _FRAMEWORK_ROUTES: dict[str, tuple[str, ...]] = {
     # The Agents SDK's default model is the Responses API; `OpenAIChatCompletionsModel`
     # and the LiteLLM extension take the other routes.
     "openai-agents": ("openai.responses", "openai", "litellm"),
+    # ADK's `Gemini` model calls google-genai; `LiteLlm` takes the litellm route.
+    "google-adk": ("google-genai", "litellm"),
+    # smolagents' default `InferenceClientModel` is huggingface_hub's chat client;
+    # `OpenAIModel` and `LiteLLMModel` take the other routes.
+    "smolagents": ("huggingface_hub", "openai", "litellm"),
 }
 
 

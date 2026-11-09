@@ -85,9 +85,9 @@ agent that file runs (a crew or swarm takes its project's name), shown before an
 so you can edit it. In a folder of separate examples it sets up one, with only that agent's
 tools, and says how to pick another (`agentfox up --agent <name>`); in a monorepo that edits
 the picked agent's own app, and `scan`, `up`, `init` and `auto()` all name one agent the same
-way (`FinancialPlannerAgent` is `financial-planner-agent` everywhere). `auto()` does not see
-the model calls of Google ADK (google-genai) or smolagents (huggingface_hub); `up` says so,
-and routes them through the gateway with `--with gateway`. It starts in watch mode:
+way (`FinancialPlannerAgent` is `financial-planner-agent` everywhere). `auto()` also governs
+Google ADK (its google-genai model calls and function calls) and smolagents (its
+huggingface_hub model calls, and each tool where it runs). It starts in watch mode:
 every library records what it would have stopped and stops nothing (destructive commands such as
 `rm -rf ~/` and tampering with AgentFox aside). Turn blocking on one library at a time when its
 decisions look right: `agentfox policy enforce tool-containment` for tool calls,
@@ -124,8 +124,8 @@ dashboard, and the CLI reads and writes the same account: `findings`, `agents li
 `permit`, `declare`, `policy`, `report` and `test suites` show what the dashboard shows,
 and each says on its first line which it is using (`Account: https://… (workspace …)` or
 `Local: ~/.agentfox/agentfox.db`). `agentfox doctor` checks the server and the key. Without
-a key everything checks and records locally. Every OpenAI, Anthropic, LiteLLM and
-LangChain call in the process is checked, and every tool call in a response is checked
+a key everything checks and records locally. Every OpenAI, Anthropic, LiteLLM, LangChain,
+google-genai and huggingface_hub call in the process is checked, and every tool call in a response is checked
 before your code can run it; a refused one raises `agentfox.Blocked`. Coding-agent hooks
 record on this machine; `AGENTFOX_LOCAL=1 agentfox findings` reads them in a project
 connected to an account.

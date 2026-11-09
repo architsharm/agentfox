@@ -589,7 +589,11 @@ def test_a_missing_library_is_reported_not_hidden(app_db, fake_openai):
     assert "not installed" in anthropic.detail
 
 
-def test_patching_nothing_is_information_not_failure(app_db):
+def test_patching_nothing_is_information_not_failure(app_db, monkeypatch):
+    # The dev venv carries huggingface_hub for the detector models; hide it, as a
+    # machine with no client library at all has none.
+    for name in ("huggingface_hub", "google.genai", "smolagents"):
+        monkeypatch.setitem(sys.modules, name, None)
     result = auto(agent="support-triage", quiet=True)
     assert not result.active
     assert "Nothing patched" in result.summary()

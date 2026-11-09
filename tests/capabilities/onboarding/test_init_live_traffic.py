@@ -181,7 +181,7 @@ def test_the_line_goes_into_the_file_that_runs_the_agent_in_its_own_app(tmp_path
     assert "apps/research/manager.py" in out, out
 
 
-def test_an_adk_agent_is_told_auto_does_not_govern_its_model_calls(tmp_path):
+def _adk(tmp_path):
     (tmp_path / ".git").mkdir()
     (tmp_path / "agent.py").write_text(
         "from google.adk.agents import LlmAgent\n\n"
@@ -192,8 +192,20 @@ def test_an_adk_agent_is_told_auto_does_not_govern_its_model_calls(tmp_path):
     ]
     console = Console(record=True, width=200)
     connect_live_traffic(console, tmp_path, "https://gw", "nom_api_abc", registered, ask=False)
-    out = console.export_text()
-    assert "NOT governed by auto()" in out and "google-genai" in out
+    return console.export_text()
+
+
+def test_an_adk_agent_is_no_longer_told_auto_misses_its_model_calls(tmp_path):
+    # auto() patches google-genai now (autoguard.genai).
+    assert "NOT governed by auto()" not in _adk(tmp_path)
+
+
+def test_an_unpatched_framework_is_told_auto_does_not_govern_it(tmp_path, monkeypatch):
+    from agentfox.capabilities.discovery import agents
+
+    monkeypatch.setitem(agents.UNPATCHED_FRAMEWORKS, "Google ADK", "some-client")
+    out = _adk(tmp_path)
+    assert "NOT governed by auto()" in out and "some-client" in out
 
 
 def test_init_counts_tools_not_tool_assignments():

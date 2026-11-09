@@ -53,8 +53,10 @@ agentfox scan`}</Code>
             Besides the repository, <code>up</code> reads (never changes) the MCP and skill
             settings of the AI tools on this machine, such as <code>~/.claude</code> and{" "}
             <code>~/.cursor</code>, and says so. <code>--skip-machine</code> leaves them out.{" "}
-            <code>agentfox.auto()</code> does not see the model calls of Google ADK or smolagents;
-            for those, <code>up</code> says so and offers the gateway instead.
+            <code>agentfox.auto()</code> governs Google ADK (through google-genai, including the
+            functions it calls for the model) and smolagents (its huggingface_hub model calls, and
+            each tool where it runs), as it does the OpenAI, Anthropic, LiteLLM, LangChain and
+            CrewAI routes.
           </p>
         </Step>
 

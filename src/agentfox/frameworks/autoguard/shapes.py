@@ -1,6 +1,7 @@
 """Reading the client libraries' own shapes: request messages, response text, usage
 and stream chunks from OpenAI (chat completions and the Responses API), Anthropic,
-LiteLLM and LangChain objects, as plain values the enforcer understands.
+LiteLLM, LangChain, google-genai and huggingface_hub objects (the last in OpenAI's
+chat shape), as plain values the enforcer understands.
 """
 
 from __future__ import annotations
@@ -154,6 +155,131 @@ def _responses_messages(kwargs: dict[str, Any]) -> list[dict[str, Any]]:
     return messages
 
 
+# -- Google GenAI (google-genai: Gemini, and Google ADK on top of it) ------------------
+
+#: google-genai content roles -> our role vocabulary.
+_GENAI_ROLES = {"model": "assistant", "user": "user", "function": "tool", "tool": "tool"}
+
+
+def _genai_text(value: Any) -> str:
+    """The text of a google-genai ``system_instruction`` (a string, a `Content`, a
+    `Part`, or a list of them)."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (list, tuple)):
+        return "\n".join(t for t in (_genai_text(v) for v in value) if t)
+    parts = _get(value, "parts")
+    if parts is not None:
+        return _genai_text(list(parts))
+    text = _get(value, "text")
+    return text if isinstance(text, str) else ""
+
+
+def _genai_turn(role: str, parts: list[Any], messages: list[dict[str, Any]]) -> None:
+    """One google-genai `Content` as chat messages: its text (and the model's
+    ``function_call`` parts, as the turn's ``tool_calls``), then each
+    ``function_response`` part as a ``role="tool"`` message, a tool's result.
+
+    Gemini's calls often carry no id; the function's name stands in on both sides,
+    so a result still names the tool it came from."""
+    role = _GENAI_ROLES.get(role, role)
+    texts: list[str] = []
+    calls: list[dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
+    for part in parts:
+        if isinstance(part, str):
+            texts.append(part)
+            continue
+        if _get(part, "thought"):
+            continue  # the model's reasoning summary, not the conversation
+        text = _get(part, "text")
+        if isinstance(text, str) and text:
+            texts.append(text)
+        call = _get(part, "function_call")
+        if call is not None and _get(call, "name"):
+            name = str(_get(call, "name"))
+            calls.append(
+                {
+                    "id": _get(call, "id") or name,
+                    "type": "function",
+                    "function": {
+                        "name": name,
+                        "arguments": json.dumps(_plain(_get(call, "args")) or {}, default=str),
+                    },
+                }
+            )
+        answer = _get(part, "function_response")
+        if answer is not None and _get(answer, "name"):
+            name = str(_get(answer, "name"))
+            response = _plain(_get(answer, "response"))
+            results.append(
+                {
+                    "role": "tool",
+                    "name": name,
+                    "tool_call_id": _get(answer, "id") or name,
+                    "content": response
+                    if isinstance(response, str)
+                    else json.dumps(response, default=str),
+                }
+            )
+    if texts or calls:
+        message: dict[str, Any] = {"role": role, "content": "\n".join(texts) or None}
+        if calls:
+            message["tool_calls"] = calls
+        messages.append(message)
+    messages.extend(results)
+
+
+def _genai_messages(contents: Any, config: Any = None) -> list[dict[str, Any]]:
+    """A google-genai request (``contents`` plus ``config.system_instruction``) as a
+    chat message list in OpenAI's chat shape, so the same pre-flight and provenance
+    marking read it.
+
+    ``contents`` is a string, a `Content` (or its dict), a `Part`, or a list of any of
+    them; loose strings and parts next to each other are one user turn, as the SDK
+    sends them."""
+    messages: list[dict[str, Any]] = []
+    system = _genai_text(_get(config, "system_instruction")) if config is not None else ""
+    if system:
+        messages.append({"role": "system", "content": system})
+    if contents is None:
+        return messages
+    items = list(contents) if isinstance(contents, (list, tuple)) else [contents]
+    loose: list[Any] = []
+    for item in items:
+        is_turn = _get(item, "parts") is not None or (isinstance(item, dict) and "role" in item)
+        if not is_turn:
+            loose.append(item)
+            continue
+        if loose:
+            _genai_turn("user", loose, messages)
+            loose = []
+        _genai_turn(str(_get(item, "role") or "user"), list(_get(item, "parts") or []), messages)
+    if loose:
+        _genai_turn("user", loose, messages)
+    return messages
+
+
+def _genai_parts(response: Any) -> list[Any] | None:
+    """The first candidate's parts of a google-genai response or stream chunk, or None
+    for any other shape. The first candidate is the one an app (and ADK) reads."""
+    if isinstance(response, dict) or getattr(response, "choices", None) is not None:
+        return None
+    candidates = getattr(response, "candidates", None)
+    if not isinstance(candidates, list):
+        return None
+    if not candidates:
+        return []
+    return list(_get(_get(candidates[0], "content"), "parts") or [])
+
+
+def _genai_answer_parts(parts: list[Any]) -> list[Any]:
+    """The text parts that are the answer: not the model's thought summaries."""
+    return [p for p in parts if isinstance(_get(p, "text"), str) and not _get(p, "thought")]
+
+
 def _response_items(response: Any) -> list[Any] | None:
     """The ``output`` items of a Responses API response, or None for any other shape."""
     if getattr(response, "choices", None) is not None:
@@ -168,6 +294,9 @@ def _text_of(response: Any) -> str:
         choices = getattr(response, "choices", None)
         if choices:
             return getattr(choices[0].message, "content", "") or ""
+        parts = _genai_parts(response)
+        if parts is not None:  # google-genai: the first candidate's text parts
+            return "".join(_get(p, "text") for p in _genai_answer_parts(parts))
         items = _response_items(response)
         if items is not None:  # the Responses API: `message` items' output_text parts
             return "".join(
@@ -203,6 +332,17 @@ def _rewrite_text(response: Any, text: str) -> bool:
             message = choices[0].message
             message.content = text
             return getattr(message, "content", None) == text
+        genai = _genai_parts(response)
+        if genai is not None:  # google-genai: same rule as Anthropic's blocks
+            answer = _genai_answer_parts(genai)
+            if not answer:
+                return False
+            for index, part in enumerate(answer):
+                if isinstance(part, dict):
+                    part["text"] = text if index == 0 else ""
+                else:
+                    part.text = text if index == 0 else ""
+            return _text_of(response) == text
         items = _response_items(response)
         if items is not None:  # the Responses API: same rule as Anthropic's blocks
             parts = [
@@ -248,7 +388,7 @@ def _usage_of(response: Any) -> dict[str, int]:
     """
     usage = getattr(response, "usage", None)
     if usage is None:
-        return {}
+        return _genai_usage(response)
     try:
         input_tokens = getattr(usage, "input_tokens", None)
         output_tokens = getattr(usage, "output_tokens", None)
@@ -257,6 +397,27 @@ def _usage_of(response: Any) -> dict[str, int]:
         if output_tokens is None:
             output_tokens = getattr(usage, "completion_tokens", 0) or 0
         return {"input_tokens": int(input_tokens or 0), "output_tokens": int(output_tokens or 0)}
+    except Exception:  # pragma: no cover - defensive against SDK shape drift
+        return {}
+
+
+def _genai_usage(response: Any) -> dict[str, int]:
+    """google-genai's ``usage_metadata``: the prompt's tokens in, the candidates' and
+    the model's thinking out (both are billed as output)."""
+    meta = None if isinstance(response, dict) else getattr(response, "usage_metadata", None)
+    if meta is None or (
+        # LangChain's AIMessage has a `usage_metadata` too, in another shape.
+        _get(meta, "prompt_token_count") is None and _get(meta, "candidates_token_count") is None
+    ):
+        return {}
+    try:
+        output = (_get(meta, "candidates_token_count") or 0) + (
+            _get(meta, "thoughts_token_count") or 0
+        )
+        return {
+            "input_tokens": int(_get(meta, "prompt_token_count") or 0),
+            "output_tokens": int(output),
+        }
     except Exception:  # pragma: no cover - defensive against SDK shape drift
         return {}
 
@@ -272,6 +433,9 @@ def _chunk_text(chunk: Any) -> str:
         if choices:
             content = getattr(getattr(choices[0], "delta", None), "content", None)
             return content if isinstance(content, str) else ""
+        parts = _genai_parts(chunk)
+        if parts is not None:  # google-genai: each chunk is a partial response
+            return "".join(_get(p, "text") for p in _genai_answer_parts(parts))
         kind = getattr(chunk, "type", None)
         if kind == "content_block_delta":
             text = getattr(getattr(chunk, "delta", None), "text", None)
@@ -318,6 +482,18 @@ def _chunk_tool_calls(chunk: Any, parts: dict[int, dict[str, Any]]) -> None:
                 part["name"] = str(_get(function, "name"))
             if _get(function, "arguments"):
                 part["args"].append(str(_get(function, "arguments")))
+        return
+    genai = _genai_parts(chunk)
+    if genai is not None:
+        # google-genai: a streamed chunk carries whole function calls, never fragments.
+        for item in genai:
+            call = _get(item, "function_call")
+            if call is not None and _get(call, "name"):
+                parts[len(parts)] = {
+                    "name": str(_get(call, "name")),
+                    "id": _get(call, "id"),
+                    "args": [json.dumps(_plain(_get(call, "args")) or {}, default=str)],
+                }
         return
     kind = getattr(chunk, "type", None)
     if kind == "response.output_item.done":

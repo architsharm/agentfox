@@ -2160,14 +2160,12 @@ _FRAMEWORK_LABELS = {
 
 
 #: Frameworks (by the label above) whose model calls `agentfox.auto()` does not see,
-#: and the client they reach the model through by default, which it does not patch:
-#: Google ADK calls Gemini through google-genai, smolagents' default model goes through
-#: huggingface_hub. `agentfox up` and `agentfox init` say so instead of promising that
-#: `auto()` records every call; the gateway route governs them.
-UNPATCHED_FRAMEWORKS: dict[str, str] = {
-    "Google ADK": "google-genai",
-    "smolagents": "huggingface_hub",
-}
+#: and the client they reach the model through by default, which it does not patch.
+#: `agentfox up` and `agentfox init` say so instead of promising that `auto()` records
+#: every call; the gateway route governs them. None today: Google ADK (google-genai)
+#: and smolagents (huggingface_hub, and its tools) are patched, see
+#: `frameworks.autoguard.genai` and `frameworks.autoguard.smol`.
+UNPATCHED_FRAMEWORKS: dict[str, str] = {}
 
 #: What a repository's own agent class talks to, by the package its module imports,
 #: first match wins: the label of an agent built on a local ``Agent`` class.
