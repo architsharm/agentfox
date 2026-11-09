@@ -757,6 +757,9 @@ class _Visitor(ast.NodeVisitor):
         #: Module-level functions, with their line and docstring, for tools an agent
         #: is handed as plain functions (`TOOLS = [search]`).
         self.functions: dict[str, tuple[int, str, list[str]]] = {}
+        #: Module-level functions that only read and write the agent's own run state
+        #: (LlamaIndex's `ctx.store.set(...)`): tools by shape, but no way in or out.
+        self.state_only: set[str] = set()
         #: `x.run(...)`-shaped calls: (receiver, method, line, label, receiver imported).
         #: A model call when the agent pass finds an agent held in `x` (decided after
         #: every file is read).
@@ -786,6 +789,8 @@ class _Visitor(ast.NodeVisitor):
                 self.functions.setdefault(
                     stmt.name, (stmt.lineno, ast.get_docstring(stmt) or "", _arg_names(stmt))
                 )
+                if _state_only(stmt):
+                    self.state_only.add(stmt.name)
             elif isinstance(stmt, ast.ClassDef) and (made := tool_class(stmt)) is not None:
                 # `class FileWriteTool(Tool)` naming itself "file_write": an agent
                 # handed `FileWriteTool()` reaches the tool by that name.
@@ -1471,6 +1476,42 @@ def _scan_javascript(source: str, rel: str) -> tuple[list[Site], set[str]]:
     return sites, frameworks
 
 
+#: Key prefix in a file's ``functions`` marking a function as run-state only (see
+#: `_state_only`); never a Python name, so it cannot collide with one.
+_STATE_ONLY = "<state>"
+
+#: The context parameter a framework hands a tool, and the calls on it that only touch
+#: the run's own state: LlamaIndex `Context` (`ctx.store.get/set`, `ctx.get/set`),
+#: and the same shape elsewhere.
+_CTX_PARAMS = {"ctx", "context"}
+_STATE_CALLS = {"get", "set", "edit_state", "write_event_to_stream", "send_event"}
+
+
+def _state_only(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """Whether ``fn`` takes a run context and every call it makes is a read or write of
+    that context's state (``await ctx.store.set("state", s)``), with nothing else: no
+    client, file, request or other function. Such a "tool" is the agent's working
+    memory; it reads no private data, takes in nothing untrusted and sends nothing
+    out, whatever its name says (`record_notes`, `write_report`)."""
+    params = {a.arg for a in [*fn.args.posonlyargs, *fn.args.args, *fn.args.kwonlyargs]}
+    ctx = params & _CTX_PARAMS
+    if not ctx:
+        return False
+    calls = [n for n in ast.walk(fn) if isinstance(n, ast.Call)]
+    if not calls:
+        return False
+    for call in calls:
+        func = call.func
+        if not isinstance(func, ast.Attribute) or func.attr not in _STATE_CALLS:
+            return False
+        base = func.value
+        while isinstance(base, ast.Attribute):
+            base = base.value
+        if not (isinstance(base, ast.Name) and base.id in ctx):
+            return False
+    return True
+
+
 def scan_file(
     path: Path,
     root: Path,
@@ -1506,6 +1547,8 @@ def scan_file(
         governed = visitor.governed
         if functions is not None:
             functions.update(visitor.functions)
+            for name in visitor.state_only:
+                functions[f"{_STATE_ONLY}{name}"] = visitor.functions[name]
         if runs is not None:
             runs.extend(visitor.runs)
     elif path.suffix in JS_SUFFIXES:
@@ -1601,13 +1644,17 @@ def _add_agent_tools(
     function is found where it is defined, nearest the agent first; a name no file
     defines as a function gets no site, since the static read cannot say what it is.
     """
-    from agentfox.capabilities.discovery.exposure import FLAG_LABEL, classify_tool
+    from agentfox.capabilities.discovery.exposure import FLAG_LABEL, Capabilities, classify_tool
 
     have = {(s.name, s.file) for s in report.tools}
     named = {s.name for s in report.tools}
     defined: dict[str, list[tuple[str, int, str, list[str]]]] = defaultdict(list)
+    state_only: set[tuple[str, str]] = set()
     for file, funcs in functions.items():
         for name, (line, doc, args) in funcs.items():
+            if name.startswith(_STATE_ONLY):
+                state_only.add((file, name.removeprefix(_STATE_ONLY)))
+                continue
             defined[name].append((file, line, doc, args))
     for agent in report.agents:
         for name in agent.tools:
@@ -1622,9 +1669,14 @@ def _add_agent_tools(
             have.add((name, file))
             details = {d["name"]: d for d in agent.tool_details}
             doc = str(details.get(name, {}).get("description") or doc)
-            caps = classify_tool(name, doc, args)
+            if (file, name) in state_only:
+                caps = Capabilities()
+                what = "only reads and writes the run's own state"
+            else:
+                caps = classify_tool(name, doc, args)
+                what = ""
             flags = caps.ordered()
-            what = "; ".join(caps.phrases.get(f, FLAG_LABEL[f]) for f in flags)
+            what = what or "; ".join(caps.phrases.get(f, FLAG_LABEL[f]) for f in flags)
             report.sites.append(
                 Site(
                     kind="tool",
@@ -2121,15 +2173,27 @@ def _detect_trifectas(report: ScanReport) -> None:
 def _agent_slug(
     report: ScanReport, agents: list[AgentSpec], evidence: dict[str, list[str]]
 ) -> str | None:
-    """The slug `agentfox up` registers the agent holding a trifecta's way out under:
-    the repository's name for a repository with one agent, else the agent's own name.
-    None when the group is not an agent the scan found."""
+    """The name `agentfox up` registers the agent holding a trifecta's way out under,
+    the one `auto("...")` reports its calls as: the repository's name for a repository
+    with one agent, else the root of the system the holder belongs to (one `auto()`
+    governs a whole system), named as `up` names it: its own name, or its project's
+    for a container the code names only by a variable. None when the group is not an
+    agent the scan found."""
+    from agentfox.capabilities.onboarding.mapper import project_name_for, unnamed_container
+    from agentfox.core.naming import slug
+
     if not agents:
         return None
     channel = (evidence.get("exfiltration") or [""])[0]
     holder = next((a for a in agents if channel in a.tools), agents[0])
     if len(report.agents) == 1:
-        name = Path(report.root).name
-    else:
-        name = holder.name
-    return re.sub(r"[^a-z0-9-]+", "-", name.strip().lower()).strip("-") or None
+        return slug(Path(report.root).name, default="") or None
+    by_key = {a.key: a for a in report.agents}
+    parent_of = {e.child: e.parent for e in report.agent_edges if e.parent in by_key}
+    root, seen = holder, {holder.key}
+    while root.key in parent_of and parent_of[root.key] not in seen:
+        root = by_key[parent_of[root.key]]
+        seen.add(root.key)
+    if unnamed_container(root):
+        return slug(project_name_for(Path(report.root), root.file), default="") or None
+    return root.key

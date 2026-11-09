@@ -243,3 +243,89 @@ def test_a_class_agent_on_a_local_base_is_labelled_by_the_protocol_it_uses(tmp_p
     )
     assert _agents(report)["orchestrator-agent"]["framework"] == "A2A"
     assert "a2a_kit" not in report.frameworks
+
+
+_LLAMA_STATE = '''
+from llama_index.core.agent.workflow import AgentWorkflow, FunctionAgent
+from llama_index.core.workflow import Context
+from llama_index.tools.tavily_research import TavilyToolSpec
+
+
+async def record_notes(ctx: Context, notes: str, notes_title: str) -> str:
+    """Record notes on a given topic."""
+    state = await ctx.store.get("state")
+    state["research_notes"][notes_title] = notes
+    await ctx.store.set("state", state)
+    return "Notes recorded."
+
+
+async def write_report(ctx: Context, report_content: str) -> str:
+    """Write a report on a given topic."""
+    state = await ctx.store.get("state")
+    state["report_content"] = report_content
+    await ctx.store.set("state", state)
+    return "Report written."
+
+
+async def review_report(ctx: Context, review: str) -> str:
+    """Review a report and provide feedback."""
+    state = await ctx.store.get("state")
+    state["review"] = review
+    await ctx.store.set("state", state)
+    return "Report reviewed."
+
+
+research = FunctionAgent(name="ResearchAgent", description="r", system_prompt="s",
+                         tools=[record_notes])
+write = FunctionAgent(name="WriteAgent", description="w", system_prompt="s",
+                      tools=[write_report])
+review = FunctionAgent(name="ReviewAgent", description="v", system_prompt="s",
+                       tools=[review_report])
+workflow = AgentWorkflow(agents=[research, write, review], root_agent="ResearchAgent")
+'''
+
+
+def test_tools_that_only_touch_the_run_state_are_no_trifecta(tmp_path):
+    """Three LlamaIndex tools that only read and write `ctx.store` read as private
+    data, untrusted input and a way out by their names: a critical that was not one."""
+    report = _scan(tmp_path, {"workflow.py": _LLAMA_STATE})
+    assert not report.trifectas
+    tools = {s.name: s for s in report.tools}
+    assert {"record_notes", "write_report", "review_report"} <= set(tools)
+    assert all(not tools[n].capabilities for n in ("record_notes", "write_report"))
+
+
+_TRIFECTA_SYSTEM = '''
+from agents import Agent, function_tool
+
+
+@function_tool
+def read_customer_records(customer_id: str) -> str:
+    """Read the customer's private records from the CRM database."""
+    return ""
+
+
+@function_tool
+def fetch_web_page(url: str) -> str:
+    """Fetch any web page from the internet."""
+    return ""
+
+
+@function_tool
+def send_email(to: str, body: str) -> str:
+    """Send an email to any address."""
+    return ""
+
+
+MailerAgent = Agent(name="MailerAgent", instructions="m",
+                    tools=[read_customer_records, fetch_web_page, send_email])
+FrontDesk = Agent(name="FrontDesk", instructions="route", handoffs=[MailerAgent])
+'''
+
+
+def test_contain_it_names_the_agent_auto_reports_as(tmp_path):
+    """The fix named the draft (`writeagent`), not the agent `up` registers and
+    `auto()` reports as: the root of the system, under the one slug every path uses."""
+    report = _scan(tmp_path, {"desk.py": _TRIFECTA_SYSTEM})
+    (trifecta,) = report.trifectas
+    assert "agentfox permit grant front-desk send_email" in trifecta.evidence["fix"]
