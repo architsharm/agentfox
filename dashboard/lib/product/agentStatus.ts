@@ -171,3 +171,43 @@ export type AgentFacts = {
   /** Open issues, when known (the focused agent's posture carries them). */
   openIssues?: number | null;
 };
+
+/** The fields of an agent row the two helpers below read (`GET /api/agents`). */
+export type AgentRow = {
+  registered?: boolean | null;
+  owner_email?: string | null;
+  risk_tier?: string | null;
+  control_state?: string | null;
+  environment?: string | null;
+  traffic_environment?: string | null;
+};
+
+/**
+ * Why an agent needs a person, one phrase per reason; empty when nothing does.
+ *
+ * "No owner" alone is not one: every agent `agentfox init` adds starts without an
+ * owner, so counting it put every agent of a new workspace under Needs attention,
+ * and the Owner column already offers Assign. It counts on a high-risk agent.
+ */
+export function attentionReasons(a: AgentRow, openIssues = 0): string[] {
+  const out: string[] = [];
+  if (!a.registered) out.push("Not registered: seen in traffic, never added");
+  if (isHalted(a.control_state)) out.push(stateLabel(a.control_state));
+  if (openIssues > 0) out.push(`${openIssues} open ${openIssues === 1 ? "issue" : "issues"}`);
+  if (!a.owner_email && (a.risk_tier === "high" || a.risk_tier === "prohibited")) out.push(`No owner for a ${a.risk_tier}-risk agent`);
+  return out;
+}
+
+/**
+ * The environment an agent's page shows: where its traffic comes from, and the one it
+ * was registered in when that differs. `agentfox init` registers a new agent as
+ * development while `auto()` reports production; the page said "development" for an
+ * agent running live.
+ */
+export function environmentLabel(a: AgentRow): string {
+  const registered = a.environment || "";
+  const traffic = a.traffic_environment || "";
+  if (!traffic) return registered || "—";
+  if (!registered || registered === traffic) return traffic;
+  return `${traffic} (its traffic; registered as ${registered})`;
+}

@@ -38,7 +38,7 @@ import type { Catalog } from "@/components/product/agent/GuardrailMap";
 import { RangeProvider } from "@/components/kit/RangeContext";
 import { PROJECT_VIEWS, projectHref, projectView } from "@/lib/product/project";
 import { AgentStatusMenu, ControlButton, HaltedBanner } from "@/components/product/agent/AgentStatus";
-import { breakerLabel, breakerRule, isHalted, noticeSentence, stateLabel, type AgentControlRecord, type AgentFacts } from "@/lib/product/agentStatus";
+import { breakerLabel, breakerRule, environmentLabel, isHalted, noticeSentence, stateLabel, type AgentControlRecord, type AgentFacts } from "@/lib/product/agentStatus";
 
 export const metadata: Metadata = appPageMetadata("Agent");
 export const dynamic = "force-dynamic";
@@ -159,7 +159,7 @@ export default async function ProjectDetail({ params, searchParams }: { params: 
             items={[
               ["Owner", a.owner_email || "Not assigned"],
               ["Team", a.owner_team || "—"],
-              ["Environment", a.environment],
+              ["Environment", environmentLabel(a)],
               ["Framework", a.framework || "—"],
               ["Last active", ago(a.last_seen_at)],
             ]}
