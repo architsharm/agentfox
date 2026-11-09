@@ -229,6 +229,10 @@ the file it came from.
   uses `$AGENTFOX_URL` and says so.
 
 ### Fixed
+- **The attack test follows hand-offs.** An agent that hands off is attacked through the
+  tools it reaches (Unsafe tool use on a triage agent whose refunds tool sits with a
+  specialist), graded on the reached agent's call and reported "via" that agent;
+  `test redteam` writes and checks those probes the same way.
 - **`auto()` with an account key checks a tool's result as a tool result.** It was sent
   as a plain input, so the rules for what the agent reads (indirect injection) never
   judged it there, unlike the attack test and the local path. An issue raised by a tool
