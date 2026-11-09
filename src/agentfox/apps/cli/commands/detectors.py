@@ -56,6 +56,7 @@ def detectors_pull(key: str) -> None:
     if not models_for(detector):
         console.print(f"{key} uses no model; nothing to download.")
         return
+    console.print(_what_downloads(detector))
     try:
         ids = pull(detector)
     except ImportError as exc:
@@ -77,3 +78,28 @@ def detectors_pull(key: str) -> None:
             else ""
         )
     )
+
+
+def _what_downloads(detector) -> str:
+    """Which models a pull fetches and what each is for: `injection.classifier` fetches
+    two, and the command used to download both without a word about the second."""
+    from agentfox.capabilities.detection.models import models_for
+
+    ids = models_for(detector)
+    primary = getattr(detector, "model_id", None)
+    secondary = getattr(detector, "secondary_model_id", None)
+    if len(ids) == 1:
+        return f"Downloading {ids[0]} for {detector.key}."
+    lines = [f"Downloading {len(ids)} models for {detector.key}:"]
+    for model_id in ids:
+        if model_id == primary:
+            role = "the model it checks with"
+        elif model_id == secondary:
+            role = (
+                "a second opinion, asked only when the first finds nothing; its hits are "
+                "recorded, never blocked on"
+            )
+        else:
+            role = "used alongside it"
+        lines.append(f"  {model_id}: {role}")
+    return "\n".join(lines)
