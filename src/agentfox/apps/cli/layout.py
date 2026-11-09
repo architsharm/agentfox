@@ -386,9 +386,7 @@ def apply_layout(app: typer.Typer) -> None:
     policy_app.add_typer(sub["proposals"].typer_instance, name="proposals")
 
     # -- Prove: test ---------------------------------------------------------------
-    test_app = _new_group(
-        "Prove the controls hold before you ship: score, gate, attack."
-    )
+    test_app = _new_group("Prove the controls hold before you ship: score, gate, attack.")
     for name in ("run", "gate", "baseline", "suites", "online"):
         _alias(test_app, find("eval", name), name)
     _alias(test_app, find("redteam", "run"), "redteam")
