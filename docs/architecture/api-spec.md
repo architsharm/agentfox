@@ -380,7 +380,7 @@ from the code. Regenerate after changing any route:
 | `POST` | `/api/retention/purge` | Run the retention purge now, through the same job the daily schedule runs. |
 | `GET` | `/api/retention/runs` | Retention Runs |
 | `PUT` | `/api/retention/{data_class}` | Change how long one data class is kept. Audited as `operator.retention.changed`. |
-| `GET` | `/api/traces` | Runs, newest first. ``group=true`` gives one row per conversation. |
+| `GET` | `/api/traces` | Runs, newest first. ``group=true`` gives one row per conversation turn. |
 | `GET` | `/api/traces/resolve` | Their run id → our governance decision. |
 | `GET` | `/api/traces/{trace_id}` | Get Trace |
 
