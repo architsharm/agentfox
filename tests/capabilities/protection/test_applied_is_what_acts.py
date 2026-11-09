@@ -49,3 +49,23 @@ def test_the_containment_facts_block_where_tool_containment_blocks(session):
     assert "capability.default_deny" not in rows
     # Nothing else is bound for it, but a pack is: no fallback.
     assert "injection.direct" not in rows
+
+
+def test_library_cards_agree_with_applied_rules(session):
+    """The Libraries tab reads the same facts: with nothing bound, the baseline is on
+    by default (watching) and Tool containment's built-in rules watch."""
+    from agentfox.capabilities.protection.libraries import library_status
+
+    register_agent(session, "payables", name="payables")
+    session.commit()
+    baseline = library_status(session, "baseline", ["payables"])
+    assert baseline["agents"] == [] and baseline["fallback"] is True
+    containment = library_status(session, CONTAINMENT, ["payables"])
+    assert containment["builtIn"] is True and containment["fallback"] is False
+
+    for doc in load_from_dir():
+        if doc.key == CONTAINMENT:
+            save_policy(session, doc, author="test", bind_mode="observe")
+    session.commit()
+    # Something is bound now: the fallback no longer applies, and the card says so.
+    assert library_status(session, "baseline", ["payables"])["fallback"] is False

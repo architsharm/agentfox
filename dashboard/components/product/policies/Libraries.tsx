@@ -158,8 +158,17 @@ async function libraries(project: string, agents: string[]): Promise<Library[]> 
   const mine = new Set(agents);
   const body = { agents, project };
   const everyBody = { agents: [] };
-  const on = (st: Status) => (st.agents.length ? st.agents.join(", ") : st.workspace ? "Every agent (applied workspace-wide)" : "Not applied");
-  const mode = (st: Status) => (st.agents.length || st.workspace ? (st.blocking ? "blocking" : "watching") : null);
+  const on = (st: Status) =>
+    st.agents.length
+      ? st.agents.join(", ")
+      : st.workspace
+        ? "Every agent (applied workspace-wide)"
+        : st.fallback
+          ? "By default, on agents nothing else is applied to"
+          : st.builtIn
+            ? "Its built-in rules, on every agent"
+            : "Not applied";
+  const mode = (st: Status) => (st.agents.length || st.workspace ? (st.blocking ? "blocking" : "watching") : st.fallback || st.builtIn ? "watching" : null);
 
   const basic = status.basic || NONE;
   const basicOn = basic.agents.length;

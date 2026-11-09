@@ -40,6 +40,8 @@ export type LibraryStatus = {
   outdatedAgents?: string[];
   /** Tool containment, not applied: its built-in rules (a missing grant, a composed escalation) still watch every agent. */
   builtIn?: boolean;
+  /** Not applied, but the enforcer applies it watching to an agent nothing else is applied to (the shipped fallback). */
+  fallback?: boolean;
 };
 
 const CHECKS: Record<string, string> = {
@@ -115,6 +117,7 @@ export function libraryState(st: LibraryStatus, total: number): { text: string; 
   const tone = st.blocking ? "pol-on" : "pol-watch";
   if (st.agents.length) return { text: `On ${whereOn(st.agents.length, total)} · ${mode}${st.outdated ? " · update available" : ""}`, tone };
   if (st.workspace) return { text: `On every agent (workspace) · ${mode}`, tone };
+  if (st.fallback) return { text: "On by default · watching", tone: "pol-watch" };
   if (st.builtIn) return { text: "Built-in rules only · watching", tone: "pol-watch" };
   return { text: "Not applied", tone: "" };
 }
