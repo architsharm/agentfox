@@ -520,7 +520,7 @@ output: block ['pii.outbound_redact', 'output.card_number']`}</Output>
         <tbody>
           <tr><td><code>TOOL</code></td><td>required</td><td>A key or a glob (<code>tickets.*</code>, <code>mcp:github/*</code>, <code>*</code>). When several grants match, the most specific wins.</td></tr>
           <tr><td><code>--limit</code></td><td>none</td><td>Repeatable argument limit; see the operators below.</td></tr>
-          <tr><td><code>--max-taint</code></td><td><code>user</code></td><td>The worst provenance an argument may carry and still run without approval: <code>none</code>, <code>user</code>, <code>retrieved</code>, <code>tool_result</code>, <code>subagent</code>, <code>memory</code>. Above it the call escalates. Within it, the <code>taint.*</code> rules defer to the grant; <code>composition.escalation</code> does not.</td></tr>
+          <tr><td><code>--max-taint</code></td><td><code>memory</code> for a tool that only reads, <code>user</code> for any other (as the dashboard&apos;s Add)</td><td>The worst provenance an argument may carry and still run without approval: <code>none</code>, <code>user</code>, <code>retrieved</code>, <code>tool_result</code>, <code>subagent</code>, <code>memory</code>. Above it the call escalates. Within it, the <code>taint.*</code> rules defer to the grant; <code>composition.escalation</code> does not.</td></tr>
           <tr><td><code>--requires-approval</code></td><td>off</td><td>Every matching call goes to a person first.</td></tr>
           <tr><td><code>--expires-in-days</code></td><td>no expiry</td><td>The grant stops matching after N days.</td></tr>
           <tr><td><code>--action</code></td><td>every action</td><td>Limit the grant to named actions on the tool. Repeatable.</td></tr>
