@@ -408,12 +408,13 @@ def search_traces(
     limit: int = 100,
     group: bool = False,
 ) -> list[dict[str, Any]]:
-    """Runs, newest first. ``group`` folds the runs of one conversation into one row.
+    """Runs, newest first. ``group`` folds the runs of one conversation turn into one row.
 
     An agent framework checks a message, its model call, each tool and the reply
     separately, and each can be its own run; a person reads one conversation turn.
-    Grouped, a row is the conversation (its ``session_id``): its first message, its
-    worst outcome, every tool and rule, and ``runs`` for how many it folds.
+    Grouped, a row is the turn (`_group_turns`): what the person asked, its worst
+    outcome, every tool and rule, ``runs`` for how many runs it folds and
+    ``trace_ids`` for which, oldest first.
     """
     if group:
         rows = search_traces(
@@ -429,7 +430,7 @@ def search_traces(
             errors_only=errors_only,
             limit=min(limit * 10, 2000),
         )
-        return _group_conversations(rows)[:limit]
+        return _group_turns(rows)[:limit]
     query = select(Trace).order_by(Trace.started_at.desc())
     if agent_slug:
         query = query.where(Trace.agent_slug == agent_slug)
@@ -498,6 +499,9 @@ def search_traces(
     # The approval a held call filed, so a list of runs can say Approved or Denied
     # once a person has answered instead of "Held" for ever.
     held: dict[str, str] = {}
+    # Which runs carry something the person said: a turn starts at one of these, and
+    # a run checking only a tool call, a tool's result or a reply continues one.
+    asked: set[str] = set()
     if traces:
         from agentfox.platform.ledger.decision_scope import decision_scope, recorded_only
 
@@ -505,6 +509,11 @@ def search_traces(
             select(Decision).where(Decision.trace_id.in_({t.id for t in traces}))
         ):
             checks[d.trace_id] = checks.get(d.trace_id, 0) + 1
+            if d.surface == "input" and (d.taint_summary_json or {}).get("max_source") in (
+                None,
+                "user",
+            ):
+                asked.add(d.trace_id)
             if d.verdict == "escalate" and d.approval_id:
                 held.setdefault(d.trace_id, d.approval_id)
             scope = (
@@ -554,6 +563,8 @@ def search_traces(
             if tool and tool not in tools.setdefault(sp.trace_id, []):
                 tools[sp.trace_id].append(tool)
             surface = attrs.get("surface")
+            if surface == "input":
+                asked.add(sp.trace_id)
             if surface and surface not in surfaces.setdefault(sp.trace_id, []):
                 surfaces[sp.trace_id].append(surface)
 
@@ -577,6 +588,8 @@ def search_traces(
             "checks": checks.get(t.id, 0),
             "session_id": t.session_id,
             "approval_status": statuses.get(held.get(t.id, "")) if held else None,
+            # A run nothing checked (telemetry only) may still be a person's message.
+            "asked": t.id in asked or (not checks.get(t.id) and bool(t.summary)),
         }
         for t in traces
     ]
@@ -585,41 +598,92 @@ def search_traces(
 _OUTCOME_RANK = {"block": 5, "escalate": 4, "abstain": 3, "redact": 2, "mask": 2, "allow": 0}
 
 
-def _group_conversations(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Fold rows (newest first) sharing a session into one row per conversation."""
+#: The longest pause between two runs of one turn: a model call, its tool calls and
+#: the call that reads their results follow each other within seconds; a person's
+#: next message to an agent with no session id is a new turn after this long.
+TURN_GAP = dt.timedelta(minutes=5)
+
+
+def _turn_key(row: dict[str, Any]) -> tuple[str, ...]:
+    if row.get("session_id"):
+        return ("session", row["session_id"])
+    return ("agent", row.get("agent") or "", row.get("environment") or "")
+
+
+def _group_turns(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Fold rows (newest first) into one row per conversation turn, newest first.
+
+    A turn starts at a run that carries what the person said (``asked``) and takes
+    the runs after it on the same conversation (its ``session_id``, else the same
+    agent and environment within `TURN_GAP`) that only check a tool call, a tool's
+    result or the reply. A run that re-checks the same message (a framework sends
+    the whole conversation on each model call) continues the turn too. Without the
+    fold, one question read as three rows, the second and third headed by a tool's
+    name and a tool's output.
+    """
     out: list[dict[str, Any]] = []
-    by_session: dict[str, dict[str, Any]] = {}
-    for row in rows:
-        sid = row.get("session_id")
-        if not sid:
-            out.append({**row, "runs": 1})
-            continue
-        group = by_session.get(sid)
-        if group is None:
-            group = {**row, "runs": 1, "rules": list(row["rules"]), "tools": list(row["tools"])}
-            group["surfaces"] = list(row["surfaces"])
-            by_session[sid] = group
-            out.append(group)
-            continue
-        group["runs"] += 1
-        group["checks"] += row["checks"]
-        group["cost_usd"] = (group.get("cost_usd") or 0) + (row.get("cost_usd") or 0) or None
-        for key in ("rules", "tools", "surfaces"):
-            for item in row[key]:
-                if item not in group[key]:
-                    group[key].append(item)
-        if _OUTCOME_RANK.get(row["verdict"], 0) > _OUTCOME_RANK.get(group["verdict"], 0):
-            group["verdict"] = row["verdict"]
-            group["approval_status"] = row.get("approval_status")
-        if _OUTCOME_RANK.get(row.get("would_verdict") or "", 0) > _OUTCOME_RANK.get(
-            group.get("would_verdict") or "", 0
-        ):
-            group["would_verdict"] = row["would_verdict"]
-        # Rows come newest first, so the last summary seen is the conversation's first.
-        if row.get("summary"):
-            group["summary"] = row["summary"]
-        group["model"] = group.get("model") or row.get("model")
+    open_turns: dict[tuple[str, ...], tuple[dict[str, Any], dt.datetime | None]] = {}
+    for row in reversed(rows):
+        key = _turn_key(row)
+        at = _parse(row.get("started_at"))
+        current = open_turns.get(key)
+        if current is not None:
+            turn, last = current
+            near = key[0] == "session" or (
+                at is not None and last is not None and at - last <= TURN_GAP
+            )
+            same_message = bool(row.get("summary")) and row.get("summary") == turn.get("summary")
+            if near and (not row.get("asked") or same_message):
+                _fold(turn, row)
+                open_turns[key] = (turn, at or last)
+                continue
+        turn = {
+            **row,
+            "runs": 1,
+            "trace_ids": [row["id"]],
+            "rules": list(row["rules"]),
+            "tools": list(row["tools"]),
+            "surfaces": list(row["surfaces"]),
+        }
+        open_turns[key] = (turn, at)
+        out.append(turn)
+    out.reverse()
     return out
+
+
+def _fold(turn: dict[str, Any], row: dict[str, Any]) -> None:
+    turn["runs"] += 1
+    turn["trace_ids"].append(row["id"])
+    turn["checks"] += row["checks"]
+    turn["cost_usd"] = (turn.get("cost_usd") or 0) + (row.get("cost_usd") or 0) or None
+    for key in ("rules", "tools", "surfaces"):
+        for item in row[key]:
+            if item not in turn[key]:
+                turn[key].append(item)
+    if _OUTCOME_RANK.get(row["verdict"], 0) > _OUTCOME_RANK.get(turn["verdict"], 0):
+        turn["verdict"] = row["verdict"]
+        turn["approval_status"] = row.get("approval_status")
+    if _OUTCOME_RANK.get(row.get("would_verdict") or "", 0) > _OUTCOME_RANK.get(
+        turn.get("would_verdict") or "", 0
+    ):
+        turn["would_verdict"] = row["would_verdict"]
+    if row.get("status") == "error":
+        turn["status"] = "error"
+    # A turn that opened on a tool's run (its message fell outside the range or the
+    # filter) takes the first message it meets.
+    if not turn.get("asked") and row.get("asked") and row.get("summary"):
+        turn["summary"] = row["summary"]
+        turn["asked"] = True
+    turn["model"] = turn.get("model") or row.get("model")
+
+
+def _parse(value: str | None) -> dt.datetime | None:
+    if not value:
+        return None
+    try:
+        return dt.datetime.fromisoformat(value)
+    except ValueError:
+        return None
 
 
 def _iso(value: dt.datetime | None) -> str | None:
