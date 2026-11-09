@@ -45,7 +45,7 @@ export default function Page() {
           <tr>
             <td><a href="#auto"><code>agentfox.auto()</code></a></td>
             <td>One line at startup</td>
-            <td>Every OpenAI, Anthropic, LiteLLM and LangChain chat call: the request, the response, and the tool calls in the response</td>
+            <td>Every OpenAI, Anthropic, LiteLLM, LangChain, google-genai and huggingface_hub chat call: the request, the response, and the tool calls in the response</td>
             <td>You want coverage of an existing app without touching its call sites</td>
           </tr>
           <tr>

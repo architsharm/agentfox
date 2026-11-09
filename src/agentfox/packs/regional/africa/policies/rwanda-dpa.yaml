@@ -35,24 +35,21 @@ rules:
     action_risk: rwanda-dpa.block-cross-border-transfer-non-permitted
   effect: block
   severity: high
-  reason: 'Rwanda Law 058/2021 Art. 48: Cross-border transfer to region <value> blocked - destination
-    country adequacy not established with NCSA'
+  reason: 'Rwanda Law 058/2021 Art. 48: Cross-border transfer to region <value> - destination country adequacy not established with NCSA, so it may not go ahead'
 - id: rwanda-dpa.block-transfer-non-rw-country-without
   description: 'Art. 48/49: Block transfer to non-RW country without documented consent'
   when:
     action_risk: rwanda-dpa.block-transfer-non-rw-country-without
   effect: block
   severity: high
-  reason: 'Rwanda Law 058/2021 Art. 48/49: Transfer to <value> blocked - no documented consent or contractual
-    safeguards on file'
+  reason: 'Rwanda Law 058/2021 Art. 48/49: Transfer to <value> with no documented consent or contractual safeguards on file - needs one before it goes ahead'
 - id: rwanda-dpa.block-rwanda-national-id-output
   description: 'NIDA: Block Rwanda National ID in output (16-digit format)'
   when:
     action_risk: rwanda-dpa.block-rwanda-national-id-output
   effect: block
   severity: high
-  reason: 'Rwanda Law 058/2021 Art. 43: Rwanda National ID (NIDA 16-digit) detected in agent output -
-    blocked to prevent identity data breach'
+  reason: 'Rwanda Law 058/2021 Art. 43: Rwanda National ID (NIDA 16-digit) detected in agent output; blocking keeps it out of the reply to prevent an identity data breach'
 - id: rwanda-dpa.block-large-record-exports
   description: 'Art. 50: Block large record exports (storage location restrictions)'
   when:

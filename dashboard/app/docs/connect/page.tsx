@@ -26,7 +26,7 @@ export default function Page() {
           {
             href: "/docs/connect/python",
             title: "Python apps",
-            text: "One line, agentfox.auto(), for OpenAI, Anthropic, LiteLLM, LangChain and CrewAI.",
+            text: "One line, agentfox.auto(), for OpenAI, Anthropic, LiteLLM, LangChain, CrewAI, Google ADK and smolagents.",
           },
           {
             href: "/docs/connect/python#openai-agents",

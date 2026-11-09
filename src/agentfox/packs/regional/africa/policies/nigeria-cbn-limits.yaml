@@ -28,14 +28,14 @@ rules:
     action_risk: nigeria-cbn-limits.single-transaction-cannot-exceed-10-000
   effect: block
   severity: high
-  reason: 'CBN NIP Framework: Transaction of ₦<value> exceeds ₦10,000,000 single-transaction cap - blocked'
+  reason: 'CBN NIP Framework: Transaction of ₦<value> exceeds the ₦10,000,000 single-transaction cap, so it may not go ahead'
 - id: nigeria-cbn-limits.detect-10m-text-output
   description: 'CBN NIP Cap: detect >₦10M in text output (defence-in-depth)'
   when:
     action_risk: nigeria-cbn-limits.detect-10m-text-output
   effect: block
   severity: high
-  reason: 'CBN NIP Framework: Transaction amount exceeding ₦10,000,000 detected in output - blocked'
+  reason: 'CBN NIP Framework: Transaction amount exceeding ₦10,000,000 detected in output; it is over the single-transaction cap'
 - id: nigeria-cbn-limits.transfers-between-5m-10m-require-human
   description: 'CBN Tier 3: transfers between ₦5M and ₦10M require human approval'
   when:

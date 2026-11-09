@@ -124,17 +124,33 @@ root_agent = LlmAgent(name="fund_advisor", model="gemini-2.5-pro", instruction="
 """
 
 
-@pytest.mark.usefixtures("home")
-def test_up_says_auto_does_not_govern_an_adk_agents_model_calls(tmp_path):
+def _adk_project(tmp_path):
     root = tmp_path / "advisor"
     (root / "app").mkdir(parents=True)
     (root / ".git").mkdir()
     (root / "app" / "agent.py").write_text(textwrap.dedent(ADK))
-    result = _up(str(root), "--yes", "--with", "python-app")
+    return root
+
+
+@pytest.mark.usefixtures("home")
+def test_up_no_longer_warns_that_auto_misses_an_adk_agents_model_calls(tmp_path):
+    # auto() patches google-genai now (autoguard.genai), so ADK's calls are governed.
+    result = _up(str(_adk_project(tmp_path)), "--yes", "--with", "python-app")
+    assert result.exit_code == 0, result.output
+    out = " ".join(result.output.split())
+    assert "NOT governed by auto()" not in out
+
+
+@pytest.mark.usefixtures("home")
+def test_up_says_when_auto_does_not_govern_a_frameworks_model_calls(tmp_path, monkeypatch):
+    from agentfox.capabilities.discovery import agents
+
+    monkeypatch.setitem(agents.UNPATCHED_FRAMEWORKS, "Google ADK", "some-client")
+    result = _up(str(_adk_project(tmp_path)), "--yes", "--with", "python-app")
     assert result.exit_code == 0, result.output
     out = " ".join(result.output.split())
     assert "NOT governed by auto()" in out
-    assert "google-genai" in out
+    assert "some-client" in out
     assert "records every call" not in out
 
 

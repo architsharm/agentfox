@@ -87,7 +87,7 @@ export default function Page() {
       <ul>
         <li>
           <b><code>agentfox.auto()</code></b>: not a tool your code calls without the model asking
-          for it (LangChain and CrewAI tools excepted: they are checked where they run), and not
+          for it (LangChain, CrewAI and smolagents tools excepted: they are checked where they run), and not
           what an OpenAI-hosted tool (web search, file search) does: it is recorded after it ran.
         </li>
         <li>

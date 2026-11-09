@@ -28,16 +28,14 @@ rules:
     action_risk: india-aadhaar.unmasked-12-digit-run-near-uid
   effect: block
   severity: high
-  reason: 'Aadhaar Regulations 2021: unmasked 12-digit Aadhaar number detected near UID context - must
-    be masked (last 4 only)'
+  reason: 'Aadhaar Regulations 2021: unmasked 12-digit Aadhaar number detected near UID context - only the last 4 digits may be shown'
 - id: india-aadhaar.1234-5678-9012-or-1234-5678
   description: 'Standard Aadhaar display formats: 1234 5678 9012 or 1234-5678-9012 (grouped 4-4-4)'
   when:
     action_risk: india-aadhaar.1234-5678-9012-or-1234-5678
   effect: block
   severity: high
-  reason: 'Aadhaar Regulations 2021: a grouped 12-digit sequence (4-4-4) resembling an Aadhaar number
-    must be masked; only the last 4 digits may be shown'
+  reason: 'Aadhaar Regulations 2021: a grouped 12-digit sequence (4-4-4) resembling an Aadhaar number detected - only the last 4 digits may be shown'
 - id: india-aadhaar.core-biometric-information-never-shared-displayed
   description: 's.29(1): core biometric information never shared/displayed/stored by unauthorised entities'
   when:

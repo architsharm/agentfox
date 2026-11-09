@@ -20,50 +20,49 @@ rules:
     action_risk: nigeria-bvn-nin.block-bvn-value-agent-output
   effect: block
   severity: high
-  reason: 'BVN Protection: BVN value detected in agent output - blocked (NDPA Schedule 1 biometric data)'
+  reason: 'BVN Protection: BVN value detected in agent output; blocking keeps it out of the reply (NDPA Schedule 1 biometric data)'
 - id: nigeria-bvn-nin.block-contextual-bvn-pattern-output
   description: Block contextual BVN pattern in output
   when:
     action_risk: nigeria-bvn-nin.block-contextual-bvn-pattern-output
   effect: block
   severity: high
-  reason: 'BVN Protection: BVN pattern detected in agent output - blocked to prevent credential exposure'
+  reason: 'BVN Protection: BVN pattern detected in agent output; blocking keeps it out of the reply to prevent credential exposure'
 - id: nigeria-bvn-nin.block-nin-value-agent-output
   description: Block NIN value in agent output
   when:
     action_risk: nigeria-bvn-nin.block-nin-value-agent-output
   effect: block
   severity: high
-  reason: 'NIN Protection: NIN value detected in agent output - blocked (NDPA Schedule 1 biometric data)'
+  reason: 'NIN Protection: NIN value detected in agent output; blocking keeps it out of the reply (NDPA Schedule 1 biometric data)'
 - id: nigeria-bvn-nin.block-virtual-nin-output
   description: Block virtual NIN (vNIN) in output
   when:
     action_risk: nigeria-bvn-nin.block-virtual-nin-output
   effect: block
   severity: high
-  reason: 'NIN Protection: Virtual NIN (vNIN) detected in agent output - blocked'
+  reason: 'NIN Protection: Virtual NIN (vNIN) detected in agent output; blocking keeps it out of the reply'
 - id: nigeria-bvn-nin.block-direct-bvn-nin-transmission-external
   description: Block direct BVN/NIN transmission to external systems
   when:
     action_risk: nigeria-bvn-nin.block-direct-bvn-nin-transmission-external
   effect: block
   severity: high
-  reason: 'BVN/NIN Transmission: Direct BVN/NIN transmission blocked - use NIBSS tokenised verification
-    flow'
+  reason: 'BVN/NIN Transmission: Direct BVN/NIN transmission requested - use the NIBSS tokenisation verification flow instead'
 - id: nigeria-bvn-nin.block-bvn-present-params-from-being
   description: Block BVN present in params from being passed externally
   when:
     action_risk: nigeria-bvn-nin.block-bvn-present-params-from-being
   effect: block
   severity: high
-  reason: 'BVN/NIN Transmission: BVN detected in params with external transmission action - blocked'
+  reason: 'BVN/NIN Transmission: BVN detected in params of an external transmission action; blocking keeps it from leaving'
 - id: nigeria-bvn-nin.block-bvn-disclosure-over-conversational-channels
   description: Block BVN disclosure over conversational channels (social engineering)
   when:
     action_risk: nigeria-bvn-nin.block-bvn-disclosure-over-conversational-channels
   effect: block
   severity: high
-  reason: 'BVN/NIN Social Engineering: Attempt to disclose BVN/NIN through conversational channel - blocked'
+  reason: 'BVN/NIN Social Engineering: Attempt to disclose BVN/NIN through a conversational channel; blocking keeps it from being disclosed'
 - id: nigeria-bvn-nin.block-illegal-data-persistence
   description: Block illegal data persistence (NIMC Act 2026 - ₦20M corporate / 5yr individual penalty)
   when:

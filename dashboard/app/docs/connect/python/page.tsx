@@ -159,18 +159,24 @@ export AGENTFOX_API_KEY=nom_api_…`}</Code>
         <li>
           <strong>Patched:</strong> <code>openai</code> chat completions and the Responses API,{" "}
           <code>anthropic</code> messages, <code>litellm</code>, LangChain chat models and tools,
-          and CrewAI tools. Sync, async and streamed.
+          CrewAI tools, <code>google-genai</code> (Gemini, and Google ADK on it, including the
+          functions it calls for the model), and <code>huggingface_hub</code> chat completions and
+          smolagents tools. Sync, async and streamed.
         </li>
         <li>
-          <strong>LangChain, LangGraph, CrewAI, LlamaIndex, AutoGen, the OpenAI Agents SDK:</strong>{" "}
-          covered through the client they call the model with. LangChain and CrewAI tools are also
+          <strong>
+            LangChain, LangGraph, CrewAI, LlamaIndex, AutoGen, the OpenAI Agents SDK, Google ADK,
+            smolagents:
+          </strong>{" "}
+          covered through the client they call the model with. LangChain, CrewAI and smolagents
+          tools are also
           checked where they run, so a CrewAI agent&apos;s text tool calls (&quot;Action:
           ...&quot;) are checked too. For checks on graph nodes, see{" "}
           <Link href="/docs/connect/langgraph">LangGraph</Link>.
         </li>
         <li>
-          <strong>Not covered:</strong> a tool your code calls without the model asking (LangChain
-          and CrewAI tools excepted), and other processes. Tools OpenAI hosts (web search, file
+          <strong>Not covered:</strong> a tool your code calls without the model asking (LangChain,
+          CrewAI and smolagents tools excepted), and other processes. Tools OpenAI hosts (web search, file
           search, code interpreter) are recorded, not stopped: they ran before the response came
           back.
         </li>

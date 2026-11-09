@@ -52,22 +52,21 @@ rules:
     action_risk: uk-gdpr.nhs-number-output
   effect: block
   severity: high
-  reason: 'UK GDPR: NHS number detected in agent output - blocked to prevent health identity exposure'
+  reason: 'UK GDPR: NHS number detected in agent output; blocking keeps it out of the reply to prevent health identity exposure'
 - id: uk-gdpr.national-insurance-number-output
   description: National Insurance number in output (compact AB123456C or HMRC-spaced AB 12 34 56 C)
   when:
     action_risk: uk-gdpr.national-insurance-number-output
   effect: block
   severity: high
-  reason: 'UK GDPR: National Insurance number detected in agent output - blocked to prevent identity exposure'
+  reason: 'UK GDPR: National Insurance number detected in agent output; blocking keeps it out of the reply to prevent identity exposure'
 - id: uk-gdpr.block-transfer-without-adequacy-platform-set
   description: 'Art. 44–46: block transfer without adequacy / platform-set DPF (never caller-attested)'
   when:
     action_risk: uk-gdpr.block-transfer-without-adequacy-platform-set
   effect: block
   severity: high
-  reason: 'UK GDPR Art. 44–46: transfer to <value> blocked - requires adequacy, IDTA/UK Addendum safeguards,
-    and data protection test (DUAA ''not materially lower'' standard)'
+  reason: 'UK GDPR Art. 44–46: transfer to <value> - requires adequacy, IDTA/UK Addendum safeguards, and data protection test (DUAA ''not materially lower'' standard) before it goes ahead'
 - id: uk-gdpr.block-large-exports-without-review
   description: 'Art. 5(1)(c): block large exports without review'
   when:

@@ -940,3 +940,64 @@ def test_the_summary_names_what_was_set_up(project):
     flat = " ".join(result.output.split())
     assert "set up:" in flat
     assert "Your Python agent" in flat
+
+
+def test_cloud_target_on_a_server_of_your_own_never_links_to_cloud(project, cloud):
+    # Found by the round-3 audit: `--target cloud --api-url http://127.0.0.1:...`
+    # printed useagentfox.com links for the key and the dashboard.
+    result = _up(
+        str(project),
+        "--yes",
+        "--target",
+        "cloud",
+        "--api-url",
+        "http://127.0.0.1:8412",
+        "--api-token",
+        "nom_api_good",
+        "--with",
+        "view",
+    )
+    assert result.exit_code == 0, result.output
+    flat = " ".join(result.output.split())
+    assert "useagentfox.com" not in flat
+    assert "not AgentFox Cloud's gateway" in flat
+    assert "No dashboard address for http://127.0.0.1:8412" in flat
+    saved = json.loads((project / ".agentfox" / "up.json").read_text())
+    assert saved["dashboard_url"] is None
+
+
+def test_cloud_target_on_clouds_gateway_links_to_clouds_dashboard(project, cloud):
+    result = _up(
+        str(project),
+        "--yes",
+        "--target",
+        "cloud",
+        "--api-url",
+        targets.CLOUD_API_URL,
+        "--api-token",
+        "nom_api_good",
+        "--with",
+        "view",
+    )
+    assert result.exit_code == 0, result.output
+    flat = " ".join(result.output.split())
+    assert f"{targets.CLOUD_APP_URL}/app/start?tab=tokens" in flat
+    assert f"dashboard: {targets.CLOUD_APP_URL}/app" in flat
+
+
+@pytest.mark.parametrize(
+    ("url", "cloud_gateway"),
+    [
+        ("https://guardrails-api.vercel.app", True),
+        ("https://api.useagentfox.com/", True),
+        ("https://useagentfox.com", True),
+        ("http://127.0.0.1:8412", False),
+        ("http://localhost:8080", False),
+        ("https://useagentfox.com.evil.test", False),
+        ("https://gw.acme.test", False),
+        ("", False),
+    ],
+)
+def test_only_clouds_own_gateway_counts_as_cloud(url, cloud_gateway):
+    assert targets.is_cloud_gateway(url) is cloud_gateway
+    assert bool(targets.cloud_dashboard_for(url)) is cloud_gateway

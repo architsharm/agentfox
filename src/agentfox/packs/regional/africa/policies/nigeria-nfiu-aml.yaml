@@ -20,8 +20,7 @@ rules:
     action_risk: nigeria-nfiu-aml.transfer-exceeding-10m-cap-hard-block
   effect: block
   severity: high
-  reason: 'NFIU CTR / CBN NIP: ₦<value> exceeds ₦10,000,000 NIP single-transaction cap - blocked. CTR
-    filing required.'
+  reason: 'NFIU CTR / CBN NIP: ₦<value> exceeds the ₦10,000,000 NIP single-transaction cap, so it may not go ahead. CTR filing required.'
 - id: nigeria-nfiu-aml.structuring-explicit-split-pattern-output
   description: 'MLPPA s.14: Structuring (smurfing) - explicit split pattern in output'
   when:
@@ -36,16 +35,14 @@ rules:
     action_risk: nigeria-nfiu-aml.kyc-bypass-attempt
   effect: block
   severity: high
-  reason: 'NFIU / CBN AML: KYC bypass blocked - proceeding without customer verification violates MLPPA
-    and CBN AML/CFT Framework'
+  reason: 'NFIU / CBN AML: KYC bypass attempted - proceeding without customer verification violates MLPPA and CBN AML/CFT Framework'
 - id: nigeria-nfiu-aml.transaction-unverified-customer
   description: 'CBN AML/CFT Framework: transaction for unverified customer'
   when:
     action_risk: nigeria-nfiu-aml.transaction-unverified-customer
   effect: block
   severity: high
-  reason: 'NFIU / CBN AML: Transaction for unverified customer blocked - KYC must be completed before
-    processing'
+  reason: 'NFIU / CBN AML: Transaction for an unverified customer - KYC must be completed before processing'
 - id: nigeria-nfiu-aml.exact-numeric-ctr-threshold-structured-params
   description: 'MLPPA s.10: Exact numeric CTR threshold on structured params'
   when:

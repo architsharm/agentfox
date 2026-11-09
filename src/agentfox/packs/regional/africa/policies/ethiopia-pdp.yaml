@@ -36,24 +36,21 @@ rules:
     action_risk: ethiopia-pdp.block-cross-border-transfer-non-permitted
   effect: block
   severity: high
-  reason: 'Ethiopia PDPP 1321/2024 Art. 18: Cross-border transfer to <value> blocked - region not in ECA
-    adequacy-approved list'
+  reason: 'Ethiopia PDPP 1321/2024 Art. 18: Cross-border transfer to <value> - region not in ECA adequacy-approved list, so it may not go ahead'
 - id: ethiopia-pdp.block-transfer-non-et-country-without
   description: 'Art. 20: Block transfer to non-ET country without documented consent or adequacy'
   when:
     action_risk: ethiopia-pdp.block-transfer-non-et-country-without
   effect: block
   severity: high
-  reason: 'Ethiopia PDPP 1321/2024 Art. 20: Transfer to <value> blocked - no documented consent or adequacy
-    basis on file'
+  reason: 'Ethiopia PDPP 1321/2024 Art. 20: Transfer to <value> with no documented consent or adequacy basis on file - needs one before it goes ahead'
 - id: ethiopia-pdp.block-unauthorised-access-signals
   description: 'Proclamation 958/2016: Block unauthorised access signals'
   when:
     action_risk: ethiopia-pdp.block-unauthorised-access-signals
   effect: block
   severity: high
-  reason: 'Ethiopia Proclamation 958/2016: Unauthorised system access signal detected - blocked. This
-    constitutes a criminal offence.'
+  reason: 'Ethiopia Proclamation 958/2016: Unauthorised system access signal detected; blocking keeps the agent from attempting it. This constitutes a criminal offence.'
 - id: ethiopia-pdp.block-fayda-national-id-output-fayda
   description: 'Art. 43: Block Fayda/national ID in output (identity data breach) Fayda falls under Art.
     2 "identifier" definition in Proclamation 1321/2024'
@@ -61,8 +58,7 @@ rules:
     action_risk: ethiopia-pdp.block-fayda-national-id-output-fayda
   effect: block
   severity: high
-  reason: 'Ethiopia PDPP 1321/2024 Art. 43: Fayda/National ID number detected in agent output - blocked
-    to prevent identity data breach'
+  reason: 'Ethiopia PDPP 1321/2024 Art. 43: Fayda/National ID number detected in agent output; blocking keeps it out of the reply to prevent an identity data breach'
 - id: ethiopia-pdp.block-large-record-exports-data-sovereignty
   description: 'Art. 22: Block large record exports - data sovereignty'
   when:

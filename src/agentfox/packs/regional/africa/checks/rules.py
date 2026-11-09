@@ -137,7 +137,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "africa-model-routing.model-v-not-approved-sensitive-task",
             "deny",
-            "Model routing denied: model <value> is not approved for sensitive task type <value>.",
+            "Model routing: model <value> is not approved for sensitive task type <value>; route it to an approved model.",
             (
                 (
                     "ctx",
@@ -241,7 +241,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "africa-pii-leakage.credit-debit-card-number-detected-agent",
             "deny",
-            "PII leakage: credit/debit card number detected in agent output — blocked.",
+            "PII leakage: credit/debit card number detected in agent output; blocking keeps it out of the reply.",
             (
                 (
                     "text",
@@ -252,13 +252,13 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "africa-pii-leakage.bvn-nin-format-identifier-detected-agent",
             "deny",
-            "PII leakage: BVN/NIN-format identifier (11-digit) detected in agent output — blocked.",
+            "PII leakage: BVN/NIN-format identifier (11-digit) detected in agent output; blocking keeps it out of the reply.",
             (("text", "\\b[0-9]{11}\\b"),),
         ),
         R(
             "africa-pii-leakage.south-african-id-number-detected-agent",
             "deny",
-            "PII leakage: South African ID number detected in agent output — blocked.",
+            "PII leakage: South African ID number detected in agent output; blocking keeps it out of the reply.",
             (("text", "\\b[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[0-9]{7}\\b"),),
         ),
         R(
@@ -320,7 +320,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "africa-prompt-injection.input-contains-known-injection-pattern-action",
             "deny",
-            "Prompt injection detected: input contains known injection pattern — action blocked.",
+            "Prompt injection detected: input contains a known injection pattern; blocking keeps the agent from acting on it.",
             (
                 (
                     "params_text_contains",
@@ -455,7 +455,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "nigeria-bvn-nin.block-bvn-value-agent-output",
             "deny",
-            "BVN Protection: BVN value detected in agent output — blocked (NDPA Schedule 1 biometric data)",
+            "BVN Protection: BVN value detected in agent output; blocking keeps it out of the reply (NDPA Schedule 1 biometric data)",
             (
                 (
                     "text",
@@ -466,13 +466,13 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "nigeria-bvn-nin.block-contextual-bvn-pattern-output",
             "deny",
-            "BVN Protection: BVN pattern detected in agent output — blocked to prevent credential exposure",
+            "BVN Protection: BVN pattern detected in agent output; blocking keeps it out of the reply to prevent credential exposure",
             (("text", "(?i)(bvn|bank\\s+verification).{0,20}\\b[0-9]{11}\\b"),),
         ),
         R(
             "nigeria-bvn-nin.block-nin-value-agent-output",
             "deny",
-            "NIN Protection: NIN value detected in agent output — blocked (NDPA Schedule 1 biometric data)",
+            "NIN Protection: NIN value detected in agent output; blocking keeps it out of the reply (NDPA Schedule 1 biometric data)",
             (
                 (
                     "text",
@@ -483,13 +483,13 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "nigeria-bvn-nin.block-virtual-nin-output",
             "deny",
-            "NIN Protection: Virtual NIN (vNIN) detected in agent output — blocked",
+            "NIN Protection: Virtual NIN (vNIN) detected in agent output; blocking keeps it out of the reply",
             (("text", "(?i)(vnin|virtual\\s+nin)[\\s:=]+[A-Z0-9]{16}"),),
         ),
         R(
             "nigeria-bvn-nin.block-direct-bvn-nin-transmission-external",
             "deny",
-            "BVN/NIN Transmission: Direct BVN/NIN transmission blocked — use NIBSS tokenised verification flow",
+            "BVN/NIN Transmission: Direct BVN/NIN transmission requested - use the NIBSS tokenisation verification flow instead",
             (
                 (
                     "action_in",
@@ -509,7 +509,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "nigeria-bvn-nin.block-bvn-present-params-from-being",
             "deny",
-            "BVN/NIN Transmission: BVN detected in params with external transmission action — blocked",
+            "BVN/NIN Transmission: BVN detected in params of an external transmission action; blocking keeps it from leaving",
             (
                 ("param", "bvn_present", "==", True),
                 (
@@ -530,7 +530,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "nigeria-bvn-nin.block-bvn-disclosure-over-conversational-channels",
             "deny",
-            "BVN/NIN Social Engineering: Attempt to disclose BVN/NIN through conversational channel — blocked",
+            "BVN/NIN Social Engineering: Attempt to disclose BVN/NIN through a conversational channel; blocking keeps it from being disclosed",
             (
                 (
                     "text",
@@ -780,7 +780,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "nigeria-cbn-limits.single-transaction-cannot-exceed-10-000",
             "deny",
-            "CBN NIP Framework: Transaction of ₦<value> exceeds ₦10,000,000 single-transaction cap — blocked",
+            "CBN NIP Framework: Transaction of ₦<value> exceeds the ₦10,000,000 single-transaction cap, so it may not go ahead",
             (
                 (
                     "action_in",
@@ -799,7 +799,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "nigeria-cbn-limits.detect-10m-text-output",
             "deny",
-            "CBN NIP Framework: Transaction amount exceeding ₦10,000,000 detected in output — blocked",
+            "CBN NIP Framework: Transaction amount exceeding ₦10,000,000 detected in output; it is over the single-transaction cap",
             (("text", "(?i)(₦|NGN|naira)\\s*1[0-9],?[0-9]{3},?[0-9]{3}"),),
         ),
         R(
@@ -940,7 +940,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "egypt-pdpl.block-egypt-national-id-output-format",
             "deny",
-            "Egypt PDPL No. 151/2020 Art. 1/7: Egyptian National ID (14-digit) detected in agent output — blocked; triggers 72h PDPC breach notification",
+            "Egypt PDPL No. 151/2020 Art. 1/7: Egyptian National ID (14-digit) detected in agent output; blocking keeps it out of the reply, and a disclosure triggers 72h PDPC breach notification",
             (
                 (
                     "text",
@@ -951,7 +951,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "egypt-pdpl.block-cross-border-transfer-non-permitted",
             "deny",
-            "Egypt PDPL No. 151/2020 Art. 14: Cross-border transfer to region <value> blocked — PDPC approval or equivalent protection documentation required",
+            "Egypt PDPL No. 151/2020 Art. 14: Cross-border transfer to region <value> - needs PDPC approval or equivalent protection documentation before it goes ahead",
             (
                 (
                     "action_in",
@@ -983,7 +983,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "egypt-pdpl.block-transfer-non-eg-country-without",
             "deny",
-            "Egypt PDPL No. 151/2020 Arts. 14-15: Transfer to <value> blocked — no documented consent or Art. 15 derogation (vital interest, legal necessity, contract) on file",
+            "Egypt PDPL No. 151/2020 Arts. 14-15: Transfer to <value> with no documented consent or Art. 15 derogation (vital interest, legal necessity, contract) on file - needs one before it goes ahead",
             (
                 (
                     "action_in",
@@ -1219,7 +1219,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "ethiopia-pdp.block-cross-border-transfer-non-permitted",
             "deny",
-            "Ethiopia PDPP 1321/2024 Art. 18: Cross-border transfer to <value> blocked — region not in ECA adequacy-approved list",
+            "Ethiopia PDPP 1321/2024 Art. 18: Cross-border transfer to <value> - region not in ECA adequacy-approved list, so it may not go ahead",
             (
                 (
                     "action_in",
@@ -1250,7 +1250,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "ethiopia-pdp.block-transfer-non-et-country-without",
             "deny",
-            "Ethiopia PDPP 1321/2024 Art. 20: Transfer to <value> blocked — no documented consent or adequacy basis on file",
+            "Ethiopia PDPP 1321/2024 Art. 20: Transfer to <value> with no documented consent or adequacy basis on file - needs one before it goes ahead",
             (
                 (
                     "action_in",
@@ -1271,7 +1271,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "ethiopia-pdp.block-unauthorised-access-signals",
             "deny",
-            "Ethiopia Proclamation 958/2016: Unauthorised system access signal detected — blocked. This constitutes a criminal offence.",
+            "Ethiopia Proclamation 958/2016: Unauthorised system access signal detected; blocking keeps the agent from attempting it. This constitutes a criminal offence.",
             (
                 (
                     "text",
@@ -1282,7 +1282,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "ethiopia-pdp.block-fayda-national-id-output-fayda",
             "deny",
-            "Ethiopia PDPP 1321/2024 Art. 43: Fayda/National ID number detected in agent output — blocked to prevent identity data breach",
+            "Ethiopia PDPP 1321/2024 Art. 43: Fayda/National ID number detected in agent output; blocking keeps it out of the reply to prevent an identity data breach",
             (
                 (
                     "text",
@@ -1462,7 +1462,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "ghana-dpa.block-cross-border-transfer-non-permitted",
             "deny",
-            "Ghana DPA Act 843 s.18(2): Cross-border transfer to region <value> blocked — destination country adequacy not verified with DPC",
+            "Ghana DPA Act 843 s.18(2): Cross-border transfer to region <value> - destination country adequacy not verified with DPC, so it may not go ahead",
             (
                 (
                     "action_in",
@@ -1493,7 +1493,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "ghana-dpa.block-transfer-non-gh-country-without",
             "deny",
-            "Ghana DPA Act 843 s.18(2): Transfer to <value> blocked — no documented consent or adequacy basis on file",
+            "Ghana DPA Act 843 s.18(2): Transfer to <value> with no documented consent or adequacy basis on file - needs one before it goes ahead",
             (
                 (
                     "action_in",
@@ -1514,7 +1514,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "ghana-dpa.block-ghana-card-national-id-output",
             "deny",
-            "Ghana DPA Act 843 / NIA Act 707: Ghana Card national ID detected in agent output — blocked to prevent identity data exposure",
+            "Ghana DPA Act 843 / NIA Act 707: Ghana Card national ID detected in agent output; blocking keeps it out of the reply to prevent identity data exposure",
             (
                 (
                     "text",
@@ -1685,7 +1685,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "kenya-dpa.block-transfer-non-permitted-region",
             "deny",
-            "Kenya DPA s.49: Cross-border transfer to <value> blocked — region not in ODPC adequacy-approved list",
+            "Kenya DPA s.49: Cross-border transfer to <value> - region not in ODPC adequacy-approved list, so it may not go ahead",
             (
                 (
                     "action_in",
@@ -1716,7 +1716,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "kenya-dpa.block-transfer-non-ke-country-without",
             "deny",
-            "Kenya DPA s.49: Transfer to country <value> blocked — no documented consent or adequacy basis on file",
+            "Kenya DPA s.49: Transfer to country <value> with no documented consent or adequacy basis on file - needs one before it goes ahead",
             (
                 (
                     "action_in",
@@ -1759,7 +1759,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "kenya-dpa.block-national-id-output",
             "deny",
-            "Kenya DPA: National ID number detected in agent output — blocked to prevent identity exposure",
+            "Kenya DPA: National ID number detected in agent output; blocking keeps it out of the reply to prevent identity exposure",
             (("text", "(?i)(national\\s+id|id\\s+number|identity\\s+card)[\\s:=]{0,5}[0-9]{6,8}"),),
         ),
         R(
@@ -1945,7 +1945,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "mauritius-dpa.mauritius-national-id-card-format-z",
             "deny",
-            "Mauritius DPA 2017 (Breach Notification / Security): Mauritius National ID Card (NIC) detected in agent output — blocked; triggers Commissioner breach notification within 72 hours",
+            "Mauritius DPA 2017 (Breach Notification / Security): Mauritius National ID Card (NIC) detected in agent output; blocking keeps it out of the reply, and a disclosure triggers Commissioner breach notification within 72 hours",
             (
                 (
                     "text",
@@ -1956,7 +1956,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "mauritius-dpa.cross-border-non-permitted-region-requires",
             "deny",
-            "Mauritius DPA 2017 (Transfer): Cross-border transfer to region <value> blocked — proof of appropriate safeguards must be filed with the Commissioner or a valid derogation (consent, contract, public interest, legal claims) established",
+            "Mauritius DPA 2017 (Transfer): Cross-border transfer to region <value> - needs proof of appropriate safeguards filed with the Commissioner or a valid derogation (consent, contract, public interest, legal claims) before it goes ahead",
             (
                 (
                     "action_in",
@@ -1988,7 +1988,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "mauritius-dpa.transfer-non-mu-country-without-documented",
             "deny",
-            "Mauritius DPA 2017 (Transfer): Transfer to <value> blocked — no documented consent or derogation (contract, vital interest, public interest, legal claims) filed with Commissioner",
+            "Mauritius DPA 2017 (Transfer): Transfer to <value> with no documented consent or derogation (contract, vital interest, public interest, legal claims) filed with Commissioner - needs one before it goes ahead",
             (
                 (
                     "action_in",
@@ -2187,7 +2187,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "nigeria-ndpa.block-transfer-non-permitted-region",
             "deny",
-            "NDPA s.25: Cross-border transfer to <value> blocked — region not in NDPC adequacy-approved list",
+            "NDPA s.25: Cross-border transfer to <value> - region not in NDPC adequacy-approved list, so it may not go ahead",
             (
                 (
                     "action_in",
@@ -2218,7 +2218,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "nigeria-ndpa.block-transfer-non-nigerian-country-code",
             "deny",
-            "NDPA s.25: Transfer to country <value> blocked — no documented consent or adequacy basis on file",
+            "NDPA s.25: Transfer to country <value> with no documented consent or adequacy basis on file - needs one before it goes ahead",
             (
                 (
                     "action_in",
@@ -2397,7 +2397,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "nigeria-nfiu-aml.transfer-exceeding-10m-cap-hard-block",
             "deny",
-            "NFIU CTR / CBN NIP: ₦<value> exceeds ₦10,000,000 NIP single-transaction cap — blocked. CTR filing required.",
+            "NFIU CTR / CBN NIP: ₦<value> exceeds the ₦10,000,000 NIP single-transaction cap, so it may not go ahead. CTR filing required.",
             (
                 (
                     "action_in",
@@ -2427,7 +2427,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "nigeria-nfiu-aml.kyc-bypass-attempt",
             "deny",
-            "NFIU / CBN AML: KYC bypass blocked — proceeding without customer verification violates MLPPA and CBN AML/CFT Framework",
+            "NFIU / CBN AML: KYC bypass attempted - proceeding without customer verification violates MLPPA and CBN AML/CFT Framework",
             (
                 (
                     "text",
@@ -2438,7 +2438,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "nigeria-nfiu-aml.transaction-unverified-customer",
             "deny",
-            "NFIU / CBN AML: Transaction for unverified customer blocked — KYC must be completed before processing",
+            "NFIU / CBN AML: Transaction for an unverified customer - KYC must be completed before processing",
             (
                 (
                     "text",
@@ -2568,13 +2568,13 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "south-africa-popia.sa-id-number-detected-output",
             "deny",
-            "POPIA s.19: SA ID Number (13-digit) detected in agent output — blocked to prevent sensitive identifier exposure",
+            "POPIA s.19: SA ID Number (13-digit) detected in agent output; blocking keeps it out of the reply to prevent sensitive identifier exposure",
             (("text", "\\b[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[0-9]{7}\\b"),),
         ),
         R(
             "south-africa-popia.sa-id-number-with-contextual-label",
             "deny",
-            "POPIA s.19: SA ID Number value detected in agent response — blocked",
+            "POPIA s.19: SA ID Number value detected in agent response; blocking keeps it out of the reply",
             (
                 (
                     "text",
@@ -2596,7 +2596,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "south-africa-popia.transfer-non-adequate-country-without-consent",
             "deny",
-            "POPIA s.72: Transfer to <value> blocked — country not recognised as having substantially similar data protection to POPIA",
+            "POPIA s.72: Transfer to <value> - country not recognised as having substantially similar data protection to POPIA, so it needs consent before it goes ahead",
             (
                 (
                     "action_in",
@@ -2831,7 +2831,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "rwanda-dpa.block-cross-border-transfer-non-permitted",
             "deny",
-            "Rwanda Law 058/2021 Art. 48: Cross-border transfer to region <value> blocked — destination country adequacy not established with NCSA",
+            "Rwanda Law 058/2021 Art. 48: Cross-border transfer to region <value> - destination country adequacy not established with NCSA, so it may not go ahead",
             (
                 (
                     "action_in",
@@ -2862,7 +2862,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "rwanda-dpa.block-transfer-non-rw-country-without",
             "deny",
-            "Rwanda Law 058/2021 Art. 48/49: Transfer to <value> blocked — no documented consent or contractual safeguards on file",
+            "Rwanda Law 058/2021 Art. 48/49: Transfer to <value> with no documented consent or contractual safeguards on file - needs one before it goes ahead",
             (
                 (
                     "action_in",
@@ -2883,7 +2883,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "rwanda-dpa.block-rwanda-national-id-output",
             "deny",
-            "Rwanda Law 058/2021 Art. 43: Rwanda National ID (NIDA 16-digit) detected in agent output — blocked to prevent identity data breach",
+            "Rwanda Law 058/2021 Art. 43: Rwanda National ID (NIDA 16-digit) detected in agent output; blocking keeps it out of the reply to prevent an identity data breach",
             (
                 (
                     "text",
@@ -3083,7 +3083,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "tanzania-pdpa.block-transfer-non-permitted-region",
             "deny",
-            "Tanzania PDPA s.13: Cross-border transfer to <value> blocked — region not in PDPC adequacy-approved list",
+            "Tanzania PDPA s.13: Cross-border transfer to <value> - region not in PDPC adequacy-approved list, so it may not go ahead",
             (
                 (
                     "action_in",
@@ -3114,7 +3114,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "tanzania-pdpa.block-transfer-non-tz-country-without",
             "deny",
-            "Tanzania PDPA s.13: Transfer to country <value> blocked — no documented consent or adequacy basis on file",
+            "Tanzania PDPA s.13: Transfer to country <value> with no documented consent or adequacy basis on file - needs one before it goes ahead",
             (
                 (
                     "action_in",
@@ -3146,7 +3146,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "tanzania-pdpa.block-nida-national-id-output",
             "deny",
-            "Tanzania PDPA: NIDA national ID number detected in agent output — blocked to prevent identity exposure",
+            "Tanzania PDPA: NIDA national ID number detected in agent output; blocking keeps it out of the reply to prevent identity exposure",
             (
                 (
                     "text",
@@ -3326,7 +3326,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "uganda-dppa.block-transfer-non-permitted-region",
             "deny",
-            "Uganda DPPA s.19: Cross-border transfer to <value> blocked — region not in PDPO adequacy-approved list",
+            "Uganda DPPA s.19: Cross-border transfer to <value> - region not in PDPO adequacy-approved list, so it may not go ahead",
             (
                 (
                     "action_in",
@@ -3357,7 +3357,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "uganda-dppa.block-transfer-non-ug-country-without",
             "deny",
-            "Uganda DPPA s.19: Transfer to country <value> blocked — no documented consent or adequacy basis on file",
+            "Uganda DPPA s.19: Transfer to country <value> with no documented consent or adequacy basis on file - needs one before it goes ahead",
             (
                 (
                     "action_in",
@@ -3378,7 +3378,7 @@ TABLES: dict[str, tuple[TableRule, ...]] = {
         R(
             "uganda-dppa.block-national-id-output",
             "deny",
-            "Uganda DPPA: National ID number (NIRA) detected in agent output — blocked to prevent identity exposure",
+            "Uganda DPPA: National ID number (NIRA) detected in agent output; blocking keeps it out of the reply to prevent identity exposure",
             (
                 (
                     "text",

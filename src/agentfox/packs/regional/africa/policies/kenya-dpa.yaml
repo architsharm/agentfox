@@ -28,16 +28,14 @@ rules:
     action_risk: kenya-dpa.block-transfer-non-permitted-region
   effect: block
   severity: high
-  reason: 'Kenya DPA s.49: Cross-border transfer to <value> blocked - region not in ODPC adequacy-approved
-    list'
+  reason: 'Kenya DPA s.49: Cross-border transfer to <value> - region not in ODPC adequacy-approved list, so it may not go ahead'
 - id: kenya-dpa.block-transfer-non-ke-country-without
   description: 'Kenya DPA s.49: Block transfer to non-KE country without consent'
   when:
     action_risk: kenya-dpa.block-transfer-non-ke-country-without
   effect: block
   severity: high
-  reason: 'Kenya DPA s.49: Transfer to country <value> blocked - no documented consent or adequacy basis
-    on file'
+  reason: 'Kenya DPA s.49: Transfer to country <value> with no documented consent or adequacy basis on file - needs one before it goes ahead'
 - id: kenya-dpa.block-processing-explicitly-stated-without-consent
   description: 'Kenya DPA s.26: Block processing explicitly stated without consent'
   when:
@@ -60,7 +58,7 @@ rules:
     action_risk: kenya-dpa.block-national-id-output
   effect: block
   severity: high
-  reason: 'Kenya DPA: National ID number detected in agent output - blocked to prevent identity exposure'
+  reason: 'Kenya DPA: National ID number detected in agent output; blocking keeps it out of the reply to prevent identity exposure'
 - id: kenya-dpa.block-large-record-exports
   description: 'Kenya DPA s.30: Block large record exports (>1000 records)'
   when:
