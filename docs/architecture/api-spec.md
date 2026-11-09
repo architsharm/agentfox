@@ -331,7 +331,7 @@ from the code. Regenerate after changing any route:
 |---|---|---|
 | `GET` | `/api/eval/annotations/queue` | Eval results a human should look at: score within `band` of the scorer's |
 | `GET` | `/api/eval/drift` | Read-only. Viewing drift persists nothing, so the number of drift findings |
-| `POST` | `/api/eval/gate` | The CI entry point. Non-zero exit maps from ``passed: false``. |
+| `POST` | `/api/eval/gate` | The CI entry point. A gate that fails answers **412** with the same body |
 | `POST` | `/api/eval/online` | Run Online |
 | `POST` | `/api/eval/results/{result_id}/annotate` | Record a human's judgment on a borderline eval result. Requires a note — |
 | `GET` | `/api/eval/runs` | List Runs |
