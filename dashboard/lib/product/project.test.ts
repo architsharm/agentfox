@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultProject, disconnectedBy, openingAgent, hasAddedAgent, projectHref, projectInPath, projectView, switcherOptions } from "./project";
+import { chosenOption, defaultProject, disconnectedBy, openingAgent, hasAddedAgent, projectHref, projectInPath, projectView, switcherOptions } from "./project";
 import { WORKSPACE_NAV, projectNav } from "./nav";
 
 describe("project views", () => {
@@ -125,6 +125,15 @@ describe("the project switcher counts what the map draws", () => {
     // The helper from another repository stays: disconnecting mono acts on mono's agents.
     expect(disconnectedBy(mono).map((m) => m.slug)).toEqual(["planner", "writer", "crew"]);
     expect(disconnectedBy(solo).map((m) => m.slug)).toEqual(["solo"]);
+  });
+  it("every page scopes to the switcher's option, whatever the cookie names", () => {
+    // The cookie can hold the option (mono), a system's root (writer) or any agent in it (helper).
+    for (const cookie of ["mono", "writer", "helper", null, "gone"]) {
+      const o = chosenOption(rows, cookie);
+      expect([o?.project, o?.agents]).toEqual(["mono", 4]);
+    }
+    expect(chosenOption(rows, "mono", "solo")?.project).toBe("solo");
+    expect(chosenOption(rows, "solo")?.agents).toBe(1);
   });
 });
 

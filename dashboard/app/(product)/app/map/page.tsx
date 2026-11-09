@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { appPageMetadata } from "@/lib/site";
 import { safeApi } from "@/lib/product/api";
-import { MAP_PROJECT_COOKIE, NEW_PROJECT, defaultProject, openingAgent, projectHref, switcherOptions } from "@/lib/product/project";
+import { MAP_PROJECT_COOKIE, NEW_PROJECT, chosenOption, openingAgent, projectHref, switcherOptions } from "@/lib/product/project";
 
 // Named like its sidebar row; without a project it stays on this URL showing setup.
 export const metadata: Metadata = appPageMetadata("Agents");
@@ -25,11 +25,9 @@ export default async function MapPage({ searchParams }: { searchParams: Promise<
   if (!asked && jar.get(MAP_PROJECT_COOKIE)?.value === NEW_PROJECT) return null;
   // One option per repository, as the switcher offers them; an old cookie naming a
   // system's root (or any agent) lands on the option that holds it.
-  const options = switcherOptions(projects ?? []);
   // No project yet: the app chrome shows the connection card in place of this page.
-  if (options.length === 0) return null;
-  const optionOf = (key?: string | null) => (key ? options.find((o) => o.project === key || o.slugs?.includes(key))?.project : undefined);
-  const chosen = optionOf(asked) ?? optionOf(jar.get(MAP_PROJECT_COOKIE)?.value) ?? defaultProject(options)!.project;
+  if (switcherOptions(projects ?? []).length === 0) return null;
+  const chosen = chosenOption(projects ?? [], jar.get(MAP_PROJECT_COOKIE)?.value, asked)!.project;
   const [map, all] = await Promise.all([
     safeApi<any>(`/api/projects/${encodeURIComponent(chosen)}/map`, null),
     safeApi<any>("/api/agents", { agents: [] }),
