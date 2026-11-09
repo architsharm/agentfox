@@ -60,7 +60,7 @@ Python 3.11 or newer.
    real happens.
 3. Press **Add N agents to AgentFox**. The attack test starts by itself and shows, per kind of
    attack, how many got through.
-4. Press **Add and test again**. Basic guardrails go on and the same attacks run again, so you
+4. Press **Turn on basic guardrails and test again**. Basic guardrails go on and the same attacks run again, so you
    see the before and after side by side, including how many normal requests were still
    answered.
 5. Add the one line `init` prints (`agentfox.auto("<agent>")`) and run your app. Its calls show
@@ -128,7 +128,7 @@ is checked before your code can run it; a refused one raises `agentfox.Blocked`.
   does this by default. The hooks call AgentFox by absolute path, so they work from a
   virtualenv install too.
 - **Behind a LiteLLM proxy:** one block in the proxy's `config.yaml` checks every agent
-  behind it ([guide](https://useagentfox.com/docs/guides/litellm)).
+  behind it ([guide](https://useagentfox.com/docs/connect/litellm)).
 - **Look around first:** `agentfox init && agentfox demo`. `init` creates a SQLite database
   and loads 44 controls and the policy packs in about a second; `demo` runs a thirteen-step
   walkthrough in about five, in a database of its own (`~/.agentfox/demo.db`), so your
@@ -179,11 +179,11 @@ full command set are in the [website guides](https://useagentfox.com/docs) and t
 
 ## Tracking without anyone running a command
 
-A scan is a snapshot. Connect a GitHub repository, a hosted API's OpenAPI document or an MCP server
+A scan is a snapshot. With AgentFox Enterprise (Cloud or self-hosted), connect a GitHub repository, a hosted API's OpenAPI document or an MCP server
 once and AgentFox keeps re-checking it: every few hours, and on every push once the GitHub webhook
 is registered. What changed since the last run becomes a finding, and the finding closes itself
 when the condition clears. Setup and every finding type:
-[Monitor connected sources](https://useagentfox.com/docs/guides/monitoring).
+[Keep re-checking connected sources](https://useagentfox.com/docs/discover#monitoring).
 
 ## What we measured
 

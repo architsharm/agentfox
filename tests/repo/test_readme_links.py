@@ -45,3 +45,16 @@ def test_images_use_raw_urls() -> None:
     images = re.findall(r'<img[^>]*src="([^"]+)"', README) + re.findall(r"!\[[^\]]*\]\(([^)]+)\)", README)
     wrong = [u for u in images if u.startswith(BLOB)]
     assert not wrong, f"Images through github.com/blob do not render on PyPI; use {RAW}: {wrong}"
+
+
+def test_site_docs_links_land_on_a_real_page() -> None:
+    """`/docs/guides/...` only redirects (and `/docs/guides/monitoring` landed on a page
+    that did not mention monitoring); README links name the page itself."""
+    docs = REPO_ROOT / "dashboard" / "app" / "docs"
+    missing = []
+    for url in _targets():
+        if url.startswith("https://useagentfox.com/docs"):
+            path = url[len("https://useagentfox.com/docs") :].split("#", 1)[0].strip("/")
+            if not (docs / path / "page.tsx").is_file():
+                missing.append(url)
+    assert not missing, f"README links to docs pages that do not exist: {missing}"
