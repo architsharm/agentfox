@@ -148,8 +148,17 @@ The tamper-evident hash chain, the mechanism behind the "prove what happened" cl
 
 ```
 payload_digest = SHA-256(canonical_json(payload))
-digest          = SHA-256(seq | occurred_at_iso | action | payload_digest | prev_digest)
+subject_digest = SHA-256(subject_id or "")
+digest (v2)    = SHA-256(canonical_json(["agentfox.audit.v2", seq, occurred_at_iso,
+                         actor_type, actor_id, action, subject_type, subject_digest,
+                         payload_digest, prev_digest]))
 ```
+
+v2 covers who acted and on what. Entries written before it used v1,
+`SHA-256(seq | occurred_at_iso | action | payload_digest | prev_digest)`, and still verify
+under it; the scheme is read off the stored digest (exported as `digest_version`), and a
+v1 entry after a v2 one is a break, so a new entry cannot be relabelled v1 to dodge the
+actor check.
 
 Invariants enforced in code, not just convention:
 
@@ -162,8 +171,11 @@ Invariants enforced in code, not just convention:
   the application database** (customer-held in a self-host deployment). Outside development
   the process refuses to start while that key still has a published value (§10).
 - **Independent, stdlib-only verification** — evidence packages ship a `verify_chain.py` that
-  recomputes the chain from raw entries with no dependency on the application
-  (`agentfox report verify` verifies the stored chain in place).
+  recomputes the chain from raw entries with no dependency on the application, and checks
+  every file against the manifest's SHA-256 list (`agentfox report verify` verifies the
+  stored chain in place). With the audit signing key it also checks `manifest.sig` (an
+  HMAC over the manifest, so over every file) and the checkpoints; building a package
+  first checkpoints its newest entry.
 
 `ee/src/agentfox_ee/evidence/package.py` (Enterprise) builds auditor-ready export packages (a
 manifest with a per-file SHA-256, chain-of-custody metadata), optionally scoped to one agent.
