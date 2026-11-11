@@ -22,6 +22,7 @@ coding-agent hook configs and MCP client configs call them by those paths.
 from __future__ import annotations
 
 import copy
+import inspect
 from typing import Any
 
 import typer
@@ -125,24 +126,44 @@ def _print_version(ctx: typer.Context, _param: typer.CallbackParam, value: bool)
     ctx.exit()
 
 
+def _version_option() -> TyperOption:
+    """Build the root ``--version`` flag on any typer we allow.
+
+    TyperOption, not click.Option: newer typer runs on its own vendored click, whose
+    Context a stock click.Option cannot parse against.
+
+    typer 0.20 then made ``type_descriptor`` a *required* keyword on TyperOption, so a
+    call that worked on 0.19 raises TypeError on 0.29 and the CLI dies before it can
+    print anything. ``pyproject.toml`` asks for ``typer>=0.15``, so a fresh install
+    picks up whichever side of that line pip resolves today. Ask the signature rather
+    than the version string: it is the thing that actually decides.
+    """
+    kwargs: dict[str, Any] = {
+        "param_decls": ["--version"],
+        "is_flag": True,
+        "expose_value": False,
+        "is_eager": True,
+        "callback": _print_version,
+        "help": "Print the version and exit.",
+    }
+    if "type_descriptor" in inspect.signature(TyperOption.__init__).parameters:
+        # Private module, hence the guard: it is the only supported way to build the
+        # descriptor a standalone boolean flag needs. The ignore is for the typer that
+        # does *not* have it, where the branch above never runs.
+        from typer._coercion import (  # type: ignore[import-not-found]
+            bool_flag_type_descriptor,
+        )
+
+        kwargs["type_descriptor"] = bool_flag_type_descriptor()
+    return TyperOption(**kwargs)
+
+
 class RootGroup(TyperGroup):
     """The `agentfox` group: panel order and `--version`."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        # TyperOption, not click.Option: newer typer (0.27 here) runs on its own vendored click,
-        # whose Context a stock click.Option cannot parse against.
-        self.params.insert(
-            0,
-            TyperOption(
-                param_decls=["--version"],
-                is_flag=True,
-                expose_value=False,
-                is_eager=True,
-                callback=_print_version,
-                help="Print the version and exit.",
-            ),
-        )
+        self.params.insert(0, _version_option())
 
     def list_commands(self, ctx: typer.Context) -> list[str]:
         order = {name: i for i, (name, _) in enumerate(VISIBLE)}
