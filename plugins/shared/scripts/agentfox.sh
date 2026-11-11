@@ -37,4 +37,4 @@ if ! command -v uvx >/dev/null 2>&1; then
   exit 127
 fi
 
-exec uvx --from "git+https://github.com/architsharm/agentfox@42cd5bffdaede4e049a18abfb796cc653751672e" agentfox "$@"
+exec uvx --from "git+https://github.com/architsharm/agentfox@7a0b23fdfd9224c05d84c4fd66df405478976a7f" agentfox "$@"
