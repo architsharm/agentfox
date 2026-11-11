@@ -2,7 +2,7 @@
   "name": "agentfox",
   "description": "AgentFox control plane \u2014 agent governance, guardrails, audit and compliance for AI agents in production.",
   "owner": {
-    "name": "Archit Sharma"
+    "name": "Nometria Inc"
   },
   "plugins": [
     {

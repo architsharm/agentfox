@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "agentfox": {
-      "command": "${CLAUDE_PLUGIN_ROOT}/scripts/agentfox.sh",
-      "args": ["mcp", "serve"]
+      "command": "bash",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/agentfox.sh", "mcp", "serve"]
     }
   }
 }

@@ -6,7 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/guard_blocking_commands.py\"",
+            "command": "python3",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/guard_blocking_commands.py"],
             "timeout": 10
           }
         ]
