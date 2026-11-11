@@ -11,6 +11,34 @@ the file it came from.
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-11-12
+
+### Fixed
+- **`agentfox` raised a TypeError on every command after a fresh install.** `pip install
+  agentfox` followed by any command, `--version` included, ended in
+  `TypeError: TyperOption.__init__() missing 1 required keyword-only argument:
+  'type_descriptor'`. `pyproject.toml` asks for `typer>=0.15` and `uv.lock` pins 0.19.2, so a
+  checkout, CI and every developer machine were unaffected and nothing caught it; a fresh
+  resolve picks typer 0.29.1, and typer 0.20 made that keyword required. The root group
+  builds its `--version` option at import time, so this was not a degraded flag: it raised
+  before the CLI printed anything. The option is now built from whatever the installed
+  typer's signature asks for, verified on 0.19.2 and 0.29.1, and a test fails if a later
+  typer adds another required keyword.
+
+### Changed
+- **The operator plugins' launcher (`scripts/agentfox.sh`) runs one thing: the released CLI,
+  pinned to one commit.** It could previously run whatever `agentfox` was on PATH, a working
+  tree through uv, or a release, so neither a person nor a scanner could tell which of the
+  three a command had used. Working on AgentFox itself, use `uv run agentfox` from a
+  checkout, which is what `plugins/shared/AGENTS.md` already pointed to and what runs your
+  working tree.
+- **`/agentfox:status` pre-approves only the six read-only commands it runs.** It carried
+  `Bash(*agentfox* doctor*)` and five more of that shape; a leading wildcard matches any
+  command with "agentfox" somewhere in it, not a command that is `agentfox`.
+  `/agentfox:plugin-check` drops its pre-approval entirely, since any grant there has to
+  wildcard after `uv run` or an interpreter and it is a maintainer command run by hand.
+- The plugin and marketplace manifests give the author as Nometria Inc rather than a person.
+
 ## [0.5.2] - 2026-11-09
 
 ### Added
