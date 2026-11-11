@@ -1,9 +1,11 @@
 ---
 description: Read-only governance posture — runtime health, open findings, policy modes, stopped agents
-allowed-tools: Bash(*agentfox* doctor*) Bash(*agentfox* findings*) Bash(*agentfox* policy list*) Bash(*agentfox* agents *) Bash(*agentfox* auth status*) Bash(*agentfox* proposals list*)
+allowed-tools: Bash(agentfox doctor) Bash(agentfox doctor *) Bash(agentfox findings) Bash(agentfox findings *) Bash(agentfox policy list) Bash(agentfox policy list *) Bash(agentfox agents controls) Bash(agentfox agents controls *) Bash(agentfox auth status) Bash(agentfox auth status *) Bash(agentfox proposals list) Bash(agentfox proposals list *)
 ---
 Run these read-only commands with `agentfox` (see the plugin's AGENTS.md "Running the CLI" if
-it isn't on PATH):
+it isn't on PATH). The pre-approval above covers only these six read-only verbs invoked as
+`agentfox`; reaching the CLI another way, such as through the launcher script, asks the user
+once per call, which is the intended behaviour for a command that promises to change nothing.
 
 1. `doctor --json`
 2. `findings --json --limit 100`
