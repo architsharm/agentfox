@@ -8,11 +8,13 @@ and `demo`, which gave its place in Start to `up`, still runs unlisted.
 
 from __future__ import annotations
 
+import inspect
 import json
 from typing import Any
 
 import pytest
 import typer.main
+from typer.core import TyperOption
 from typer.testing import CliRunner
 
 from agentfox.apps.cli import layout
@@ -232,6 +234,35 @@ def test_version_flag():
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
     assert result.output.startswith("agentfox ")
+
+
+def test_version_option_supplies_every_keyword_typer_requires():
+    """`--version` must build on whatever typer the install resolved.
+
+    `pyproject.toml` asks for `typer>=0.15`, so a fresh `pip install agentfox` picks up
+    whichever typer pip resolves that day. typer 0.20 made `type_descriptor` a required
+    keyword on TyperOption; because the root group builds that option at import time, a
+    missing keyword is not a degraded flag, it is a TypeError before the CLI prints
+    anything — `agentfox --version` died on arrival for every fresh install until this
+    was handled. If a later typer adds another required keyword, fail here rather than
+    at a user's first command.
+    """
+    params = inspect.signature(TyperOption.__init__).parameters
+    required = {
+        name
+        for name, p in params.items()
+        if name not in ("self", "param_decls")
+        and p.default is inspect.Parameter.empty
+        and p.kind in (inspect.Parameter.KEYWORD_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+    }
+    option = layout._version_option()
+    missing = {name for name in required if not hasattr(option, name)}
+    assert not missing, (
+        f"typer's TyperOption requires {sorted(missing)}, which _version_option() does "
+        "not pass. Fresh installs will crash on every command."
+    )
+    assert option.is_eager
+    assert "--version" in option.opts
 
 
 # ---------------------------------------------------------------------------
