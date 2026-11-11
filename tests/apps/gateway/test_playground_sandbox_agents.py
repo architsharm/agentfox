@@ -3,6 +3,8 @@ shows the outcome it names, through the real enforcement path, with no model key
 
 from __future__ import annotations
 
+import threading
+
 import pytest
 from sqlalchemy import select
 
@@ -181,3 +183,59 @@ def test_simulated_tools_are_deterministic_and_local():
     # Not a sandbox tool, or not this agent's: no result is invented.
     assert simulate("airline-cs", "payments.transfer", {}) is None
     assert simulate("support-triage", "kb.search", {}) is None
+
+
+def test_an_allowed_tool_result_is_not_withheld_because_the_detector_pool_is_busy(
+    client, monkeypatch
+):
+    """`support-crew-0-enforce` was flaky in CI for this reason, and the route it
+    exercises decides whether a tool result reaches a model.
+
+    `custom.lists` — always on, offline, and with no rules written an immediate
+    return — ran in the shared detector pool under a 40ms wall-clock allowance that
+    is spent on the hand-off as much as on the scan. On a box running
+    `pytest -q -n auto` the hand-off occasionally lost that race, the detector was
+    recorded `degraded` although nothing was wrong with it, and `baseline.yaml`'s
+    `pipeline.degraded_high_risk` escalated the tool-result check for this high-risk
+    agent — so the route withheld a clean customer lookup from the model
+    (`result: null`, `result_withheld: true`) and the assertion on an `allow` prompt
+    failed. A re-run of the same commit passed.
+
+    Reproduced deterministically here by handing the pipeline a detector pool with
+    no free worker: anything still pooled cannot run at all. The always-on offline
+    net must not need one.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+
+    from agentfox.capabilities.detection import pipeline as detector_pipeline
+
+    occupied = ThreadPoolExecutor(max_workers=1, thread_name_prefix="busy-pool")
+    heavy = ThreadPoolExecutor(max_workers=1, thread_name_prefix="busy-pool-heavy")
+    released = threading.Event()
+    blockers = [pool.submit(released.wait, 30) for pool in (occupied, heavy)]
+    monkeypatch.setattr(
+        detector_pipeline, "_get_shared_pools", lambda max_workers: (occupied, heavy)
+    )
+    try:
+        sid = _create(client)["session_id"]
+        assert (
+            client.post(f"/api/playground/sessions/{sid}/enforce", json={"mode": "enforce"})
+        ).status_code == 200
+        prompt = next(a for a in SANDBOX_AGENTS if a["slug"] == "support-crew")["prompts"][0]
+        assert prompt["expect"] == "allow" and prompt["tool"]
+        body = _run(client, sid, "support-crew", prompt)
+
+        assert body["verdict"] == "allow", body["rules_fired"]
+        assert body["result_withheld"] is False and body["result"] is not None, (
+            "a clean tool result was withheld because the detector pool was busy: "
+            f"{body['result_verdict']['verdict']} on "
+            f"{[r['rule_id'] for r in body['result_verdict']['rules_fired']]}, "
+            f"degraded={body['result_verdict']['degraded']}"
+        )
+        assert body["result_verdict"]["degraded"] == []
+    finally:
+        released.set()
+        for blocker in blockers:
+            blocker.result(timeout=30)
+        occupied.shutdown(wait=True)
+        heavy.shutdown(wait=True)

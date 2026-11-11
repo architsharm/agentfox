@@ -550,10 +550,36 @@ class DetectorPipeline:
         resource."""
 
 
-#: The built-in in-process pattern detectors: regex and character scans that take
-#: well under a millisecond. Only these run inline and unbudgeted; any other detector
-#: (a model, a judge, a workspace's own patterns, a plugin or pack) is pooled under
-#: its deadline, because nothing guarantees it is fast.
+#: The in-process pattern detectors: regex, character and lexical scans that take
+#: well under a millisecond. Only these run inline and unbudgeted; a detector that
+#: makes a model call, a network round trip or a call into a third-party library (a
+#: judge, a classifier, a validator, a rail) is pooled under its deadline, because
+#: nothing guarantees it is fast.
+#:
+#: The rule this encodes: **a detector in the always-on net
+#: (`detector_settings.ALWAYS_ON`) that declares no per-call cost of its own runs
+#: inline.** A wall-clock allowance on an always-on offline scan buys nothing and
+#: costs correctness, in both directions. Under CPU load it let a check pass with
+#: the secrets and injection patterns unread; and because the allowance is spent on
+#: the hand-off to a pool thread rather than on the scan, a detector whose own work
+#: is sub-millisecond could be recorded `degraded` for losing a race with the
+#: scheduler — which, for a high-risk agent with the baseline enforcing, withholds a
+#: tool result that nothing was ever wrong with (`pipeline.degraded_high_risk`).
+#: Timing it out does not even stop it: the worker thread keeps running (see the
+#: FutureTimeout handler above), so the pool deadline never bounded the work, only
+#: the honesty of the report.
+#:
+#: `custom.lists` is here for that reason and belongs with the rest: it is always on,
+#: it matches offline, and with no rules written it reads an empty list and returns.
+#: It runs patterns a workspace authored rather than ones shipped here, which is why
+#: it was pooled — but that risk is bounded where it arises, at authoring time
+#: (`custom.MAX_PATTERN_LENGTH`, `MAX_ENTRIES`, and nested quantifiers refused
+#: outright precisely because "Python's `re` has no timeout"), not by a deadline that
+#: cannot interrupt a scan. A workspace whose own rule set is genuinely heavy should
+#: read as latency on its traces, not as a withheld tool result.
+#:
+#: `custom.validators` is always on too and stays pooled: it declares `timeout_ms`
+#: because a validator may run a local model or ask a judge.
 INLINE_DETECTORS = frozenset(
     {
         "secrets.native",
@@ -563,6 +589,7 @@ INLINE_DETECTORS = frozenset(
         "schema.json",
         "unicode.tags",
         "code.insecure",
+        "custom.lists",
     }
 )
 

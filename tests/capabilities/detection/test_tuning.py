@@ -197,15 +197,50 @@ def test_a_later_surface_gets_only_what_is_left():
 
 def test_an_exhausted_ledger_degrades_rather_than_blowing_the_slo(seeded):
     """Shedding detectors is recorded as degradation, which the fail-mode policy then
-    acts on. Silently overrunning would be the worse failure."""
+    acts on. Silently overrunning would be the worse failure.
+
+    What a zero allowance sheds is the *pooled* detectors — the ones that declare a
+    per-call cost because they run a model, ask a judge or call into a third-party
+    library. The always-on pattern net runs in the request's own thread and is never
+    skipped for time (`pipeline.INLINE_DETECTORS`), so it still read this content and
+    there is no lost coverage to report for it; calling that degradation would send a
+    high-risk agent's clean request to review over a check that ran.
+    """
+    from agentfox.capabilities.detection.base import DetectorResult as _Result
+    from agentfox.capabilities.detection.pipeline import DetectorPipeline
     from agentfox.runtime.enforcement import Enforcer
 
-    enforcer = Enforcer(seeded)
-    enforcer._ledger = LatencyLedger(budget_ms=0)
+    class PooledDetector:
+        """Declares a per-call cost, so the pipeline pools it and budgets it."""
+
+        key, version, surfaces = "pooled.test", "1", ("output",)
+        timeout_ms = 200
+
+        def available(self) -> bool:
+            return True
+
+        def detect(self, content, context):  # pragma: no cover - shed before it runs
+            return _Result(detector_key=self.key, version=self.version)
+
     agent = seeded.query(Agent).filter_by(slug="support-triage").one()
-    result = enforcer.evaluate(agent=agent, identity=None, content=PII_TEXT, surface="output")
-    assert result.degraded, "a zero allowance must show up as degradation, not as silence"
+
+    shed = Enforcer(seeded, pipeline=DetectorPipeline(detectors=[PooledDetector()]))
+    shed._ledger = LatencyLedger(budget_ms=0)
+    result = shed.evaluate(agent=agent, identity=None, content=PII_TEXT, surface="output")
+    assert "pooled.test" in result.degraded, (
+        "a zero allowance must show up as degradation, not as silence"
+    )
     assert result.latency_budget["exhausted"] is True
+
+    inline = Enforcer(seeded)
+    inline._ledger = LatencyLedger(budget_ms=0)
+    net = inline.evaluate(agent=agent, identity=None, content=PII_TEXT, surface="output")
+    assert net.latency_budget["exhausted"] is True
+    assert net.latency_budget["per_detector_ms"], "the always-on net ran on no allowance"
+    assert net.degraded == [], (
+        "the inline net is never skipped for time, so an exhausted ledger costs it no "
+        "coverage and must not be reported as though it had"
+    )
 
 
 def test_each_governed_request_starts_with_a_fresh_ledger(seeded, enforcer):
