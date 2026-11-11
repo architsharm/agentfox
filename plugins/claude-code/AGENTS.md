@@ -72,12 +72,14 @@ doc to open.
 
 Skills write commands as `agentfox <args>`. If `agentfox` isn't on PATH:
 
-- In a source checkout of the AgentFox repo, use `uv run agentfox <args>`.
-- Anywhere, use the launcher `scripts/agentfox.sh <args>` in the runtime plugin's folder
+- In a source checkout of the AgentFox repo, use `uv run agentfox <args>`. This is the one
+  that runs your working tree, so it is the one to use while changing AgentFox itself.
+- Anywhere else, use the launcher `scripts/agentfox.sh <args>` in the runtime plugin's folder
   (`plugins/claude-code/scripts/agentfox.sh` in the repository). With the Claude Code plugin,
   that's `${CLAUDE_PLUGIN_ROOT}/scripts/agentfox.sh`; with the Codex plugin, the plugin's own
-  `scripts/agentfox.sh`. It finds an
-  installed CLI or a checkout, or prints the install line.
+  `scripts/agentfox.sh`. It installs and runs the released CLI pinned to one commit, and
+  needs `uv`. It will not pick up a checkout, by design: a launcher that might run any of
+  three different copies of the CLI is one nobody can reason about.
 
 Paths such as `src/…` and `docs/…` refer to the AgentFox repository
 (https://github.com/architsharm/agentfox). They are local only when you're working inside
