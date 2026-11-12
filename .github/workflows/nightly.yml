@@ -19,6 +19,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v5
+        # Pinned: unpinned, uv takes the runner's own python3, which moved to 3.14 on
+        # 2026-11-12, and spaCy (the pii extra) publishes no 3.14 wheel, so the install
+        # failed before a single test ran. Raise it once every extra ships wheels for it.
+        with:
+          python-version: "3.13"
       - name: Install (matches CI)
         run: uv sync --extra pii --extra otel --extra postgres --extra sql --extra dev
       - name: Containment under total detector bypass

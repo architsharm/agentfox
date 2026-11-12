@@ -142,7 +142,7 @@ connected to an account.
   `agentfox_findings`, `agentfox_agents`, `agentfox_policy_simulate`, `agentfox_audit_verify`
   and the rest. None of them changes enforcement or stops an agent, so the server is safe to
   hand to any client. The implementation is
-  [`src/agentfox/apps/mcp_server.py`](src/agentfox/apps/mcp_server.py): JSON-RPC 2.0 over
+  [`src/agentfox/apps/mcp_server.py`](https://github.com/architsharm/agentfox/blob/main/src/agentfox/apps/mcp_server.py): JSON-RPC 2.0 over
   stdin/stdout on the standard library, with no MCP SDK dependency, because AgentFox has to
   stay installable offline with no new core requirements. In Claude Desktop, Claude Code or
   Cursor:
