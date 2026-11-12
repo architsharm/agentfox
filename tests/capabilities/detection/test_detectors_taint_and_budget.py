@@ -619,3 +619,39 @@ def test_exceeds_ordering():
     assert exceeds("retrieved", "user")
     assert not exceeds("user", "tool_result")
     assert not exceeds("user", "user")
+
+
+def test_the_always_on_net_never_runs_under_a_wall_clock_deadline():
+    """An always-on detector that declares no per-call cost of its own must run
+    inline.
+
+    Pooled, its allowance (`detector_timeout_ms`, 40ms) is spent on the hand-off to a
+    pool thread as much as on the scan, so a detector whose own work is
+    sub-millisecond gets recorded `degraded` for losing a race with the scheduler —
+    and `baseline.yaml`'s `pipeline.degraded_high_risk` then escalates a high-risk
+    agent's clean request on a busy box. That is how `custom.lists` made
+    `/api/playground/sessions/{id}/tool-call` withhold an allowed tool result under
+    `pytest -n auto`, passing on a re-run of the same commit.
+
+    So the choice is stated per detector and checked here rather than left to a
+    hand-maintained list: a detector either declares what one call costs it
+    (`timeout_ms` / `timeout_for`, which is how a model, a judge or a third-party
+    validator says it needs a deadline) or it runs inline.
+    """
+    from agentfox.capabilities.detection.base import all_detectors
+    from agentfox.capabilities.detection.detector_settings import ALWAYS_ON
+    from agentfox.capabilities.detection.pipeline import _runs_inline
+
+    registered = all_detectors()
+    assert ALWAYS_ON <= registered.keys(), "the always-on net names a detector nothing registers"
+
+    for key in sorted(ALWAYS_ON):
+        detector = registered[key]
+        declares_cost = bool(getattr(detector, "timeout_ms", None)) or callable(
+            getattr(detector, "timeout_for", None)
+        )
+        assert declares_cost or _runs_inline(detector), (
+            f"{key} is always on and declares no per-call cost, so it must run inline: "
+            "pooled, a busy box can record it degraded for a scheduling delay and "
+            "withhold a high-risk agent's clean content"
+        )
