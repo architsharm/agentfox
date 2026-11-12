@@ -305,6 +305,11 @@ class Settings(BaseSettings):
     # under `request_budget_ms` below (also raised to preserve the invariant
     # that one surface's budget can't exceed the whole request's).
     enforcement_budget_ms: int = 300
+    # How long a check waits for each pooled detector. A model or judge that
+    # declares a longer need of its own (`timeout_ms`, 250 ms for the injection
+    # classifier) gets that instead, but never less than this: raising it raises
+    # every detector's wait. `enforcement_budget_ms` caps both
+    # (`pipeline.detector_allowance_ms`).
     detector_timeout_ms: int = 40
     # The *request*-level ceiling across every surface a single governed call
     # touches. The per-call budget alone is a comfortable lie — one completion
