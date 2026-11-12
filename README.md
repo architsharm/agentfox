@@ -136,6 +136,25 @@ connected to an account.
   and skills that Claude Code, Cursor, Claude Desktop, VS Code, Windsurf, Gemini CLI and
   Codex load. Nothing is started, written or sent. Without installing:
   `uvx agentfox scan machine`.
+- **As an MCP server:** AgentFox is itself an MCP server, so any MCP client can ask the
+  control plane questions. `agentfox mcp serve` (equivalently `agentfox serve mcp`) speaks
+  MCP over stdio and exposes 25 read-only tools, 27 with AgentFox Enterprise installed:
+  `agentfox_findings`, `agentfox_agents`, `agentfox_policy_simulate`, `agentfox_audit_verify`
+  and the rest. None of them changes enforcement or stops an agent, so the server is safe to
+  hand to any client. The implementation is
+  [`src/agentfox/apps/mcp_server.py`](src/agentfox/apps/mcp_server.py): JSON-RPC 2.0 over
+  stdin/stdout on the standard library, with no MCP SDK dependency, because AgentFox has to
+  stay installable offline with no new core requirements. In Claude Desktop, Claude Code or
+  Cursor:
+
+  ```json
+  {
+    "mcpServers": {
+      "agentfox": { "command": "agentfox", "args": ["mcp", "serve"] }
+    }
+  }
+  ```
+
 - **Your coding agent:** in a project where you use Claude Code or Codex,
   `agentfox up --with coding-agents` writes the hooks, grants the agent its built-in tools
   and starts in watch mode, except shapes such as `rm -rf ~/`, which are refused from the
