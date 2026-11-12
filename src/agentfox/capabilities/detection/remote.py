@@ -126,6 +126,28 @@ class RemoteDetector:
         own = getattr(self.local, "timeout_ms", None) or get_settings().detector_timeout_ms
         return int(own) + NETWORK_ALLOWANCE_MS
 
+    def timeout_for(self, context: DetectionContext) -> int:
+        """The wrapped detector's need for this request (long text gets longer), plus
+        the round trip. Without this, `__getattr__` handed the pipeline the local
+        detector's `timeout_for` and the network allowance was never added."""
+        timeout_for = getattr(self.local, "timeout_for", None)
+        own = timeout_for(context) if callable(timeout_for) else None
+        if not own:
+            return self.timeout_ms
+        return int(own) + NETWORK_ALLOWANCE_MS
+
+    def _http_timeout_s(self) -> float:
+        """The pipeline's deadline for this call when there is one, so the request
+        lasts as long as the pipeline waits for it (a configured `detector_timeout_ms`
+        above the model's own need included) and no longer; else the own timeout."""
+        from agentfox.capabilities.detection.loading import current_scope
+
+        scope = current_scope()
+        remaining = scope.remaining_s() if scope is not None else None
+        if remaining is None:
+            return self.timeout_ms / 1000
+        return max(remaining, 0.001)
+
     def available(self) -> bool:
         entry = server_health()["detectors"].get(self.key) or {}
         return bool(entry.get("available"))
@@ -158,7 +180,7 @@ class RemoteDetector:
                 "agent_slug": context.agent_slug,
             },
             headers=_headers(),
-            timeout=self.timeout_ms / 1000,
+            timeout=self._http_timeout_s(),
         )
         r.raise_for_status()
         body = r.json()

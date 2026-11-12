@@ -116,7 +116,9 @@ class BaseDetector:
     #: None means "use the pipeline's default (`detector_timeout_ms`)". A detector
     #: that genuinely needs longer — a real model forward pass, not a regex scan —
     #: declares that here rather than the pipeline granting everyone more rope,
-    #: which would blunt the whole point of a per-detector budget.
+    #: which would blunt the whole point of a per-detector budget. It is a floor:
+    #: a larger configured `detector_timeout_ms` wins, and the run's budget caps
+    #: both (`pipeline.detector_allowance_ms`).
     timeout_ms: int | None = None
 
     def available(self) -> bool:  # pragma: no cover - overridden by adapters

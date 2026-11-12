@@ -7,7 +7,9 @@ incident, and performance incidents get the tool removed.
 So the pipeline:
 
 * runs detectors **concurrently**, cheapest-first;
-* enforces a **per-detector timeout** and a **total budget**;
+* enforces a **per-detector timeout** and a **total budget** (precedence in
+  `detector_allowance_ms`: the configured timeout, raised by a detector's own
+  declared need, capped by the budget);
 * on breach, degrades that detector to observe-only and records a
   ``budget_breach`` finding rather than silently skipping it — a control that
   quietly stops running while reporting ``effective`` is the failure mode that
@@ -292,12 +294,37 @@ def _required_budget(detector: Detector, context: DetectionContext) -> int:
 
 
 def _own_timeout(detector: Detector, context: DetectionContext) -> int | None:
-    """A detector's ceiling for this request: its `timeout_for(context)` when that
-    depends on the request (a model reading long text), else its fixed `timeout_ms`."""
+    """What a detector says it needs this request: its `timeout_for(context)` when
+    that depends on the request (a model reading long text), else its fixed
+    `timeout_ms`. A floor, not a ceiling: see `detector_allowance_ms`."""
     timeout_for = getattr(detector, "timeout_for", None)
     if callable(timeout_for):
         return int(timeout_for(context) or 0) or None
     return getattr(detector, "timeout_ms", None)
+
+
+def detector_allowance_ms(
+    detector: Detector, context: DetectionContext, configured_ms: float
+) -> float:
+    """How long the pipeline waits for one pooled detector, before the budget.
+
+    The precedence, in one place:
+
+    1. ``configured_ms`` (the pipeline's `detector_timeout_ms`) is what every
+       detector gets.
+    2. A detector that declares a longer need (`timeout_ms`, or `timeout_for` for a
+       request-dependent one: a model reading long text, a network judge) gets that
+       instead. A declared timeout can only *raise* the configured one, never lower
+       it: a caller who configures 30 s waits 30 s for the classifier, not its own
+       250 ms. Before this the declared value replaced the configured one in both
+       directions, so raising `detector_timeout_ms` did nothing for any model and,
+       under load, a check came back without the classifier's verdict (degraded),
+       which `fail_mode=open` then answers on the other detectors alone.
+    3. The run's budget (`budget_ms`, raised to any detector's `requires_budget_ms` /
+       `budget_for`) caps the result: no detector waits past what is left of it.
+    """
+    own = _own_timeout(detector, context) or 0
+    return float(max(own, configured_ms))
 
 
 class DetectorPipeline:
@@ -455,11 +482,10 @@ class DetectorPipeline:
         for future, detector in futures.items():
             elapsed_ms = (time.perf_counter() - started) * 1000
             remaining_ms = effective_budget - elapsed_ms
-            # Never give a single detector more than its own timeout — the
-            # detector's own declared ceiling if it has one, else the pipeline
-            # default — and never more than what is left of the whole-pipeline
-            # budget.
-            own_timeout_ms = _own_timeout(detector, context) or self.detector_timeout_ms
+            # The configured per-detector timeout, raised (never lowered) by what
+            # the detector declares it needs, and never more than what is left of
+            # the whole-pipeline budget: see `detector_allowance_ms`.
+            own_timeout_ms = detector_allowance_ms(detector, context, self.detector_timeout_ms)
             allowance = min(own_timeout_ms, max(remaining_ms, 0.0))
 
             if allowance <= 0:

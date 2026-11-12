@@ -11,6 +11,25 @@ the file it came from.
 
 ## [Unreleased]
 
+### Fixed
+- **A model's own timeout no longer overrides a longer configured one.** A detector that
+  declares `timeout_ms` (the injection classifier's is 250 ms) had that value *replace*
+  the pipeline's `detector_timeout_ms` instead of raising it. So
+  `DetectorPipeline(detector_timeout_ms=30000, budget_ms=120000)` still gave the
+  classifier 250 ms. In a 7,000-message scoring run under load, 981 checks came back
+  without its verdict (degraded) and, under the default `fail_mode=open`, were answered on
+  the heuristic alone. Reproduced with 64 checks on a CPU-loaded machine: 8 degraded at
+  exactly 250 ms before the fix, 0 after. The precedence is now one rule
+  (`pipeline.detector_allowance_ms`): every pooled detector waits for the configured
+  timeout, raised by its own declared need, and the run's budget caps both. The defaults
+  are unchanged: 40 ms configured, so the classifier still gets 250 ms, or
+  `long_text_budget_ms` for long text. The model-server stand-in had the same problem
+  twice over. It passed the local detector's `timeout_for` straight to the pipeline
+  without adding the network allowance, and its HTTP request gave up at the model's own
+  timeout plus 50 ms. It now adds the allowance and follows the pipeline's deadline for the
+  call. A degraded check is still reported on the result, on `/metrics`
+  (`agentfox_checks_degraded_total`) and in the degradation warning.
+
 ## [0.5.3] - 2026-11-12
 
 ### Fixed
