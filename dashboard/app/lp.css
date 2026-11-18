@@ -185,6 +185,8 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
 .lp-center-link { display: flex; justify-content: center; align-items: center; gap: 24px; flex-wrap: wrap; }
 .lp-link-quiet { font-weight: 400; color: var(--af-muted) !important; }
 .lp-link-quiet:hover { color: var(--lp-ink) !important; }
+/* Touch screens have no hover to reveal it: underline so it reads as a link. */
+@media (hover: none) { .lp-link-quiet { text-decoration: underline; text-underline-offset: 3px; } }
 
 /* ── Benchmark ─────────────────────────────────────────────────────────────── */
 .lp-tests { display: grid; gap: 24px; }
@@ -354,8 +356,11 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
   .lp-steps, .lp-pairs { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 640px) {
-  .lp-compare-head, .lp-compare-row { grid-template-columns: minmax(0, 1fr) 84px 84px; gap: 10px; padding: 0 14px; }
-  .lp-compare-row { padding-top: 12px; padding-bottom: 12px; }
+  /* The message gets the full width; the two verdicts sit under it, under the head's two names. */
+  .lp-compare-head, .lp-compare-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 10px; padding: 0 14px; }
+  .lp-compare-head > span:first-child { display: none; }
+  .lp-compare-msg { grid-column: 1 / -1; }
+  .lp-compare-row { padding-top: 14px; padding-bottom: 14px; }
   .lp-compare-msg { font-size: 14px; }
   .lp-compare-text .lp-compare-head { display: none; }
   .lp-compare-text .lp-compare-row { grid-template-columns: minmax(0, 1fr); gap: 4px; }
@@ -480,6 +485,9 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
   .lp-hero-copy { padding-bottom: 48px; }
   .lp-logos-label { display: none; }
   .lp-foot-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Finger-sized footer links: 21px rows were too tight to hit the right one. */
+  .lp-foot-col { gap: 0; }
+  .lp-foot-col a, .lp-foot-mail { padding: 8px 0; }
     .lp-nav-text { display: none; }
   .lp-race-row { grid-template-columns: 112px minmax(0, 1fr) 48px; }
   .lp-log .lp-why, .lp-chip-d, .lp-scene-tag { display: none; }

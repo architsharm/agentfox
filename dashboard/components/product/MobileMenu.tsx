@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 /**
- * The sidebar's "Menu" button, shown on phones only (see af-theme.css). On a narrow
+ * The sidebar's "Menu" button, shown below 1024px only (see af-theme.css). On a narrow
  * screen the sidebar is a top bar: the mark, the project switcher and this button;
  * the nav itself opens below it as a full, labelled list. It closes when a page is
  * chosen, on Escape, and when the screen widens back to the desktop rail.
@@ -26,7 +26,7 @@ export function MobileMenu() {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    const wide = window.matchMedia("(min-width: 761px)");
+    const wide = window.matchMedia("(min-width: 1024px)");
     const onWide = () => wide.matches && setOpen(false);
     window.addEventListener("keydown", onKey);
     wide.addEventListener("change", onWide);

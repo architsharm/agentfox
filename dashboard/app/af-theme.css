@@ -703,12 +703,13 @@ a.gm-add { align-self: flex-start; text-decoration: none; }
 .lib-detail-sim { padding-top: 12px; border-top: 1px solid var(--af-line); }
 .lib-rules { width: 100%; }
 
-/* ── Phones (≤760px) ─────────────────────────────────────────────────────────
- * The rail becomes a top bar: the mark, the project switcher and a Menu button
+/* ── Phones and portrait tablets (≤1023px) ─────────────────────────────────────
+ * Beside a 210px rail a tablet's tables crushed their main column, so below 1024px
+ * the rail becomes a top bar: the mark, the project switcher and a Menu button
  * (MobileMenu). The nav opens below it as a full, labelled list with 44px rows,
  * rather than main's row of unlabelled icons. Pages get a 16px gutter. */
 .side-menu-btn { display: none; }
-@media (max-width: 760px) {
+@media (max-width: 1023px) {
   nav.side {
     width: 100%; flex-basis: auto; flex-direction: row; flex-wrap: wrap; align-items: center;
     gap: 6px; padding: 6px 12px; overflow: visible;
@@ -753,6 +754,13 @@ a.gm-add { align-self: flex-start; text-decoration: none; }
   .shell main { padding-top: 12px; }
   .shell main { padding: 20px 16px 48px; }
 }
+/* Small laptops (1024-1100px): beside the rail the top bar has little room. The email beside
+   the avatar goes (the avatar's menu shows it) and the crumbs shrink, or the bar ran
+   past the screen edge and the whole page scrolled sideways. */
+@media (max-width: 1100px) {
+  .topbar .account-summary { display: none; }
+  .topbar .crumbs { min-width: 0; flex: 1 1 auto; }
+}
 @media (max-width: 760px) {
   /* The map: most of the screen, not a 600px box; the panel below grows with its content. */
   .gm { --gm-h: 62vh; }
@@ -791,7 +799,7 @@ a.gm-add { align-self: flex-start; text-decoration: none; }
      under its column's name. */
   :root .shell main :is(table:has(> thead), table.k-table), :root .shell main :is(table:has(> thead), table.k-table) tbody { display: block; width: 100%; min-width: 0; }
   :root .shell main :is(table:has(> thead), table.k-table) thead { display: none; }
-  :root .shell main :is(table:has(> thead), table.k-table) tr { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 12px 14px; border-bottom: 1px solid var(--af-line); }
+  :root .shell main :is(table:has(> thead), table.k-table) tr { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; padding: 12px 14px; border-bottom: 1px solid var(--af-line); }
   :root .shell main :is(table:has(> thead), table.k-table) tr:last-child { border-bottom: 0; }
   :root .shell main :is(table:has(> thead), table.k-table) td { display: block; width: auto; min-width: 0; height: auto; padding: 0; border: 0; white-space: normal; text-align: left; overflow-wrap: anywhere; }
   :root .shell main :is(table:has(> thead), table.k-table) td:empty { display: none; }
