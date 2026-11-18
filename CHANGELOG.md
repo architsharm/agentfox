@@ -11,6 +11,14 @@ the file it came from.
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-11-19
+
+### Added
+- **The MCP server can be published to the official MCP Registry.** `server.json` names it
+  `io.github.architsharm/agentfox`, and the README carries an `mcp-name` marker as an HTML
+  comment. The registry proves PyPI ownership by reading that marker out of the README of the
+  *published* release, so it only counts once a version ships with it.
+
 ### Fixed
 - **A model's own timeout no longer overrides a longer configured one.** A detector that
   declares `timeout_ms` (the injection classifier's is 250 ms) had that value *replace*

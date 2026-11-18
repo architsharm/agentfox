@@ -1,0 +1,20 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.architsharm/agentfox",
+  "description": "Governs what AI agents and the MCP servers they load are allowed to do.",
+  "repository": {
+    "url": "https://github.com/architsharm/agentfox",
+    "source": "github"
+  },
+  "version": "0.5.4",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "agentfox",
+      "version": "0.5.4",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

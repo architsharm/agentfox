@@ -1,3 +1,4 @@
+<!-- mcp-name: io.github.architsharm/agentfox -->
 <div align="center">
 
 <img src="https://raw.githubusercontent.com/architsharm/agentfox/main/docs/assets/mark.webp" width="72" alt="" />
