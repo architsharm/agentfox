@@ -119,7 +119,7 @@ export function Production() {
             <SectionHead
               eyebrow="Setup"
               title="Point it at your code. It does the setup."
-              sub="AgentFox reads your repository, finds every agent and the tools each one can reach, and drafts the rules from that. You review them. You don't write them."
+              sub="AgentFox reads your repository, finds every agent and the tools each one can reach, and drafts the rules from that. You review them instead of writing them."
             />
             <div className="lp-steps" data-reveal>
               <article className="lp-step">

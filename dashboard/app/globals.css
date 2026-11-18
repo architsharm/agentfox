@@ -1521,7 +1521,8 @@ input[type="checkbox"], input[type="radio"] {
    phone widths rather than staying a fixed 224px column that eats half the
    screen — this app had no responsive handling at all before. ------------- */
 
-@media (max-width: 760px) {
+/* Phones and portrait tablets: the rail is a top bar (af-theme.css finishes it). */
+@media (max-width: 1023px) {
   .shell { flex-direction: column; }
   nav.side {
     position: sticky;
@@ -1589,6 +1590,8 @@ input[type="checkbox"], input[type="radio"] {
    */
   .theme-toggle { margin: 0 0 0 auto; flex: none; }
   .theme-toggle button { padding: 5px 8px; }
+}
+@media (max-width: 760px) {
   /*
    * repeat(auto-fill, minmax(220px, 1fr)) plus a .span-2 child forces a second
    * implicit track at any width, so at 375px this resolved to "220px 45px" and
@@ -3508,7 +3511,7 @@ ol.gs-steps li.done .gs-title { color: var(--muted); }
 .conn-grid > .k-card + .k-card { margin-top: 0; }
 .conn-card { padding: 14px 16px; gap: 6px; }
 .conn-card.open { grid-column: 1 / -1; }
-.conn-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.conn-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 8px; }
 .conn-head h3 { margin: 0; font-size: var(--t-body); font-weight: 620; }
 .conn-text { margin: 0; flex: 1; font-size: var(--t-small); color: var(--muted); max-width: var(--measure); }
 .conn-foot { margin-top: 8px; display: flex; gap: 8px; }
