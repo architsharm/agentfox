@@ -429,6 +429,10 @@ claims:
 
   - id: crescendo.trajectory_latency
     source: benchmarks/crescendo/results/crescendo_results.json
+    # Wall clock, so it measures the machine as much as the code. Checked exactly against
+    # the committed result on every PR; the nightly re-measures on a shared runner, where
+    # the difference is the runner, not a regression (`--allow-volatile-drift`).
+    volatile: true
     render: fields
     fields:
       mean: {path: [headline, trajectory_added_latency_ms, total_mean_ms], format: ".1f"}
