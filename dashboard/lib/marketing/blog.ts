@@ -28,6 +28,8 @@ export const SLUGS = [
   "continuous-red-teaming-ai-agents",
   "hidden-indirect-prompt-injection",
   "ai-agent-audit-trail",
+  "llm-guard-vs-agentfox-agentdojo",
+  "lethal-trifecta-ai-agents",
 ] as const;
 
 export type Slug = (typeof SLUGS)[number];
@@ -63,6 +65,60 @@ export type BlogPost = {
 export const AUTHOR = { name: "The AgentFox team", url: "https://github.com/architsharm/agentfox" };
 
 export const BLOG_POSTS: BlogPost[] = [
+  {
+    slug: "lethal-trifecta-ai-agents",
+    title: "The lethal trifecta is three safe tools in one agent",
+    seoTitle: "Lethal trifecta: find it in your own agents",
+    description:
+      "Three tools that each pass review become an exfiltration path when one agent holds all of them. How to find the lethal trifecta in your own repo.",
+    tag: "Prompt injection",
+    keywords: [
+      "lethal trifecta",
+      "AI agent data exfiltration",
+      "prompt injection exfiltration",
+      "AI agent tool permissions",
+      "agent security scan",
+    ],
+    published: "2026-11-19",
+    readMinutes: 7,
+    image: {
+      src: "/blog/playground-agents.png",
+      alt: "The AgentFox playground: five agents with the tools each one holds, including one that can move money up to a declared limit.",
+      width: 1600,
+      height: 900,
+    },
+    pillars: [
+      { href: "/docs/concepts", label: "Concepts", why: "How a grant and argument provenance decide a call." },
+      { href: "/playground", label: "Playground", why: "Try to talk an agent into a call it was never granted." },
+    ],
+  },
+  {
+    slug: "llm-guard-vs-agentfox-agentdojo",
+    title: "LLM Guard vs AgentFox on AgentDojo: it finishes more tasks than we do",
+    seoTitle: "LLM Guard vs AgentFox, measured on AgentDojo",
+    description:
+      "We ran LLM Guard and AgentFox containment on the same 588 AgentDojo attacks. It let 86 through, we let none, and it finishes more benign tasks than we do.",
+    tag: "Benchmarks",
+    keywords: [
+      "LLM Guard vs AgentFox",
+      "LLM Guard alternative",
+      "prompt injection detector comparison",
+      "AgentDojo benchmark",
+      "open source LLM guardrails comparison",
+    ],
+    published: "2026-11-19",
+    readMinutes: 8,
+    image: {
+      src: "/blog/benchmark-containment.png",
+      alt: "The AgentFox benchmark page: containment results with the benign task column shown beside the attack column.",
+      width: 1600,
+      height: 900,
+    },
+    pillars: [
+      { href: "/benchmark", label: "Benchmark", why: "Every arm in this post, with the result files behind it." },
+      { href: "/docs/concepts", label: "Concepts", why: "What containment checks when it never reads the payload." },
+    ],
+  },
   {
     slug: "ai-agent-guardrail-latency",
     title: "How much latency does a guardrail add to an AI agent? We measured 109 agent repositories",
