@@ -478,6 +478,9 @@ claims:
       - {file: docs/design/competitor-analysis.md, text: "It let {ak}/{an} attack pairs through where containment let 0/588 through"}
       - {file: benchmarks/README.md, text: "llm-guard alone let {ak}/{an} ({apct}% {aci}) attack pairs through at its default"}
       - {file: benchmarks/README.md, text: "llm-guard completes more benign tasks ({bk}/{bn} vs 24/97)"}
+      - {file: dashboard/components/marketing/blog/posts/llm-guard-vs-agentfox-agentdojo.tsx, text: "llm-guard alone let {ak} of {an} attack pairs through"}
+      - {file: dashboard/components/marketing/blog/posts/llm-guard-vs-agentfox-agentdojo.tsx, text: "it finished {bk} of {bn} benign tasks"}
+      - {file: dashboard/components/marketing/blog/posts/llm-guard-vs-agentfox-agentdojo.tsx, text: "flagged {fk} of {fn} clean tool outputs"}
 
   - id: head_to_head.containment_alone
     source: benchmarks/head_to_head/results/agentdojo_h2h_results.json
@@ -498,6 +501,8 @@ claims:
       - {file: docs/design/architecture-differentiation.md, text: "benign tasks to containment's {bk}/{bn}"}
       - {file: docs/design/competitor-analysis.md, text: "benign tasks to our {bk}/{bn}"}
       - {file: benchmarks/README.md, text: "AgentFox containment let {ak}/{an} through"}
+      - {file: dashboard/components/marketing/blog/posts/llm-guard-vs-agentfox-agentdojo.tsx, text: "containment let {ak} of {an} through"}
+      - {file: dashboard/components/marketing/blog/posts/llm-guard-vs-agentfox-agentdojo.tsx, text: "finished {bk} of {bn} benign tasks"}
 
   - id: head_to_head.llm_guard_plus_containment
     source: benchmarks/head_to_head/results/agentdojo_h2h_results.json
@@ -514,6 +519,7 @@ claims:
     quoted_in:
       - {file: benchmarks/head_to_head/README.md, text: "llm-guard + AgentFox containment | {ak}/{an} ({apct}% {aci}) | {bk}/{bn} ({bpct}% {bci})"}
       - {file: docs/design/architecture-differentiation.md, text: "llm-guard + AgentFox containment completes only {bk}/{bn} benign tasks"}
+      - {file: dashboard/components/marketing/blog/posts/llm-guard-vs-agentfox-agentdojo.tsx, text: "the pair finishes {bk} of {bn}"}
 
   - id: head_to_head.llm_guard_sweep_fpr5
     source: benchmarks/head_to_head/results/agentdojo_h2h_results.json
@@ -536,6 +542,7 @@ claims:
       - {file: benchmarks/head_to_head/README.md, text: "best at benign FPR <= 5% | {t} | {ak}/{an} ({apct}% {aci}) | {bk}/{bn} | {fk}/{fn} ({fpct}%)"}
       - {file: docs/design/architecture-differentiation.md, text: "its best threshold still lets {ak}/{an} through"}
       - {file: docs/design/architecture-differentiation.md, text: "it completes {bk}/{bn}, while letting {ak}/{an} attacks through"}
+      - {file: dashboard/components/marketing/blog/posts/llm-guard-vs-agentfox-agentdojo.tsx, text: "it still lets {ak} of {an} through"}
 
   - id: head_to_head.llm_guard_matched_utility
     source: benchmarks/head_to_head/results/agentdojo_h2h_results.json
@@ -579,6 +586,7 @@ claims:
       - {file: benchmarks/head_to_head/README.md, text: "llm-guard matches containment exactly: {ak}/{an} attacks and {bk}/{bn} benign tasks. That operating point flags {fpct}% of benign tool outputs"}
       - {file: docs/design/architecture-differentiation.md, text: "it reaches {ak}/{an} ({apct}% {aci}) attacks at {bk}/{bn} benign tasks"}
       - {file: docs/design/architecture-differentiation.md, text: "That setting flags {fpct}% of benign tool outputs"}
+      - {file: dashboard/components/marketing/blog/posts/llm-guard-vs-agentfox-agentdojo.tsx, text: "it flags {fk} of {fn} clean outputs"}
 
   - id: head_to_head.llm_guard_injected_recall
     source: benchmarks/head_to_head/results/agentdojo_h2h_results.json
@@ -621,6 +629,8 @@ claims:
   # --- Third-party fixture: a published prompt-injection corpus and red-team scenarios ---
   # Deterministic and offline (rules detectors, seeded database), so the nightly run re-measures
   # them. Latency is reported in the README but deliberately not bound: it varies by machine.
+      - {file: dashboard/components/marketing/blog/posts/llm-guard-vs-agentfox-agentdojo.tsx, text: "{lp50} ms at the median against our {ap50} ms"}
+
   - id: toolkit_corpus.heuristic_detection
     source: benchmarks/toolkit_corpus/results/prompt_injection_corpus.json
     render: fields

@@ -19,6 +19,8 @@ import * as redTeaming from "./continuous-red-teaming-ai-agents";
 import * as hidden from "./hidden-indirect-prompt-injection";
 import * as mcp from "./mcp-rug-pull-tool-poisoning";
 import * as containment from "./prompt-injection-containment-not-detection";
+import * as llmGuardH2h from "./llm-guard-vs-agentfox-agentdojo";
+import * as trifecta from "./lethal-trifecta-ai-agents";
 
 export type PostBody = { Body: ComponentType; toc: TocItem[]; faq: FaqItem[] };
 
@@ -32,4 +34,6 @@ export const POST_BODIES: Record<Slug, PostBody> = {
   "continuous-red-teaming-ai-agents": redTeaming,
   "hidden-indirect-prompt-injection": hidden,
   "ai-agent-audit-trail": auditTrail,
+  "llm-guard-vs-agentfox-agentdojo": llmGuardH2h,
+  "lethal-trifecta-ai-agents": trifecta,
 };
