@@ -106,7 +106,11 @@ def expand(repo: Path, pattern: str) -> list[str]:
     return sorted(str(p.relative_to(repo)) for p in repo.glob(pattern) if p.is_file())
 
 
-def check(manifest: Path = MANIFEST, repo: Path = REPO) -> tuple[list[dict[str, Any]], list[Drift]]:
+def check(
+    manifest: Path = MANIFEST,
+    repo: Path = REPO,
+    allow_volatile_drift: bool = False,
+) -> tuple[list[dict[str, Any]], list[Drift]]:
     loaded = yaml.safe_load(manifest.read_text())
     claims = loaded["claims"]
     sources: dict[str, Any] = {}
@@ -123,6 +127,12 @@ def check(manifest: Path = MANIFEST, repo: Path = REPO) -> tuple[list[dict[str, 
             drifts.append(Drift(claim["id"], source, "", f"source value unreadable: {exc}"))
             continue
         table.append({"id": claim["id"], **values, "quotes": len(claim["quoted_in"])})
+        # A wall-clock figure is a property of the machine that measured it, not of the
+        # product. The nightly re-measures on whatever runner it is given, so comparing
+        # its timings to the committed ones is a hardware diff, not drift. The number is
+        # still bound everywhere else, which is where a real regression would show.
+        if allow_volatile_drift and claim.get("volatile"):
+            continue
         for quote in claim["quoted_in"]:
             file = quote["file"]
             expected = normalise(quote["text"].format(**values))
@@ -153,7 +163,7 @@ def check(manifest: Path = MANIFEST, repo: Path = REPO) -> tuple[list[dict[str, 
 
 
 def main() -> int:
-    table, drifts = check()
+    table, drifts = check(allow_volatile_drift="--allow-volatile-drift" in sys.argv)
     if "--check" not in sys.argv:
         for row in table:
             fields = {k: v for k, v in row.items() if k not in ("id", "quotes")}

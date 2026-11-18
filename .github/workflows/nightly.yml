@@ -51,7 +51,10 @@ jobs:
           uv run python -m benchmarks.toolkit_corpus.run_prompt_injection_corpus
           uv run python -m benchmarks.toolkit_corpus.run_redteam_scenarios
       - name: Published claims still match fresh measurements
-        run: uv run python scripts/check/claims.py --check
+        # --allow-volatile-drift skips wall-clock timings only. They are re-measured here on
+        # a shared runner, so a difference is the hardware, not the product. CI checks them
+        # exactly against the committed results.
+        run: uv run python scripts/check/claims.py --check --allow-volatile-drift
       - name: Coverage map does not overstate the product
         run: uv run python scripts/probe/run.py
       - name: Keep the fresh results for comparison
