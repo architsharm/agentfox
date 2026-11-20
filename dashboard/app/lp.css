@@ -1,19 +1,13 @@
 /*
- * Landing-page variants. One type scale, used everywhere (measured against
- * Lakera and Pillar: display 56-72px at regular/medium weight, section heads
- * 32-48px, card titles 16-18px, body 14-16px):
+ * Landing-page variants. The full system (tokens, rules, signatures) is recorded in
+ * DESIGN.md at the repository root; keep the two in step.
  *
- *   --t-display  64 / 1.05  500     hero headline only
- *   --t-h2       40 / 1.15  500     every section heading
- *   --t-stat     40 / 1.1   500     numbers, always inside a card
- *   --t-h3       18 / 1.35  600     card titles
- *   --t-lead     18 / 1.55  400     the one line under a heading
- *   --t-body     15 / 1.6   400
- *   --t-small    13 / 1.5   400
- *   --t-label    12 / 1     500     pills, uppercase, tracked
+ *   Display   Archivo, wdth ~106: hero 64px, section heads clamp(32-50px), index verbs
+ *   Body      IBM Plex Sans: lead 18/1.55, body 15/1.6, small 13
+ *   Mono      Geist Mono, only for code and values
  *
- * Colours are the product's tokens (af-theme.css). One sans (IBM Plex Sans),
- * one mono (Geist Mono) for code and the product scene only.
+ * One accent (--af-brand), for the primary action and the call under check. No label
+ * above a heading; hairline rules and ruled indexes instead of boxed cards.
  */
 
 /* `.lp` is a whole page. `.lp-x` is the shared header and footer, which also sit
@@ -138,11 +132,14 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
 @keyframes lp-mq { to { transform: translateX(-100%); } }
 
 /* ── Sections ──────────────────────────────────────────────────────────────── */
-.lp-section { padding: 112px 0; }
+.lp-section { padding: 136px 0; }
 .lp-section-alt { background: var(--lp-alt); border-top: 1px solid var(--lp-hair); border-bottom: 1px solid var(--lp-hair); }
-.lp-head { display: grid; justify-items: center; text-align: center; max-width: 720px; margin: 0 auto 56px; }
-.lp-head h2 { margin-top: 20px; }
-.lp-head .lp-lead { margin-top: 16px; }
+/* Section heads are an editorial split: the heading carries the section, the one
+   supporting line sits beside it. No label above the heading. */
+.lp-head { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 20px 64px; align-items: end; margin: 0 0 64px; text-align: left; }
+.lp-head:not(:has(.lp-lead)) { grid-template-columns: minmax(0, 1fr); }
+.lp-head h2 { font-size: clamp(32px, 3.4vw, 50px); line-height: 1.08; max-width: 18em; }
+.lp-head .lp-lead { text-wrap: pretty; }
 .lp-stage { max-width: 880px; margin: 0 auto; }
 
 .lp-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
@@ -160,7 +157,7 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
 
 /* ── CTA and footer ────────────────────────────────────────────────────────── */
 .lp-cta { position: relative; overflow: hidden; padding: 112px 0; background: #0e0f13; color: #ecedf1; }
-.lp-cta::before { content: ""; position: absolute; left: 50%; top: 0; width: 900px; height: 420px; transform: translate(-50%, -60%); background: radial-gradient(closest-side, color-mix(in srgb, var(--af-brand) 35%, transparent), transparent); pointer-events: none; }
+.lp-cta::before { content: ""; position: absolute; left: 50%; top: 0; width: 900px; height: 420px; transform: translate(-50%, -60%); background: radial-gradient(closest-side, rgb(255 255 255 / 0.07), transparent); pointer-events: none; }
 .lp-cta-in { position: relative; display: grid; justify-items: center; text-align: center; }
 .lp-cta .lp-lead { margin-top: 16px; color: #b4b8c5; }
 .lp-foot { padding: 64px 0 0; border-top: 1px solid var(--lp-hair); font-size: 13px; color: var(--af-muted); background: var(--lp-alt); }
@@ -303,7 +300,7 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
 .lp-compare { max-width: 880px; margin: 0 auto; border: 1px solid var(--lp-hair); border-radius: 12px; background: var(--af-surface); overflow: hidden; }
 .lp-compare-head, .lp-compare-row { display: grid; grid-template-columns: minmax(0, 1fr) 170px 130px; gap: 16px; align-items: center; padding: 0 24px; }
 .lp-compare-head { height: 48px; background: var(--lp-alt); border-bottom: 1px solid var(--lp-hair); font-size: 13px; font-weight: 500; color: var(--af-muted); }
-.lp-compare-head span:last-child { color: var(--af-brand); }
+.lp-compare-head span:last-child { color: var(--lp-ink); }
 .lp-compare-row { min-height: 68px; border-bottom: 1px solid var(--lp-hair); }
 .lp-compare-msg { font-size: 15px; color: var(--lp-ink); }
 .lp-compare-text .lp-compare-head, .lp-compare-text .lp-compare-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr); }
@@ -335,7 +332,7 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
 .lp-switch { position: relative; width: 34px; height: 20px; border-radius: 999px; background: var(--af-brand); }
 .lp-switch i { position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; }
 .lp-ui-sub { font-size: 12px; color: var(--af-muted); padding-left: 2px; }
-.lp-step-n { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--af-brand) 12%, transparent); color: var(--af-brand); font-size: 13px; font-weight: 600; }
+.lp-step-n { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: color-mix(in srgb, var(--af-fg) 8%, transparent); color: var(--lp-ink); font-size: 13px; font-weight: 600; }
 .lp-step p { font-size: 15px; color: var(--af-fg-2); }
 
 .lp-pairs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; max-width: 980px; margin: 0 auto; }
@@ -558,3 +555,114 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
   .lp-chip-top { min-width: 0; }
   .lp-chip code { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 }
+
+/* ── Display voice ────────────────────────────────────────────────────────────
+   Archivo, slightly expanded, for headings and the few statement lines; Plex keeps
+   the body. Loaded in app/layout.tsx with its width axis. */
+:is(.lp, .lp-x) :is(h1, h2), .lp-vision, .lp-plane-verb { font-family: var(--font-archivo), var(--af-sans); font-stretch: 106%; }
+:is(.lp, .lp-x) h1 { letter-spacing: -0.035em; }
+.lp ::selection { background: color-mix(in srgb, var(--af-brand) 20%, transparent); }
+
+/* The vision line above the hero headline: a statement, not a label. */
+.lp-vision { margin-bottom: 20px; font-size: clamp(26px, 2.7vw, 40px); line-height: 1.1; font-weight: 600; font-stretch: 116%; letter-spacing: -0.025em; color: var(--lp-ink); text-wrap: balance; }
+.lp-hero-new { color: var(--af-brand); white-space: nowrap; }
+.lp-hero-new:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ── The moment of action ─────────────────────────────────────────────────────
+   One authored motion on the page: the line draws down through the four steps and
+   the last one, the held call, lands in the accent. Visible by default; Reveal only
+   hides it first when motion is allowed. */
+.lp-path { position: relative; display: grid; list-style: none; margin: 0; padding: 0 0 0 44px; max-width: 920px; }
+.lp-path::before {
+  content: ""; position: absolute; left: 15px; top: 34px; bottom: 34px; width: 2px; border-radius: 2px;
+  background: linear-gradient(var(--af-line-2, var(--lp-hair)) 0 74%, var(--af-brand)); transform-origin: top;
+  transition: transform 1500ms var(--af-ease) 150ms;
+}
+.lp-path li { position: relative; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 24px; align-items: center; padding: 14px 0; transition: opacity 600ms var(--af-ease), transform 700ms var(--af-ease); }
+.lp-path li::before {
+  content: ""; position: absolute; left: -35px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%;
+  border: 2px solid var(--af-line-2, var(--lp-hair)); background: var(--lp-bg);
+}
+.lp-path-step { font-size: 15px; font-weight: 600; color: var(--lp-ink); }
+.lp-path-ui { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 14px 16px; border: 1px solid var(--lp-hair); border-radius: 10px; background: var(--af-surface); font-size: 14px; color: var(--af-fg-2); transition: border-color 600ms var(--af-ease), box-shadow 600ms var(--af-ease); }
+.lp-path-code { font-family: var(--af-mono); font-size: 13px; color: var(--lp-ink); overflow-wrap: anywhere; }
+.lp-path .is-held::before { border-color: var(--af-brand); background: var(--af-brand); box-shadow: 0 0 0 5px color-mix(in srgb, var(--af-brand) 16%, transparent); }
+.lp-path .is-held .lp-path-ui { border-color: color-mix(in srgb, var(--af-brand) 45%, var(--lp-hair)); box-shadow: 0 18px 40px -24px color-mix(in srgb, var(--af-brand) 70%, transparent); }
+.lp-path-note { margin-top: 20px; padding-left: 44px; font-size: 13px; color: var(--af-muted); }
+.lp-reveal-on .lp-path[data-reveal] { transform: none; }
+.lp-reveal-on .lp-path:not(.is-in)::before { transform: scaleY(0); }
+.lp-reveal-on .lp-path:not(.is-in) li { opacity: 0; transform: translateX(-10px); }
+.lp-path li:nth-child(2) { transition-delay: 300ms; }
+.lp-path li:nth-child(3) { transition-delay: 650ms; }
+.lp-path li:nth-child(4) { transition-delay: 1050ms; }
+.lp-path .is-held .lp-path-ui, .lp-path .is-held::before { transition-delay: 1500ms; }
+.lp-reveal-on .lp-path:not(.is-in) .is-held .lp-path-ui { border-color: var(--lp-hair); box-shadow: none; }
+
+/* ── The control plane: five verbs as a ruled index, not a card grid ─────────── */
+.lp-plane { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--lp-ink); }
+.lp-plane li { border-bottom: 1px solid var(--lp-hair); transition: opacity 600ms var(--af-ease), transform 700ms var(--af-ease); }
+.lp-plane a { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr) 20px; gap: 32px; align-items: center; padding: 30px 0; }
+.lp-plane-verb { font-size: clamp(30px, 3.2vw, 46px); font-weight: 500; line-height: 1; letter-spacing: -0.03em; transition: color 300ms var(--af-ease); }
+.lp-plane-text { font-size: 17px; line-height: 1.5; color: var(--af-fg-2); max-width: 36rem; }
+.lp-plane a > svg { color: var(--af-muted); transition: transform 300ms var(--af-ease), color 300ms var(--af-ease); }
+.lp-plane a:hover .lp-plane-verb, .lp-plane a:focus-visible .lp-plane-verb { color: var(--af-brand); }
+.lp-plane a:hover > svg { transform: translateX(4px); color: var(--af-brand); }
+.lp-reveal-on .lp-plane[data-reveal] { transform: none; }
+.lp-reveal-on .lp-plane:not(.is-in) li { opacity: 0; transform: translateY(14px); }
+.lp-plane li:nth-child(2) { transition-delay: 80ms; }
+.lp-plane li:nth-child(3) { transition-delay: 160ms; }
+.lp-plane li:nth-child(4) { transition-delay: 240ms; }
+.lp-plane li:nth-child(5) { transition-delay: 320ms; }
+
+/* The peer-reviewed line under the benchmark. */
+.lp-reviewed { max-width: 760px; margin: 56px auto 0; padding-top: 28px; border-top: 1px solid var(--lp-hair); text-align: center; font-size: 15px; color: var(--af-fg-2); text-wrap: balance; }
+.lp-reviewed > span { font-weight: 600; color: var(--lp-ink); }
+.lp-reviewed a { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; color: var(--af-brand); }
+
+@media (max-width: 960px) {
+  .lp-head { grid-template-columns: minmax(0, 1fr); margin-bottom: 48px; }
+  .lp-path li { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .lp-plane a { grid-template-columns: minmax(0, 1fr) 20px; gap: 8px 24px; }
+  .lp-plane-text { grid-column: 1; }
+  .lp-plane a > svg { grid-row: 1; grid-column: 2; }
+}
+@media (max-width: 640px) {
+  .lp-head h2 { font-size: 28px; }
+  .lp-path { padding-left: 36px; }
+  .lp-path::before { left: 11px; }
+  .lp-path li::before { left: -31px; top: 24px; margin-top: 0; }
+  .lp-path-note { padding-left: 36px; }
+  .lp-path-ui { flex-wrap: wrap; }
+  .lp-plane a { padding: 22px 0; }
+}
+/* The home hero's fade reaches up to the vision line, so it never sits on the art. */
+.lp-hero:not(.lp-hero-short)::before { top: 60%; height: 74%; }
+.lp-path { max-width: 1000px; }
+
+/* ── Finish-review raise: one hairline grammar across the page ───────────────── */
+/* Timeline: only the held call is boxed. */
+.lp-path li:not(.is-held) .lp-path-ui { padding-left: 0; border-color: transparent; background: none; }
+/* Steps: no outer card; one panel per step, its rows as hairline rows. */
+.lp-step { padding: 0; border: 0; border-radius: 0; background: none; }
+.lp-step-ui .lp-ui-row { padding: 8px 2px; border: 0; border-bottom: 1px solid var(--lp-hair); border-radius: 0; background: none; }
+.lp-step-ui .lp-ui-row:last-child { border-bottom: 0; }
+/* Proof pairs: a heavy rule over each, no box. */
+.lp-pair { padding: 24px 0 0; border: 0; border-top: 1px solid var(--lp-ink); border-radius: 0; background: none; }
+.lp-pairs { gap: 48px; }
+/* The toolkit rows carry the five verbs. */
+.lp-compare-verb { display: block; margin-bottom: 2px; font-family: var(--font-archivo), var(--af-sans); font-stretch: 106%; font-size: 13px; font-weight: 600; color: var(--af-muted); }
+/* The use cases share the control plane's index, at a smaller display size. */
+.lp-plane .lp-plane-row { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 32px; align-items: baseline; padding: 26px 0; }
+.lp-plane-sm .lp-plane-verb { font-size: clamp(22px, 2vw, 28px); letter-spacing: -0.02em; }
+@media (max-width: 960px) { .lp-plane .lp-plane-row { grid-template-columns: minmax(0, 1fr); gap: 8px; } }
+/* Hero cards: never past the viewport edge on desktop; one at a time on phones. */
+.lp-chip { max-width: min(460px, calc(50vw - 40px)); }
+.lp-chip-top { min-width: 0; }
+.lp-chip code, .lp-chip-d { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 640px) { .lp-chip:not(:last-child) { display: none; } }
+/* globals.css pads every <main> on phones for the app shell; marketing bands are full-bleed. */
+.lp > main { padding: 0; }
+/* Step captions share one baseline across the three columns: each step spans four
+   rows of the parent grid (panel, numeral, heading, text) through subgrid. */
+.lp-steps { grid-auto-rows: auto; row-gap: 0; }
+.lp-step { grid-row: span 4; grid-template-rows: subgrid; row-gap: 8px; }

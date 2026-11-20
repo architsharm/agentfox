@@ -127,7 +127,7 @@ export function FlowArt({ mode }: { mode: ArtMode }) {
 
     const small = () => W < 700;
     const fieldTop = () => H * (small() ? 0.36 : 0.11);
-    const fieldBottom = () => H * (small() ? 0.92 : 0.43);
+    const fieldBottom = () => H * (small() ? 0.92 : mode === "production" ? 0.36 : 0.43);
     const laneY = (i: number) => fieldTop() + ((fieldBottom() - fieldTop()) * i) / (NL - 1);
     const gateX = () => W * 0.5;
 
@@ -171,7 +171,14 @@ export function FlowArt({ mode }: { mode: ArtMode }) {
       el.style.setProperty("--y", `${Math.round(laneY(laneIdx) - 14)}px`);
       el.dataset.side = side > 0 ? "r" : "l";
       chipsEl.appendChild(el);
-      requestAnimationFrame(() => el.classList.add("is-in"));
+      requestAnimationFrame(() => {
+        // A long request can be wider than the room beside the gate: nudge it back inside.
+        const r = el.getBoundingClientRect();
+        const room = host.getBoundingClientRect();
+        const over = Math.max(room.left + 12 - r.left, 0) - Math.max(r.right - (room.right - 12), 0);
+        if (over) el.style.setProperty("--x", `${Math.round(parseFloat(el.style.getPropertyValue("--x")) + over)}px`);
+        el.classList.add("is-in");
+      });
       live.push({ el, born: now });
     }
 
