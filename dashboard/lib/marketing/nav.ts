@@ -15,6 +15,12 @@ export type NavItem = {
 
 export type FooterColumn = { heading: string; items: NavItem[] };
 
+const RESEARCH: NavItem = {
+  label: "Research",
+  href: "/research",
+  note: "Our benchmarks and accepted peer-reviewed papers on guardrails for AI agents, each with its limits.",
+  sitemap: { changeFrequency: "monthly", priority: 0.8 },
+};
 const BENCHMARK: NavItem = {
   label: "Benchmark",
   href: "/benchmark",
@@ -91,17 +97,17 @@ export const HOME: NavItem = {
 };
 
 /** Header links, kept to one. Everything else is linked from the pages and the footer. */
-export const HEADER: NavItem[] = [BENCHMARK];
+export const HEADER: NavItem[] = [RESEARCH];
 export const HEADER_CTA: NavItem = DOCS;
 
 export const FOOTER: FooterColumn[] = [
   { heading: "Product", items: [PLAYGROUND, LIVE, PRICING] },
-  { heading: "Benchmarks", items: [BENCHMARK, LATENCY] },
+  { heading: "Research", items: [RESEARCH, BENCHMARK, LATENCY] },
   { heading: "Resources", items: [DOCS, BLOG, SUPPORT] },
   { heading: "Company", items: [SECURITY, PRIVACY, TERMS] },
 ];
 
 /** Every page, in one list. */
-export const ALL_PAGES: NavItem[] = [HOME, BENCHMARK, LATENCY, PLAYGROUND, LIVE, PRICING, BLOG, DOCS, SECURITY, SUPPORT, PRIVACY, TERMS];
+export const ALL_PAGES: NavItem[] = [HOME, RESEARCH, BENCHMARK, LATENCY, PLAYGROUND, LIVE, PRICING, BLOG, DOCS, SECURITY, SUPPORT, PRIVACY, TERMS];
 
 export const ALL_PATHS: string[] = ALL_PAGES.map((p) => p.href);
