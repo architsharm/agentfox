@@ -1,7 +1,7 @@
 [project]
 name = "agentfox"
 version = "0.5.4"
-description = "Agent-native, vendor-neutral governance, security and compliance control plane for AI agents in production."
+description = "Open source control plane for AI agents: discover what is running, least privilege on tool calls, and an audit trail you can check without us."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
