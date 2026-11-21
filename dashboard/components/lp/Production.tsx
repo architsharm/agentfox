@@ -4,7 +4,7 @@ import { FALSE_FLAGS } from "@/lib/lp/proof";
 
 import { CopyChip, Reveal, StickyCta } from "./client";
 import { FlowArt } from "./FlowArt";
-import { Arrow, LpCta, LpFooter, LpNav, SectionHead, WORKS_WITH } from "./parts";
+import { Arrow, LpCta, LpFooter, LpNav, MomentPath, SectionHead, WORKS_WITH, type PathStep } from "./parts";
 
 /**
  * The "guardrails that don't block your real customers" page. Each section
@@ -54,7 +54,7 @@ const EXAMPLES = [
 ] as const;
 
 /** An illustrative provenance hold, in the order it happens. */
-const MOMENT: { step: string; text: string; tag?: string; tagClass?: string; code?: boolean }[] = [
+const MOMENT: PathStep[] = [
   { step: "A customer asks", text: "“Can you email me my last invoice?”" },
   {
     step: "The agent reads a web page",
@@ -244,18 +244,11 @@ export function Production() {
               title="The prompt is where an attack starts. The tool call is where it lands."
               sub="A filter that only reads messages decides too early. AgentFox also checks each tool call as it runs, and where every argument in it came from."
             />
-            <ol className="lp-path" data-reveal aria-label="An example of a held tool call">
-              {MOMENT.map((m, i) => (
-                <li key={m.step} className={i === MOMENT.length - 1 ? "is-held" : undefined}>
-                  <span className="lp-path-step">{m.step}</span>
-                  <div className="lp-path-ui">
-                    {m.tag && <span className={`lp-tag ${m.tagClass}`}>{m.tag}</span>}
-                    <span className={m.code ? "lp-path-code" : undefined}>{m.text}</span>
-                  </div>
-                </li>
-              ))}
-            </ol>
-            <p className="lp-path-note">An example. The address came from the page, not the customer, so the call waits for a person.</p>
+            <MomentPath
+              steps={MOMENT}
+              label="An example of a held tool call"
+              note="An example. The address came from the page, not the customer, so the call waits for a person."
+            />
           </div>
         </section>
 

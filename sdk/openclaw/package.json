@@ -1,0 +1,31 @@
+{
+  "name": "@agentfox/openclaw",
+  "version": "0.1.0",
+  "description": "AgentFox for OpenClaw: check every tool call an OpenClaw agent makes before it runs.",
+  "license": "Apache-2.0",
+  "keywords": ["openclaw", "openclaw-plugin", "ai-agents", "agent-security", "guardrails", "tool-calling", "agentfox"],
+  "homepage": "https://useagentfox.com/docs/connect/openclaw",
+  "bugs": { "url": "https://github.com/architsharm/agentfox/issues" },
+  "repository": { "type": "git", "url": "https://github.com/architsharm/agentfox", "directory": "sdk/openclaw" },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist", "openclaw.plugin.json", "README.md"],
+  "engines": { "node": ">=20.3" },
+  "peerDependencies": { "openclaw": ">=2026.3.24" },
+  "peerDependenciesMeta": { "openclaw": { "optional": true } },
+  "openclaw": {
+    "extensions": ["./dist/index.js"],
+    "compat": { "pluginApi": ">=2026.3.24", "minGatewayVersion": "2026.3.24" }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "5.7.3",
+    "vitest": "^4.1.11"
+  },
+  "publishConfig": { "access": "public" }
+}

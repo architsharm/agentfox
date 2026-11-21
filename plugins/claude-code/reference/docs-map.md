@@ -85,6 +85,7 @@ Quote coverage numbers only from these, and only after regenerating.
 | `deploy/FLY.md` | deploying the dashboard to Fly.io step by step: `fly launch --no-deploy`, the three secrets, the deploy command, then the OAuth callback and playground origins |
 | `deploy/aws-agentcore-interceptor/README.md` | governing an Amazon Bedrock AgentCore Gateway's MCP tool calls: deploying the REQUEST-interceptor Lambda (SAM), attaching it to the gateway, fail and block modes | Setup guide; `handler.py`, `template.yaml` |
 | `deploy/model-server/README.md` | running model-backed detectors on another machine (EC2, a GPU box) for a gateway that cannot hold weights; self-hosted LLMs for the judgment tiers and `trusted_model_hosts` | Setup guide; `agentfox serve models`, `AGENTFOX_MODEL_SERVER_URL` |
+| `sdk/openclaw/README.md` | using or changing the OpenClaw plugin (`@agentfox/openclaw`): what its `before_tool_call` hook checks, settings, approvals, limits; the kit is in `deploy/openclaw/` |
 | `sdk/typescript/README.md` | using or changing the TypeScript client (`@agentfox/sdk`) for the `/v1/guard/*` routes |
 
 ## Class E — human-only: do not load into agent context

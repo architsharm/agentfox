@@ -64,6 +64,11 @@ export default function Page() {
             text: "Hooks that check what a coding agent runs and edits.",
           },
           {
+            href: "/docs/connect/openclaw",
+            title: "OpenClaw",
+            text: "A plugin that checks every shell command, browser step and message before it runs.",
+          },
+          {
             href: "/docs/connect/platforms",
             title: "Voice and hosted platforms",
             text: "Vapi, Retell, Copilot Studio and AgentCore.",

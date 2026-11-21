@@ -94,6 +94,31 @@ export function Comment({ children }: { children: React.ReactNode }) {
 }
 
 /** Heading left, the one supporting line right: an editorial split, no label above the heading. */
+export type PathStep = { step: string; text: string; tag?: string; tagClass?: string; code?: boolean };
+
+/**
+ * The moment-of-action timeline: steps down a line to the held call, which is the last
+ * step. The one authored motion on a page (see lp.css `.lp-path`).
+ */
+export function MomentPath({ steps, label, note }: { steps: PathStep[]; label: string; note: string }) {
+  return (
+    <>
+      <ol className="lp-path" data-reveal aria-label={label}>
+        {steps.map((m, i) => (
+          <li key={m.step} className={i === steps.length - 1 ? "is-held" : undefined}>
+            <span className="lp-path-step">{m.step}</span>
+            <div className="lp-path-ui">
+              {m.tag && <span className={`lp-tag ${m.tagClass ?? ""}`}>{m.tag}</span>}
+              <span className={m.code ? "lp-path-code" : undefined}>{m.text}</span>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <p className="lp-path-note">{note}</p>
+    </>
+  );
+}
+
 export function SectionHead({ title, sub }: { title: string; sub?: string }) {
   return (
     <div className="lp-head">

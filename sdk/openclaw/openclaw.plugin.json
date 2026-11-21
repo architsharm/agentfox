@@ -1,0 +1,23 @@
+{
+  "id": "agentfox",
+  "name": "AgentFox",
+  "description": "Check every tool call against AgentFox before it runs: block, hold for an approver, or allow.",
+  "categories": ["security"],
+  "activation": { "onStartup": true },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["baseUrl"],
+    "properties": {
+      "baseUrl": { "type": "string", "description": "The AgentFox gateway, e.g. http://agentfox:8080" },
+      "apiKey": { "type": "string", "description": "An AgentFox agent key (nom_agt_...)" },
+      "agent": { "type": "string", "description": "The agent's slug in AgentFox (default: openclaw)" },
+      "environment": { "type": "string" },
+      "failMode": { "type": "string", "enum": ["closed", "open"], "default": "closed" },
+      "approvals": { "type": "string", "enum": ["agentfox", "openclaw"], "default": "agentfox" },
+      "timeoutMs": { "type": "integer", "minimum": 100, "maximum": 14000, "default": 10000 },
+      "resultsKept": { "type": "integer", "minimum": 0, "maximum": 200, "default": 20 },
+      "approvalTimeoutMs": { "type": "integer", "minimum": 1000, "default": 120000 }
+    }
+  }
+}

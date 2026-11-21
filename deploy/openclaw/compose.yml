@@ -1,0 +1,66 @@
+# AgentFox for OpenClaw: OpenClaw with every tool call checked by AgentFox.
+#
+# An override on top of AgentFox's own stack, so the gateway, database and dashboard are
+# the ones in deploy/docker-compose.yml. From the repository root:
+#
+#   cp deploy/openclaw/.env.example deploy/openclaw/.env   # then fill it in
+#   deploy/openclaw/up.sh                                  # or the commands it prints
+#
+# What runs:
+#   gateway        AgentFox, also OpenClaw's model endpoint (it holds the real model key)
+#   plugin-build   one-shot: builds the AgentFox plugin for OpenClaw (sdk/openclaw)
+#   openclaw       OpenClaw, loading that plugin and pointed at the gateway for its model
+#
+# OpenClaw's own Control UI is on http://localhost:18789; AgentFox is on http://localhost:3000.
+
+services:
+  gateway:
+    environment:
+      # OpenClaw's model calls go through AgentFox, which forwards them to this provider.
+      AGENTFOX_DEFAULT_PROVIDER: ${AGENTFOX_DEFAULT_PROVIDER:-openai}
+      AGENTFOX_OPENAI_API_KEY: ${AGENTFOX_OPENAI_API_KEY:-}
+      AGENTFOX_ANTHROPIC_API_KEY: ${AGENTFOX_ANTHROPIC_API_KEY:-}
+      AGENTFOX_ALLOW_EGRESS: "true"
+    volumes:
+      - ./openclaw:/kit:ro
+
+  plugin-build:
+    image: node:22-alpine
+    working_dir: /plugin
+    command: ["sh", "-c", "npm ci --no-audit --no-fund && npm run build"]
+    volumes:
+      - ../sdk/openclaw:/plugin
+
+  openclaw:
+    image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
+    depends_on:
+      plugin-build:
+        condition: service_completed_successfully
+      gateway:
+        condition: service_started
+    environment:
+      HOME: /home/node
+      OPENCLAW_HOME: /home/node
+      OPENCLAW_STATE_DIR: /home/node/.openclaw
+      OPENCLAW_CONFIG_PATH: /home/node/.openclaw/openclaw.json
+      OPENCLAW_WORKSPACE_DIR: /home/node/.openclaw/workspace
+      OPENCLAW_GATEWAY_PORT: "18789"
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:?set OPENCLAW_GATEWAY_TOKEN (openssl rand -hex 24)}
+      # Read by openclaw.json.
+      AGENTFOX_URL: http://gateway:8080
+      AGENTFOX_AGENT_KEY: ${AGENTFOX_AGENT_KEY:-}
+      AGENTFOX_MODEL: ${AGENTFOX_MODEL:-gpt-4.1-mini}
+    volumes:
+      - openclaw-state:/home/node/.openclaw
+      - ./openclaw/openclaw.json:/home/node/.openclaw/openclaw.json
+      - ../sdk/openclaw:/opt/agentfox-openclaw:ro
+    ports:
+      - "127.0.0.1:18789:18789"
+    cap_drop: [NET_RAW, NET_ADMIN]
+    security_opt: ["no-new-privileges:true"]
+    init: true
+    restart: unless-stopped
+    command: ["node", "dist/index.js", "gateway", "--bind", "lan", "--port", "18789"]
+
+volumes:
+  openclaw-state:
