@@ -811,6 +811,14 @@ def _stream_headers(trace_hint: str = "") -> dict[str, str]:
     }
 
 
+def _tool_hook(value: str | None) -> bool:
+    """`X-AgentFox-Tool-Hook: 1`: the caller checks each tool call again as it runs
+    (the OpenClaw plugin, for one), so that hook, not this proxy, spends approvals.
+    Only the caller's own approved calls are affected, and the caller runs its tools
+    anyway; the hold the proxy would return is advice it could already ignore."""
+    return (value or "").strip().lower() in {"1", "true", "yes"}
+
+
 @router.post("/v1/chat/completions", summary="OpenAI-compatible inline proxy")
 async def chat_completions(
     request: Request,
@@ -824,10 +832,12 @@ async def chat_completions(
     x_agentfox_provider: Annotated[str | None, Header()] = None,
     x_agentfox_stream_mode: Annotated[str | None, Header()] = None,
     x_agentfox_approval: Annotated[str | None, Header()] = None,
+    x_agentfox_tool_hook: Annotated[str | None, Header()] = None,
 ) -> Any:
     _refuse_anonymous_provider_choice(request, credential, x_agentfox_provider)
     body = await request.json()
     enforcer = Enforcer(session)
+    enforcer.approvals_spent_by_hook = _tool_hook(x_agentfox_tool_hook)
     evidence = _evidence_from_body(session, body)
 
     # Ahead of the stream branch so a streaming client is governed identically — a
@@ -928,6 +938,7 @@ async def messages(
     x_agentfox_provider: Annotated[str | None, Header()] = None,
     x_agentfox_stream_mode: Annotated[str | None, Header()] = None,
     x_agentfox_approval: Annotated[str | None, Header()] = None,
+    x_agentfox_tool_hook: Annotated[str | None, Header()] = None,
 ) -> Any:
     _refuse_anonymous_provider_choice(request, credential, x_agentfox_provider)
     body = await request.json()
@@ -936,6 +947,7 @@ async def messages(
         payload = [{"role": "system", "content": body["system"]}, *payload]
 
     enforcer = Enforcer(session)
+    enforcer.approvals_spent_by_hook = _tool_hook(x_agentfox_tool_hook)
     evidence = _evidence_from_body(session, body)
 
     refusal = _govern_tool_loop(

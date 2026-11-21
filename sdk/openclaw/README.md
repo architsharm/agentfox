@@ -57,6 +57,10 @@ already run:
 Optional, and recommended: also use AgentFox as OpenClaw's model endpoint (an
 OpenAI-compatible provider with `baseUrl` set to the gateway's `/v1`). AgentFox then checks
 what reaches the model too, and holds the real model key so the team never sees it.
+Give that provider the headers `X-AgentFox-Agent: openclaw` (so its tool calls are checked
+as this agent's) and `X-AgentFox-Tool-Hook: 1` (so a call a person approved gets past the
+model endpoint and this plugin spends the approval when it runs), and set
+`tools.toolSearch: false` so tools are called by name. `deploy/openclaw/openclaw.json` does all three.
 
 ## Settings
 

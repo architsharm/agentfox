@@ -54,6 +54,7 @@ from agentfox.platform.identity import (
     request_approval,
     verify_credential,
 )
+from agentfox.platform.identity.service import find_approved
 from agentfox.platform.ledger import chain
 from agentfox.platform.ledger.findings import raise_finding
 from agentfox.platform.ledger.trace import (
@@ -253,6 +254,11 @@ class Enforcer(
         self.settings = get_settings()
         self.pipeline = pipeline or DetectorPipeline()
         self.engine = get_engine()
+        # Set by the model proxy when the caller says a tool hook checks each call again
+        # as it runs (`X-AgentFox-Tool-Hook`). Then an approved call passes the proxy
+        # unspent, and the hook spends it: otherwise the proxy re-holds the retry and
+        # the approval can never be used.
+        self.approvals_spent_by_hook = False
         # One ledger per request, not per call. Reset at the start of each
         # governed completion; a bare `evaluate()` gets a fresh one on demand.
         self._ledger: LatencyLedger | None = None
@@ -1423,6 +1429,38 @@ class Enforcer(
             )
             if denied is not None:
                 self._refuse_denied_retry(call, denied)
+                return
+        if (
+            not approval_id
+            and self.approvals_spent_by_hook
+            and call.effective == "escalate"
+            and call.persist
+        ):
+            approved = find_approved(
+                self.session,
+                agent_id=call.agent.id if call.agent else None,
+                tool_key=call.held[0],
+                arguments=call.held[1],
+            )
+            if approved is not None:
+                # Not spent here: the tool hook spends it when the call runs, once.
+                call.taint_summary["approval"] = {
+                    "id": approved,
+                    "redeemed": False,
+                    "spent_by": "tool hook",
+                }
+                call.verdict = "allow"
+                call.effective = "allow"
+                call.rules_fired.append(
+                    _fired_rule(
+                        "approval.redeemed",
+                        "allow",
+                        f"approved by a person ({approved}); the tool hook spends the "
+                        "approval when this call runs",
+                        severity="low",
+                        controls=["NOM-IAM-03"],
+                    )
+                )
                 return
         if approval_id and call.effective == "escalate" and call.persist:
             if self._refuse_denied_retry(call, approval_id):

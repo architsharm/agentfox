@@ -375,3 +375,39 @@ def test_a_held_message_is_filed_with_its_content_and_completes_on_retry(client)
     )
     assert retry.status_code == 200, retry.text
     assert retry.json()["choices"][0]["message"]["content"]
+
+
+def test_with_a_tool_hook_the_proxy_passes_an_approved_call_unspent(seeded):
+    """The model proxy and a tool hook (the OpenClaw plugin) both check a call. The
+    proxy saw the model ask for it first and re-held it, so an approval could never be
+    used. With `X-AgentFox-Tool-Hook` the proxy lets the approved call back to the
+    caller unspent; the hook spends it when the call runs, once."""
+    from agentfox.runtime.enforcement.enforcer import Enforcer
+
+    fox, approval_id = _held(seeded)
+    _approve(seeded, approval_id)
+
+    def proxy(hook: bool):
+        enforcer = Enforcer(seeded)
+        enforcer.approvals_spent_by_hook = hook
+        return enforcer.guard_tool_call(
+            agent_slug="payments-ops",
+            tool_key="email.send",
+            arguments=dict(EMAIL),
+            provenance=USER_PROVENANCE,
+            intent="email the customer their receipt",
+        )
+
+    assert proxy(hook=False).escalated  # without the header, nothing changes
+    passed = proxy(hook=True)
+    assert passed.verdict == "allow"
+    assert seeded.get(ApprovalRequest, approval_id).status == "approved"  # unspent
+
+    # The hook's check spends it, once; after that the proxy holds the call again.
+    with fox.session(intent="email the customer their receipt") as s:
+        ran = s.guard_tool(
+            "email.send", dict(EMAIL), provenance=USER_PROVENANCE, approval_id=approval_id
+        )
+    assert ran.verdict == "allow"
+    assert seeded.get(ApprovalRequest, approval_id).status == "used"
+    assert proxy(hook=True).escalated

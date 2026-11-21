@@ -5,7 +5,7 @@
         "baseUrl": "${AGENTFOX_URL}/v1",
         "apiKey": "${AGENTFOX_AGENT_KEY}",
         "api": "openai-completions",
-        "headers": { "X-AgentFox-Agent": "openclaw" },
+        "headers": { "X-AgentFox-Agent": "openclaw", "X-AgentFox-Tool-Hook": "1" },
         "models": [
           { "id": "${AGENTFOX_MODEL}", "name": "Model via AgentFox", "input": ["text"], "contextWindow": 128000, "maxTokens": 8192 }
         ]
