@@ -612,7 +612,7 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
 .lp-plane li:nth-child(4) { transition-delay: 240ms; }
 .lp-plane li:nth-child(5) { transition-delay: 320ms; }
 
-/* The peer-reviewed line under the benchmark. */
+/* The accepted-papers line under the benchmark. */
 .lp-reviewed { max-width: 760px; margin: 56px auto 0; padding-top: 28px; border-top: 1px solid var(--lp-hair); text-align: center; font-size: 15px; color: var(--af-fg-2); text-wrap: balance; }
 .lp-reviewed > span { font-weight: 600; color: var(--lp-ink); }
 .lp-reviewed a { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; color: var(--af-brand); }
@@ -665,3 +665,19 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
 .lp-steps { grid-auto-rows: auto; row-gap: 0; }
 .lp-step { grid-row: span 4; grid-template-rows: subgrid; row-gap: 8px; }
 @media (max-width: 640px) { .lp-path-code { font-size: 11.5px; } }
+
+/* /research: accepted work as a ruled list, venue on the left, the work on the right. */
+.lp-doc-sec > .lp-works { margin-top: 32px; }
+.lp-works { border-top: 1px solid var(--lp-ink); }
+.lp-work { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 8fr); gap: 16px 48px; padding: 32px 0; border-bottom: 1px solid var(--lp-hair); }
+.lp-work-meta { display: grid; align-content: start; gap: 2px; font-size: 14px; color: var(--af-muted); }
+.lp-work-meta > span:first-child { margin-bottom: 6px; font-size: 13px; }
+.lp-work-meta b { font-size: 17px; font-weight: 600; color: var(--lp-ink); }
+.lp-work-body { display: grid; gap: 12px; justify-items: start; max-width: 58ch; }
+.lp-work-body h3 { text-wrap: balance; }
+.lp-work-body p { font-size: 15px; color: var(--af-fg-2); text-wrap: pretty; }
+.lp-work-limit { font-size: 14px !important; }
+@media (max-width: 760px) { .lp-work { grid-template-columns: minmax(0, 1fr); padding: 24px 0; } }
+/* The section divider already closes the list; and a doc that follows the hero directly needs no extra top space. */
+.lp-work:last-child { border-bottom: 0; padding-bottom: 0; }
+.lp-hero-short + .lp-doc > .lp-doc-sec:first-child { padding-top: 8px; }

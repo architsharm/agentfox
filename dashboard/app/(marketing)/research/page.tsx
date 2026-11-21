@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Contents, DocSection } from "@/components/lp/bench";
+import { DocSection } from "@/components/lp/bench";
 import { Reveal } from "@/components/lp/client";
 import { FlowArt } from "@/components/lp/FlowArt";
 import { Arrow, LpCta, LpFooter, LpNav } from "@/components/lp/parts";
@@ -22,12 +22,16 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = publicPageMetadata({
   title: "Research",
   description:
-    "AgentFox benchmarks we rerun, and our peer-reviewed papers on guardrails for AI agents: detection, latency and what a guardrail does when it fails.",
+    "AgentFox benchmarks we rerun, and our papers on guardrails for AI agents accepted at workshops in December 2026: detection, latency and what a guardrail does when it fails.",
   path: "/research",
 });
 
 type Work = {
+  /** What it was accepted as, and where and when it is presented. */
+  accepted: string;
   venue: string;
+  host: string;
+  when: string;
   title: string;
   finding: React.ReactNode;
   limit: string;
@@ -36,7 +40,10 @@ type Work = {
 
 const PAPERS: Work[] = [
   {
-    venue: "Peer reviewed · WAITI 2026, ACSAC workshops",
+    accepted: "Accepted, to be presented at",
+    venue: "WAITI 2026",
+    host: "ACSAC 2026 workshops",
+    when: "7 December 2026, Los Angeles",
     title:
       "No Tier Wins Everywhere: Benchmarking Rules, Classifiers, a Judgment Model and an LLM as Security Detectors for AI Agents",
     finding:
@@ -45,14 +52,20 @@ const PAPERS: Work[] = [
     link: { href: "https://github.com/architsharm/waiti2026-artifact", label: "Per-row decisions and scripts" },
   },
   {
-    venue: "Peer reviewed · IEEE BigData 2026, Trustworthy AI Pipelines workshop",
+    accepted: "Accepted, to be presented at",
+    venue: "IEEE BigData 2026",
+    host: "Trustworthy AI Pipelines workshop",
+    when: "December 2026, Phoenix",
     title: "What a Runtime Guardrail Costs an Agent Pipeline: A Latency Case Study on Open-Source Agent Repositories",
     finding:
       "The latency of AgentFox's own checks on sessions generated from agent repositories: deterministic checks cost 3.5 ms at the median, a prompt-injection classifier raised that to 47 ms, and an inline LLM judge cost about a second. Under load, checks that skipped the classifier to meet their deadline also lost its detection.",
     limit: "One gateway worker on SQLite; the production configuration was not tested.",
   },
   {
-    venue: "Peer reviewed · IEEE BigData 2026, Trustworthy and Aligned AI workshop",
+    accepted: "Accepted, to be presented at",
+    venue: "IEEE BigData 2026",
+    host: "Trustworthy and Aligned AI workshop",
+    when: "December 2026, Phoenix",
     title:
       "When the Guardrail Breaks: Failure Semantics of Open-Source Guardrails for LLM Agents and What They Mean for Control",
     finding:
@@ -63,7 +76,10 @@ const PAPERS: Work[] = [
 
 const DEMOS: Work[] = [
   {
-    venue: "Demo · Cross-AI Symposium 2026, Self-Evolving AI Safety session",
+    accepted: "Demo accepted, to be shown at",
+    venue: "Cross-AI Symposium 2026",
+    host: "Self-Evolving AI Safety session",
+    when: "14 to 16 December 2026, online",
     title: "Observe-First Runtime Guardrails and Provenance Holds for Tool-Using Agents",
     finding:
       "AgentFox on a local build: an over-limit payment blocked, a poisoned document stopped, an unregistered agent flagged, a call held for a person because an argument came from a tool result, and the audit chain verified.",
@@ -72,26 +88,28 @@ const DEMOS: Work[] = [
   },
 ];
 
-const SECTIONS = [
-  { id: "benchmarks", label: "Benchmarks we rerun" },
-  { id: "papers", label: "Peer-reviewed papers" },
-  { id: "demos", label: "Demos" },
-];
-
-function WorkCard({ work }: { work: Work }) {
+/** One row of the ruled list: where it is presented on the left, the work on the right. */
+function WorkRow({ work }: { work: Work }) {
   return (
-    <article className="lp-paper" data-reveal>
-      <span className="lp-pill">{work.venue}</span>
-      <h3>{work.title}</h3>
-      <p>{work.finding}</p>
-      <p>
-        <strong>Limit:</strong> {work.limit}
-      </p>
-      {work.link && (
-        <a className="lp-paper-link" href={work.link.href} target="_blank" rel="noreferrer">
-          {work.link.label} <Arrow />
-        </a>
-      )}
+    <article className="lp-work">
+      <div className="lp-work-meta">
+        <span>{work.accepted}</span>
+        <b>{work.venue}</b>
+        <span>{work.host}</span>
+        <span>{work.when}</span>
+      </div>
+      <div className="lp-work-body">
+        <h3>{work.title}</h3>
+        <p>{work.finding}</p>
+        <p className="lp-work-limit">
+          <strong>Limit:</strong> {work.limit}
+        </p>
+        {work.link && (
+          <a className="lp-paper-link" href={work.link.href} target="_blank" rel="noreferrer">
+            {work.link.label} <Arrow />
+          </a>
+        )}
+      </div>
     </article>
   );
 }
@@ -105,29 +123,21 @@ export default function ResearchPage() {
         <section className="lp-hero lp-hero-short">
           <FlowArt mode="ribbon" />
           <div className="lp-hero-copy">
-            <span className="lp-pill">Research</span>
             <h1>
               What we measure,
               <br />
               <span className="lp-muted">and what it doesn&apos;t show</span>
             </h1>
             <p className="lp-lead">
-              The benchmarks behind AgentFox, rerun when the product changes, and the peer-reviewed papers they came from.
-              Every result states its limits.
+              The benchmarks behind AgentFox, rerun when the product changes, and the papers we present at
+              workshops in December. Every result states its limits.
             </p>
-          </div>
-        </section>
-
-        <section className="lp-section lp-section-tight">
-          <div className="lp-wrap">
-            <Contents items={SECTIONS} />
           </div>
         </section>
 
         <div className="lp-wrap lp-doc">
           <DocSection
             id="benchmarks"
-            n={1}
             title="Benchmarks we rerun"
             lead="Each one has its own page with the method, the limits and the commands to rerun it."
           >
@@ -154,19 +164,22 @@ export default function ResearchPage() {
 
           <DocSection
             id="papers"
-            n={2}
-            title="Peer-reviewed papers"
-            lead="Accepted papers only. Where a paper measures “the authors’ guardrail”, that guardrail is AgentFox."
+            title="Accepted papers"
+            lead="Each is accepted and will be presented in December 2026. Where a paper measures “the authors’ guardrail”, that guardrail is AgentFox."
           >
-            {PAPERS.map((w) => (
-              <WorkCard key={w.title} work={w} />
-            ))}
+            <div className="lp-works" data-reveal>
+              {PAPERS.map((w) => (
+                <WorkRow key={w.title} work={w} />
+              ))}
+            </div>
           </DocSection>
 
-          <DocSection id="demos" n={3} title="Demos">
-            {DEMOS.map((w) => (
-              <WorkCard key={w.title} work={w} />
-            ))}
+          <DocSection id="demos" title="Demos">
+            <div className="lp-works" data-reveal>
+              {DEMOS.map((w) => (
+                <WorkRow key={w.title} work={w} />
+              ))}
+            </div>
             <p className="lp-doc-more">
               <Link href="/live">
                 Our own agent, attacked every hour <Arrow />

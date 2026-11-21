@@ -389,8 +389,9 @@ export function Production() {
               </Link>
             </p>
             <p className="lp-reviewed" data-reveal>
-              <span>Peer reviewed.</span>{" "}
-              Our detector, latency and failure-mode studies were accepted at WAITI 2026 and two IEEE BigData 2026 workshops.{" "}
+              <span>Accepted for presentation.</span>{" "}
+              Our detector, latency and failure-mode studies will be presented at WAITI 2026 and two IEEE BigData 2026
+              workshops in December.{" "}
               <Link href="/research">
                 Read the research <Arrow />
               </Link>

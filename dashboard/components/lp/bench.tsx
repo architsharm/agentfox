@@ -57,14 +57,15 @@ export function DocSection({
   children,
 }: {
   id: string;
-  n: number;
+  /** Shown only where the order carries meaning, as on the benchmark pages. */
+  n?: number;
   title: string;
   lead?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section id={id} className="lp-doc-sec">
-      <span className="lp-doc-n">{String(n).padStart(2, "0")}</span>
+      {n !== undefined && <span className="lp-doc-n">{String(n).padStart(2, "0")}</span>}
       <h2>{title}</h2>
       {lead && <p className="lp-doc-lead">{lead}</p>}
       {children}
@@ -158,11 +159,11 @@ export function Contents({ items }: { items: { id: string; label: string }[] }) 
   );
 }
 
-/** The peer-reviewed paper behind the detector comparison. */
+/** The accepted paper behind the detector comparison. */
 export function PaperCard() {
   return (
     <a className="lp-paper" href="https://github.com/architsharm/waiti2026-artifact" target="_blank" rel="noreferrer">
-      <span className="lp-pill">Peer reviewed · WAITI 2026</span>
+      <span className="lp-pill">To be presented at WAITI 2026</span>
       <h3>No Tier Wins Everywhere: Benchmarking Rules, Classifiers, a Judgment Model and an LLM as Security Detectors for AI Agents</h3>
       <p>
         Accepted at WAITI 2026, a workshop of ACSAC 2026, to be presented in Los Angeles on 7 December. Five kinds of
