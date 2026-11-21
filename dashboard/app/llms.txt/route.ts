@@ -76,6 +76,8 @@ export function GET(): Response {
     "",
     FACTS.map((f) => `- ${f}`).join("\n"),
     "",
+    `The full text of every page below, in one file: ${SITE_URL}/llms-full.txt`,
+    "",
     section("Pages", PAGE_LINKS),
     "",
     section("Blog", BLOG_LINKS),
