@@ -44,6 +44,9 @@ services:
       - key: AGENTFOX_API_URL
         value: https://guardrails-api.vercel.app
       # Sign-in. From the GitHub OAuth app.
+      # Umami website id for the hosted site's page counter. Unset serves no script.
+      - key: AGENTFOX_UMAMI_WEBSITE_ID
+        sync: false
       - key: GITHUB_CLIENT_ID
         sync: false
       - key: GITHUB_CLIENT_SECRET

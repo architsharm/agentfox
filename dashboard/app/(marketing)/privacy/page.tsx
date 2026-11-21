@@ -338,24 +338,32 @@ export default function Privacy() {
                 dashboard/app/api/auth/github/login/route.ts; dashboard/app/api/auth/[provider]/login/route.ts; dashboard/lib/product/api.ts; dashboard/lib/product/project.ts; dashboard/middleware.ts
               </Ref>
               <p className="mk-body" style={{ marginTop: 18 }}>
-                Your browser&rsquo;s local storage keeps your theme choice and when you
-                dismissed a setup banner in the app. Neither is sent anywhere.
+                Your browser&rsquo;s local storage keeps your theme choice, when you
+                dismissed a setup banner in the app, and whether your sign-up has already
+                been counted once. None of it is sent anywhere.
               </p>
-              <Ref>dashboard/components/ui/ThemeToggle.tsx; dashboard/components/product/SetupBanner.tsx</Ref>
+              <Ref>dashboard/components/ui/ThemeToggle.tsx; dashboard/components/product/SetupBanner.tsx; dashboard/components/Analytics.tsx</Ref>
 
               <h2 className="mk-h2" style={{ marginTop: 48 }}>
                 Analytics and third-party scripts
               </h2>
               <p className="mk-body" style={{ marginTop: 14 }}>
-                There are none. No product analytics, no tag manager, no session recorder,
-                no heat maps, no error reporting service, no advertising or conversion
-                pixel. The typeface is fetched at build time and served from this domain,
-                so loading a page here sends no request to Google Fonts or to any other
-                font host. The only inline scripts are first-party: one line that applies
-                your stored theme before the first paint, and structured data that
+                One: Umami, a cookie-less page counter, on the public pages, the docs, the
+                sign-in page and the welcome page only. It records which page was viewed,
+                the page that linked to it, the browser and country, and three events: a
+                sign-up, an install command copied, and the optional answer to &ldquo;how
+                did you hear about AgentFox&rdquo; on the welcome page. It sets no cookie,
+                keeps no identifier that follows you between visits, and hears nothing from
+                the signed-in product, whose page addresses name your agents and projects.
+                A copy you self-host serves no analytics script at all. No tag manager, no
+                session recorder, no heat maps, no error reporting service, no advertising
+                or conversion pixel. The typeface is fetched at build time and served from
+                this domain, so loading a page here sends no request to Google Fonts or to
+                any other font host. The other inline scripts are first-party: one line that
+                applies your stored theme before the first paint, and structured data that
                 describes the product to search engines.
               </p>
-              <Ref>dashboard/package.json; dashboard/app/layout.tsx; dashboard/app/page.tsx</Ref>
+              <Ref>dashboard/components/Analytics.tsx; dashboard/lib/analytics.ts; dashboard/app/layout.tsx; dashboard/app/page.tsx</Ref>
             </div>
           </div>
         </section>
@@ -379,6 +387,10 @@ export default function Privacy() {
                 <Entry name="Neon">
                   The Postgres database: sandboxes, accounts, workspaces, the pricing list
                   and the audit chain.
+                </Entry>
+                <Entry name="Umami">
+                  Runs the page counter described above: page addresses on the public
+                  site and the three events, with no cookie and no identifier.
                 </Entry>
                 <Entry name="Anthropic and TypeSafe">
                   The hosted judges described above, for redacted text only.

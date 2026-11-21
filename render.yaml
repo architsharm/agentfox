@@ -139,6 +139,9 @@ services:
           property: hostport
       # Sign-in. From a GitHub OAuth app you create; Render prompts once and
       # stores them, so nothing is committed here.
+      # Umami website id for the hosted site's page counter. Unset serves no script.
+      - key: AGENTFOX_UMAMI_WEBSITE_ID
+        sync: false
       - key: GITHUB_CLIENT_ID
         sync: false
       - key: GITHUB_CLIENT_SECRET
