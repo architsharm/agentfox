@@ -1,3 +1,4 @@
 .next-dev
 .next-docs
 node_modules
+.vercel
