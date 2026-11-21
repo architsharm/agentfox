@@ -103,7 +103,6 @@ const nextConfig = {
       ["/evidence", "/docs/prove/audit"],
       ["/frameworks", "/docs/prove/audit"],
       ["/coverage", "/docs/limits"],
-      ["/compare", "/benchmark"],
       ["/legal", "/terms"],
       ["/lp", "/"],
       ["/lp/:path*", "/"],
