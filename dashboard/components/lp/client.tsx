@@ -16,6 +16,7 @@ export function CopyChip({ text, wide = false }: { text: string; wide?: boolean 
         onClick={() => {
           navigator.clipboard?.writeText(text).then(
             () => {
+              window.umami?.track("install_copied", { text });
               setDone(true);
               setTimeout(() => setDone(false), 1400);
             },

@@ -32,6 +32,7 @@ key: [`docs/deployment/key-rotation.md`](../docs/deployment/key-rotation.md).
 | `AGENTFOX_TOKEN_ENCRYPTION_KEY` | API only | Connecting GitHub returns 503. It fails closed rather than storing the access token unencrypted. |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | UI only | Sign-in returns 503, or the callback fails. |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` | UI only | Optional. That provider's button is not shown. |
+| `AGENTFOX_UMAMI_WEBSITE_ID` | UI only | Optional. Without it no analytics script is served, which is right for a self-hosted copy. |
 
 Generate the two you control:
 

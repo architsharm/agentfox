@@ -4,6 +4,8 @@ import { GeistSans } from "geist/font/sans";
 import { Archivo, IBM_Plex_Sans } from "next/font/google";
 
 import { SITE_NAME, SITE_URL, SITE_DESCRIPTION, HOME_TITLE, REPO_URL } from "@/lib/site";
+import { env } from "@/lib/env";
+import { Analytics } from "@/components/Analytics";
 
 /**
  * The display face.
@@ -201,7 +203,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           the routes it belongs to. The wrapper that used to sit here was
           `.login-main { display: block; width: 100% }` — a div that did nothing —
           and every public page renders its own <main>, so it is simply gone. */}
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* Read at request time, like every other setting: a self-hosted copy that sets nothing serves no script. */}
+        <Analytics websiteId={env("UMAMI_WEBSITE_ID")} />
+      </body>
     </html>
   );
 }

@@ -12,6 +12,7 @@ export function CopyButton({ text }: { text: string }) {
         navigator.clipboard
           .writeText(text)
           .then(() => {
+            window.umami?.track("code_copied", { text: text.slice(0, 120) });
             setCopied(true);
             setTimeout(() => setCopied(false), 1500);
           })

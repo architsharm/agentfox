@@ -8,6 +8,7 @@ import { publicApiBase } from "@/lib/env";
 import { ApiDown } from "@/components/ui";
 import { Card, Header } from "@/components/kit";
 import { WelcomeFlow } from "@/components/product/welcome/WelcomeFlow";
+import { HeardFrom } from "@/components/product/welcome/HeardFrom";
 import { sortRepos, type Repo } from "@/lib/product/welcome";
 
 export const metadata: Metadata = appPageMetadata("Welcome", "Scan a repository, see what it found, and set it up.");
@@ -54,6 +55,7 @@ export default async function Welcome({ searchParams }: { searchParams: Promise<
       <p className="sub wf-lede">
         Three steps, a few minutes. Every result here comes from your own code: nothing is sample data.
       </p>
+      <HeardFrom />
       {repos && repos.repos.length ? (
         <WelcomeFlow
           repos={sortRepos(repos.repos)}
