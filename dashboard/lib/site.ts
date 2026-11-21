@@ -49,6 +49,10 @@ export const SITE_DESCRIPTION =
  */
 export const REPO_URL = "https://github.com/architsharm/agentfox";
 
+/** The company page on LinkedIn (a showcase page under Nometria). Listed in the
+ *  Organization structured data so search engines can tie the profile to the site. */
+export const LINKEDIN_URL = "https://www.linkedin.com/showcase/useagentfox/";
+
 /** Verified in components/marketing/editions.tsx and components/marketing/Playground.tsx. */
 export const SUPPORT_EMAIL = "support@nometria.com";
 
