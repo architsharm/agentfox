@@ -15,7 +15,14 @@ export function TableLabels() {
   useEffect(() => {
     const label = () => {
       for (const table of document.querySelectorAll<HTMLTableElement>("main table")) {
-        const names = [...table.querySelectorAll("thead th")].map((th) => th.textContent?.trim() ?? "");
+        // Without the info tip's literal "i", or a stacked label read "triggers on this turni".
+        const names = [...table.querySelectorAll("thead th")].map((th) => {
+          const c = th.cloneNode(true) as HTMLElement;
+          c.querySelectorAll(".info-tip").forEach((n) => n.remove());
+          const t = c.textContent?.trim() ?? "";
+          // Capitalised like the desktop header (th::first-letter), not "threat", "why".
+          return t.charAt(0).toUpperCase() + t.slice(1);
+        });
         for (const row of table.querySelectorAll<HTMLTableRowElement>("tbody tr")) {
           let primary = false;
           [...row.cells].forEach((cell, i) => {

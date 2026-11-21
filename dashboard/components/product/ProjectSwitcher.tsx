@@ -97,7 +97,7 @@ export function ProjectSwitcher({ projects, current }: { projects: ProjectOption
       <button ref={btn} type="button" className="project-switch-btn" aria-haspopup="listbox" aria-expanded={open} onClick={toggle}>
         <span className="project-switch-name">
           <small>{adding ? "not connected yet" : here ? agents(here.agents) : "no project yet"}</small>
-          {adding ? "New project" : here ? projectLabel(here) : "Set up a project"}
+          <span className="project-switch-label">{adding ? "New project" : here ? projectLabel(here) : "Set up a project"}</span>
         </span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
           <path d="m7 9 5-5 5 5M7 15l5 5 5-5" />

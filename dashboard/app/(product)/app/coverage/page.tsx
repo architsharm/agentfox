@@ -195,7 +195,7 @@ export default async function Coverage({
                           <span className="muted">none</span>
                         ) : (
                           t.controls.map((c: any) => (
-                            <div key={c.key}>
+                            <div key={c.key} style={{ whiteSpace: "nowrap" }}>
                               <span className="mono">{c.key}</span>{" "}
                               <span className="muted">{c.status.replace(/_/g, " ")}</span>
                             </div>

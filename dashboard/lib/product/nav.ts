@@ -46,13 +46,13 @@ export const WORKSPACE_NAV: NavGroup[] = [
     items: [
       ["Agents", "/app/map", ["/app/projects", "/app/onboarding", "/app/welcome"], "/app/projects"],
       ["Policies", "/app/policies"],
-      ["Approvals", "/app/approvals"],
+      ["Approvals", "/app/approvals", ["/app/escalation"]],
       ["Issues", "/app/findings"],
-      ["Testing", "/app/test"],
+      ["Testing", "/app/test", ["/app/evals"]],
       [
         "Activity",
         "/app/traces",
-        ["/app/observe", "/app/tools", "/app/models", "/app/events", "/app/sessions", "/app/escalation/conversations"],
+        ["/app/observe", "/app/tools", "/app/models", "/app/events", "/app/sessions"],
       ],
       ["Reports", "/app/reports", ["/app/compliance", "/app/coverage", "/app/board"]],
     ],

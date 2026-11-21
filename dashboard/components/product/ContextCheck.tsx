@@ -50,14 +50,16 @@ export function ContextCheck() {
       <div className="row" style={{ gap: 8 }}>
         <button
           type="button"
-          className={mode === "document" ? "btn-primary" : "btn-scan"}
+          className="btn-scan"
+          aria-pressed={mode === "document"}
           onClick={() => setMode("document")}
         >
           Check one document
         </button>
         <button
           type="button"
-          className={mode === "chunks" ? "btn-primary" : "btn-scan"}
+          className="btn-scan"
+          aria-pressed={mode === "chunks"}
           onClick={() => setMode("chunks")}
         >
           Check chunk boundaries

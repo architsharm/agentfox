@@ -58,6 +58,8 @@
 .pol-list-plain { list-style: none; margin: 0; padding: 0; }
 .pol-list-plain > li + li { border-top: 1px solid var(--af-line); }
 .pol-groups .pol-head, .pol-groups .pol-row { grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.6fr) minmax(0, 1.4fr); }
+/* Phones: one column. The three-column rule above outranked af-theme's and cut the effect off. */
+@media (max-width: 760px) { .pol-groups .pol-row { grid-template-columns: 1fr; gap: 3px; } .pol-where:empty { display: none; } }
 
 /* Libraries: the recommended one says so. */
 .lib-tag { flex: none; align-self: center; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 500; color: var(--af-brand); background: color-mix(in srgb, var(--af-brand) 10%, transparent); }

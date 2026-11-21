@@ -281,14 +281,17 @@ export function SetupCard({
   const haveKey = Boolean(key || keyInfo?.hasKey);
 
   return (
-    <div className="tw mx-auto mt-8 w-full max-w-[640px] text-sm text-foreground">
+    <div className="tw mt-8 w-full max-w-[640px] text-sm text-foreground">
       <section className="overflow-hidden rounded-xl border bg-card shadow-[var(--af-shadow-1)]" aria-labelledby="setup-h">
-        <header className="flex items-start gap-4 px-7 pt-7 pb-6">
-          <Logo size={38} />
+        <header className="flex items-start gap-4 px-5 pt-7 pb-6 sm:px-7">
+          {/* On a phone the mark and "Skip for now" squeezed the title into a 150px column. */}
+          <span className="max-sm:hidden">
+            <Logo size={38} />
+          </span>
           <div className="min-w-0 flex-1">
-            <h1 id="setup-h" className="text-[22px] leading-7 font-semibold tracking-tight">
+            <h2 id="setup-h" className="text-[22px] leading-7 font-semibold tracking-tight text-balance">
               {hasProjects ? "Connect a new project" : "Connect your first agent"}
-            </h1>
+            </h2>
             <p className="mt-1 text-muted-foreground">
               AgentFox reads your agents from their code, maps the tools they can call, and guards every call. Three steps.
             </p>
@@ -302,23 +305,23 @@ export function SetupCard({
 
         {github && (
           <>
-          <div className="mx-7 mb-4 flex flex-wrap items-center gap-3 rounded-lg border bg-muted/50 px-4 py-3">
+          <div className="mx-5 mb-4 flex flex-wrap sm:mx-7 items-center gap-3 rounded-lg border bg-muted/50 px-4 py-3">
             <p className="min-w-0 flex-1">
               <span className="font-medium">Your GitHub is connected.</span>{" "}
               <span className="text-muted-foreground">Pick a repository: AgentFox finds the agents in it in about a minute.</span>
             </p>
             <Link
               href="/app/welcome?again=1"
-              className="inline-flex h-8 items-center gap-2 rounded-full bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover"
+              className="inline-flex h-8 items-center gap-2 rounded-lg bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover"
             >
               Scan a repository
             </Link>
           </div>
-          <p className="mx-7 mb-4 text-[13px] text-muted-foreground">Or connect from your terminal:</p>
+          <p className="mx-5 mb-4 text-[13px] sm:mx-7 text-muted-foreground">Or connect from your terminal:</p>
           </>
         )}
 
-        <ol className="px-7 pb-7">
+        <ol className="px-5 pb-7 sm:px-7">
           <Step n={1} title="Create a key" state={haveKey ? "done" : "active"}>
             {key ? (
               <>
@@ -344,7 +347,7 @@ export function SetupCard({
                       type="button"
                       onClick={replaceKey}
                       disabled={creating}
-                      className="inline-flex h-8 items-center gap-2 rounded-full bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
+                      className="inline-flex h-8 items-center gap-2 rounded-lg bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
                     >
                       {creating ? <Loader2 className="size-3.5 animate-spin" /> : <KeyRound className="size-3.5" />}
                       {creating ? "Making…" : "Make a new key"}
@@ -357,7 +360,7 @@ export function SetupCard({
                   <button
                     type="button"
                     onClick={() => setReplacing(true)}
-                    className="mt-3 inline-flex h-8 items-center gap-2 rounded-full border bg-card px-3.5 text-[13px] font-medium hover:bg-muted"
+                    className="mt-3 inline-flex h-8 items-center gap-2 rounded-lg border bg-card px-3.5 text-[13px] font-medium hover:bg-muted"
                   >
                     <KeyRound className="size-3.5" /> Make a new key
                   </button>
@@ -375,7 +378,7 @@ export function SetupCard({
                   type="button"
                   onClick={createKey}
                   disabled={creating}
-                  className="mt-3 inline-flex h-8 items-center gap-2 rounded-full bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
+                  className="mt-3 inline-flex h-8 items-center gap-2 rounded-lg bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
                 >
                   {creating ? <Loader2 className="size-3.5 animate-spin" /> : <KeyRound className="size-3.5" />}
                   {creating ? "Creating…" : "Create a key"}
@@ -412,7 +415,7 @@ export function SetupCard({
                       type="button"
                       onClick={addAgents}
                       disabled={adding}
-                      className="mt-3 inline-flex h-8 items-center gap-2 rounded-full bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
+                      className="mt-3 inline-flex h-8 items-center gap-2 rounded-lg bg-primary px-3.5 text-[13px] font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-60"
                     >
                       {adding ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
                       {adding ? "Adding…" : found?.agents.length === 1 ? "Add to AgentFox" : `Add ${found?.agents.length} agents to AgentFox`}
@@ -429,7 +432,7 @@ export function SetupCard({
           </Step>
         </ol>
 
-        <footer className="flex flex-wrap gap-5 border-t bg-muted/50 px-7 py-3 text-[13px]">
+        <footer className="flex flex-wrap gap-5 border-t bg-muted/50 px-5 py-3 sm:px-7 text-[13px]">
           <FooterLink href="/docs/connect/python">Read the full guide</FooterLink>
           {!github && <FooterLink href="/app/welcome?again=1">Scan a repository instead</FooterLink>}
         </footer>
@@ -468,7 +471,7 @@ function Step({
         {state === "done" ? <Check className="size-3.5" strokeWidth={3} /> : n}
       </span>
       <div ref={anchor} className={cn("pb-7", last && "pb-0")}>
-        <h2 className="mb-1 pt-1 text-[15px] font-semibold">{title}</h2>
+        <h3 className="mb-1 pt-1 text-[15px] font-semibold text-balance">{title}</h3>
         {children}
       </div>
     </li>

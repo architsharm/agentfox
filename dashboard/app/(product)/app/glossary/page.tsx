@@ -59,7 +59,8 @@ const TERM_COUNT = 23 + PILLARS.length + NOM_PREFIXES.length + 6 + 2 + PRODUCT_M
 
 export default function Glossary() {
   return (
-    <>
+    /* Capped: the definitions column ran the full page, about 190 characters a line. */
+    <div style={{ maxWidth: 880 }}>
       {/* Was an <h1> and a six-line paragraph explaining what a glossary is,
           on a page nobody arrives at to read about glossaries. PageHeader for
           consistency with every other page, and the sub says the one thing that
@@ -70,7 +71,7 @@ export default function Glossary() {
 
       <section data-gl-section>
       <h2>Concepts</h2>
-      <p className="small muted" style={{ maxWidth: "var(--measure)" }}>
+      <p className="small muted" style={{ maxWidth: "62ch" }}>
         The words the product itself uses that don&rsquo;t explain themselves on first
         read. The coding schemes are below.
       </p>
@@ -323,7 +324,7 @@ export default function Glossary() {
 
       <section data-gl-section>
       <h2>P#-# — PRD pillar references</h2>
-      <p className="small muted" style={{ maxWidth: "var(--measure)" }}>
+      <p className="small muted" style={{ maxWidth: "62ch" }}>
         This product's build is organized into 15 numbered "pillars," each a distinct
         governance capability. A reference like <span className="mono">P5-1</span> means{" "}
         <em>the first requirement under Pillar 5</em>. You'll see these in control
@@ -347,7 +348,7 @@ export default function Glossary() {
 
       <section data-gl-section>
       <h2>NOM-XXX-## — this product's own control codes</h2>
-      <p className="small muted" style={{ maxWidth: "var(--measure)" }}>
+      <p className="small muted" style={{ maxWidth: "62ch" }}>
         Every control on the <a href="/app/compliance">Compliance</a> page and every rule in a{" "}
         <a href="/app/policies">policy</a> carries one of these codes — the prefix says which
         pillar it belongs to, the number is just an index within it.
@@ -370,7 +371,7 @@ export default function Glossary() {
 
       <section data-gl-section data-term="owasp llm top 10 prompt injection sensitive information disclosure llm01 llm02">
       <h2>OWASP LLM Top 10</h2>
-      <p className="small muted" style={{ maxWidth: "var(--measure)" }}>
+      <p className="small muted" style={{ maxWidth: "62ch" }}>
         The industry-standard risk list for LLM applications (OWASP Top 10 for LLM
         Applications). A finding or rule tagged <span className="mono">LLM01</span>,{" "}
         <span className="mono">LLM02</span> etc. is mapped to one of these ten categories —
@@ -385,7 +386,7 @@ export default function Glossary() {
 
       <section data-gl-section data-term="mitre atlas att&ck adversarial tactics techniques">
       <h2>MITRE ATLAS</h2>
-      <p className="small muted" style={{ maxWidth: "var(--measure)" }}>
+      <p className="small muted" style={{ maxWidth: "62ch" }}>
         MITRE's adversarial-tactics knowledge base for AI systems (the AI-specific sibling
         of MITRE ATT&amp;CK) — a taxonomy of real attack techniques, e.g. prompt injection or
         data exfiltration, used to tag red-team findings against a shared, external reference
@@ -397,7 +398,7 @@ export default function Glossary() {
 
       <section data-gl-section>
       <h2>Detector library names</h2>
-      <p className="small muted" style={{ maxWidth: "var(--measure)" }}>
+      <p className="small muted" style={{ maxWidth: "62ch" }}>
         The <a href="/app/settings?tab=detection&sec=tuning">Guardrails</a> and <a href="/app/policies">Policies</a> pages
         name the underlying open-source engine behind each detector, since which library
         caught something is itself useful debugging context:
@@ -416,6 +417,6 @@ export default function Glossary() {
         </table>
       </div>
       </section>
-    </>
+    </div>
   );
 }

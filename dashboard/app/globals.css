@@ -561,7 +561,7 @@ nav.side a.active svg { opacity: 1; }
 .project-switch-btn:hover { border-color: var(--text-2); }
 .project-switch-btn svg { margin-left: auto; flex: none; opacity: .6; }
 .project-switch-name { display: flex; flex-direction: column; min-width: 0; font-weight: 600; line-height: 1.25; }
-.project-switch-name, .project-switch-opt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-switch-name, .project-switch-opt, .project-switch-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .project-switch-name small { font-size: var(--t-micro); font-weight: 500; color: var(--faint); text-transform: uppercase; letter-spacing: .06em; }
 .project-switch-dot {
   flex: none; width: 22px; height: 22px; border-radius: 6px; display: inline-grid; place-items: center;
@@ -873,8 +873,8 @@ pre {
   background: var(--elevated);
   box-shadow: var(--e-1);
 }
-.hero > * { max-width: var(--measure); }
-.hero.empty { border-style: dashed; box-shadow: none; }
+.hero > * { max-width: min(var(--measure), 62ch); }
+.hero.empty { box-shadow: none; }
 .hero.ok { border-color: var(--ok); }
 .hero-title { font-size: var(--t-body); font-weight: 660; margin-bottom: 8px; letter-spacing: -0.01em; }
 .hero p { color: var(--muted); font-size: var(--t-small); margin: 8px 0; }
@@ -2412,7 +2412,8 @@ td .mono { overflow-wrap: anywhere; }
 .sbar-key span { color: var(--muted); }
 /* A zero is still worth showing — "0 failing" is the good news — but it should
    not read as loudly as a count that wants attention. */
-.sbar-zero { opacity: .55; }
+.sbar-zero b { color: var(--muted); font-weight: 400; }
+.sbar-zero i { opacity: .55; }
 
 .sbar-total { margin: 0; font-size: var(--t-small); line-height: 1.5; color: var(--muted); max-width: var(--measure); }
 .sbar-total b {
@@ -2960,44 +2961,6 @@ td .mono { overflow-wrap: anywhere; }
   .am-label { font-size: 10px; }
 }
 
-/* --- The gate rule --------------------------------------------------------
- *
- * The hero's boundary, seen edge-on, as a divider.
- *
- * One good visual on one page is a hero; the same visual carried across a
- * product is an identity. This is that motif reduced to a rule: a baseline with
- * measurement ticks rising off it, the same ticks that run up the checkpoint in
- * components/marketing/boundary.tsx. It goes under every signed-in page header
- * and between marketing sections, which is what ties the app and the public
- * site to one idea rather than to one palette.
- *
- * Two backgrounds, no markup, no image: the ticks are a repeating gradient and
- * the baseline is a second layer under them. It costs a div.
- */
-.gate-rule {
-  /* Quiet. It is a divider carrying a motif, not a feature: at 45% on a 30px
-     pitch it read as a ruler somebody had left on the page. */
-  --tick: 38px;
-  height: 6px;
-  margin: 18px 0 0;
-  background-image:
-    repeating-linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--accent) 30%, transparent) 0 1px,
-      transparent 1px var(--tick)
-    ),
-    linear-gradient(to bottom, transparent calc(100% - 1px), var(--hairline) calc(100% - 1px));
-  background-size: 100% 4px, 100% 100%;
-  background-repeat: no-repeat;
-  background-position: 0 bottom, 0 0;
-}
-/* Fades out to the right, so it reads as a measure running off the page rather
-   than a box edge that stops. */
-.gate-rule {
-  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 42%, transparent 92%);
-  mask-image: linear-gradient(90deg, #000 0%, #000 42%, transparent 92%);
-}
-
 /* The signed-in page header.
    The title was 32px at 600 — the same inversion the marketing headline had,
    just smaller. Lighter and tracked, so a dashboard page opens with the same
@@ -3208,7 +3171,7 @@ textarea.k-input { height: auto; padding: 8px 11px; line-height: 1.5; resize: ve
 .k-card + .k-card { margin-top: 14px; }
 .k-grid > .k-card + .k-card { margin-top: 0; }
 .k-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 16px 0; }
-.k-card-head h3 { margin: 0; font-size: var(--t-small); font-weight: 620; display: flex; align-items: center; gap: 6px; }
+.k-card-head :is(h2, h3) { margin: 0; font-size: var(--t-small); font-weight: 620; display: flex; align-items: center; gap: 6px; }
 .k-card-action { font-size: var(--t-micro); color: var(--muted); display: flex; gap: 8px; align-items: center; }
 .k-card-action a { color: var(--muted); }
 .k-card-action a:hover { color: var(--text); }
@@ -3288,8 +3251,9 @@ textarea.k-input { height: auto; padding: 8px 11px; line-height: 1.5; resize: ve
 .k-table .muted { color: var(--muted); }
 .k-table .tight { width: 1%; white-space: nowrap; }
 .k-table .sub { display: block; font-size: var(--t-micro); color: var(--muted); margin: 0; max-width: none; }
-.k-table a.k-name { color: var(--text); font-weight: 560; }
+.k-table .k-name { color: var(--text); font-weight: 560; }
 
+.k-card-body > p { max-width: 75ch; }
 .k-empty { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; padding: 22px 12px; color: var(--muted); font-size: var(--t-small); text-align: center; }
 .k-meta { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 0; }
 .k-meta div { display: flex; gap: 6px; align-items: baseline; font-size: var(--t-small); }
@@ -3316,7 +3280,7 @@ textarea.k-input { height: auto; padding: 8px 11px; line-height: 1.5; resize: ve
 .k-muted { color: var(--muted); }
 .k-pills { display: inline-flex; gap: 4px; flex-wrap: nowrap; align-items: center; }
 .k-card-foot { padding: 10px 16px; border-top: 1px solid var(--hairline); font-size: var(--t-micro); color: var(--muted); }
-.k-card-head h3 .k-mono { font-weight: 400; margin-left: 4px; }
+.k-card-head :is(h2, h3) .k-mono { font-weight: 400; margin-left: 4px; }
 .k-limits { display: inline-flex; gap: 4px; flex-wrap: wrap; border: 0; background: transparent; padding: 2px 0; cursor: pointer; font: inherit; text-align: left; }
 .k-limits:hover .k-pill-outline, .k-limits:hover .k-muted { border-color: var(--text); color: var(--text); }
 .k-limits-form { display: flex; flex-direction: column; gap: 6px; min-width: 320px; }
@@ -3421,7 +3385,7 @@ textarea.k-input { height: auto; padding: 8px 11px; line-height: 1.5; resize: ve
 .gm-swatch.gm-off { background: var(--gm-off-bg); }
 .gm-swatch-denied { border: 1px dashed var(--viz-blocked); }
 .gm-panel { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--r-2); background: var(--panel); max-height: var(--gm-h); overflow: auto; min-width: 0; }
-.gm-panel h4 { margin: 6px 0 0; font-size: var(--t-micro); color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.gm-panel :is(h2, h4) { margin: 6px 0 0; font-size: var(--t-small); line-height: 1.4; color: var(--text); font-weight: 600; }
 .gm-panel p { margin: 0; font-size: var(--t-small); }
 .gm-rules { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
 .gm-rules li { display: flex; flex-direction: column; gap: 5px; font-size: var(--t-small); }
@@ -3464,7 +3428,7 @@ textarea.k-input { height: auto; padding: 8px 11px; line-height: 1.5; resize: ve
 h2.k-section { font-size: var(--t-small); font-weight: 620; margin: 22px 0 10px; }
 .k-tile .k-card-body { display: flex; flex-direction: column; gap: 8px; height: 100%; }
 .k-tile-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.k-tile-text { margin: 0; color: var(--muted); font-size: var(--t-small); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; flex: 1; max-width: none; }
+.k-tile-text { margin: 0; text-wrap: pretty; color: var(--muted); font-size: var(--t-small); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; flex: 1; max-width: none; }
 .k-tile-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .k-field > .k-seg, .k-field > .k-select { justify-self: start; }
 .k-approval { }
@@ -3493,7 +3457,7 @@ ol.gs-steps li.now .gs-marker { background: var(--accent); color: var(--accent-i
 .gs-title { font-weight: 570; }
 ol.gs-steps li.done .gs-title { color: var(--muted); }
 .gs-body { padding: 0 16px 14px 52px; display: flex; flex-direction: column; gap: 10px; }
-.gs-detail, .gs-note { margin: 0; font-size: var(--t-small); color: var(--muted); max-width: var(--measure); }
+.gs-detail, .gs-note { margin: 0; font-size: var(--t-small); color: var(--muted); max-width: min(var(--measure), 62ch); text-wrap: pretty; }
 .gs-cli { margin: 0; font-size: var(--t-micro); color: var(--muted); }
 .gs-cli code { font-size: var(--t-micro); }
 .gs-action { display: flex; flex-direction: column; gap: 10px; }
@@ -3579,9 +3543,9 @@ ol.gs-steps li.done .gs-title { color: var(--muted); }
 .ft-intro { margin: 0; font-size: var(--t-small); color: var(--text-2); }
 .ft-card { padding: 0; }
 .ft-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 14px 16px 10px; border-bottom: 1px solid var(--border); }
-.ft-head h3 { margin: 0; font-size: var(--t-body); font-weight: 650; }
+.ft-head h2 { margin: 0; font-size: var(--t-body); font-weight: 650; }
 .ft-head .k-muted { font-size: var(--t-small); }
-.ft-group h4 { margin: 0; padding: 12px 16px 2px; font-size: var(--t-micro); color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.ft-group h3 { margin: 0; padding: 12px 16px 2px; font-size: var(--t-small); color: var(--text); font-weight: 600; }
 .ft-list { list-style: none; margin: 0; padding: 0; }
 .ft-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 16px; padding: 10px 16px; border-top: 1px solid var(--border); }
 .ft-list > .ft-row:first-child { border-top: 0; }
