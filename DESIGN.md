@@ -130,27 +130,28 @@ components:
 <!-- impeccable:design-map -->
 Name: AgentFox
 Colors: primary: brand-crimson #c8285a; neutral: ink #1a1916; status: verdict-allowed #18794e; primary: brand-crimson-press #a91f4a; primary: night-crimson #f0668d; neutral: ink-2 #4a4740 (+9 more in the sidecar)
-Fonts: Archivo (display, statement, headline, index-verb); IBM Plex Sans (title, lead, body, small); Geist Mono (mono)
-Spacing: gutter-phone 20px, gutter 32px, head-gap 64px, section-tablet 80px, section 136px, wrap 1200px
+Fonts: Archivo (hero H1 only, normal width); IBM Plex Sans (section headings 40px/500, titles, lead, body, small); Geist Mono (mono)
+Spacing: gutter-phone 20px, gutter 32px, head-gap 48px, section-tablet 80px, section 112px, wrap 1200px
 Radius: badge 4px, control 8px, panel 10px, card 12px, pill 999px
 North Star: "The Ruled Ledger"
 Rules:
-- The One Voice Rule. Crimson marks the primary action and the call under check, and nothing else.
+- The One Voice Rule. Crimson marks the primary action, "us" (the AgentFox column, our bars, step numbers) and the call under check.
 - The Errors Are Not Brand Rule. Blocked is vermilion (verdict-blocked), never crimson, and always carries a word.
 - The Heading Stands Alone Rule. No eyebrow, kicker or pill above a heading.
 - The Mono Means Code Rule. Geist Mono is used only for commands, tool names, arguments and measured values.
 - The Lifted Once Rule. Only the call under check is lifted.
 Don't:
 - Don't put an eyebrow, kicker or uppercase tracked label above a heading.
-- Don't lay out features as a grid of boxed cards; use a ruled index.
+- Don't nest cards more than two deep; a step is one card holding its mock, with the mock's rows as hairlines.
+- Don't put abstract taxonomy before product proof; real UI (terminal, comparison table) comes first.
 - Don't use crimson for errors or blocked verdicts; those are vermilion with a word.
 - Don't add a second authored motion beside the timeline draw; reveals are a plain fade-up.
 - Don't lift anything with a shadow except the held call and things that float.
 Do:
-- Do open every section with the editorial split: Archivo heading left, one lead right, nothing above the heading.
+- Do open every section with a centred Plex heading and one lead under it, nothing above the heading; content sits on the same centre axis.
 - Do reserve crimson for the primary action and the call under check, including "our" row, bar and value in proofs.
 - Do separate content with 1px hairlines and open an index or proof with a 1px ink rule.
-- Do set code, tool calls and measured values in Geist Mono, and everything else in Plex or Archivo.
+- Do set code, tool calls and measured values in Geist Mono, the hero H1 in Archivo, and everything else in Plex.
 - Do read canvas and chart colours from the `--af-*` tokens so both themes stay correct.
 - Do show the finished state of any motion when the visitor prefers reduced motion.
-Full: .impeccable/design-full.md (read a section when you need its detail)
+Full: .impeccable/design-full.md (read a section when you need its detail). Where it disagrees with this map, the map wins: on 2026-11-21 the homepage went back to centred Plex section heads, card-held steps and crimson on "us", and the five-verb index was removed.

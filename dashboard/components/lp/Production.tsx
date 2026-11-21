@@ -66,15 +66,6 @@ const MOMENT: { step: string; text: string; tag?: string; tagClass?: string; cod
   { step: "AgentFox checks the call", tag: "held for a person", tagClass: "is-bad", text: "The address came from the web page." },
 ];
 
-/** The control plane, in the order a team adopts it. Each links to its docs section. */
-const PLANE = [
-  { verb: "Discover", href: "/docs/discover", text: "Every agent, tool and MCP server in your repositories and agent platforms." },
-  { verb: "Govern", href: "/docs/govern", text: "Each agent gets the tools its code already uses, and nothing else." },
-  { verb: "Protect", href: "/docs/protect", text: "Messages and tool calls checked as they run. Risky calls wait for a person." },
-  { verb: "Test", href: "/docs/test", text: "Built-in attacks against your own agent, before real users find the gaps." },
-  { verb: "Prove", href: "/docs/prove", text: "Every decision recorded with its reason, for your team and your auditor." },
-] as const;
-
 /** Who it is for. */
 const USES = [
   { title: "Support at volume", text: "A false block is a customer who didn't get help, and a ticket for your team." },
@@ -98,6 +89,9 @@ export function Production() {
         <section className="lp-hero">
           <FlowArt mode="production" />
           <div className="lp-hero-copy">
+            <Link href="/blog/agentfox-0-5-release" className="lp-pill lp-pill-link">
+              New in 0.5: one-command setup <Arrow />
+            </Link>
             <p className="lp-vision">
               Agents act. <span>You stay in control.</span>
             </p>
@@ -117,10 +111,7 @@ export function Production() {
             </div>
             <p className="lp-hero-fine">
               Or <Link href="/docs/quickstart/cli">start from the CLI</Link>: no account, no API key. Open source under{" "}
-              <span style={{ whiteSpace: "nowrap" }}>Apache-2.0</span>.{" "}
-              <Link href="/blog/agentfox-0-5-release" className="lp-hero-new">
-                New in 0.5: one-command setup
-              </Link>
+              <span style={{ whiteSpace: "nowrap" }}>Apache-2.0</span>.
             </p>
           </div>
           <div className="lp-logos">
@@ -137,49 +128,6 @@ export function Production() {
                 ))}
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* The moment of action: why checking the message alone is too early. */}
-        <section className="lp-section lp-moment">
-          <div className="lp-wrap">
-            <SectionHead
-              title="The prompt is where an attack starts. The tool call is where it lands."
-              sub="A filter that only reads messages decides too early. AgentFox also checks each tool call as it runs, and where every argument in it came from."
-            />
-            <ol className="lp-path" data-reveal aria-label="An example of a held tool call">
-              {MOMENT.map((m, i) => (
-                <li key={m.step} className={i === MOMENT.length - 1 ? "is-held" : undefined}>
-                  <span className="lp-path-step">{m.step}</span>
-                  <div className="lp-path-ui">
-                    {m.tag && <span className={`lp-tag ${m.tagClass}`}>{m.tag}</span>}
-                    <span className={m.code ? "lp-path-code" : undefined}>{m.text}</span>
-                  </div>
-                </li>
-              ))}
-            </ol>
-            <p className="lp-path-note">An example. The address came from the page, not the customer, so the call waits for a person.</p>
-          </div>
-        </section>
-
-        {/* The control plane: the five things AgentFox does for every agent. */}
-        <section className="lp-section lp-section-alt">
-          <div className="lp-wrap">
-            <SectionHead
-              title="One place to control every agent you run"
-              sub="From the first scan to the audit trail, for every agent, tool and MCP server in your code."
-            />
-            <ul className="lp-plane" data-reveal>
-              {PLANE.map((p) => (
-                <li key={p.verb}>
-                  <Link href={p.href}>
-                    <span className="lp-plane-verb">{p.verb}</span>
-                    <span className="lp-plane-text">{p.text}</span>
-                    <Arrow />
-                  </Link>
-                </li>
-              ))}
-            </ul>
           </div>
         </section>
 
@@ -289,8 +237,30 @@ export function Production() {
           </div>
         </section>
 
+        {/* The moment of action: why checking the message alone is too early. */}
+        <section className="lp-section lp-moment">
+          <div className="lp-wrap">
+            <SectionHead
+              title="The prompt is where an attack starts. The tool call is where it lands."
+              sub="A filter that only reads messages decides too early. AgentFox also checks each tool call as it runs, and where every argument in it came from."
+            />
+            <ol className="lp-path" data-reveal aria-label="An example of a held tool call">
+              {MOMENT.map((m, i) => (
+                <li key={m.step} className={i === MOMENT.length - 1 ? "is-held" : undefined}>
+                  <span className="lp-path-step">{m.step}</span>
+                  <div className="lp-path-ui">
+                    {m.tag && <span className={`lp-tag ${m.tagClass}`}>{m.tag}</span>}
+                    <span className={m.code ? "lp-path-code" : undefined}>{m.text}</span>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <p className="lp-path-note">An example. The address came from the page, not the customer, so the call waits for a person.</p>
+          </div>
+        </section>
+
         {/* 3. How it works */}
-        <section className="lp-section">
+        <section className="lp-section lp-section-alt">
           <div className="lp-wrap">
             <SectionHead
               title="Turn a rule on without breaking production"
@@ -359,7 +329,7 @@ export function Production() {
         </section>
 
         {/* 4. Why not a toolkit */}
-        <section className="lp-section lp-section-alt">
+        <section className="lp-section">
           <div className="lp-wrap">
             <SectionHead
               title="A toolkit gives you the parts. AgentFox does the work."
@@ -386,7 +356,7 @@ export function Production() {
         </section>
 
         {/* 5. Proof */}
-        <section className="lp-section">
+        <section className="lp-section lp-section-alt">
           <div className="lp-wrap">
             <SectionHead
               title="Fewer false blocks, more attacks caught"
@@ -429,7 +399,7 @@ export function Production() {
         </section>
 
         {/* 6. Who it's for */}
-        <section className="lp-section lp-section-alt">
+        <section className="lp-section">
           <div className="lp-wrap">
             <SectionHead title="Built for assistants that serve customers" />
             <ul className="lp-plane lp-plane-sm" data-reveal>
