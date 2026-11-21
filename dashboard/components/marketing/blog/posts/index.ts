@@ -21,6 +21,10 @@ import * as mcp from "./mcp-rug-pull-tool-poisoning";
 import * as containment from "./prompt-injection-containment-not-detection";
 import * as llmGuardH2h from "./llm-guard-vs-agentfox-agentdojo";
 import * as trifecta from "./lethal-trifecta-ai-agents";
+import * as questionnaire from "./security-questionnaire-prompt-injection";
+import * as leastPrivilege from "./least-privilege-ai-agents-tool-permissions";
+import * as mcpChecklist from "./mcp-server-security-checklist";
+import * as redTeamOwn from "./red-team-your-own-ai-agent";
 
 export type PostBody = { Body: ComponentType; toc: TocItem[]; faq: FaqItem[] };
 
@@ -36,4 +40,8 @@ export const POST_BODIES: Record<Slug, PostBody> = {
   "ai-agent-audit-trail": auditTrail,
   "llm-guard-vs-agentfox-agentdojo": llmGuardH2h,
   "lethal-trifecta-ai-agents": trifecta,
+  "security-questionnaire-prompt-injection": questionnaire,
+  "least-privilege-ai-agents-tool-permissions": leastPrivilege,
+  "mcp-server-security-checklist": mcpChecklist,
+  "red-team-your-own-ai-agent": redTeamOwn,
 };
