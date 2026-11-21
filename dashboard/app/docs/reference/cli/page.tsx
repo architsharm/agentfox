@@ -14,7 +14,6 @@ export const metadata: Metadata = publicPageMetadata({
 export default function Page() {
   return (
     <article className="docs-doc">
-      <p className="docs-kicker">Reference</p>
       <h1>CLI reference</h1>
       <p className="docs-lede">
         Every command and option, generated from the CLI by{" "}

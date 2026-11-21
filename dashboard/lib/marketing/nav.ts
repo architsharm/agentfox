@@ -18,7 +18,7 @@ export type FooterColumn = { heading: string; items: NavItem[] };
 const RESEARCH: NavItem = {
   label: "Research",
   href: "/research",
-  note: "Our benchmarks and accepted peer-reviewed papers on guardrails for AI agents, each with its limits.",
+  note: "Our benchmarks, and our papers on guardrails for AI agents accepted at workshops in December 2026, each with its limits.",
   sitemap: { changeFrequency: "monthly", priority: 0.8 },
 };
 const BENCHMARK: NavItem = {

@@ -73,8 +73,7 @@ export default function Privacy() {
         <section className="mk-section mk-page-hero mk-ink-act">
           <div className="mk-wrap">
             <div className="mk-narrow">
-              <span className="mk-eyebrow">Privacy</span>
-              <h1 className="mk-h1" style={{ margin: "18px 0 0" }}>
+              <h1 className="mk-h1" style={{ margin: 0 }}>
                 Privacy policy</h1>
               <p className="mk-lede" style={{ marginTop: 20 }}>
                 What this site stores if you use the playground, sign in or join the
@@ -560,9 +559,8 @@ export default function Privacy() {
         <section className="mk-section mk-band">
           <div className="mk-wrap">
             <div className="mk-narrow">
-              <div className="mk-card mk-card-raised">
-                <span className="mk-eyebrow">The part that matters most</span>
-                <h2 className="mk-h2" style={{ marginTop: 16 }}>
+              <div className="mk-card">
+                <h2 className="mk-h2" style={{ marginTop: 0 }}>
                   A copy you run yourself sends us nothing</h2>
                 <p className="mk-body" style={{ marginTop: 14 }}>
                   Nothing on this page applies to a self-hosted install. There is no

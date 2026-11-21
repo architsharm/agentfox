@@ -83,11 +83,10 @@ function Outcome({ result }: { result: ShowcaseResult }) {
   }
 }
 
-function Head({ eyebrow, title, lede }: { eyebrow: string; title: string; lede?: string }) {
+function Head({ title, lede }: { title: string; lede?: string }) {
   return (
     <div className="mk-narrow mk-up">
-      <span className="mk-eyebrow">{eyebrow}</span>
-      <h2 className="mk-h2" style={{ marginTop: 14 }}>
+      <h2 className="mk-h2">
         {title}
       </h2>
       {lede && (
@@ -103,7 +102,7 @@ function Notice({ title, children }: { title: string; children: React.ReactNode 
   return (
     <section className="mk-section mk-reveal">
       <div className="mk-wrap">
-        <div className="mk-narrow mk-card">
+        <div className="mk-card">
           <h2 className="mk-h3">{title}</h2>
           <p className="mk-body" style={{ margin: "10px 0 0" }}>
             {children}
@@ -125,13 +124,12 @@ function Live({ data }: { data: Showcase }) {
       <section className="mk-section mk-band mk-reveal">
         <div className="mk-wrap">
           <Head
-            eyebrow={`The last ${data.window_days} days`}
             title={
               totals.escaped === 0
                 ? "Every attack sent was contained"
                 : `${totals.escaped} attack${totals.escaped === 1 ? "" : "s"} got through`
             }
-            lede={`Last run ${fresh.ago} (${when(data.last_updated)}). ${totals.runs} run${totals.runs === 1 ? "" : "s"}, the same ${attacks.length || data.target.probes.length} attacks each time.`}
+            lede={`In the last ${data.window_days} days. Last run ${fresh.ago} (${when(data.last_updated)}). ${totals.runs} run${totals.runs === 1 ? "" : "s"}, the same ${attacks.length || data.target.probes.length} attacks each time.`}
           />
           {fresh.stale && (
             <div className="mk-narrow mk-card" role="status" style={{ marginTop: 22 }}>
@@ -177,7 +175,6 @@ function Live({ data }: { data: Showcase }) {
       <section className="mk-section mk-reveal">
         <div className="mk-wrap">
           <Head
-            eyebrow="The last run"
             title="Attack by attack"
             lede={latest.headline ?? undefined}
           />
@@ -219,7 +216,6 @@ function Live({ data }: { data: Showcase }) {
       <section className="mk-section mk-band mk-reveal">
         <div className="mk-wrap">
           <Head
-            eyebrow="Run history"
             title="Did it get weaker?"
             lede="Each run is compared with the previous one. An attack that was contained and now gets through opens a finding; it closes when a later run contains it again."
           />
@@ -258,7 +254,6 @@ function Live({ data }: { data: Showcase }) {
         <section className="mk-section mk-reveal">
           <div className="mk-wrap">
             <Head
-              eyebrow="Findings"
               title="What it raised"
               lede={`${findings.opened_in_window} opened and ${findings.closed_in_window} closed in the last ${data.window_days} days.`}
             />
@@ -300,7 +295,7 @@ function Live({ data }: { data: Showcase }) {
 
       <section className="mk-section mk-band mk-reveal">
         <div className="mk-wrap">
-          <Head eyebrow="Read this before quoting it" title="What this measures, and what it does not" />
+          <Head title="What this measures, and what it does not" />
           <div className="mk-grid mk-grid-2" style={{ marginTop: 36 }}>
             <div className="mk-card">
               <span className="mk-label">How a probe is scored</span>
@@ -335,7 +330,6 @@ export default async function LivePage() {
       <main id="main">
         <section className="mk-section mk-page-hero mk-ink-act">
           <div className="mk-wrap">
-            <span className="mk-eyebrow mk-up">Live</span>
             <h1 className="mk-h1 mk-up mk-d1">AgentFox, attacking its own agent</h1>
             <p className="mk-lede mk-up mk-d2" style={{ marginTop: 20 }}>
               On an hourly schedule the same set of attacks goes to our demo support agent, through the

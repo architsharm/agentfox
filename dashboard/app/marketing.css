@@ -1442,7 +1442,6 @@
   max-width: none;
   padding: 20px 22px;
   border: 1px solid var(--mk-border);
-  border-left: 3px solid var(--mk-accent);
   border-radius: var(--mk-r-md);
 }
 .mk-honest h2 { margin: 0; }
@@ -3566,7 +3565,7 @@
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);
   gap: 48px;
-  width: min(var(--wrap), calc(100% - 2 * var(--wrap-pad)));
+  width: min(calc(var(--wrap) - 2 * var(--wrap-pad)), calc(100% - 2 * var(--wrap-pad)));
   margin: 0 auto;
   padding: 40px 0 80px;
   align-items: start;
@@ -3608,14 +3607,6 @@
 }
 .docs-main { min-width: 0; }
 .docs-doc { max-width: 720px; }
-.docs-kicker {
-  margin: 0 0 10px;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--mk-muted);
-}
 .docs-doc h1 {
   margin: 0;
   font-size: clamp(32px, 3vw, 40px);
@@ -3746,15 +3737,15 @@
 .docs-copy:hover { border-color: #8a8178; }
 .docs-callout {
   margin: 18px 0 0; padding: 12px 16px; border-radius: 10px;
-  border: 1px solid var(--mk-border); border-left-width: 4px; background: var(--mk-surface);
+  border: 1px solid var(--mk-border); background: var(--mk-surface);
 }
-.docs-callout-note { border-left-color: #6e6e73; }
-.docs-callout-tip { border-left-color: #2f7d4f; }
-.docs-callout-warning { border-left-color: var(--mk-accent); }
-.docs-callout-title { margin: 0 !important; font-size: 13px !important; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--mk-muted) !important; }
+/* Kind shows as a tint, not a side stripe; warnings are amber, never the brand crimson. */
+.docs-callout-tip { background: color-mix(in srgb, #2f7d4f 6%, var(--mk-surface)); }
+.docs-callout-warning { background: color-mix(in srgb, #b25e00 7%, var(--mk-surface)); border-color: color-mix(in srgb, #b25e00 30%, var(--mk-border)); }
+.docs-callout-title { margin: 0 !important; font-size: 15px !important; font-weight: 600; color: var(--mk-text) !important; }
 .docs-callout > div > p:first-child { margin-top: 6px; }
 .docs-steps { list-style: none; counter-reset: step; margin: 18px 0 0; padding: 0; }
-.docs-step { counter-increment: step; position: relative; padding: 2px 0 6px 44px; margin: 0 0 18px; }
+.docs-step { counter-increment: step; position: relative; padding: 2px 0 6px 44px; margin: 0 0 32px; }
 .docs-step::before {
   content: counter(step); position: absolute; left: 0; top: 0;
   width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
@@ -3767,7 +3758,7 @@
   padding: 2px 8px; border-radius: 999px; background: var(--mk-surface-2); color: var(--mk-muted);
 }
 .docs-next { margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--mk-border); }
-.docs-next p { font-size: 12px !important; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--mk-muted) !important; margin: 0 !important; }
+.docs-next p { font-size: 15px !important; font-weight: 600; color: var(--mk-text) !important; margin: 0 !important; }
 .docs-next ul { list-style: none; padding: 0 !important; }
 .docs-next li { margin: 6px 0 0; }
 .docs-next span { color: var(--mk-muted); }
@@ -3785,7 +3776,7 @@
 .docs-shot figcaption { margin-top: 8px; font-size: 13px; color: var(--mk-muted); }
 .docs-muted { color: var(--mk-muted); }
 .docs-type { font-size: 12px; color: var(--mk-muted); font-family: var(--mk-mono, ui-monospace, monospace); }
-.docs-req { font-size: 11px; font-weight: 600; color: var(--mk-accent); text-transform: uppercase; }
+.docs-req { font-size: 12px; font-weight: 500; color: var(--mk-muted); }
 .docs-faq dt { margin-top: 16px; font-weight: 600; }
 .docs-faq dd { margin: 4px 0 0; }
 .docs-ee { margin-left: 8px; padding: 1px 6px; border: 1px solid var(--mk-border); border-radius: 4px; font-size: 11px; font-weight: 600; color: var(--mk-muted); vertical-align: middle; white-space: nowrap; }
@@ -3834,7 +3825,7 @@
 .blog-crumbs { display: flex; gap: 8px; align-items: center; font-size: var(--t-small); color: var(--mk-muted); }
 .blog-crumbs a { color: var(--mk-accent); text-decoration: none; }
 .blog-crumbs a:hover { text-decoration: underline; }
-.blog-title {
+.mk .blog-title {
   margin: 16px 0 0;
   max-width: 900px;
   font-family: var(--mk-display);
@@ -3845,9 +3836,8 @@
   color: var(--mk-text);
   text-wrap: balance;
 }
-.blog-lede { margin-top: 18px; max-width: 760px; }
+.mk .blog-lede { margin-top: 18px; max-width: 62ch; }
 .blog-meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 20px 0 0; font-size: var(--t-small); color: var(--mk-muted); }
-.blog-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 0; }
 
 .blog-cover { margin-top: 8px; }
 .blog-cover .shot-frame img { width: 100%; height: auto; display: block; }
@@ -3869,7 +3859,7 @@
 .blog-prose blockquote {
   margin: 20px 0 0;
   padding: 4px 0 4px 18px;
-  border-left: 3px solid var(--mk-accent);
+  border-left: 3px solid var(--mk-border-strong, var(--mk-border));
   color: var(--mk-muted);
 }
 .blog-prose blockquote p { color: var(--mk-muted); }
@@ -3929,17 +3919,14 @@
   margin: 0 0 8px;
   padding: 18px 22px;
   border: 1px solid var(--mk-border);
-  border-left: 3px solid var(--mk-accent);
   border-radius: var(--mk-r-md);
   background: var(--mk-surface);
 }
 .blog-takeaways-head {
   margin: 0 !important;
-  font-size: 12px !important;
+  font-size: 15px !important;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--mk-accent) !important;
+  color: var(--mk-text) !important;
 }
 .blog-takeaways ul { margin: 8px 0 0; padding-left: 1.1em; }
 .blog-takeaways li { font-size: 15px !important; }
@@ -3986,7 +3973,8 @@
 .blog-faq { margin-top: 48px; padding-top: 8px; border-top: 1px solid var(--mk-border); }
 .blog-faq h2 { scroll-margin-top: 96px; }
 .blog-faq details { border-bottom: 1px solid var(--mk-border); padding: 14px 0; }
-.blog-faq summary { cursor: pointer; font-weight: 600; font-size: 16px; color: var(--mk-text); list-style-position: outside; }
+.blog-faq summary { cursor: pointer; font-weight: 600; font-size: 16px; color: var(--mk-text); list-style: none; }
+.blog-faq summary::-webkit-details-marker { display: none; }
 .blog-faq details p { color: var(--mk-muted); }
 
 /* Cards: the index and "Keep reading" */
@@ -4014,7 +4002,7 @@
   letter-spacing: -0.015em;
   font-weight: 650;
   color: var(--mk-text);
-  text-wrap: pretty;
+  text-wrap: balance;
 }
 .blog-card-body p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--mk-muted); }
 .blog-card-meta { font-size: var(--t-micro); color: var(--mk-muted); }
@@ -4155,7 +4143,6 @@
 }
 .mk .bm-index a { color: var(--af-fg); }
 /* Docs: section kicker above the title, previous/next pager, tabs, cards. */
-.docs-main > .docs-kicker { max-width: 720px; margin-bottom: -6px; }
 .docs-pager { max-width: 720px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--mk-border); }
 .docs-pager a { display: block; padding: 12px 14px; border: 1px solid var(--mk-border); border-radius: 10px; color: var(--mk-text); text-decoration: none; font-weight: 600; }
 .docs-pager a:hover { border-color: var(--mk-accent); }
@@ -4184,4 +4171,46 @@
 
 /* Legal pages (privacy, terms): text at a readable measure, in the same 800px
    column the other public pages (support, security, 404) use for their header. */
-.mk-prose .mk-narrow { max-width: 800px; }
+.mk-prose .mk-narrow { max-width: 800px; margin-inline: auto; }
+
+/* ── Read-mode polish (2026-11-21 audit) ─────────────────────────────────────── */
+/* Running text at a readable measure; code, tables, figures and cards keep the full column. */
+.docs-doc > :is(p, ul, ol), .docs-doc .docs-step > p, .docs-cmd-help, .blog-prose > :is(p, ul, ol) { max-width: 62ch; }
+.docs-doc h2 { text-wrap: balance; }
+/* One h2 size for docs and posts. */
+.docs-doc h2, .blog-prose > h2 { font-size: 22px; }
+/* The post cover sits on the prose column, so text starts in the first viewport. */
+.blog-cover .shot-frame { max-width: 720px; }
+/* Meta items wrap whole, so a separator never dangles. */
+.blog-meta > * { white-space: nowrap; }
+/* FAQ uses the homepage chevron. */
+.blog-faq summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.blog-faq summary::after { content: ""; flex: none; width: 8px; height: 8px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); transition: transform 200ms ease; }
+.blog-faq details[open] summary::after { transform: rotate(-135deg); }
+/* Terminal screenshots stay legible on phones: they scroll inside their box like code. */
+.docs-shot { overflow-x: auto; }
+.docs-shot img[src$=".svg"] { min-width: 640px; }
+/* Reference tables fit a phone instead of clipping mid-word. */
+.docs-doc .docs-params td { overflow-wrap: anywhere; }
+.docs-doc .docs-lede code { font-size: 0.8em; }
+
+/* Legal pages read as one document: centred column, readable measure, no zebra bands,
+   no raised cards, body in the reading grey the lp document pages use. */
+.mk-prose :is(.mk-body, .mk-lede, .mk-fine, .mk-mono, .mk-narrow > ul, .mk-narrow > ol) { max-width: 33rem; text-wrap: pretty; }
+.mk-prose .mk-band { background: none; }
+.mk-prose .mk-section + .mk-section { border-top: 1px solid var(--af-line); }
+.mk-prose .mk-section { padding-block: 48px; }
+.mk-prose .mk-body { color: var(--af-fg-2); }
+.mk-prose .mk-card { border: 0; border-top: 1px solid var(--af-line); border-radius: 0; background: none; box-shadow: none; padding: 16px 0; }
+/* Page titles share the homepage's display face. */
+.mk .mk-page-hero .mk-h1 { font-family: var(--font-archivo), var(--af-sans); letter-spacing: -0.035em; }
+.ed-route .mk-body { text-wrap: pretty; }
+
+/* .mk pages (2026-11-21 audit): globals.css pads every <main> on phones for the app shell. */
+.mk > main { padding: 0; }
+@media (max-width: 640px) { .mk { --wrap-pad: 20px; } }
+@media (max-width: 400px) { .mk { --wrap-pad: 16px; } }
+.mk-btn { font-family: inherit; }
+.mk-page-hero .mk-lede, .mk-narrow > .mk-lede, .pg-lede { max-width: 62ch; }
+.pg-lede { margin-top: 16px; }
+.pg-agents:empty { display: none; }

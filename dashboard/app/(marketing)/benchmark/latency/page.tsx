@@ -108,7 +108,6 @@ export default function LatencyBenchmarkPage() {
         <section className="lp-hero lp-hero-short">
           <FlowArt mode="ribbon" />
           <div className="lp-hero-copy">
-            <span className="lp-pill">Latency benchmark</span>
             <h1>
               What a guard check
               <br />
@@ -268,6 +267,7 @@ export default function LatencyBenchmarkPage() {
 
           <DocSection id="method" n={5} title="How it was measured">
             <Limits
+              label="Method"
               items={[
                 "119 agent repositories were examined; 109 produced an agent map and were tested: 76 public, 26 held out from the mapper work and 7 local, four of them private and anonymised.",
                 "Apple M1 Pro, CPU only, one gateway worker on SQLite, Python 3.12 as in the production image. A server with more workers and a server database will do better, so read these as a floor.",

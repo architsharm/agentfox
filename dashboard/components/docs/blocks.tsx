@@ -198,7 +198,7 @@ export function Cards({ items }: { items: { href: string; title: string; text: s
     <ul className="docs-cards">
       {items.map((item) => (
         <li key={item.href}>
-          <Link href={item.href}>
+          <Link href={item.href} className="docs-card">
             <strong>{item.title}</strong>
             <span>{item.text}</span>
           </Link>

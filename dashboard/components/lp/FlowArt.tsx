@@ -105,6 +105,7 @@ export function FlowArt({ mode }: { mode: ArtMode }) {
     themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
     let W = 0;
+    let copyLimit = Infinity;
     let H = 0;
     const NL = mode === "ribbon" ? 28 : 34;
     const lanes: Lane[] = Array.from({ length: NL }, () => ({
@@ -123,11 +124,15 @@ export function FlowArt({ mode }: { mode: ArtMode }) {
       canvas.style.width = `${W}px`;
       canvas.style.height = `${H}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // On the home hero the line field stops above the headline copy, so short windows never set text on the art.
+      const copy = host.parentElement?.querySelector(".lp-hero-copy");
+      copyLimit = copy ? copy.getBoundingClientRect().top - r.top - 32 : Infinity;
     }
 
     const small = () => W < 700;
     const fieldTop = () => H * (small() ? 0.36 : 0.11);
-    const fieldBottom = () => H * (small() ? 0.92 : 0.43);
+    const fieldBottom = () =>
+      small() ? H * 0.92 : mode === "production" ? Math.max(fieldTop() + 120, Math.min(H * 0.43, copyLimit)) : H * 0.43;
     const laneY = (i: number) => fieldTop() + ((fieldBottom() - fieldTop()) * i) / (NL - 1);
     const gateX = () => W * 0.5;
 
@@ -171,7 +176,14 @@ export function FlowArt({ mode }: { mode: ArtMode }) {
       el.style.setProperty("--y", `${Math.round(laneY(laneIdx) - 14)}px`);
       el.dataset.side = side > 0 ? "r" : "l";
       chipsEl.appendChild(el);
-      requestAnimationFrame(() => el.classList.add("is-in"));
+      requestAnimationFrame(() => {
+        // A long request can be wider than the room beside the gate: nudge it back inside.
+        const r = el.getBoundingClientRect();
+        const room = host.getBoundingClientRect();
+        const over = Math.max(room.left + 24 - r.left, 0) - Math.max(r.right - (room.right - 24), 0);
+        if (over) el.style.setProperty("--x", `${Math.round(parseFloat(el.style.getPropertyValue("--x")) + over)}px`);
+        el.classList.add("is-in");
+      });
       live.push({ el, born: now });
     }
 

