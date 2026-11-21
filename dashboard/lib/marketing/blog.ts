@@ -30,6 +30,10 @@ export const SLUGS = [
   "ai-agent-audit-trail",
   "llm-guard-vs-agentfox-agentdojo",
   "lethal-trifecta-ai-agents",
+  "security-questionnaire-prompt-injection",
+  "least-privilege-ai-agents-tool-permissions",
+  "mcp-server-security-checklist",
+  "red-team-your-own-ai-agent",
 ] as const;
 
 export type Slug = (typeof SLUGS)[number];
@@ -65,6 +69,118 @@ export type BlogPost = {
 export const AUTHOR = { name: "The AgentFox team", url: "https://github.com/architsharm/agentfox" };
 
 export const BLOG_POSTS: BlogPost[] = [
+  {
+    slug: "security-questionnaire-prompt-injection",
+    title: "How to answer \u201chow do you prevent prompt injection?\u201d on a security questionnaire",
+    seoTitle: "Prompt injection on a security questionnaire",
+    description:
+      "The five-part answer a reviewer accepts: detection with rates, containment when it misses, least privilege, a verifiable audit trail, tests. With a template.",
+    tag: "Prompt injection",
+    keywords: [
+      "security questionnaire prompt injection",
+      "how do you prevent prompt injection",
+      "AI security questionnaire answers",
+      "prompt injection controls",
+      "OWASP ASI01",
+    ],
+    published: "2026-11-22",
+    readMinutes: 7,
+    image: {
+      src: "/product/injection-blocked.png",
+      alt: "An AgentFox run where a retrieved document carried an instruction and the tool call it asked for was refused.",
+      width: 1600,
+      height: 900,
+    },
+    pillars: [
+      { href: "/benchmark", label: "Benchmarks", why: "The numbers to quote, with their limits." },
+      { href: "/docs/reference/owasp", label: "OWASP mapping", why: "Item by item, enforced or partial." },
+      { href: "/docs/prove/audit", label: "Audit evidence", why: "The attachment that closes the question." },
+    ],
+  },
+  {
+    slug: "least-privilege-ai-agents-tool-permissions",
+    title: "Least privilege for AI agents: how to scope tool permissions",
+    seoTitle: "Least privilege for AI agents",
+    description:
+      "Grant per agent and per tool, draft grants from real traffic, limit arguments, set impact and provenance rules, require approval for the irreversible.",
+    tag: "Audit and compliance",
+    keywords: [
+      "least privilege AI agents",
+      "AI agent tool permissions",
+      "agent permissions",
+      "scope tool access for LLM agents",
+      "capability grants",
+    ],
+    published: "2026-11-22",
+    readMinutes: 8,
+    image: {
+      src: "/product/refusal.png",
+      alt: "A refused tool call in AgentFox: the agent holds a grant for the tool, but the amount passed is above the limit on it.",
+      width: 1600,
+      height: 670,
+    },
+    pillars: [
+      { href: "/docs/govern", label: "Tool access", why: "See, allow, limit, require approval." },
+      { href: "/docs/concepts", label: "Core concepts", why: "Grants, impact and provenance defined." },
+      { href: "/benchmark", label: "Benchmarks", why: "What the default grants cost in finished tasks." },
+    ],
+  },
+  {
+    slug: "mcp-server-security-checklist",
+    title: "MCP server security checklist for enterprises",
+    seoTitle: "MCP server security checklist",
+    description:
+      "Ten checks for every MCP server your agents load: inventory, pinned version, secrets, auth, a tool snapshot, descriptions read as code, grants, audit.",
+    tag: "MCP security",
+    keywords: [
+      "MCP server security checklist",
+      "MCP security",
+      "Model Context Protocol security",
+      "MCP tool poisoning",
+      "enterprise MCP governance",
+    ],
+    published: "2026-11-22",
+    readMinutes: 8,
+    image: {
+      src: "/blog/mcp-page.png",
+      alt: "The MCP page in AgentFox: each server with its version, the tools it exposes and which agents may call them.",
+      width: 3200,
+      height: 1800,
+    },
+    pillars: [
+      { href: "/docs/connect/mcp", label: "MCP servers", why: "Scan, pin, record and grant, step by step." },
+      { href: "/docs/govern", label: "Tool access", why: "Per-tool grants and limits." },
+      { href: "/docs/reference/owasp", label: "OWASP mapping", why: "Where ASI04 is covered and where it is not." },
+    ],
+  },
+  {
+    slug: "red-team-your-own-ai-agent",
+    title: "How to red-team your own AI agent before your customer does",
+    seoTitle: "Red-team your own AI agent",
+    description:
+      "Five steps: define a failure as a tool call that should not happen, run the attack library with tools faked, let attacks adapt, gate the build, keep probing.",
+    tag: "Red teaming",
+    keywords: [
+      "red team AI agent",
+      "how to red team an LLM agent",
+      "AI agent penetration testing",
+      "prompt injection testing",
+      "agent security testing in CI",
+    ],
+    published: "2026-11-22",
+    readMinutes: 7,
+    image: {
+      src: "/blog/playground-agents.png",
+      alt: "The attack test in AgentFox: one row per attack set, with how many attacks got through before and after the basic guardrails.",
+      width: 1600,
+      height: 900,
+    },
+    pillars: [
+      { href: "/docs/test", label: "Attack tests", why: "Run the library against your own agent." },
+      { href: "/docs/test/ci", label: "CI and production", why: "Fail the build when it gets weaker." },
+      { href: "/live", label: "Live", why: "Our own agent, attacked every hour." },
+    ],
+  },
   {
     slug: "lethal-trifecta-ai-agents",
     title: "The lethal trifecta is three safe tools in one agent",
