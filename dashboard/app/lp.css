@@ -407,6 +407,8 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
 .lp-doc-rerun { margin-top: 32px; display: grid; gap: 10px; max-width: 760px; }
 .lp-doc-rerun .lp-copy { width: 100%; max-width: none; }
 .lp-doc-rerun .lp-copy code { flex: 1; }
+.lp-doc-cite { margin-top: 28px; max-width: 760px; display: grid; gap: 8px; justify-items: start; font-size: 13px; color: var(--af-muted); }
+.lp-doc-cite pre { width: 100%; margin: 0; padding: 14px 16px; border: 1px solid var(--lp-hair); border-radius: 8px; background: var(--lp-alt); color: var(--af-text); font-size: 12.5px; line-height: 1.5; overflow-x: auto; white-space: pre; }
 .lp-doc-more { display: flex; flex-wrap: wrap; gap: 24px; }
 .lp-doc-more a { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; color: var(--af-brand); text-decoration: none !important; }
 

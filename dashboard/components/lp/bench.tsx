@@ -3,7 +3,8 @@
  * the home page's type scale and visual language (app/lp.css).
  */
 
-import { REPO_URL } from "@/lib/site";
+import { CopyButton } from "@/components/docs/copy";
+import { REPO_URL, SITE_URL } from "@/lib/site";
 
 import { CopyChip } from "./client";
 import { Arrow } from "./parts";
@@ -173,4 +174,36 @@ export function PaperCard() {
       </span>
     </a>
   );
+}
+
+/** A citation for the page, as BibTeX. A number with a stable reference gets quoted; one inside a paragraph does not. */
+export function Cite({ id, title, path }: { id: string; title: string; path: string }) {
+  const bib = `@misc{${id},\n  title = {${title}},\n  author = {{Nometria}},\n  year = {2026},\n  howpublished = {\\url{${SITE_URL}${path}}},\n  note = {Scripts and results files: ${REPO_URL}}\n}`;
+  return (
+    <figure className="lp-doc-cite">
+      <figcaption>Cite this page</figcaption>
+      <pre>{bib}</pre>
+      <CopyButton text={bib} />
+    </figure>
+  );
+}
+
+/** Dataset structured data for a benchmark page: the results files behind it, as downloads. */
+export function DatasetLd({ name, description, path, files }: { name: string; description: string; path: string; files: string[] }) {
+  const data = {
+    "@context": "https://schema.org",
+    "@type": "Dataset",
+    name,
+    description,
+    url: `${SITE_URL}${path}`,
+    license: "https://www.apache.org/licenses/LICENSE-2.0",
+    isAccessibleForFree: true,
+    creator: { "@id": `${SITE_URL}/#organisation` },
+    distribution: files.map((f) => ({
+      "@type": "DataDownload",
+      encodingFormat: f.endsWith(".csv") ? "text/csv" : "application/json",
+      contentUrl: `${REPO_URL.replace("github.com", "raw.githubusercontent.com")}/main/${f}`,
+    })),
+  };
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }} />;
 }

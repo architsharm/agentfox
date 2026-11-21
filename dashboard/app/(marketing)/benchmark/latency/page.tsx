@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Contents, DocSection, Limits, Rerun, Source, Table } from "@/components/lp/bench";
+import { Cite, Contents, DatasetLd, DocSection, Limits, Rerun, Source, Table } from "@/components/lp/bench";
 import { Reveal } from "@/components/lp/client";
 import { FlowArt } from "@/components/lp/FlowArt";
 import { Arrow, LpCta, LpFooter, LpNav } from "@/components/lp/parts";
@@ -292,6 +292,7 @@ export default function LatencyBenchmarkPage() {
               ]}
             />
             <Source label="benchmarks/latency" path="benchmarks/latency/README.md" />
+            <Cite id="agentfox_latency_benchmark_2026" title="What a guard check adds to an agent: latency on 109 agent repositories" path="/benchmark/latency" />
             <p className="lp-doc-more">
               <Link href="/benchmark">
                 Security benchmarks: what each guard catches <Arrow />
@@ -300,6 +301,16 @@ export default function LatencyBenchmarkPage() {
           </DocSection>
         </div>
 
+        <DatasetLd
+          name="AgentFox latency benchmark results"
+          description="Every recorded guard call from the 109-repository latency study and the head-to-head runs against other guards on the same machine."
+          path="/benchmark/latency"
+          files={[
+            "benchmarks/latency/head_to_head/results/agentfox_default.csv",
+            "benchmarks/latency/head_to_head/results/agentfox_deterministic.csv",
+            "benchmarks/latency/head_to_head/results/agentfox_judge.csv",
+          ]}
+        />
         <LpCta />
       </main>
       <LpFooter />

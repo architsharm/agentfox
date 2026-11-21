@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { BarCard, Contents, DocSection, Limits, PaperCard, Rerun, Source, Table } from "@/components/lp/bench";
+import { BarCard, Cite, Contents, DatasetLd, DocSection, Limits, PaperCard, Rerun, Source, Table } from "@/components/lp/bench";
 import { Reveal } from "@/components/lp/client";
 import { FlowArt } from "@/components/lp/FlowArt";
 import { Arrow, LpCta, LpFooter, LpNav } from "@/components/lp/parts";
@@ -377,6 +377,7 @@ export default function Benchmark() {
               Guard pins an older transformers. None of these runs needs a model API key. Each figure is a single run, and the run
               dates, hardware and LLM Guard version weren&apos;t recorded.
             </p>
+            <Cite id="agentfox_security_benchmarks_2026" title="AgentFox security benchmarks: containment, AgentDojo replay, detection and an adaptive attacker" path="/benchmark" />
             <p className="lp-doc-more">
               <Link href="/benchmark/latency">
                 Latency: what a check adds to your agent <Arrow />
@@ -388,6 +389,16 @@ export default function Benchmark() {
           </DocSection>
         </div>
 
+        <DatasetLd
+          name="AgentFox security benchmark results"
+          description="Per-call predictions and summaries for the containment, AgentDojo head-to-head, indirect injection, prompt injection and adaptive attack benchmarks on this page."
+          path="/benchmark"
+          files={[
+            "benchmarks/action_safety/results/summary.json",
+            "benchmarks/action_safety/results/agentdojo_summary.json",
+            "benchmarks/action_safety/results/payloadbox_summary.json",
+          ]}
+        />
         <LpCta />
       </main>
       <LpFooter />
