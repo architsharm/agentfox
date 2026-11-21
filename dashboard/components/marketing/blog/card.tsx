@@ -17,7 +17,7 @@ export function PostCard({ post, featured = false }: { post: BlogPost; featured?
         />
       </div>
       <div className="blog-card-body">
-        <span className="mk-chip mk-chip-accent">{post.tag}</span>
+        <span className="mk-chip">{post.tag}</span>
         {featured ? <h2>{post.title}</h2> : <h3>{post.title}</h3>}
         <p>{post.description}</p>
         <span className="blog-card-meta">

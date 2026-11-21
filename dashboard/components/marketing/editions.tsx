@@ -133,7 +133,7 @@ export function Editions({
           <div className="ed-route ed-route-hosted mk-up mk-d2">
             <div className="ed-head">
               <h3 className="mk-h3">Let us run it</h3>
-              <span className="mk-chip mk-chip-accent">Free while in preview</span>
+              <span className="mk-chip">Free while in preview</span>
             </div>
             <p className="mk-body">
               AgentFox with Enterprise included, run by us. Sign in to get a workspace.
@@ -173,7 +173,6 @@ export function Editions({
             <>
               <div>
                 <h3 className="mk-h3">Tell me when pricing is announced</h3>
-                <p className="mk-body">One email, before any paid plan exists.</p>
                 {error ? (
                   <p className="wl-error" role="alert" id={WAITLIST_ERROR_ID}>
                     {error}
@@ -201,10 +200,11 @@ export function OpenSourcePromise() {
           {OSS_FACTS.map((f) => (
             <div
               key={f.label}
-              className="mk-card"
-              style={{ padding: 20, display: "grid", gap: 6, minWidth: 0 }}
+              style={{ paddingTop: 16, borderTop: "1px solid var(--af-line)", display: "grid", gap: 6, minWidth: 0 }}
             >
-              <span className="mk-label">{f.label}</span>
+              <h3 className="mk-h3" style={{ fontSize: 15, margin: 0 }}>
+                {f.label}
+              </h3>
               <p className="mk-body" style={{ margin: 0, fontSize: "var(--t-small)", lineHeight: 1.5 }}>
                 {f.body}
               </p>

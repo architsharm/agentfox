@@ -40,7 +40,6 @@ export default function Benchmark() {
         <section className="lp-hero lp-hero-short">
           <FlowArt mode="ribbon" />
           <div className="lp-hero-copy">
-            <span className="lp-pill">Security benchmarks</span>
             <h1>
               Measured against
               <br />
@@ -305,7 +304,7 @@ export default function Benchmark() {
               ].map((r) => (
                 <div key={r[0]} className="lp-compare-row">
                   <span className="lp-compare-msg">{r[0]}</span>
-                  <span className="lp-compare-them">{r[1]}</span>
+                  <span className="lp-compare-them" data-k="LLM Guard">{r[1]}</span>
                   <span className="lp-compare-us">{r[2]}</span>
                 </div>
               ))}

@@ -347,7 +347,7 @@ export function Production() {
                     <b className="lp-compare-verb">{r.verb}</b>
                     {r.need}
                   </span>
-                  <span className="lp-compare-them">{r.toolkit}</span>
+                  <span className="lp-compare-them" data-k="Toolkit">{r.toolkit}</span>
                   <span className="lp-compare-us">{r.us}</span>
                 </div>
               ))}
