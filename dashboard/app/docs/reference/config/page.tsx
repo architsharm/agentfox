@@ -1204,6 +1204,7 @@ python -c "from agentfox.core.config import Settings as S; s = S(); print(s.fail
           <tr><td><code>X-AgentFox-Stream-Mode</code></td><td><code>buffered</code> or <code>windowed</code> for this request (below).</td></tr>
           <tr><td><code>X-AgentFox-Priority</code></td><td>Admission priority when shedding load (default <code>normal</code>).</td></tr>
           <tr><td><code>X-AgentFox-Approval</code></td><td>An approved <code>apr_…</code> id: the held request runs once.</td></tr>
+          <tr><td><code>X-AgentFox-Tool-Hook</code></td><td><code>1</code> when a tool hook checks each call again as it runs (the OpenClaw plugin does): an approved tool call in the reply passes unspent, and the hook spends it.</td></tr>
           <tr><td><code>Authorization: Bearer nom_agt_…</code></td><td>Optional agent key.</td></tr>
         </tbody>
       </table></div>

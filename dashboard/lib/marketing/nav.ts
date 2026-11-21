@@ -45,6 +45,12 @@ const LIVE: NavItem = {
   note: "Our own demo agent, attacked every hour through the real enforcement path. Results unedited, including what got through.",
   sitemap: { changeFrequency: "weekly", priority: 0.7 },
 };
+const OPENCLAW: NavItem = {
+  label: "AgentFox for OpenClaw",
+  href: "/openclaw",
+  note: "Run one OpenClaw for a team with every shell command, browser step and message checked by AgentFox first. One command to start.",
+  sitemap: { changeFrequency: "monthly", priority: 0.7 },
+};
 const PRICING: NavItem = {
   label: "Pricing",
   href: "/pricing",
@@ -101,13 +107,13 @@ export const HEADER: NavItem[] = [RESEARCH];
 export const HEADER_CTA: NavItem = DOCS;
 
 export const FOOTER: FooterColumn[] = [
-  { heading: "Product", items: [PLAYGROUND, LIVE, PRICING] },
+  { heading: "Product", items: [PLAYGROUND, LIVE, OPENCLAW, PRICING] },
   { heading: "Research", items: [RESEARCH, BENCHMARK, LATENCY] },
   { heading: "Resources", items: [DOCS, BLOG, SUPPORT] },
   { heading: "Company", items: [SECURITY, PRIVACY, TERMS] },
 ];
 
 /** Every page, in one list. */
-export const ALL_PAGES: NavItem[] = [HOME, RESEARCH, BENCHMARK, LATENCY, PLAYGROUND, LIVE, PRICING, BLOG, DOCS, SECURITY, SUPPORT, PRIVACY, TERMS];
+export const ALL_PAGES: NavItem[] = [HOME, RESEARCH, BENCHMARK, LATENCY, PLAYGROUND, LIVE, OPENCLAW, PRICING, BLOG, DOCS, SECURITY, SUPPORT, PRIVACY, TERMS];
 
 export const ALL_PATHS: string[] = ALL_PAGES.map((p) => p.href);

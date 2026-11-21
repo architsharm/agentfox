@@ -1,0 +1,35 @@
+{
+  "models": {
+    "providers": {
+      "agentfox": {
+        "baseUrl": "${AGENTFOX_URL}/v1",
+        "apiKey": "${AGENTFOX_AGENT_KEY}",
+        "api": "openai-completions",
+        "headers": { "X-AgentFox-Agent": "openclaw", "X-AgentFox-Tool-Hook": "1" },
+        "models": [
+          { "id": "${AGENTFOX_MODEL}", "name": "Model via AgentFox", "input": ["text"], "contextWindow": 128000, "maxTokens": 8192 }
+        ]
+      }
+    }
+  },
+  "tools": { "toolSearch": false },
+  "agents": {
+    "defaults": {
+      "model": { "primary": "agentfox/${AGENTFOX_MODEL}" }
+    }
+  },
+  "plugins": {
+    "load": { "paths": ["/opt/agentfox-openclaw"] },
+    "entries": {
+      "agentfox": {
+        "enabled": true,
+        "config": {
+          "baseUrl": "${AGENTFOX_URL}",
+          "apiKey": "${AGENTFOX_AGENT_KEY}",
+          "failMode": "closed",
+          "approvals": "agentfox"
+        }
+      }
+    }
+  }
+}

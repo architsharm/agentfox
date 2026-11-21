@@ -54,6 +54,9 @@ Response adds:
 (an error status, so provider SDKs raise rather than parse a completion); poll
 `GET /api/approvals/{id}` (an agent key may read its own agent's), and once it is `approved` send
 the same request with `X-AgentFox-Approval: <id>` — it runs once (P2-3).
+A caller whose tool hook checks each call again as it runs (the OpenClaw plugin) sends
+`X-AgentFox-Tool-Hook: 1`: an approved tool call in the model's reply then passes unspent, and the
+hook's own check spends the approval, once.
 **On overload** → `HTTP 429` with `Retry-After` from the admission gate; `X-AgentFox-Priority` raises a request's priority.
 
 ### `POST /v1/guard/input` · `POST /v1/guard/output` · `POST /v1/guard/tool_call` · `POST /v1/guard/memory_write` · `POST /v1/guard/agent_message` · `POST /v1/mcp/call`
