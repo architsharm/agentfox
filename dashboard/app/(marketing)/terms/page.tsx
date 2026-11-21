@@ -31,8 +31,7 @@ export default function Terms() {
         <section className="mk-section mk-page-hero mk-ink-act">
           <div className="mk-wrap">
             <div className="mk-narrow">
-              <span className="mk-eyebrow">Terms</span>
-              <h1 className="mk-h1" style={{ margin: "18px 0 0" }}>
+              <h1 className="mk-h1" style={{ margin: 0 }}>
                 Terms of service</h1>
               <p className="mk-lede" style={{ marginTop: 20 }}>
                 These cover the hosted playground and dashboard, run by Nometria Inc., a
@@ -49,9 +48,8 @@ export default function Terms() {
         <section className="mk-section">
           <div className="mk-wrap">
             <div className="mk-narrow">
-              <div className="mk-card mk-card-raised">
-                <span className="mk-eyebrow">Read this first</span>
-                <h2 className="mk-h2" style={{ marginTop: 16 }}>
+              <div className="mk-card">
+                <h2 className="mk-h2" style={{ marginTop: 0 }}>
                   Nothing here narrows the licence</h2>
                 <p className="mk-body" style={{ marginTop: 14 }}>
                   The AgentFox software is licensed under the{" "}

@@ -29,7 +29,6 @@ export const metadata: Metadata = {
 
 export default function Page() {
   const [featured, ...rest] = postsByDate();
-  const tags = Array.from(new Set(BLOG_POSTS.map((p) => p.tag)));
   return (
     <div className="mk">
       <script
@@ -55,21 +54,13 @@ export default function Page() {
         <section className="mk-section-tight blog-hero mk-ink-act">
           <div className="mk-hero-glow" aria-hidden />
           <div className="mk-wrap" style={{ position: "relative" }}>
-            <p className="mk-kicker mk-up mk-d1">Blog</p>
-            <h1 className="mk-h1 mk-up mk-d2" style={{ marginTop: 14 }}>
+            <h1 className="mk-h1 mk-up mk-d2">
               Securing AI agents, <em>in depth</em>
             </h1>
             <p className="mk-lede mk-up mk-d3" style={{ marginTop: 20, maxWidth: 720 }}>
               How the attacks on agents actually work, what stops them, and what does not. Every
               number links to the <Link href="/benchmark">benchmark</Link> it came from, losses
               included.
-            </p>
-            <p className="blog-tags mk-up mk-d4">
-              {tags.map((t) => (
-                <span key={t} className="mk-chip">
-                  {t}
-                </span>
-              ))}
             </p>
           </div>
         </section>

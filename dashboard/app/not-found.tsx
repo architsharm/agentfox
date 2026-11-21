@@ -25,8 +25,7 @@ export default function NotFound() {
       <LpNav />
       <main id="main" className="lp-page" style={{ flex: 1 }}>
         <div className="lp-wrap">
-          <span className="lp-pill">404</span>
-          <h1 style={{ marginTop: 20 }}>This page doesn&apos;t exist</h1>
+          <h1>This page doesn&apos;t exist</h1>
           <p className="lp-lead">
             The link may be old, or the page has moved. The docs and the home page are the best places to pick up from.
           </p>

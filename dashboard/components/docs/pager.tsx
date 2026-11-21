@@ -34,10 +34,3 @@ export function DocsPager() {
     </nav>
   );
 }
-
-/** The section a page sits in ("Govern", "Reference"), shown above its title. */
-export function DocsKicker() {
-  const path = usePathname();
-  const page = DOC_PAGES.find((p) => p.href === path);
-  return page ? <p className="docs-kicker">{page.section}</p> : null;
-}

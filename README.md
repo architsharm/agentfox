@@ -230,8 +230,8 @@ when the condition clears. Setup and every finding type:
 
 ## What we measured
 
-The detector comparison behind these numbers is peer reviewed: *No Tier Wins Everywhere*, accepted
-at WAITI 2026, a workshop of ACSAC 2026 ([artifact](https://github.com/architsharm/waiti2026-artifact)).
+The detector comparison behind these numbers, *No Tier Wins Everywhere*, is accepted to be presented
+at WAITI 2026, a workshop of ACSAC 2026, in December ([artifact](https://github.com/architsharm/waiti2026-artifact)).
 
 We do not claim adversarial robustness, and we do not believe anyone can.
 [*The Attacker Moves Second*](https://arxiv.org/abs/2510.09023) (Nasr, Carlini, Schulhoff et al.,

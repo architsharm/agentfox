@@ -117,9 +117,9 @@ export default async function Login({
             </p>
           )}
           {expired && (
-            <div className="error small" role="status" style={{ margin: "18px 0 0" }}>
+            <p className="small muted" role="status" style={{ margin: "18px 0 0" }}>
               Your session expired. Sign in again to pick up where you left off.
-            </div>
+            </p>
           )}
           {error && (
             <div className="error small" role="alert" id="login-error" style={{ margin: "18px 0 0" }}>

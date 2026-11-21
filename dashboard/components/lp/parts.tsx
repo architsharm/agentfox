@@ -93,10 +93,10 @@ export function Comment({ children }: { children: React.ReactNode }) {
   return <p className="lp-comment">{children}</p>;
 }
 
-export function SectionHead({ eyebrow, title, sub }: { eyebrow: string; title: string; sub?: string }) {
+/** Heading left, the one supporting line right: an editorial split, no label above the heading. */
+export function SectionHead({ title, sub }: { title: string; sub?: string }) {
   return (
     <div className="lp-head">
-      <span className="lp-pill">{eyebrow}</span>
       <h2>{title}</h2>
       {sub && <p className="lp-lead">{sub}</p>}
     </div>
