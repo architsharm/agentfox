@@ -48,7 +48,8 @@ services:
       OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:?set OPENCLAW_GATEWAY_TOKEN (openssl rand -hex 24)}
       # Read by openclaw.json.
       AGENTFOX_URL: http://gateway:8080
-      AGENTFOX_AGENT_KEY: ${AGENTFOX_AGENT_KEY:-}
+      # OpenClaw refuses to start a provider whose key is empty; a non-nom_agt_ value is "no key" to AgentFox.
+      AGENTFOX_AGENT_KEY: ${AGENTFOX_AGENT_KEY:-unregistered}
       AGENTFOX_MODEL: ${AGENTFOX_MODEL:-gpt-4.1-mini}
     volumes:
       - openclaw-state:/home/node/.openclaw

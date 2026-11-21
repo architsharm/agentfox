@@ -5,12 +5,14 @@
         "baseUrl": "${AGENTFOX_URL}/v1",
         "apiKey": "${AGENTFOX_AGENT_KEY}",
         "api": "openai-completions",
+        "headers": { "X-AgentFox-Agent": "openclaw" },
         "models": [
           { "id": "${AGENTFOX_MODEL}", "name": "Model via AgentFox", "input": ["text"], "contextWindow": 128000, "maxTokens": 8192 }
         ]
       }
     }
   },
+  "tools": { "toolSearch": false },
   "agents": {
     "defaults": {
       "model": { "primary": "agentfox/${AGENTFOX_MODEL}" }
