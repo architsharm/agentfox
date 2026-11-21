@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { CATEGORY_CAP } from "@/lib/marketing/category";
-import { SITE_URL, SUPPORT_EMAIL, publicPageMetadata, HOME_TITLE, HOME_DESCRIPTION } from "@/lib/site";
+import { SITE_URL, SUPPORT_EMAIL, publicPageMetadata, HOME_TITLE, HOME_DESCRIPTION, LINKEDIN_URL } from "@/lib/site";
 import { REPO } from "@/components/marketing/nav";
 import { Production } from "@/components/lp/Production";
 
@@ -86,7 +86,7 @@ function LandingJsonLd() {
         name: "AgentFox",
         url: SITE_URL,
         logo: `${SITE_URL}/apple-icon.png`,
-        sameAs: [REPO],
+        sameAs: [REPO, LINKEDIN_URL],
         contactPoint: {
           "@type": "ContactPoint",
           contactType: "customer support",
