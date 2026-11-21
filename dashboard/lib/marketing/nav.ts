@@ -95,6 +95,25 @@ const TERMS: NavItem = {
 };
 
 /** The landing page, which belongs in the sitemap and in no menu. */
+const COMPARE: NavItem = {
+  label: "Compare",
+  href: "/compare",
+  note: "AgentFox, LLM Guard, NeMo Guardrails, Guardrails AI, Prompt Guard 2 and Lakera Guard compared on the same tests, with where each one wins.",
+  sitemap: { changeFrequency: "monthly", priority: 0.8 },
+};
+const COMPARE_LLM_GUARD: NavItem = {
+  label: "LLM Guard vs AgentFox",
+  href: "/compare/llm-guard",
+  note: "LLM Guard and AgentFox on the same AgentDojo attacks, held-out injections and latency run; it finishes more tasks, we let fewer attacks through.",
+  sitemap: { changeFrequency: "monthly", priority: 0.7 },
+};
+const COMPARE_LAKERA: NavItem = {
+  label: "Lakera Guard vs AgentFox",
+  href: "/compare/lakera",
+  note: "Lakera Guard, a closed hosted detection API now owned by Check Point, next to AgentFox; what could not be benchmarked and what the choice turns on.",
+  sitemap: { changeFrequency: "monthly", priority: 0.7 },
+};
+
 export const HOME: NavItem = {
   label: "AgentFox",
   href: "/",
@@ -108,12 +127,12 @@ export const HEADER_CTA: NavItem = DOCS;
 
 export const FOOTER: FooterColumn[] = [
   { heading: "Product", items: [PLAYGROUND, LIVE, OPENCLAW, PRICING] },
-  { heading: "Research", items: [RESEARCH, BENCHMARK, LATENCY] },
+  { heading: "Research", items: [RESEARCH, BENCHMARK, LATENCY, COMPARE] },
   { heading: "Resources", items: [DOCS, BLOG, SUPPORT] },
   { heading: "Company", items: [SECURITY, PRIVACY, TERMS] },
 ];
 
 /** Every page, in one list. */
-export const ALL_PAGES: NavItem[] = [HOME, RESEARCH, BENCHMARK, LATENCY, PLAYGROUND, LIVE, OPENCLAW, PRICING, BLOG, DOCS, SECURITY, SUPPORT, PRIVACY, TERMS];
+export const ALL_PAGES: NavItem[] = [HOME, RESEARCH, BENCHMARK, LATENCY, COMPARE, COMPARE_LLM_GUARD, COMPARE_LAKERA, PLAYGROUND, LIVE, OPENCLAW, PRICING, BLOG, DOCS, SECURITY, SUPPORT, PRIVACY, TERMS];
 
 export const ALL_PATHS: string[] = ALL_PAGES.map((p) => p.href);
