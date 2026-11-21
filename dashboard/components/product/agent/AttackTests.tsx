@@ -230,7 +230,7 @@ export function AttackTests({
   if (!tests) {
     return (
       <section className="at">
-        <h4 className="at-title">Attack test</h4>
+        <h2 className="at-title">Attack test</h2>
         <p className="gm-sub">{error ?? "Loading…"}</p>
       </section>
     );
@@ -261,7 +261,7 @@ export function AttackTests({
   return (
     <section className="at" aria-label="Attack test">
       <div className="at-head">
-        <h4 className="at-title">Attack test</h4>
+        <h2 className="at-title">Attack test</h2>
         <div className="at-actions">
           <button
             type="button"

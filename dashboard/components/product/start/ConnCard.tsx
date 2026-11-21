@@ -36,7 +36,7 @@ export function ConnCard({
       <p className="conn-text">{text}</p>
       <div className="conn-foot">
         {expandLabel ? (
-          <button type="button" className={open ? "k-btn-ghost" : "k-btn-primary"} aria-expanded={open} onClick={() => setOpen(!open)}>
+          <button type="button" className={open ? "k-btn-ghost" : "k-btn"} aria-expanded={open} onClick={() => setOpen(!open)}>
             {open ? "Close" : expandLabel}
           </button>
         ) : (

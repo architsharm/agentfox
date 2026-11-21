@@ -86,7 +86,7 @@ export function ObsTable({ head, children, empty }: { head: string[]; children: 
 }
 
 export function Empty({ children }: { children: ReactNode }) {
-  return <p className="obs-empty">// {children}</p>;
+  return <p className="obs-empty">{children}</p>;
 }
 
 export function n(x: number | undefined | null): string {

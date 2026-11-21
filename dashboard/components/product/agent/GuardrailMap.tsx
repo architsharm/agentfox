@@ -1082,7 +1082,7 @@ function Guide({ project, agent, agentName, paused }: { project: string; agent?:
       <AttackTests project={project} agent={agent} agentName={agentName} paused={paused} />
 
       <section className="gm-more-agents">
-        <h4>Add more agents</h4>
+        <h2>Add more agents</h2>
         <p>
           Run <code>agentfox init</code> in the repository where the agent lives.
         </p>

@@ -81,7 +81,7 @@ export function FeaturesEditor({ initial, canOpen = true }: { initial: Features;
 
       <section className="k-card ft-card">
         <header className="ft-head">
-          <h3>Protections</h3>
+          <h2>Protections</h2>
           <span className="k-muted">
             {project ? "Stricter is always allowed. Lower only where the workspace allows it." : "What every project gets unless it changes it."}
           </span>
@@ -159,7 +159,7 @@ export function FeaturesEditor({ initial, canOpen = true }: { initial: Features;
 
       <section className="k-card ft-card">
         <header className="ft-head">
-          <h3>Checks</h3>
+          <h2>Checks</h2>
           <span className="k-muted">
             {project ? "Switch a check on or off for this project only, either way." : "The detectors that run on every project's traffic."}
           </span>
@@ -169,7 +169,7 @@ export function FeaturesEditor({ initial, canOpen = true }: { initial: Features;
           const missing = g.checks.filter((c) => !c.installed);
           return (
             <div key={g.key} className="ft-group">
-              <h4>{g.title}</h4>
+              <h3>{g.title}</h3>
               <ul className="ft-list">
                 {installed.map((c) => (
                   <CheckRow key={c.key} c={c} project={project} busy={busy === `c:${c.key}`} error={error?.key === `c:${c.key}` ? error.text : null} onSet={setCheck} onReset={resetCheck} />

@@ -363,7 +363,7 @@ export function Gaps({ gaps, title }: { gaps: string[]; title?: string }) {
 
 export function Empty({ children }: { children: React.ReactNode }) {
   return (
-    <div className="body muted small">{children}</div>
+    <div className="k-empty">{children}</div>
   );
 }
 

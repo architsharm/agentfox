@@ -174,7 +174,7 @@ export async function EscalationTab({ agent }: { agent?: string }) {
                     {h.status === "pending" ? (
                       <form action="/api/escalation/handoffs/acknowledge" method="POST">
                         <input type="hidden" name="id" value={h.id} />
-                        <button type="submit" className="chip" style={{ cursor: "pointer" }}>acknowledge</button>
+                        <button type="submit" className="k-btn">Acknowledge</button>
                       </form>
                     ) : (
                       <span className="muted">—</span>

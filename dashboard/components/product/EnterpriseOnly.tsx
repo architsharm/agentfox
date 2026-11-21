@@ -26,7 +26,7 @@ export function EnterpriseOnly({ feature }: { feature: Feature }) {
   return (
     <div className="k-card">
       <div className="k-card-body">
-        <h3 style={{ marginTop: 0 }}>{w.title}</h3>
+        <h2 style={{ marginTop: 0 }}>{w.title}</h2>
         <p className="muted">{w.text}</p>
         <p className="muted small">
           It is included on AgentFox Cloud. To self-host it, install the enterprise package from a clone of the

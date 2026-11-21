@@ -140,10 +140,11 @@ export function Card({
     <section id={id} className={`k-card${flush ? " k-flush" : ""}`}>
       {(title || action) && (
         <div className="k-card-head">
-          <h3>
+          {/* h2: a card sits directly under the page's h1 (an h3 skipped a level). */}
+          <h2>
             {title}
             {hint && <InfoTip text={hint} />}
-          </h3>
+          </h2>
           {action && <div className="k-card-action">{action}</div>}
         </div>
       )}
