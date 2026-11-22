@@ -11,6 +11,10 @@ the file it came from.
 
 ## [Unreleased]
 
+### Fixed
+- `agents controls` and `agents list --stopped` exclude resumed agents while
+  preserving quarantined and killed agents and their stop reasons.
+
 ## [0.5.4] - 2026-11-22
 
 ### Added
