@@ -4,6 +4,8 @@
  * another.
  */
 
+import { INTEGRATIONS, integrationPath } from "./integrations";
+
 export type NavItem = {
   label: string;
   href: string;
@@ -114,6 +116,19 @@ const COMPARE_LAKERA: NavItem = {
   sitemap: { changeFrequency: "monthly", priority: 0.7 },
 };
 
+const INTEGRATIONS_INDEX: NavItem = {
+  label: "Integrations",
+  href: "/integrations",
+  note: "What AgentFox checks for each agent framework and coding agent, and how: one line for Python frameworks, hooks for Claude Code and Codex, a scan and a governor for MCP.",
+  sitemap: { changeFrequency: "monthly", priority: 0.8 },
+};
+const INTEGRATION_PAGES: NavItem[] = INTEGRATIONS.map((i) => ({
+  label: `${i.name} with AgentFox`,
+  href: integrationPath(i.slug),
+  note: i.description,
+  sitemap: { changeFrequency: "monthly", priority: 0.7 },
+}));
+
 export const HOME: NavItem = {
   label: "AgentFox",
   href: "/",
@@ -128,11 +143,11 @@ export const HEADER_CTA: NavItem = DOCS;
 export const FOOTER: FooterColumn[] = [
   { heading: "Product", items: [PLAYGROUND, LIVE, OPENCLAW, PRICING] },
   { heading: "Research", items: [RESEARCH, BENCHMARK, LATENCY, COMPARE] },
-  { heading: "Resources", items: [DOCS, BLOG, SUPPORT] },
+  { heading: "Resources", items: [DOCS, INTEGRATIONS_INDEX, BLOG, SUPPORT] },
   { heading: "Company", items: [SECURITY, PRIVACY, TERMS] },
 ];
 
 /** Every page, in one list. */
-export const ALL_PAGES: NavItem[] = [HOME, RESEARCH, BENCHMARK, LATENCY, COMPARE, COMPARE_LLM_GUARD, COMPARE_LAKERA, PLAYGROUND, LIVE, OPENCLAW, PRICING, BLOG, DOCS, SECURITY, SUPPORT, PRIVACY, TERMS];
+export const ALL_PAGES: NavItem[] = [HOME, RESEARCH, BENCHMARK, LATENCY, COMPARE, COMPARE_LLM_GUARD, COMPARE_LAKERA, INTEGRATIONS_INDEX, ...INTEGRATION_PAGES, PLAYGROUND, LIVE, OPENCLAW, PRICING, BLOG, DOCS, SECURITY, SUPPORT, PRIVACY, TERMS];
 
 export const ALL_PATHS: string[] = ALL_PAGES.map((p) => p.href);
