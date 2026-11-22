@@ -16,6 +16,14 @@ OpenAI, Anthropic, LiteLLM, MCP servers, Claude Code and Codex.
 
 **[▶ Try it in the browser, no account](https://useagentfox.com/playground)** &nbsp;·&nbsp; [Docs](https://useagentfox.com/docs) &nbsp;·&nbsp; [Benchmarks](https://useagentfox.com/benchmark) &nbsp;·&nbsp; [Discussions](https://github.com/architsharm/agentfox/discussions)
 
+```bash
+pip install agentfox && agentfox scan     # reads your repo, never runs it
+```
+
+On AgentDojo, **0 of 588** injection attacks got through with every detector switched off.
+The cost is on the same [benchmark page](https://useagentfox.com/benchmark): 24 of 97 benign tasks
+finished without asking a person.
+
 If AgentFox is useful to you, a ⭐ helps other people find it.
 
 </div>
