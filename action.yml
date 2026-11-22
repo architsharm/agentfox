@@ -1,7 +1,5 @@
 name: AgentFox scan
-description: >-
-  Find lethal trifectas across MCP servers and tools, ungoverned LLM calls and poisoned
-  agent skills in a pull request. Static and offline: nothing is run or sent anywhere.
+description: Finds lethal trifectas across MCP servers and tools, ungoverned LLM calls and poisoned skills in a PR. Static, offline.
 author: AgentFox
 branding:
   icon: shield
