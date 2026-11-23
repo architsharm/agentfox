@@ -109,12 +109,20 @@ class Guard:
         verdict = decision.get("verdict") or decision.get("applied_verdict") or "allow"
         if verdict not in STOPPING:
             return None
-        said = (decision.get("user_message") or decision.get("reason") or f"AgentFox stopped {tool_name}").strip()
+        said = (
+            decision.get("user_message")
+            or decision.get("reason")
+            or f"AgentFox stopped {tool_name}"
+        ).strip()
         why = said if said[-1:] in ".!?" else f"{said}."
         if verdict != "escalate":
             return _block(why)
         if self.approvals == "hermes":
-            return {"action": "approve", "message": f"AgentFox: {why}", "rule_key": f"agentfox:{tool_name}"}
+            return {
+                "action": "approve",
+                "message": f"AgentFox: {why}",
+                "rule_key": f"agentfox:{tool_name}",
+            }
         where = (
             f" Review it: {decision['explain_url']}."
             if decision.get("explain_url")
@@ -134,12 +142,14 @@ class Guard:
         if not raw:
             return
         entries = self.results.pop(session, [])  # re-inserted below as the newest
-        entries.append({
-            "role": "tool",
-            "tool_call_id": kw.get("tool_call_id") or f"{tool_name}-{len(entries)}",
-            "name": tool_name,
-            "content": raw[:MAX_RESULT_CHARS],
-        })
+        entries.append(
+            {
+                "role": "tool",
+                "tool_call_id": kw.get("tool_call_id") or f"{tool_name}-{len(entries)}",
+                "name": tool_name,
+                "content": raw[:MAX_RESULT_CHARS],
+            }
+        )
         del entries[: -self.kept]
         self.results[session] = entries
         if len(self.results) > MAX_SESSIONS:

@@ -58,13 +58,21 @@ def test_watch_mode_does_not_block():
 
 
 def test_block_uses_the_rules_message():
-    g, _ = guard({"verdict": "block", "reason": "internal", "user_message": "Recursive delete blocked"})
+    g, _ = guard(
+        {"verdict": "block", "reason": "internal", "user_message": "Recursive delete blocked"}
+    )
     out = g.pre_tool_call(tool_name="terminal", args={"command": "rm -rf ~"}, **KW)
     assert out == {"action": "block", "message": "Recursive delete blocked."}
 
 
 def test_held_call_points_at_the_approver_in_agentfox():
-    g, _ = guard({"verdict": "escalate", "reason": "Untrusted recipient.", "explain_url": "http://af/app/approvals/apr_1"})
+    g, _ = guard(
+        {
+            "verdict": "escalate",
+            "reason": "Untrusted recipient.",
+            "explain_url": "http://af/app/approvals/apr_1",
+        }
+    )
     out = g.pre_tool_call(tool_name="send_message", args={"to": "x@evil.example"}, **KW)
     assert out["action"] == "block"
     assert "Untrusted recipient." in out["message"]
@@ -75,7 +83,11 @@ def test_held_call_points_at_the_approver_in_agentfox():
 def test_held_call_can_use_hermes_own_approval_gate():
     g, gw = guard({"verdict": "escalate", "reason": "Untrusted recipient."}, approvals="hermes")
     out = g.pre_tool_call(tool_name="send_message", args={}, **KW)
-    assert out == {"action": "approve", "message": "AgentFox: Untrusted recipient.", "rule_key": "agentfox:send_message"}
+    assert out == {
+        "action": "approve",
+        "message": "AgentFox: Untrusted recipient.",
+        "rule_key": "agentfox:send_message",
+    }
     assert gw.sent[0][1]["redeem_approved"] is False
 
 
@@ -96,12 +108,19 @@ def test_unreachable_gateway_through_the_real_client_fails_closed():
 def test_tool_results_travel_as_messages_for_provenance():
     g, gw = guard({"verdict": "allow"}, results_kept=2)
     for i in range(3):
-        g.post_tool_call(tool_name="web_extract", result=f"page {i}", **{**KW, "tool_call_id": f"c{i}"})
+        g.post_tool_call(
+            tool_name="web_extract", result=f"page {i}", **{**KW, "tool_call_id": f"c{i}"}
+        )
     g.post_tool_call(tool_name="web_extract", result={"text": "elsewhere"}, conversation_id="other")
     g.pre_tool_call(tool_name="terminal", args={"command": "x"}, **KW)
     messages = gw.sent[0][1]["messages"]
     assert [m["content"] for m in messages] == ["page 1", "page 2"]
-    assert messages[0] == {"role": "tool", "tool_call_id": "c1", "name": "web_extract", "content": "page 1"}
+    assert messages[0] == {
+        "role": "tool",
+        "tool_call_id": "c1",
+        "name": "web_extract",
+        "content": "page 1",
+    }
 
 
 def test_settings_from_the_environment(monkeypatch):
@@ -110,7 +129,12 @@ def test_settings_from_the_environment(monkeypatch):
     monkeypatch.setenv("AGENTFOX_AGENT", "hermes-ops")
     monkeypatch.setenv("AGENTFOX_FAIL_MODE", "open")
     g = plugin.Guard.from_env()
-    assert (g.remote.url, g.remote.key, g.agent, g.fail_open) == ("http://af:8080", "nom_agt_x", "hermes-ops", True)
+    assert (g.remote.url, g.remote.key, g.agent, g.fail_open) == (
+        "http://af:8080",
+        "nom_agt_x",
+        "hermes-ops",
+        True,
+    )
     monkeypatch.delenv("AGENTFOX_URL")
     with pytest.raises(ValueError, match="AGENTFOX_URL"):
         plugin.Guard.from_env()
