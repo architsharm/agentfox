@@ -211,3 +211,51 @@ jobs:
           # Fail rather than skip if this version is already on PyPI. A silent
           # success would let a tag claim to have published something it did not.
           skip-existing: false
+
+  # The official MCP Registry proves we own the PyPI package by reading the `mcp-name`
+  # marker out of the README of the *published* release, so this can only run once the
+  # `pypi` job is done. It authenticates with this workflow's OIDC identity, which the
+  # registry maps to the `io.github.architsharm/*` namespace: no token to store or rotate.
+  mcp-registry:
+    needs: pypi
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Refuse to publish unless server.json agrees with the tag
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          python3 - "$VERSION" <<'PY'
+          import json, sys
+          version = sys.argv[1]
+          doc = json.load(open("server.json"))
+          problems = [f"server.json version is {doc['version']}, tag says {version}"] if doc["version"] != version else []
+          for pkg in doc["packages"]:
+              if pkg["version"] != version:
+                  problems.append(f"package {pkg['identifier']} is {pkg['version']}, tag says {version}")
+          for problem in problems:
+              print(f"error: {problem}", file=sys.stderr)
+          sys.exit(1 if problems else 0)
+          PY
+
+      - name: Install mcp-publisher
+        run: |
+          set -euo pipefail
+          curl -sSfL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+          ./mcp-publisher --version
+
+      - name: Publish to the MCP Registry
+        run: |
+          set -euo pipefail
+          ./mcp-publisher login github-oidc
+          # PyPI's JSON index can lag the upload by a minute; the registry reads it live.
+          for attempt in 1 2 3 4 5 6; do
+            if ./mcp-publisher publish; then exit 0; fi
+            echo "publish attempt ${attempt} failed; retrying in 30 s"
+            sleep 30
+          done
+          exit 1

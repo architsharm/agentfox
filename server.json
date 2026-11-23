@@ -12,6 +12,17 @@
       "registryType": "pypi",
       "identifier": "agentfox",
       "version": "0.5.4",
+      "runtimeHint": "uvx",
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "serve"
+        },
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ],
       "transport": {
         "type": "stdio"
       }

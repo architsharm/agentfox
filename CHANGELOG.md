@@ -18,15 +18,21 @@ the file it came from.
   `NOMETRIA_DEV_FRESH_TOKEN`), so a `dashboard/.env.local` still using the old names
   silently stops auto-login and the `/dev/as/*` account switch during `next dev`.
 
-## [0.5.4] - 2026-11-19
+## [0.5.4] - 2026-11-22
 
 ### Added
-- **The MCP server can be published to the official MCP Registry.** `server.json` names it
-  `io.github.architsharm/agentfox`, and the README carries an `mcp-name` marker as an HTML
-  comment. The registry proves PyPI ownership by reading that marker out of the README of the
-  *published* release, so it only counts once a version ships with it.
+- **The MCP server is published to the official MCP Registry on every release.** `server.json`
+  names it `io.github.architsharm/agentfox` and says how a client starts it (`uvx agentfox serve
+  mcp`); the README carries an `mcp-name` marker as an HTML comment. The registry proves PyPI
+  ownership by reading that marker out of the README of the *published* release, so the
+  release workflow publishes to the registry only after the PyPI upload, authenticated with
+  the workflow's own OIDC identity rather than a stored token.
 
 ### Fixed
+- **Approvals work when a tool hook and the model proxy both check a call.** A held call that
+  a person approved was still refused when the same call had been checked twice on the way in,
+  once by the coding-agent tool hook and once by the model proxy, because the approval was
+  matched to one check and not the other.
 - **A model's own timeout no longer overrides a longer configured one.** A detector that
   declares `timeout_ms` (the injection classifier's is 250 ms) had that value *replace*
   the pipeline's `detector_timeout_ms` instead of raising it. So
