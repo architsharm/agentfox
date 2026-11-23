@@ -417,7 +417,9 @@ def _print_scan(ctx: Context) -> None:
             )
         )
     other = {
-        k: v for k, v in report.by_kind().items() if k in ("secret", "shell_call", "sql_build")
+        k: v
+        for k, v in report.by_kind().items()
+        if k in ("secret", "shell_call", "sql_build", "code_exec", "auth_gap", "permission_bypass")
     }
     if other:
         rows.append(("also", ", ".join(f"{v} {k.replace('_', ' ')}" for k, v in other.items())))

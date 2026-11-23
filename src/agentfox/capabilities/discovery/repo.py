@@ -90,6 +90,13 @@ CODE_SUFFIXES = PYTHON_SUFFIXES | JS_SUFFIXES
 #: they are counted separately from :data:`CODE_SUFFIXES`.
 CONFIG_SUFFIXES = {".yaml", ".yml", ".json", ".toml", ".env"}
 
+#: Suffixes of source code in languages this scan does not read. Counted so a report
+#: on a mostly-Go repository says it read only the small part it could.
+UNREAD_CODE = {
+    ".go", ".rs", ".java", ".kt", ".kts", ".scala", ".rb", ".cs", ".php", ".swift",
+    ".c", ".cc", ".cpp", ".h", ".hpp", ".ex", ".exs", ".clj", ".dart", ".lua",
+}  # fmt: skip
+
 #: What to tell an operator when a scan read nothing it understands.
 SUPPORTED_LANGUAGES = "Python (.py), TypeScript and JavaScript (.ts, .tsx, .js, .jsx, .mjs)"
 
@@ -181,6 +188,62 @@ _FRAMEWORK_PREFIXES = {
 #: Tool-ish decorators. A decorated function an agent can call is a tool whether or
 #: not anyone registered it, and an unregistered tool is the F-family blind spot.
 _TOOL_DECORATORS = ("tool", "function_tool", "mcp.tool", "agent.tool", "register_tool")
+#: Decorators that end in "tool" but register an MCP server's dispatcher, which hands
+#: every call to the real tools (`@server.call_tool()`): not a tool of its own.
+_DISPATCH_DECORATORS = {"call_tool", "list_tools"}
+
+#: Decorators that turn authentication off for one handler (jupyter_server's
+#: `@allow_unauthenticated`). Fine for a health check; not for one that hands out a
+#: token or secret.
+_NO_AUTH_DECORATORS = {"allow_unauthenticated", "allow_anonymous", "no_auth", "skip_auth"}
+_SECRET_KEY = re.compile(r"^(?:\w+_)?(?:token|secret|password|api_?key)$", re.I)
+
+#: Calls that run a command or code. Bare `exec`/`eval` only: `model.eval()` is not one.
+_EXEC_NAMES = {"exec", "eval"}
+_EXEC_PATHS = {"os.system", "os.popen", "asyncio.create_subprocess_exec",
+               "asyncio.create_subprocess_shell"}  # fmt: skip
+
+
+def runs_code_phrase(caps: Any) -> bool:
+    """Whether a classification says the tool runs the code it is given."""
+    from agentfox.capabilities.discovery.exposure import PRIVATE
+
+    return caps.phrases.get(PRIVATE, "").startswith("runs any code")
+
+
+def _is_exec_call(node: ast.Call) -> bool:
+    if isinstance(node.func, ast.Name):
+        return node.func.id in _EXEC_NAMES
+    path = _attribute_path(node.func)
+    return path in _EXEC_PATHS or path.startswith("subprocess.")
+
+
+def _runs_its_input(body: ast.AST, args: list[str]) -> bool:
+    """Whether a tool hands one of its own arguments to a call that runs code or a
+    command: `subprocess.run(command, shell=True)`, `exec(code, env)`. A fixed command
+    (`subprocess.run(["git", "status"])`) is not the model running what it likes."""
+    if not args:
+        return False
+    for sub in ast.walk(body):
+        if isinstance(sub, ast.Call) and _is_exec_call(sub):
+            used = {n.id for a in [*sub.args, *(k.value for k in sub.keywords)]
+                    for n in ast.walk(a) if isinstance(n, ast.Name)}  # fmt: skip
+            if used & set(args):
+                return True
+    return False
+
+
+def _built_string(node: ast.AST) -> bool:
+    """An f-string with values in it, a `.format()` or `%` on a literal, or `+` onto one."""
+    if isinstance(node, ast.JoinedStr):
+        return any(isinstance(v, ast.FormattedValue) for v in node.values)
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add | ast.Mod):
+        return any(_str_value(side) is not None or _built_string(side)
+                   for side in (node.left, node.right))  # fmt: skip
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+        return node.func.attr == "format" and _str_value(node.func.value) is not None
+    return False
+
 
 #: Tool *constructors* that take the tool's name as a keyword: LangChain's
 #: `Tool(name=...)` / `StructuredTool.from_function(name=...)`, LlamaIndex's
@@ -313,14 +376,115 @@ def _sql_is_built(line: str, match: re.Match[str]) -> bool:
     return not rest or rest.startswith(("%", "+", ".format"))
 
 
+#: Claude Agent SDK / Claude Code: `permissionMode: "bypassPermissions"`,
+#: `permission_mode="bypassPermissions"`.
+_PERMISSION_BYPASS = re.compile(
+    r"""permission_?mode["']?\s*[:=]\s*["']bypassPermissions["']""", re.I
+)
+
+#: A Next.js route handler (app router `route.ts`, pages router `pages/api/`).
+_ROUTE_FILE = re.compile(r"(?:^|/)app/(?:.*/)?route\.[jt]sx?$|(?:^|/)pages/api/")
+_MUTATING_EXPORT = re.compile(
+    r"export\s+(?:async\s+)?(?:function|const)\s+(POST|PUT|PATCH|DELETE)\b"
+    r"|export\s*\{[^}]*\bas\s+(POST|PUT|PATCH|DELETE)\b|export\s+default\b"
+)
+#: What a handler that turns a caller away contains.
+_REFUSAL = re.compile(
+    r"\b(?:401|403)\b|unauthori[sz]ed|forbidden|\bwithAuth\b|\brequireAuth\b|"
+    r"auth\.protect|createHmac|timingSafeEqual|verifySignature",
+    re.I,
+)
+#: An action worth guarding: sending something (mail, a message), or a model call.
+_SEND_CALL = re.compile(r"\bsend\w*\s*\(", re.I)
+#: An Express webhook receiver: `app.post("/webhook", ...)`, `router.post("/hooks/x")`.
+_EXPRESS_WEBHOOK = re.compile(
+    r"""\b(?:app|router|server)\.post\s*\(\s*["'`][^"'`]*(?:webhook|hook|callback)[^"'`]*["'`]""",
+    re.I,
+)
+#: A webhook signature being checked somewhere: HMAC, a constant-time compare, a
+#: provider's verifier (Stripe `constructEvent`, Svix / Standard Webhooks).
+_WEBHOOK_VERIFY = re.compile(
+    r"createHmac|timingSafeEqual|verifySignature|validateRequest|constructEvent|"
+    r"\bsvix\b|standardwebhooks|webhook-signature|x-hub-signature|verify_signature",
+    re.I,
+)
+_UNSIGNED_WEBHOOK = "webhook receiver that never checks a signature"
+
+
+def _route_auth_gap(rel: str, source: str, sites: list[Site]) -> list[Site]:
+    """A Next.js route that changes something (POST/PUT/PATCH/DELETE), sends or calls a
+    model, and never turns a caller away: no 401/403, no auth wrapper, no signature
+    check. Reading the session and carrying on without one does not count: that is
+    agent0-email's `/api/send`, which fell back to the server's own mailbox. Dropped
+    later when the app has a `middleware.ts`, which may guard every route at once."""
+    hook = _EXPRESS_WEBHOOK.search(source)
+    if hook and not _WEBHOOK_VERIFY.search(source):
+        # Kept only if the repository calls a model and no file checks a signature
+        # (the verifier often sits in a shared handler): see `scan`.
+        return [
+            Site(
+                kind="auth_gap",
+                file=rel,
+                line=source.count("\n", 0, hook.start()) + 1,
+                detail=f"{_UNSIGNED_WEBHOOK}: anyone who can reach it can send the agent "
+                "any event, as any sender the body names",
+                severity="high",
+            )
+        ]
+    if not _ROUTE_FILE.search(rel.replace(os.sep, "/")):
+        return []
+    export = _MUTATING_EXPORT.search(source)
+    if not export or _REFUSAL.search(source):
+        return []
+    acts = any(s.kind == "model_call" for s in sites) or _SEND_CALL.search(source)
+    if not acts:
+        return []
+    line = source.count("\n", 0, export.start()) + 1
+    return [
+        Site(
+            kind="auth_gap",
+            file=rel,
+            line=line,
+            detail="route handler that sends or calls a model and never refuses a caller "
+            "(no 401/403, auth wrapper or signature check): anyone who can reach it can "
+            "trigger it",
+            severity="high",
+        )
+    ]
+
+
 _SHELL_CALL = re.compile(r"\b(?:os\.system|subprocess\.(?:run|call|Popen|check_output))\s*\(")
 
 #: Secrets in source. Narrow on purpose — a loose pattern here produces a wall of
 #: false positives and the report gets ignored.
 _HARDCODED_SECRET = re.compile(
-    r"""(?:api_key|apikey|secret|password|token)\s*=\s*["'](?:sk-|ghp_|xox|AKIA|AIza)[\w-]{12,}""",
+    r"""(?:api_key|apikey|secret|password|token)\s*=\s*["']((?:sk-|ghp_|xox|AKIA|AIza)[\w-]{12,})""",
     re.I,
 )
+
+#: Words that only a stand-in key contains: test fixtures are full of
+#: `"sk-or-config-key"` and `"sk-e2e-startup-secret"`, and a "critical" on one is
+#: the fastest way to have the whole report dismissed.
+_PLACEHOLDER_WORDS = re.compile(
+    r"test|fake|dummy|example|sample|placeholder|secret|your|demo|mock|config|changeme"
+    r"|deadbeef|xxxx|env-?key|-key\b",
+    re.I,
+)
+
+
+def _real_secret(line: str) -> bool:
+    """A hard-coded credential that could be a live one, not a stand-in. Real provider
+    keys are long random strings: ``sk-`` keys run past 40 characters, a GitHub token
+    is ``ghp_`` and 36 more, an AWS key id is ``AKIA`` and 16 capitals or digits."""
+    match = _HARDCODED_SECRET.search(line)
+    if not match:
+        return False
+    value = match.group(1)
+    if _PLACEHOLDER_WORDS.search(value):
+        return False
+    if value.startswith("AKIA"):
+        return re.fullmatch(r"AKIA[A-Z0-9]{16}", value) is not None
+    return len(value) >= 24
 
 
 @dataclass
@@ -328,7 +492,7 @@ class Site:
     """One place in the codebase worth governing."""
 
     # model_call | agent_definition | tool | mcp_server | lethal_trifecta | sql_build |
-    # shell_call | secret
+    # shell_call | secret | code_exec | auth_gap | permission_bypass | tool_annotation
     kind: str
     file: str
     line: int
@@ -448,6 +612,28 @@ class ScanReport:
         return shown + (f" and {remaining} more extension(s)" if remaining > 0 else "")
 
     @property
+    def unread_code_files(self) -> int:
+        """Source files in a language this scan does not read (Go, Rust, Java...)."""
+        return sum(n for suffix, n in self.skipped_suffixes.items() if suffix in UNREAD_CODE)
+
+    def unread_warning(self) -> str:
+        """A sentence for when most of the code was not read, so a short report on a Go
+        repository is not taken for a clean one; empty otherwise."""
+        unread = self.unread_code_files
+        if not unread or not self.code_files_scanned or unread < self.code_files_scanned:
+            return ""
+        langs = ", ".join(
+            f"{suffix} ({n})"
+            for suffix, n in sorted(self.skipped_suffixes.items(), key=lambda kv: -kv[1])
+            if suffix in UNREAD_CODE
+        )
+        return (
+            f"Most of this repository's code is in languages this scan does not read "
+            f"({langs}); what follows covers only the {self.code_files_scanned} Python, "
+            "TypeScript and JavaScript file(s) it could read. "
+        )
+
+    @property
     def model_calls(self) -> list[Site]:
         return [s for s in self.sites if s.kind == "model_call"]
 
@@ -526,6 +712,8 @@ class ScanReport:
             # True means this scan read nothing it understands; every count below is
             # then an absence of evidence, not evidence of absence.
             "inconclusive": self.inconclusive,
+            # Source in a language this scan does not read (see `unread_warning`).
+            "unread_code_files": self.unread_code_files,
             "frameworks": self.frameworks,
             "model_calls": len(self.model_calls),
             "agent_definitions": len(self.agent_definitions),
@@ -620,6 +808,10 @@ class ScanReport:
         }
 
     def next_step(self, suggest_auto: bool = True) -> str:
+        """:meth:`_next_step`, after a warning when most of the code went unread."""
+        return self.unread_warning() + self._next_step(suggest_auto)
+
+    def _next_step(self, suggest_auto: bool = True) -> str:
         """One sentence telling the operator what to do next.
 
         A report that ends without a next action makes the reader do the synthesis,
@@ -790,6 +982,11 @@ class _Visitor(ast.NodeVisitor):
         self.runs: list[tuple[str, str, int, str, bool]] = []
         #: Each function's argument names, for a tool that takes a path (`classify_tool`).
         self._args: dict[str, list[str]] = {}
+        #: (first line, last line) of each tool's own code, so a shell call inside one
+        #: ranks above one in an installer script.
+        self.tool_spans: list[tuple[int, int]] = []
+        #: Names assigned a string built from values (`code = f"def {name}(...)"`).
+        self._built: set[str] = set()
 
     def visit_Module(self, node: ast.Module) -> None:
         assigns: list[tuple[str, ast.AST]] = []
@@ -821,6 +1018,7 @@ class _Visitor(ast.NodeVisitor):
                 self.functions.setdefault(made[0], (stmt.lineno, made[1], made[2]))
         # Twice, so `graph = builder.compile()` after `builder = StateGraph(...)` and an
         # alias of an alias both resolve whatever order the assignments come in.
+        self._built = {name for name, value in assigns if name and _built_string(value)}
         for _ in range(2):
             for name, value in assigns:
                 held = self._holding(value)
@@ -920,6 +1118,25 @@ class _Visitor(ast.NodeVisitor):
                     name=name,
                 )
             )
+        if (
+            isinstance(node.func, ast.Name)
+            and node.func.id in _EXEC_NAMES
+            and node.args
+            and (
+                _built_string(node.args[0])
+                or (isinstance(node.args[0], ast.Name) and node.args[0].id in self._built)
+            )
+        ):
+            self.sites.append(
+                Site(
+                    kind="code_exec",
+                    file=self.path,
+                    line=node.lineno,
+                    detail=f"{node.func.id}() of source assembled from values — any outside "
+                    "text that reaches those values runs as code",
+                    severity="high",
+                )
+            )
         run = self._agent_run(node, path)
         if run is not None:
             provider, what = run
@@ -1000,15 +1217,57 @@ class _Visitor(ast.NodeVisitor):
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         self._check_tool(node)
+        self._check_no_auth(node)
         self.generic_visit(node)
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
         self._check_tool(node)
+        self._check_no_auth(node)
         self.generic_visit(node)
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        made = tool_class(node)
+        if made is not None:
+            # `class ExecTool(Tool)` naming itself "exec": a tool whether or not this
+            # scan can see which agent is handed it.
+            name, description, args = made
+            self._add_tool(name, description, node.lineno, f"class {node.name}", args, body=node)
+        self.generic_visit(node)
+
+    def _check_no_auth(self, node: Any) -> None:
+        """A handler with authentication turned off that hands out a token or secret."""
+        if not any(_decorator_name(d).rsplit(".", 1)[-1] in _NO_AUTH_DECORATORS
+                   for d in node.decorator_list):  # fmt: skip
+            return
+        keys = [
+            k
+            for sub in ast.walk(node)
+            for k in (
+                [_str_value(x) for x in sub.keys if x is not None]
+                if isinstance(sub, ast.Dict)
+                else [kw.arg for kw in sub.keywords]
+                if isinstance(sub, ast.Call)
+                else []
+            )
+            if k and _SECRET_KEY.match(k)
+        ]
+        if keys:
+            self.sites.append(
+                Site(
+                    kind="auth_gap",
+                    file=self.path,
+                    line=node.lineno,
+                    detail=f"{node.name}() skips authentication and returns '{keys[0]}' — "
+                    "anyone who can reach the server can read it",
+                    severity="high",
+                )
+            )
 
     def _check_tool(self, node: Any) -> None:
         for decorator in node.decorator_list:
             name = _decorator_name(decorator)
+            if name.rsplit(".", 1)[-1] in _DISPATCH_DECORATORS:
+                continue
             if any(name.endswith(marker) for marker in _TOOL_DECORATORS):
                 # `@tool("lookup")` names the tool explicitly; otherwise it is the
                 # function's own name.
@@ -1028,6 +1287,7 @@ class _Visitor(ast.NodeVisitor):
                     node.lineno,
                     f"@{name} {node.name}()",
                     _arg_names(node),
+                    body=node,
                 )
                 break
 
@@ -1095,16 +1355,31 @@ class _Visitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def _add_tool(
-        self, name: str, description: str, line: int, how: str, args: list[str] | None = None
+        self,
+        name: str,
+        description: str,
+        line: int,
+        how: str,
+        args: list[str] | None = None,
+        *,
+        body: ast.AST | None = None,
     ) -> None:
+        if body is not None:
+            self.tool_spans.append((body.lineno, getattr(body, "end_lineno", None) or body.lineno))
         # The same schema appears twice in one file often enough (a list built twice,
         # a retry path) that counting it twice would inflate the headline.
         if name in self._tool_names:
             return
         self._tool_names.add(name)
-        from agentfox.capabilities.discovery.exposure import FLAG_LABEL, classify_tool
+        from agentfox.capabilities.discovery.exposure import (
+            FLAG_LABEL,
+            classify_tool,
+            mark_code_exec,
+        )
 
         caps = classify_tool(name, description, args or ())
+        if body is not None and _runs_its_input(body, list(args or ())):
+            mark_code_exec(caps)
         flags = caps.ordered()
         what = "; ".join(caps.phrases.get(f, FLAG_LABEL[f]) for f in flags)
         self.sites.append(
@@ -1113,7 +1388,7 @@ class _Visitor(ast.NodeVisitor):
                 file=self.path,
                 line=line,
                 detail=f"tool {how}" + (f" — {what}" if what else ""),
-                severity="medium",
+                severity="high" if runs_code_phrase(caps) else "medium",
                 name=name,
                 capabilities=flags,
                 caps=caps,
@@ -1291,6 +1566,9 @@ def _js_framework(specifier: str) -> str | None:
     """
     if not specifier or specifier.startswith((".", "/")):
         return None
+    # Deno: `npm:@modelcontextprotocol/sdk@1.17.5/server/mcp.js`, `jsr:@std/assert@1`.
+    if specifier.startswith(("npm:", "jsr:")):
+        specifier = re.sub(r"(?<=.)@[^/]*", "", specifier[4:])
     candidates = [specifier]
     parts = specifier.split("/")
     if specifier.startswith("@"):
@@ -1497,7 +1775,119 @@ def _scan_javascript(source: str, rel: str) -> tuple[list[Site], set[str]]:
                     )
                 )
                 break
+    sites.extend(_js_mcp_and_sdk_sites(lines, code_lines, rel, frameworks, sites))
     return sites, frameworks
+
+
+#: An MCP tool written as an object literal: `{ name: 'n8n_create_workflow',
+#: description: ..., inputSchema: {...} }`, the shape `ListTools` returns.
+_JS_OBJECT_TOOL_NAME = re.compile(r"""^\s*name\s*:\s*["'`]([\w.\-]+)["'`]\s*,?\s*$""")
+_JS_INPUT_SCHEMA = re.compile(r"\b(?:inputSchema|input_schema)\s*:")
+#: `server.registerTool(` / `server.tool(` with the name on the next line.
+_JS_TOOL_CALL_OPEN = re.compile(r"\.(?:registerTool|tool)\s*\(\s*$")
+_JS_LEADING_STRING = re.compile(r"""^\s*["'`]([\w.\-]+)["'`]""")
+_JS_DELETE_ACTION = re.compile(r"""["'`](?:delete|remove|purge|drop|destroy)\w*["'`]""", re.I)
+_JS_SDK_QUERY_IMPORT = re.compile(
+    r"""import\s*\{([^}]*)\}\s*from\s*["']@anthropic-ai/claude-agent-sdk["']"""
+)
+
+
+def _schema_in_same_object(lines: list[str], i: int) -> bool:
+    """Whether the object literal whose `name:` is on line ``i`` has an `inputSchema`:
+    looked for until the object closes, so `new McpServer({ name: "x", version })`
+    followed by a `registerTool(...)` is not read as one tool definition."""
+    indent = len(lines[i]) - len(lines[i].lstrip())
+    for line in lines[i + 1 : i + 12]:
+        stripped = line.lstrip()
+        if stripped.startswith("}") and len(line) - len(stripped) < indent:
+            return False
+        if _JS_INPUT_SCHEMA.search(line):
+            return True
+    return False
+
+
+def _js_tool_site(name: str, rel: str, line: int, label: str, description: str = "") -> Site:
+    from agentfox.capabilities.discovery.exposure import FLAG_LABEL, classify_tool
+
+    caps = classify_tool(name, description)
+    flags = caps.ordered()
+    what = "; ".join(caps.phrases.get(f, FLAG_LABEL[f]) for f in flags)
+    return Site(
+        kind="tool",
+        file=rel,
+        line=line,
+        detail=f"{label}: {name}" + (f" — {what}" if what else ""),
+        severity="medium",
+        name=name,
+        capabilities=flags,
+        caps=caps,
+    )
+
+
+def _js_mcp_and_sdk_sites(
+    lines: list[str], code_lines: list[str], rel: str, frameworks: set[str], found: list[Site]
+) -> list[Site]:
+    """The MCP tool and agent shapes a single-line pattern cannot see: a tool whose name
+    sits on the line after `registerTool(`, tools declared as object literals with an
+    `inputSchema`, and the Claude Agent SDK's `query()` (often imported under an alias)."""
+    out: list[Site] = []
+    named = {s.name for s in found if s.kind == "tool"}
+    starts: list[tuple[int, str]] = []
+    for i, line in enumerate(lines):
+        code = code_lines[i] if i < len(code_lines) else line
+        if "MCP" in frameworks and _JS_TOOL_CALL_OPEN.search(code) and i + 1 < len(lines):
+            m = _JS_LEADING_STRING.match(lines[i + 1])
+            if m and m.group(1) not in named:
+                named.add(m.group(1))
+                out.append(_js_tool_site(m.group(1), rel, i + 1, "MCP tool"))
+        m = _JS_OBJECT_TOOL_NAME.match(line)
+        if m and _schema_in_same_object(lines, i):
+            starts.append((i, m.group(1)))
+    for k, (i, name) in enumerate(starts):
+        end = starts[k + 1][0] if k + 1 < len(starts) else min(len(lines), i + 200)
+        block = "\n".join(lines[i:end])
+        desc = re.search(r"""\bdescription\s*:\s*["'`]([^"'`]{0,300})""", block)
+        if name not in named:
+            named.add(name)
+            out.append(_js_tool_site(name, rel, i + 1, "MCP tool definition",
+                                     desc.group(1) if desc else ""))  # fmt: skip
+        if (
+            re.search(r"\bdestructiveHint\s*:\s*false", block)
+            and not re.search(r"\breadOnlyHint\s*:\s*true", block)
+            and _JS_DELETE_ACTION.search(block)
+        ):
+            out.append(
+                Site(
+                    kind="tool_annotation",
+                    file=rel,
+                    line=i + 1,
+                    detail=f"MCP tool '{name}' offers a delete action but declares "
+                    "destructiveHint: false, so hosts that honour the hint will not ask "
+                    "before it runs",
+                    severity="medium",
+                    name=name,
+                )
+            )
+    imported = _JS_SDK_QUERY_IMPORT.search("\n".join(lines))
+    if imported:
+        alias = re.search(r"(?<![\w$])query(?:\s+as\s+([\w$]+))?(?![\w$])", imported.group(1))
+        if alias:
+            fn = re.escape(alias.group(1) or "query")
+            call = re.compile(rf"(?<![\w$.]){fn}\s*\(")
+            for i, code in enumerate(code_lines):
+                if call.search(code) and "import" not in lines[i]:
+                    out.append(
+                        Site(
+                            kind="model_call",
+                            file=rel,
+                            line=i + 1,
+                            detail=f"{alias.group(1) or 'query'}(...) — runs a Claude Agent "
+                            "SDK agent",
+                            provider="claude-agent-sdk",
+                            severity="info",
+                        )
+                    )
+    return out
 
 
 #: Key prefix in a file's ``functions`` marking a function as run-state only (see
@@ -1555,16 +1945,23 @@ def scan_file(
     sites: list[Site] = []
     frameworks: set[str] = set()
     governed = False
+    #: Python only: where the file's tools are. None for a language without them.
+    tool_spans: list[tuple[int, int]] | None = None
 
     if path.suffix == ".py":
         try:
             tree = ast.parse(source, filename=rel)
         except SyntaxError as exc:
+            if any(marker in source for marker in ("{{", "{%", "{#")):
+                # A Jinja-style template with a `.py` suffix (code a tool renders and
+                # runs elsewhere), not Python this scan failed to read.
+                return [], set(), False
             # A file we cannot parse is reported, never skipped silently: an
             # unparseable file is exactly where an ungoverned call would hide.
             raise RuntimeError(f"{rel}: {exc.msg} (line {exc.lineno})") from exc
         visitor = _Visitor(rel)
         visitor.visit(tree)
+        tool_spans = visitor.tool_spans
         sites.extend(visitor.sites)
         sites.extend(site for site, fw in visitor._pending_agent_defs if fw in visitor.frameworks)
         frameworks |= visitor.frameworks
@@ -1580,6 +1977,7 @@ def scan_file(
         sites.extend(js_sites)
         frameworks |= js_frameworks
 
+    bypassed = False
     for line_no, line in enumerate(source.splitlines(), start=1):
         sql = _SQL_BUILD.search(line)
         if sql and _sql_is_built(line, sql):
@@ -1594,17 +1992,36 @@ def scan_file(
                 )
             )
         if _SHELL_CALL.search(line):
+            # In Python, a shell call inside a tool is what the model can reach; one in
+            # an installer, CLI or release script is plumbing, listed low so it does not
+            # bury the first (nanobot: 81 shell calls, none of them its agent's).
+            in_tool = any(a <= line_no <= b for a, b in tool_spans)
             sites.append(
                 Site(
                     kind="shell_call",
                     file=rel,
                     line=line_no,
-                    detail=line.strip()[:90],
+                    detail=line.strip()[:90]
+                    + (" — inside a tool the model calls" if in_tool else ""),
+                    severity="high" if in_tool else ("low" if tool_spans is not None else "medium"),
+                )
+            )
+        if _real_secret(line):
+            sites.append(_secret_site(rel, line_no))
+        if not bypassed and _PERMISSION_BYPASS.search(line):
+            bypassed = True
+            sites.append(
+                Site(
+                    kind="permission_bypass",
+                    file=rel,
+                    line=line_no,
+                    detail="agent runs with permissionMode 'bypassPermissions': every tool "
+                    "call runs without asking, so the sandbox around it is the only boundary",
                     severity="medium",
                 )
             )
-        if _HARDCODED_SECRET.search(line):
-            sites.append(_secret_site(rel, line_no))
+    if path.suffix in JS_SUFFIXES:
+        sites.extend(_route_auth_gap(rel, source, sites))
     return sites, frameworks, governed
 
 
@@ -1629,7 +2046,7 @@ def _secrets_in(path: Path, rel: str) -> list[Site]:
     return [
         _secret_site(rel, n)
         for n, line in enumerate(source.splitlines(), start=1)
-        if _HARDCODED_SECRET.search(line)
+        if _real_secret(line)
     ]
 
 
@@ -1829,6 +2246,8 @@ def scan(
     #: file -> its `x.run(...)`-shaped calls, for `_promote_agent_runs`.
     runs: dict[str, list[tuple[str, str, int, str, bool]]] = defaultdict(list)
     agents.include_tests = include_tests
+    #: Some file checks a webhook signature, so an unsigned-looking route may be fine.
+    verified_hooks = False
 
     for dirpath, dirnames, filenames in os.walk(root_path):
         rel_dir = os.path.relpath(dirpath, root_path)
@@ -1880,6 +2299,7 @@ def scan(
             frameworks |= found
             if path.suffix in CODE_SUFFIXES:
                 source = path.read_text(errors="ignore")
+                verified_hooks = verified_hooks or bool(_WEBHOOK_VERIFY.search(source))
                 agents.add(source, str(path.relative_to(root_path)), path.suffix)
                 frameworks |= platforms.detect_code_platforms(source)
             if governed:
@@ -1915,6 +2335,16 @@ def scan(
     if "LiveKit Agents" in frameworks:
         frameworks.discard("LiveKit")  # `from livekit import agents` beside it
     report.frameworks = sorted(frameworks)
+    if any(
+        (root_path / d / f"middleware.{x}").is_file() for d in ("", "src") for x in ("ts", "js")
+    ):
+        # A Next.js middleware can guard every route at once; the per-route check
+        # cannot see what it matches, so it stays quiet rather than guess.
+        report.sites = [
+            s for s in report.sites if not (s.kind == "auth_gap" and _ROUTE_FILE.search(s.file))
+        ]
+    if verified_hooks or not report.model_calls:
+        report.sites = [s for s in report.sites if not s.detail.startswith(_UNSIGNED_WEBHOOK)]
     _detect_mcp(root_path, report)
     _detect_trifectas(report)
     return report
@@ -2027,6 +2457,33 @@ def _string_arg(node: ast.Call) -> str | None:
     return None
 
 
+def _domain(url: str) -> str:
+    """The registrable part of a URL's host, approximately: its last two labels."""
+    from urllib.parse import urlparse
+
+    host = (urlparse(url).hostname or "").lower()
+    return ".".join(host.split(".")[-2:])
+
+
+def _publisher_domains(root: Path) -> set[str]:
+    """The domains a plugin manifest at the root says it comes from (author, homepage,
+    docs), for telling a vendor's own MCP server from a third party's. GitHub is left
+    out: a repository URL says where the code lives, not who runs a server."""
+    import json
+
+    domains: set[str] = set()
+    for rel in (".claude-plugin/plugin.json", ".codex-plugin/plugin.json"):
+        try:
+            data = json.loads((root / rel).read_text())
+        except (OSError, ValueError):
+            continue
+        urls = [v for k, v in data.items() if isinstance(v, str) and k.lower().endswith("url")]
+        urls += [data.get("homepage"), (data.get("author") or {}).get("url")
+                 if isinstance(data.get("author"), dict) else None]  # fmt: skip
+        domains |= {_domain(u) for u in urls if isinstance(u, str) and u.startswith("http")}
+    return domains - {"github.com", ""}
+
+
 def _detect_mcp(root: Path, report: ScanReport) -> None:
     """MCP servers are declared in config, not code, so they need their own pass.
 
@@ -2040,6 +2497,7 @@ def _detect_mcp(root: Path, report: ScanReport) -> None:
         parse_mcp_config,
     )
 
+    own = _publisher_domains(root)
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
         for filename in filenames:
@@ -2049,7 +2507,13 @@ def _detect_mcp(root: Path, report: ScanReport) -> None:
             for decl in parse_mcp_config(path, root=root):
                 caps = classify_mcp_server(decl)
                 flags = caps.ordered()
-                if not caps.known:
+                first_party = bool(decl.url) and _domain(decl.url) in own
+                if not caps.known and first_party:
+                    # A plugin's own vendor's server (moveo.ai's plugin pointing at
+                    # mcp.moveo.ai): what it can reach is the vendor's product, which
+                    # the person installing the plugin chose. Listed, not alarmed on.
+                    what = "the plugin publisher's own server (same domain as the plugin)"
+                elif not caps.known:
                     what = (
                         "unknown server — AgentFox can't tell what it can reach; give it "
                         f"the tool list with `agentfox scan mcp {decl.name} --file tools.json`"
@@ -2070,7 +2534,7 @@ def _detect_mcp(root: Path, report: ScanReport) -> None:
                         file=decl.config,
                         line=1,
                         detail=f"MCP server '{decl.name}' — {what}. {drift}",
-                        severity="high",
+                        severity="info" if first_party and not flags else "high",
                         name=decl.name,
                         capabilities=flags,
                         caps=caps,

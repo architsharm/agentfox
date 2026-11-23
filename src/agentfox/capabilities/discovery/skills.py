@@ -58,7 +58,7 @@ _PLANTED_DIRECTIVE = [
     ),
     # Skill-specific: telling the model to keep the skill's own behaviour from
     # the operator, or to treat the skill as outranking its instructions.
-    re.compile(
+    _NO_APPROVAL := re.compile(
         r"\b(?:without|do\s+not\s+(?:ask|request))\s+(?:asking\s+)?(?:for\s+)?"
         r"(?:permission|confirmation|approval)\b",
         re.I,
@@ -67,6 +67,14 @@ _PLANTED_DIRECTIVE = [
         r"\bthis\s+(?:skill|document)\s+(?:overrides|supersedes|takes\s+precedence)\b", re.I
     ),
 ]
+
+#: A skill that sets its own approval gate: "wait for an explicit yes", "with the
+#: user's approval", "ask for confirmation before".
+_APPROVAL_GATE = re.compile(
+    r"\b(?:wait\s+for|get|with|ask\s+for|require[sd]?)\s+(?:the\s+user'?s\s+|an?\s+)?"
+    r"(?:explicit\s+)?(?:approval|confirmation|yes)\b",
+    re.I,
+)
 
 #: Where credentials live. A public key (``.pub``) is meant to be shared and is excluded.
 _SECRET_LOCATION = re.compile(
@@ -222,6 +230,11 @@ def analyse_skill(
         if hits and _cited_not_said(text, hits):
             # A warning about the phrase, not the phrase said to the model.
             hits = []
+        if _NO_APPROVAL.pattern in hits and _APPROVAL_GATE.search(f"{description}\n{body}"):
+            # "Edit drafts without asking for approval" in a skill that also says
+            # "wait for an explicit yes before each publish" scopes the no-approval
+            # steps; it is an approval policy, not one being taken away.
+            hits.remove(_NO_APPROVAL.pattern)
         if hits:
             # The description is worse than the body: a model reads every
             # available skill's description to decide what to invoke, so a
