@@ -18,6 +18,10 @@ the file it came from.
   `NOMETRIA_DEV_FRESH_TOKEN`), so a `dashboard/.env.local` still using the old names
   silently stops auto-login and the `/dev/as/*` account switch during `next dev`.
 
+### Fixed
+- `agents controls` and `agents list --stopped` exclude resumed agents while
+  preserving quarantined and killed agents and their stop reasons.
+
 ## [0.5.4] - 2026-11-22
 
 ### Added

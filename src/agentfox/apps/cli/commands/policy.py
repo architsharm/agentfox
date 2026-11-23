@@ -23,7 +23,7 @@ policy_app.add_typer(packs_app, name="packs")
 
 
 @policy_app.command("list")
-def policy_list() -> None:
+def policy_list(as_json: bool = typer.Option(False, "--json")) -> None:
     """List policies and their enforcement mode."""
     from sqlalchemy import select
 
@@ -31,11 +31,7 @@ def policy_list() -> None:
     from agentfox.core.models import Policy, PolicyVersion
     from agentfox.platform.policy import current_binding
 
-    table = Table(box=None, pad_edge=False)
-    for column in ("policy", "version", "mode", "rules"):
-        table.add_column(column, style="bold" if column == "policy" else None)
-
-    remote = _account.use(console)
+    remote = _account.use(console, quiet=as_json)
     if remote is not None:
         try:
             policies = remote.get("/api/policies").get("policies") or []
@@ -46,63 +42,90 @@ def policy_list() -> None:
             ]
         except _account.AccountError as exc:
             _account.fail(console, exc)
-        for policy in policies:
-            if policy.get("latest_version") is None:
-                continue
-            mode = policy.get("mode") or "unbound"
-            shown = policy.get("bound_version") or policy["latest_version"]
-            version = f"v{shown}"
-            if policy.get("bound_version") and policy["bound_version"] != policy["latest_version"]:
-                version += f" [dim](v{policy['latest_version']} saved, not live)[/]"
-            table.add_row(
-                policy["key"],
-                version,
-                f"[green]{mode}[/]" if mode == "enforce" else f"[yellow]{mode}[/]",
-                str(policy.get("rules", 0)),
-            )
-        _business_row(table, business)
-        console.print(table)
+        rows = [
+            {
+                "policy": policy["key"],
+                "version": policy.get("bound_version") or policy["latest_version"],
+                "latest_version": policy["latest_version"],
+                "mode": policy.get("mode") or "unbound",
+                "rules": policy.get("rules", 0),
+            }
+            for policy in policies
+            if policy.get("latest_version") is not None
+        ]
+        rows += _business_rows(business)
+    else:
+        with _session() as session:
+            rows = []
+            for policy in session.scalars(select(Policy).order_by(Policy.key)):
+                latest = session.scalars(
+                    select(PolicyVersion)
+                    .where(PolicyVersion.policy_id == policy.id)
+                    .order_by(PolicyVersion.version.desc())
+                ).first()
+                if latest is None:
+                    continue
+                # The live binding, whichever version it points at — mid-canary or
+                # after a rollback that is not the newest version.
+                binding, bound = current_binding(session, policy.id)
+                shown = bound or latest
+                rows.append(
+                    {
+                        "policy": policy.key,
+                        "version": shown.version,
+                        "latest_version": latest.version,
+                        "mode": binding.mode if binding else "unbound",
+                        "rules": len((shown.compiled_json or {}).get("rules", [])),
+                    }
+                )
+            # Business rules (approval limits) are rules too, stored apart from the
+            # packs; the dashboard counts them in Your rules, so they are counted here.
+            rows += _business_rows(_business_modes(session))
+
+    if as_json:
+        _emit(rows, True)
         return
 
-    with _session() as session:
-        for policy in session.scalars(select(Policy).order_by(Policy.key)):
-            latest = session.scalars(
-                select(PolicyVersion)
-                .where(PolicyVersion.policy_id == policy.id)
-                .order_by(PolicyVersion.version.desc())
-            ).first()
-            if latest is None:
-                continue
-            # The live binding, whichever version it points at — mid-canary or after
-            # a rollback that is not the newest version.
-            binding, bound = current_binding(session, policy.id)
-            mode = binding.mode if binding else "unbound"
-            shown = bound or latest
-            version = f"v{shown.version}"
-            if bound is not None and bound.id != latest.id:
-                version += f" [dim](v{latest.version} saved, not live)[/]"
-            table.add_row(
-                policy.key,
-                version,
-                f"[green]{mode}[/]" if mode == "enforce" else f"[yellow]{mode}[/]",
-                str(len((shown.compiled_json or {}).get("rules", []))),
-            )
-        # Business rules (approval limits) are rules too, stored apart from the
-        # packs; the dashboard counts them in Your rules, so they are counted here.
-        _business_row(table, _business_modes(session))
-        console.print(table)
-
-
-def _business_row(table: Table, business: list[str]) -> None:
-    if business:
-        modes = set(business)
-        mode = modes.pop() if len(modes) == 1 else "mixed"
+    table = Table(box=None, pad_edge=False)
+    for column in ("policy", "version", "mode", "rules"):
+        table.add_column(column, style="bold" if column == "policy" else None)
+    for row in rows:
+        mode = row["mode"]
         table.add_row(
-            "business rules",
-            "—",
+            row["policy"],
+            _version_cell(row),
             f"[green]{mode}[/]" if mode == "enforce" else f"[yellow]{mode}[/]",
-            str(len(business)),
+            str(row["rules"]),
         )
+    console.print(table)
+
+
+def _version_cell(row: dict) -> str:
+    """The version as the table shows it: ``vN``, ``—`` for the business-rules row,
+    and the saved-not-live note when the bound version is behind the newest."""
+    if row["version"] is None:
+        return "—"
+    version = f"v{row['version']}"
+    if row["version"] != row["latest_version"]:
+        version += f" [dim](v{row['latest_version']} saved, not live)[/]"
+    return version
+
+
+def _business_rows(business: list[str]) -> list[dict]:
+    """The business-rules row, if there are enabled rules: same row the table prints."""
+    if not business:
+        return []
+    modes = set(business)
+    mode = modes.pop() if len(modes) == 1 else "mixed"
+    return [
+        {
+            "policy": "business rules",
+            "version": None,
+            "latest_version": None,
+            "mode": mode,
+            "rules": len(business),
+        }
+    ]
 
 
 def _business_modes(session) -> list[str]:

@@ -394,7 +394,7 @@ def agents_controls() -> None:
     from agentfox.platform.registry.control import all_controls
 
     with _session() as session:
-        rows = all_controls(session)
+        rows = [row for row in all_controls(session) if row["state"] != "active"]
     if not rows:
         console.print("[green]all agents active[/]")
         return
