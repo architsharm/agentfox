@@ -76,6 +76,11 @@ def _param(p: Any) -> dict[str, Any]:
         default = None
     elif isinstance(default, tuple):
         default = list(default)
+    elif isinstance(default, Path):
+        # str(Path) follows the platform separator, so the same default generated
+        # `.agentfox/packs` on Linux and `.agentfox\packs` on Windows — the check
+        # then flagged a stale file that no contributor on Windows could regenerate.
+        default = default.as_posix()
     elif not isinstance(default, (str, int, float, bool, list)):
         default = str(default)
     choices = list(getattr(p.type, "choices", []) or [])
