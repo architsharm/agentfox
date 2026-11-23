@@ -5,6 +5,7 @@
  */
 
 import { INTEGRATIONS, integrationPath } from "./integrations";
+import { TEMPLATES, templatePath } from "./templates";
 
 export type NavItem = {
   label: string;
@@ -135,6 +136,19 @@ const INTEGRATION_PAGES: NavItem[] = INTEGRATIONS.map((i) => ({
   sitemap: { changeFrequency: "monthly", priority: 0.7 },
 }));
 
+const TEMPLATES_INDEX: NavItem = {
+  label: "Templates",
+  href: "/templates",
+  note: "Example agents (coding, support, browser, SQL, MCP) with their tools, the AgentFox policy that governs them, and an attack each one stops.",
+  sitemap: { changeFrequency: "monthly", priority: 0.7 },
+};
+const TEMPLATE_PAGES: NavItem[] = TEMPLATES.map((t) => ({
+  label: `${t.name} template`,
+  href: templatePath(t.slug),
+  note: t.description,
+  sitemap: { changeFrequency: "monthly", priority: 0.6 },
+}));
+
 export const HOME: NavItem = {
   label: "AgentFox",
   href: "/",
@@ -149,11 +163,11 @@ export const HEADER_CTA: NavItem = DOCS;
 export const FOOTER: FooterColumn[] = [
   { heading: "Product", items: [PLAYGROUND, LIVE, DEMO, OPENCLAW, PRICING] },
   { heading: "Research", items: [RESEARCH, BENCHMARK, LATENCY, COMPARE] },
-  { heading: "Resources", items: [DOCS, INTEGRATIONS_INDEX, BLOG, SUPPORT] },
+  { heading: "Resources", items: [DOCS, INTEGRATIONS_INDEX, TEMPLATES_INDEX, BLOG, SUPPORT] },
   { heading: "Company", items: [SECURITY, PRIVACY, TERMS] },
 ];
 
 /** Every page, in one list. */
-export const ALL_PAGES: NavItem[] = [HOME, RESEARCH, BENCHMARK, LATENCY, COMPARE, COMPARE_LLM_GUARD, COMPARE_LAKERA, INTEGRATIONS_INDEX, ...INTEGRATION_PAGES, PLAYGROUND, LIVE, DEMO, OPENCLAW, PRICING, BLOG, DOCS, SECURITY, SUPPORT, PRIVACY, TERMS];
+export const ALL_PAGES: NavItem[] = [HOME, RESEARCH, BENCHMARK, LATENCY, COMPARE, COMPARE_LLM_GUARD, COMPARE_LAKERA, INTEGRATIONS_INDEX, ...INTEGRATION_PAGES, TEMPLATES_INDEX, ...TEMPLATE_PAGES, PLAYGROUND, LIVE, DEMO, OPENCLAW, PRICING, BLOG, DOCS, SECURITY, SUPPORT, PRIVACY, TERMS];
 
 export const ALL_PATHS: string[] = ALL_PAGES.map((p) => p.href);
