@@ -53,29 +53,9 @@ recognised the payload.
 
 Python 3.11 or newer.
 
-### Attack your own agent (about three minutes)
+### Scan your repo, no account (about one minute)
 
-1. [Sign in](https://useagentfox.com/login); signing in creates your workspace. Press
-   **Create a key**.
-2. In your agent's repository, with its dependencies installed, run the command the page shows:
-
-   ```bash
-   pip install -U agentfox
-   agentfox init --key nom_api_… --server https://…
-   ```
-
-   `init` reads your code without running it and reports the agents and tools it found. Leave it
-   running: the attack test runs your agent on your machine, with every tool faked so nothing
-   real happens.
-3. Press **Add N agents to AgentFox**. The attack test starts by itself and shows, per kind of
-   attack, how many got through.
-4. Press **Turn on basic guardrails and test again**. Basic guardrails go on and the same attacks run again, so you
-   see the before and after side by side, including how many normal requests were still
-   answered.
-5. Add the one line `init` prints (`agentfox.auto("<agent>")`) and run your app. Its calls show
-   up on the agent's **Activity** tab.
-
-### From the command line only
+Reads your code and never runs it. Nothing leaves your machine.
 
 ```bash
 pip install agentfox
@@ -118,6 +98,30 @@ and hidden-Unicode checks and tool containment, all of which work on a plain ins
 `agentfox doctor` says which detectors run on your machine, and `auto()` says once that the
 classifier is skipped rather than on every run. The Docker image ships the extra and the
 weights.
+
+### Attack your own agent (about three minutes)
+
+This one needs a workspace, which signing in creates.
+
+1. [Sign in](https://useagentfox.com/login); signing in creates your workspace. Press
+   **Create a key**.
+2. In your agent's repository, with its dependencies installed, run the command the page shows:
+
+   ```bash
+   pip install -U agentfox
+   agentfox init --key nom_api_… --server https://…
+   ```
+
+   `init` reads your code without running it and reports the agents and tools it found. Leave it
+   running: the attack test runs your agent on your machine, with every tool faked so nothing
+   real happens.
+3. Press **Add N agents to AgentFox**. The attack test starts by itself and shows, per kind of
+   attack, how many got through.
+4. Press **Turn on basic guardrails and test again**. Basic guardrails go on and the same attacks run again, so you
+   see the before and after side by side, including how many normal requests were still
+   answered.
+5. Add the one line `init` prints (`agentfox.auto("<agent>")`) and run your app. Its calls show
+   up on the agent's **Activity** tab.
 
 ### One key everywhere
 

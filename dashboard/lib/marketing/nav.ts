@@ -106,7 +106,7 @@ const TERMS: NavItem = {
 const COMPARE: NavItem = {
   label: "Compare",
   href: "/compare",
-  note: "AgentFox, LLM Guard, NeMo Guardrails, Guardrails AI, Prompt Guard 2 and Lakera Guard compared on the same tests, with where each one wins.",
+  note: "AgentFox, Microsoft's Agent Governance Toolkit, Snyk Agent Scan, NeMo Guardrails, Guardrails AI, Prompt Guard 2, Lakera Guard and the archived LLM Guard compared, with where each one wins.",
   sitemap: { changeFrequency: "monthly", priority: 0.8 },
 };
 const COMPARE_LLM_GUARD: NavItem = {
