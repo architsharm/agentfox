@@ -69,6 +69,11 @@ export default function Page() {
             text: "A plugin that checks every shell command, browser step and message before it runs.",
           },
           {
+            href: "/docs/connect/hermes",
+            title: "Hermes Agent",
+            text: "A plugin that checks every terminal command, browser step and file write before it runs.",
+          },
+          {
             href: "/docs/connect/platforms",
             title: "Voice and hosted platforms",
             text: "Vapi, Retell, Copilot Studio and AgentCore.",

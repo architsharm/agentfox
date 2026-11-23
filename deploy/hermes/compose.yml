@@ -1,0 +1,53 @@
+# AgentFox for Hermes Agent: Hermes with every tool call checked by AgentFox.
+#
+# An override on top of AgentFox's own stack, so the gateway, database and dashboard are
+# the ones in deploy/docker-compose.yml. From the repository root:
+#
+#   cp deploy/hermes/.env.example deploy/hermes/.env   # then fill it in
+#   deploy/hermes/up.sh                                # or the commands it prints
+#
+# What runs:
+#   gateway   AgentFox, also Hermes's model endpoint (it holds the real model key)
+#   hermes    Hermes Agent's chat, with the AgentFox plugin (sdk/hermes) loaded and the
+#             gateway as its model; started on demand with `run`, since it is interactive
+#
+# AgentFox is on http://localhost:3000.
+
+services:
+  gateway:
+    environment:
+      # Hermes's model calls go through AgentFox, which forwards them to this provider.
+      AGENTFOX_DEFAULT_PROVIDER: ${AGENTFOX_DEFAULT_PROVIDER:-openai}
+      AGENTFOX_OPENAI_API_KEY: ${AGENTFOX_OPENAI_API_KEY:-}
+      AGENTFOX_ANTHROPIC_API_KEY: ${AGENTFOX_ANTHROPIC_API_KEY:-}
+      AGENTFOX_ALLOW_EGRESS: "true"
+    volumes:
+      - ./hermes:/kit:ro
+
+  hermes:
+    build: ./hermes
+    profiles: ["hermes"]
+    depends_on:
+      gateway:
+        condition: service_started
+    environment:
+      # Read by config.yaml and by the plugin.
+      AGENTFOX_URL: http://gateway:8080
+      # A non-nom_agt_ value is "no key" to AgentFox: the calls are unregistered traffic.
+      AGENTFOX_AGENT_KEY: ${AGENTFOX_AGENT_KEY:-unregistered}
+      AGENTFOX_MODEL: ${AGENTFOX_MODEL:-gpt-4.1-mini}
+      AGENTFOX_FAIL_MODE: closed
+    volumes:
+      - hermes-state:/home/hermes/.hermes
+      - hermes-work:/home/hermes/work
+      - ./hermes/config.yaml:/home/hermes/.hermes/config.yaml
+      - ../sdk/hermes:/home/hermes/.hermes/plugins/agentfox:ro
+    stdin_open: true
+    tty: true
+    cap_drop: [NET_RAW, NET_ADMIN]
+    security_opt: ["no-new-privileges:true"]
+    init: true
+
+volumes:
+  hermes-state:
+  hermes-work:
