@@ -2393,7 +2393,21 @@
       "summary": "List policies and their enforcement mode.",
       "help": "List policies and their enforcement mode.",
       "panel": null,
-      "params": [],
+      "params": [
+       {
+        "kind": "option",
+        "name": "as_json",
+        "opts": [
+         "--json"
+        ],
+        "type": "flag",
+        "choices": [],
+        "required": false,
+        "multiple": false,
+        "default": null,
+        "help": ""
+       }
+      ],
       "default_subcommand": null,
       "enterprise": false,
       "commands": []
