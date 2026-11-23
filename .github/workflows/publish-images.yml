@@ -91,7 +91,7 @@ jobs:
       # how a gateway whose detector warm-up crashed its own startup got this far.
       - name: Build the gateway image locally
         if: matrix.image.name == 'gateway'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.image.context }}
           file: ${{ matrix.image.dockerfile }}
@@ -106,7 +106,7 @@ jobs:
 
       - name: Build and push by digest
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.image.context }}
           file: ${{ matrix.image.dockerfile }}
