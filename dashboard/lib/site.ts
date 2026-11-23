@@ -49,6 +49,11 @@ export const SITE_DESCRIPTION =
  */
 export const REPO_URL = "https://github.com/architsharm/agentfox";
 
+/** One-click OpenClaw kit on Render. The button reads render.yaml at a branch root, so it
+ *  points at the `openclaw-render` branch, rebuilt from main with deploy/openclaw/render.yaml
+ *  at its root (.github/workflows/openclaw-render-branch.yml). */
+export const OPENCLAW_RENDER_DEPLOY_URL = `https://render.com/deploy?repo=${REPO_URL}/tree/openclaw-render`;
+
 /** The company page on LinkedIn (a showcase page under Nometria). Listed in the
  *  Organization structured data so search engines can tie the profile to the site. */
 export const LINKEDIN_URL = "https://www.linkedin.com/showcase/useagentfox/";

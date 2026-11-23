@@ -136,6 +136,10 @@ RUN --mount=type=secret,id=hf_token,uid=10001 \
 # /var/agentfox/evidence, where deploy/docker-compose.yml and render.yaml point
 # AGENTFOX_EVIDENCE_DIR, was created for the runtime user with the weights cache above.
 
+# The OpenClaw kit's setup scripts, for hosts with no volume to mount them from (the
+# OpenClaw Render blueprint runs render-gateway-start.sh as its start command).
+COPY deploy/openclaw/agentfox-setup.sh deploy/openclaw/render-gateway-start.sh /app/deploy/openclaw/
+
 EXPOSE 8080
 
 # Serve, and nothing else. This used to run `agentfox admin seed` on every boot "so the stack

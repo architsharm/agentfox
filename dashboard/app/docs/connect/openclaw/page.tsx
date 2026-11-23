@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { Code, NextSteps, Step, Steps } from "@/components/docs/blocks";
-import { publicPageMetadata } from "@/lib/site";
+import { OPENCLAW_RENDER_DEPLOY_URL, publicPageMetadata } from "@/lib/site";
 
 export const metadata: Metadata = publicPageMetadata({
   title: "OpenClaw",
@@ -61,6 +61,22 @@ cp deploy/openclaw/.env.example deploy/openclaw/.env`}</Code>
           </p>
         </Step>
       </Steps>
+
+      <h3>Or deploy it to Render, with no terminal</h3>
+      <p>
+        <a href={OPENCLAW_RENDER_DEPLOY_URL} target="_blank" rel="noreferrer">
+          Deploy to Render
+        </a>{" "}
+        sets up the same kit on your own Render account: Postgres, the AgentFox gateway and dashboard, and
+        OpenClaw with the plugin built in. Render asks for your model key and an AgentFox agent key
+        (enter <code>unregistered</code> until you create one in the dashboard); neither is stored
+        in the repository. The gateway and OpenClaw need Render&apos;s <code>starter</code>{" "}
+        instance type. To sign in, open the gateway&apos;s Shell in Render and run{" "}
+        <code>agentfox admin users create you@example.com --role owner --token</code>. OpenClaw is
+        public there, behind the <code>OPENCLAW_GATEWAY_TOKEN</code> Render generates, where the
+        local kit only listens on your machine. The blueprint is{" "}
+        <code>deploy/openclaw/render.yaml</code>.
+      </p>
 
       <h2>Add it to an OpenClaw you already run</h2>
       <Steps>

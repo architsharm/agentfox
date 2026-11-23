@@ -30,8 +30,16 @@ lets the call run.
 ## Set up
 
 The quickest way is the kit in `deploy/openclaw/` of the AgentFox repository: one command
-starts AgentFox and OpenClaw together with this plugin loaded. To add it to an OpenClaw you
-already run:
+starts AgentFox and OpenClaw together with this plugin loaded. With no terminal, deploy the
+same kit to your own Render account:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/architsharm/agentfox/tree/openclaw-render)
+
+Render asks for your model key and an AgentFox agent key (enter `unregistered` until you
+create one); neither is committed. The blueprint, with what to do after the first deploy,
+is [`deploy/openclaw/render.yaml`](../../deploy/openclaw/render.yaml).
+
+To add it to an OpenClaw you already run:
 
 1. Build it: `npm ci && npm run build` in this directory.
 2. Point OpenClaw at it in `openclaw.json`:
