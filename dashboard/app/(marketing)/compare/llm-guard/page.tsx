@@ -31,7 +31,9 @@ export default function LlmGuardPage() {
             </h1>
             <p className="lp-lead">
               Both ran on the same AgentDojo replay, the same held-out injections and the same machine. LLM Guard
-              finishes more normal tasks than we do. We stop more attacks, including with our detectors off.
+              finishes more normal tasks than we do. We stop more attacks, including with our detectors off. LLM
+              Guard&apos;s repository was archived in July 2026, after Protect AI&apos;s acquisition; the numbers stand,
+              the project does not move.
             </p>
           </div>
         </section>
