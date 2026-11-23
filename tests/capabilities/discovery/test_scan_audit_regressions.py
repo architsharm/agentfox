@@ -278,3 +278,29 @@ def test_express_webhook_without_a_signature_check_in_an_agent_repo(tmp_path):
     # A signature checked anywhere (often in a shared handler) silences it.
     _write(tmp_path, "src/verify.ts", "import { createHmac } from 'crypto';\n")
     assert _kinds(scan(tmp_path), "auth_gap") == []
+
+
+def test_a_throwing_guard_helper_or_a_next16_proxy_counts_as_auth(tmp_path):
+    route = (
+        "import { sendMail } from '@/lib/mail';\n"
+        "export async function POST(req) {\n"
+        "  const ctx = await requireOrgContext(req);\n"
+        "  await sendMail(ctx.to);\n  return Response.json({});\n}\n"
+    )
+    _write(tmp_path, "src/app/api/send/route.ts", route)
+    assert _kinds(scan(tmp_path), "auth_gap") == []
+    _write(tmp_path, "src/app/api/send/route.ts", route.replace("requireOrgContext", "getOrg"))
+    assert len(_kinds(scan(tmp_path), "auth_gap")) == 1
+    _write(tmp_path, "src/proxy.ts", "export function proxy() {}\n")
+    assert _kinds(scan(tmp_path), "auth_gap") == []
+
+
+def test_bypass_permissions_in_a_comment_is_not_the_setting(tmp_path):
+    _write(
+        tmp_path,
+        "runner.ts",
+        "const options = {\n"
+        '  // NOTE: `permissionMode: "bypassPermissions"` has been removed\n'
+        "  sandbox: { enabled: true },\n};\n",
+    )
+    assert _kinds(scan(tmp_path), "permission_bypass") == []

@@ -394,6 +394,9 @@ _REFUSAL = re.compile(
     r"auth\.protect|createHmac|timingSafeEqual|verifySignature",
     re.I,
 )
+#: A guard helper that throws when there is no session: `requireUser(req)`,
+#: `requireCrmMutationContext(request)`, `assertAdmin()`. Case matters here.
+_GUARD_HELPER = re.compile(r"\b(?:require|assert)[A-Z]\w*\s*\(")
 #: An action worth guarding: sending something (mail, a message), or a model call.
 _SEND_CALL = re.compile(r"\bsend\w*\s*\(", re.I)
 #: An Express webhook receiver: `app.post("/webhook", ...)`, `router.post("/hooks/x")`.
@@ -434,7 +437,7 @@ def _route_auth_gap(rel: str, source: str, sites: list[Site]) -> list[Site]:
     if not _ROUTE_FILE.search(rel.replace(os.sep, "/")):
         return []
     export = _MUTATING_EXPORT.search(source)
-    if not export or _REFUSAL.search(source):
+    if not export or _REFUSAL.search(source) or _GUARD_HELPER.search(source):
         return []
     acts = any(s.kind == "model_call" for s in sites) or _SEND_CALL.search(source)
     if not acts:
@@ -2008,7 +2011,12 @@ def scan_file(
             )
         if _real_secret(line):
             sites.append(_secret_site(rel, line_no))
-        if not bypassed and _PERMISSION_BYPASS.search(line):
+        if (
+            not bypassed
+            and _PERMISSION_BYPASS.search(line)
+            # A comment saying the mode was removed is not the mode (duolingo/slack-ai-agent).
+            and not line.lstrip().startswith(("//", "#", "*", "/*"))
+        ):
             bypassed = True
             sites.append(
                 Site(
@@ -2336,7 +2344,11 @@ def scan(
         frameworks.discard("LiveKit")  # `from livekit import agents` beside it
     report.frameworks = sorted(frameworks)
     if any(
-        (root_path / d / f"middleware.{x}").is_file() for d in ("", "src") for x in ("ts", "js")
+        (root_path / d / f"{name}.{x}").is_file()
+        # Next.js 16 renamed `middleware.ts` to `proxy.ts`.
+        for d in ("", "src")
+        for name in ("middleware", "proxy")
+        for x in ("ts", "js")
     ):
         # A Next.js middleware can guard every route at once; the per-route check
         # cannot see what it matches, so it stays quiet rather than guess.
