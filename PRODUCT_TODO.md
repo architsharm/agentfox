@@ -126,7 +126,7 @@ Each line is one commit-sized change on that branch, if any comes back.
   - "Jev" shown to users (`GuardrailMap.tsx`, `policies/advanced.tsx`).
 - [ ] Events shows only the run's first surface. Sessions and Events filter the latest 100–200 traces on the client. Tools and Models use workspace-wide breakdowns, so they mix in other projects' traffic. Scope all of them on the server by the project's agents, and add a range picker.
 - [ ] `af-theme.css` `:root` overrides main's tokens site-wide (`/docs`, `/login`, playground). Scope it to `.shell` or adopt it deliberately everywhere, and align the logo between marketing and the app.
-- [ ] `NOMETRIA_DEV_SESSION_TOKEN` / `NOMETRIA_DEV_FRESH_TOKEN` in `dashboard/middleware.ts` → `AGENTFOX_*` (the rename is otherwise complete). Make dev auto-login on every cookieless GET opt-in.
+- [ ] Make dev auto-login on every cookieless GET opt-in (`AGENTFOX_DEV_SESSION_TOKEN` / `AGENTFOX_DEV_FRESH_TOKEN` in `dashboard/middleware.ts`, renamed from `NOMETRIA_*`).
 - [ ] Revert the machine-generated `next-env.d.ts` change (it imports `./.next-onb/dev/types/...`).
 - [ ] `/api/projects` is fetched more than once per page (twice in `app/(product)/app/layout.tsx` alone), and `SideNav` calls `router.refresh()` on agent pages.
 - [ ] Duplicated check-name maps (`GuardrailMap.tsx` `MODULE_NAME`/`KIND` vs `lib/product/checks.ts`).

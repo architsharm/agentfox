@@ -11,6 +11,13 @@ the file it came from.
 
 ## [Unreleased]
 
+### Changed
+- **The dashboard's dev-login variables moved to the `AGENTFOX_` prefix, with no
+  fallback.** `dashboard/middleware.ts` now reads `AGENTFOX_DEV_SESSION_TOKEN` and
+  `AGENTFOX_DEV_FRESH_TOKEN` (was `NOMETRIA_DEV_SESSION_TOKEN` /
+  `NOMETRIA_DEV_FRESH_TOKEN`), so a `dashboard/.env.local` still using the old names
+  silently stops auto-login and the `/dev/as/*` account switch during `next dev`.
+
 ### Fixed
 - `agents controls` and `agents list --stopped` exclude resumed agents while
   preserving quarantined and killed agents and their stop reasons.

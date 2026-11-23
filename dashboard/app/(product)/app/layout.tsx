@@ -100,12 +100,13 @@ async function TopbarData() {
 }
 
 /**
- * The sidebar, with the projects its switcher offers. In its own Suspense
- * boundary for the same reason as the topbar; until the list answers, the
- * sidebar is already there in the scope the cookie names.
+ * The sidebar, with the projects its switcher offers. Kept in its own Suspense
+ * boundary for the same reason as the topbar — the sidebar is already there in
+ * the scope the cookie names while the rest of the layout settles. The list
+ * itself comes from AppLayout, which fetched it for the setup card: one
+ * gateway call, not the same one twice.
  */
-async function SideNavData({ initial }: { initial: string | null }) {
-  const { projects } = await safeApi<any>("/api/projects", { projects: [] });
+async function SideNavData({ initial, projects }: { initial: string | null; projects: any[] }) {
   return <SideNav projects={projects || []} initial={initial} />;
 }
 
@@ -151,7 +152,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <MobileMenu />
           <TableLabels />
           <Suspense fallback={<SideNav projects={[]} initial={project} />}>
-            {signedIn ? <SideNavData initial={project} /> : <SideNav projects={[]} initial={null} />}
+            {signedIn ? <SideNavData initial={project} projects={projects} /> : <SideNav projects={[]} initial={null} />}
           </Suspense>
           <div className="side-foot">
             <span className="live-dot">live</span>

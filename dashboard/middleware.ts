@@ -124,7 +124,7 @@ export function middleware(req: NextRequest) {
   if (process.env.NODE_ENV === "development" && pathname.startsWith("/dev/as/")) {
     const who = pathname.slice("/dev/as/".length);
     const token =
-      who === "admin" ? process.env.NOMETRIA_DEV_SESSION_TOKEN : who === "fresh" ? process.env.NOMETRIA_DEV_FRESH_TOKEN : undefined;
+      who === "admin" ? process.env.AGENTFOX_DEV_SESSION_TOKEN : who === "fresh" ? process.env.AGENTFOX_DEV_FRESH_TOKEN : undefined;
     if (token) {
       const res = NextResponse.redirect(new URL("/app", requestOrigin(req)));
       res.cookies.set(SESSION_COOKIE, token, { httpOnly: true, sameSite: "lax", path: "/" });
@@ -137,7 +137,7 @@ export function middleware(req: NextRequest) {
 
   // Local auto-login: `next dev` only, and only when dashboard/.env.local supplies a
   // token minted with `agentfox auth issue`. Production builds never take this path.
-  const devToken = process.env.NOMETRIA_DEV_SESSION_TOKEN;
+  const devToken = process.env.AGENTFOX_DEV_SESSION_TOKEN;
   if (
     process.env.NODE_ENV === "development" &&
     devToken &&
