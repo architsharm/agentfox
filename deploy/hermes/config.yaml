@@ -1,0 +1,25 @@
+# Hermes Agent settings for the AgentFox kit. ${VAR} values come from the container's
+# environment (compose.yml).
+
+# The model goes through AgentFox, which holds the real model key and checks what reaches
+# the model; the tool calls the model asks for are checked as the hermes agent's.
+model:
+  provider: agentfox
+  default: ${AGENTFOX_MODEL}
+
+providers:
+  agentfox:
+    api: ${AGENTFOX_URL}/v1
+    api_key: ${AGENTFOX_AGENT_KEY}
+    discover_models: false
+    # X-AgentFox-Tool-Hook: the plugin checks each call again as it runs, so a call a
+    # person approved gets past the model endpoint and the plugin spends the approval.
+    extra_headers:
+      X-AgentFox-Agent: hermes
+      X-AgentFox-Tool-Hook: "1"
+
+# The AgentFox plugin (sdk/hermes, mounted at plugins/agentfox): every tool call is
+# checked before it runs.
+plugins:
+  enabled:
+    - agentfox

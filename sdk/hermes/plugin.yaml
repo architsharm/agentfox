@@ -1,0 +1,12 @@
+name: agentfox
+version: 0.1.0
+description: Check every tool call against AgentFox before it runs; block, hold for an approver, or allow.
+author: AgentFox
+provides_hooks:
+  - pre_tool_call
+  - post_tool_call
+requires_env:
+  - name: AGENTFOX_URL
+    description: "Your AgentFox gateway, e.g. http://localhost:8080"
+python_dependencies:
+  - "agentfox>=0.5.4"
