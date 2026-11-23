@@ -1,0 +1,36 @@
+name: OpenClaw Render branch
+
+# Keeps the `openclaw-render` branch equal to main plus one commit that copies
+# deploy/openclaw/render.yaml to the root. The OpenClaw "Deploy to Render" button points at
+# that branch, because Render's button only reads render.yaml at the root of a repo or
+# branch, and main's root render.yaml is the plain self-host blueprint.
+#
+# The branch is generated: never edit it. It is force-pushed on every push to main, so
+# someone deploying from the button gets main's code.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: openclaw-render-branch
+  cancel-in-progress: true
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Rebuild the branch from main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -C openclaw-render
+          cp deploy/openclaw/render.yaml render.yaml
+          git commit -am "Root render.yaml is the OpenClaw blueprint (generated from ${GITHUB_SHA::7})"
+          git push --force origin openclaw-render
