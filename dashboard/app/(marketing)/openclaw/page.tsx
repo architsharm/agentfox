@@ -4,7 +4,7 @@ import Link from "next/link";
 import { CopyChip, Reveal } from "@/components/lp/client";
 import { FlowArt } from "@/components/lp/FlowArt";
 import { Arrow, LpCta, LpFooter, LpNav, MomentPath, SectionHead, type PathStep } from "@/components/lp/parts";
-import { REPO_URL, publicPageMetadata } from "@/lib/site";
+import { OPENCLAW_RENDER_DEPLOY_URL, REPO_URL, publicPageMetadata } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -124,6 +124,9 @@ export default function OpenClawPage() {
             />
             <div className="lp-start" data-reveal>
               <CopyChip text="deploy/openclaw/up.sh" />
+              <a href={OPENCLAW_RENDER_DEPLOY_URL} target="_blank" rel="noreferrer">
+                No terminal? Deploy to Render <Arrow />
+              </a>
               <Link href="/docs/connect/openclaw">
                 Already run OpenClaw? Add the plugin <Arrow />
               </Link>

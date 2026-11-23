@@ -1,0 +1,185 @@
+# AgentFox for OpenClaw on your own Render account: the kit in this directory, with no
+# terminal. It is the root render.yaml (Postgres, gateway, dashboard) plus OpenClaw,
+# with the AgentFox plugin built in and AgentFox as its model endpoint.
+#
+# The "Deploy to Render" button only reads render.yaml at the root of a repository or
+# branch, and the root of main is the plain self-host blueprint. So the button points at
+# the `openclaw-render` branch, which .github/workflows/openclaw-render-branch.yml
+# rebuilds from main on every push with this file copied to its root. Edit this file,
+# never the branch.
+#
+#   [Deploy to Render](https://render.com/deploy?repo=https://github.com/architsharm/agentfox/tree/openclaw-render)
+#
+# Render asks once, on creation, for every `sync: false` value; none is committed here:
+#   AGENTFOX_AUDIT_SIGNING_KEY  random (`openssl rand -hex 32`); keep a copy outside Render.
+#   AGENTFOX_OPENAI_API_KEY     your model key (or AGENTFOX_ANTHROPIC_API_KEY, with
+#                               AGENTFOX_DEFAULT_PROVIDER and AGENTFOX_MODEL changed to match).
+#                               It stays on the gateway; OpenClaw never sees it.
+#   AGENTFOX_AGENT_KEY          an AgentFox agent key (nom_agt_...). You have none before the
+#                               first deploy: enter `unregistered`, and replace it once you
+#                               create one in the dashboard. Any non-nom_agt_ value is "no key".
+#   GITHUB_* and the rest       optional sign-in, as in the root render.yaml.
+#
+# After the first deploy:
+#   1. Sign in to the dashboard: open agentfox-gateway -> Shell in Render and run
+#      `agentfox admin users create you@example.com --role owner --token`, then paste the
+#      token on /login. (Or set up GitHub sign-in, as in the root render.yaml.)
+#   2. Open OpenClaw at the `openclaw` service's URL with the OPENCLAW_GATEWAY_TOKEN Render
+#      generated (openclaw -> Environment).
+#   3. AgentFox starts in Watch. Switch to Block from the gateway's Shell when the
+#      decisions look right: `agentfox policy enforce tool-containment`.
+#
+# OpenClaw is a public web service here, protected by its gateway token. That is
+# OpenClaw's own remote mode, but it is more exposed than the local kit, which binds to
+# 127.0.0.1: keep the token secret, and see /docs/connect/openclaw for what this does not
+# cover.
+#
+# Plans: the gateway needs `starter` (its image carries the classifier extra) and so does
+# OpenClaw (its state lives on a disk, and disks need a paid instance). The database and
+# the dashboard run on free.
+
+databases:
+  - name: agentfox-db
+    databaseName: agentfox
+    user: agentfox
+    plan: free
+
+services:
+  # --- AgentFox: the control plane, also OpenClaw's model endpoint ------------
+  - type: web
+    name: agentfox-gateway
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./deploy/Dockerfile
+    dockerContext: .
+    # Schema, then OpenClaw's tool setup in the background, then the server.
+    dockerCommand: sh /app/deploy/openclaw/render-gateway-start.sh
+    healthCheckPath: /health
+    autoDeployTrigger: "off"
+    envVars:
+      - key: AGENTFOX_DATABASE_URL
+        fromDatabase:
+          name: agentfox-db
+          property: connectionString
+      - key: AGENTFOX_ORG_ID
+        value: org_default
+      - key: AGENTFOX_ENVIRONMENT
+        value: production
+      # OpenClaw's model calls go through AgentFox, which forwards them to this provider.
+      - key: AGENTFOX_ALLOW_EGRESS
+        value: "true"
+      - key: AGENTFOX_DEFAULT_PROVIDER
+        value: openai
+      - key: AGENTFOX_OPENAI_API_KEY
+        sync: false
+      - key: AGENTFOX_ANTHROPIC_API_KEY
+        sync: false
+      - key: AGENTFOX_DEFAULT_POLICY_MODE
+        value: observe
+      - key: AGENTFOX_FAIL_MODE
+        value: open
+      - key: AGENTFOX_ENFORCEMENT_BUDGET_MS
+        value: "100"
+      - key: AGENTFOX_DETECTOR_TIMEOUT_MS
+        value: "40"
+      - key: AGENTFOX_POLICY_ENGINE
+        value: native
+      - key: AGENTFOX_EVIDENCE_DIR
+        value: /var/agentfox/evidence
+      # Prompted once, never generated: a generated value would change on a blueprint
+      # sync and silently rotate the key (see the root render.yaml).
+      - key: AGENTFOX_AUDIT_SIGNING_KEY
+        sync: false
+      # Shared with the dashboard below, which copies this generated value.
+      - key: AGENTFOX_SERVICE_AUTH_SECRET
+        generateValue: true
+      - key: AGENTFOX_ENABLED_DETECTORS
+        value: '["injection.heuristic","pii.native","secrets.native","safety.lexicon","schema.json"]'
+
+  # --- AgentFox: the UI -------------------------------------------------------
+  - type: web
+    name: agentfox-dashboard
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./deploy/Dockerfile.dashboard
+    dockerContext: ./dashboard
+    healthCheckPath: /login
+    autoDeployTrigger: "off"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      # Render sets HOSTNAME to the pod name; Next's standalone server must bind to all
+      # interfaces or every request 502s (see the root render.yaml).
+      - key: HOSTNAME
+        value: 0.0.0.0
+      - key: AGENTFOX_API_URL
+        fromService:
+          name: agentfox-gateway
+          type: web
+          property: hostport
+      - key: AGENTFOX_UMAMI_WEBSITE_ID
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: MICROSOFT_CLIENT_ID
+        sync: false
+      - key: MICROSOFT_CLIENT_SECRET
+        sync: false
+      - key: AGENTFOX_SERVICE_AUTH_SECRET
+        fromService:
+          name: agentfox-gateway
+          type: web
+          envVarKey: AGENTFOX_SERVICE_AUTH_SECRET
+
+  # --- OpenClaw, with every tool call checked by AgentFox ----------------------
+  - type: web
+    name: openclaw
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./deploy/openclaw/Dockerfile
+    dockerContext: .
+    autoDeployTrigger: "off"
+    # OpenClaw's sessions, memory and workspace. Its config is baked into the image
+    # (OPENCLAW_CONFIG_PATH), so it is not here.
+    disk:
+      name: openclaw-state
+      mountPath: /home/node/.openclaw
+      sizeGB: 1
+    envVars:
+      # Render routes to this port; the image's command listens on it.
+      - key: PORT
+        value: "18789"
+      - key: HOME
+        value: /home/node
+      - key: OPENCLAW_HOME
+        value: /home/node
+      - key: OPENCLAW_STATE_DIR
+        value: /home/node/.openclaw
+      - key: OPENCLAW_WORKSPACE_DIR
+        value: /home/node/.openclaw/workspace
+      - key: OPENCLAW_GATEWAY_PORT
+        value: "18789"
+      # The token for OpenClaw's Control UI. Generated once; read it under Environment.
+      - key: OPENCLAW_GATEWAY_TOKEN
+        generateValue: true
+      # The gateway on Render's private network; the image's openclaw.json adds http://.
+      - key: AGENTFOX_HOSTPORT
+        fromService:
+          name: agentfox-gateway
+          type: web
+          property: hostport
+      - key: AGENTFOX_AGENT_KEY
+        sync: false
+      - key: AGENTFOX_MODEL
+        value: gpt-4.1-mini
