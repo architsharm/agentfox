@@ -47,6 +47,12 @@ const LIVE: NavItem = {
   note: "Our own demo agent, attacked every hour through the real enforcement path. Results unedited, including what got through.",
   sitemap: { changeFrequency: "weekly", priority: 0.7 },
 };
+const DEMO: NavItem = {
+  label: "Demo video",
+  href: "/demo",
+  note: "A 99-second demo: an over-limit payment refused, a poisoned document stopped, a payment to an account found in a tool's output held for a person, and the audit chain verified. Every verdict real, no live model.",
+  sitemap: { changeFrequency: "monthly", priority: 0.7 },
+};
 const OPENCLAW: NavItem = {
   label: "AgentFox for OpenClaw",
   href: "/openclaw",
@@ -141,13 +147,13 @@ export const HEADER: NavItem[] = [RESEARCH];
 export const HEADER_CTA: NavItem = DOCS;
 
 export const FOOTER: FooterColumn[] = [
-  { heading: "Product", items: [PLAYGROUND, LIVE, OPENCLAW, PRICING] },
+  { heading: "Product", items: [PLAYGROUND, LIVE, DEMO, OPENCLAW, PRICING] },
   { heading: "Research", items: [RESEARCH, BENCHMARK, LATENCY, COMPARE] },
   { heading: "Resources", items: [DOCS, INTEGRATIONS_INDEX, BLOG, SUPPORT] },
   { heading: "Company", items: [SECURITY, PRIVACY, TERMS] },
 ];
 
 /** Every page, in one list. */
-export const ALL_PAGES: NavItem[] = [HOME, RESEARCH, BENCHMARK, LATENCY, COMPARE, COMPARE_LLM_GUARD, COMPARE_LAKERA, INTEGRATIONS_INDEX, ...INTEGRATION_PAGES, PLAYGROUND, LIVE, OPENCLAW, PRICING, BLOG, DOCS, SECURITY, SUPPORT, PRIVACY, TERMS];
+export const ALL_PAGES: NavItem[] = [HOME, RESEARCH, BENCHMARK, LATENCY, COMPARE, COMPARE_LLM_GUARD, COMPARE_LAKERA, INTEGRATIONS_INDEX, ...INTEGRATION_PAGES, PLAYGROUND, LIVE, DEMO, OPENCLAW, PRICING, BLOG, DOCS, SECURITY, SUPPORT, PRIVACY, TERMS];
 
 export const ALL_PATHS: string[] = ALL_PAGES.map((p) => p.href);
