@@ -82,7 +82,7 @@ export default function LlmGuardPage() {
             <Table
               head={["", "Held-out injections caught", "Harmless look-alikes flagged", "Attacks hidden in tool output"]}
               rows={[
-                { cells: ["LLM Guard's model (ProtectAI DeBERTa v2)", "31.7%", "42.2%", "9 of 10 caught, 81.8% precision"] },
+                { cells: ["LLM Guard's model (ProtectAI DeBERTa v2)", "31.7%", "37.5%", "9 of 10 caught, 81.8% precision"] },
                 { cells: ["AgentFox default (PIGuard and patterns)", "68.3%", "11.5%", "10 of 10 caught, 66.7% precision"], ours: true },
               ]}
               source={{ label: "benchmarks/injection", path: "benchmarks/injection/README.md" }}

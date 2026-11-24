@@ -80,7 +80,7 @@ export default function Benchmark() {
                 title="Harmless messages blocked"
                 hint="339 look-alikes · lower is better"
                 rows={[
-                  { name: "LLM Guard's model", value: 42.2, label: "42.2%" },
+                  { name: "LLM Guard's model", value: 37.5, label: "37.5%" },
                   { name: "AgentFox", value: 11.5, label: "11.5%", ours: true },
                   { name: "Prompt Guard 2", value: 3.5, label: "3.5%" },
                 ]}
@@ -259,7 +259,7 @@ export default function Benchmark() {
               head={["Model", "Held-out attacks caught", "SPML", "Multilingual", "Harmless look-alikes flagged"]}
               rows={[
                 { cells: ["AgentFox default (PIGuard and patterns)", "68.3%", "29.6%", "76.0%", "11.5%"], ours: true },
-                { cells: ["LLM Guard's model (ProtectAI DeBERTa v2)", "31.7%", "–", "–", "42.2%"] },
+                { cells: ["LLM Guard's model (ProtectAI DeBERTa v2)", "31.7%", "–", "–", "37.5%"] },
                 { cells: ["Prompt Guard 2, 86M", "20.0%", "38.4%", "44.7%", "3.5%"] },
                 { cells: ["Prompt Guard 2, 22M", "16.7%", "11.2%", "7.4%", "0%"] },
                 { cells: ["AgentFox patterns only, no model", "16.7%", "9.6%", "0.9%", "0%"] },

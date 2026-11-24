@@ -472,6 +472,16 @@ to fix this. Tested the same way (isolated, no contention):
 | `protectai/deberta-v3-base-prompt-injection-v2` | 31.7% (19/60) | 42.2% (143/339) |
 | `leolee99/PIGuard` | 66.7% (40/60) | 11.5% (39/339) |
 
+**Correction, 2026-11-24.** The DeBERTa row was this project's own run of the model at a 0.5
+bar, and it no longer reproduces: through `injection.classifier` today the same model at 0.5
+flags 149/339 (44.0%) of NotInject and catches 22/60. The website had been quoting 42.2% as
+"LLM Guard's model", but LLM Guard ships the model at 0.92. Run as shipped
+(`llm-guard` 0.3.16, `PromptInjection()` with every default, via
+`benchmarks/injection/llm_guard_default.py`), it flags **127/339 (37.5%)** of NotInject, catches
+**19/60 (31.7%)** held-out attacks, and flags 0/56 held-out benign rows. Those are the figures the
+site now quotes, bound in `benchmarks/claims.yaml`. AgentFox's shipped verdict (PIGuard plus
+patterns) reproduces at 39/339 (11.5%) and 41/60 (68.3%).
+
 Better on **both** axes at once on the datasets this project weighs most — more
 than double the recall on the primary benchmark, at less than a third the
 false-positive rate on the purpose-built precision stress test. That's the basis

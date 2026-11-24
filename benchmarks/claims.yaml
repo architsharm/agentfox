@@ -792,6 +792,30 @@ claims:
       - {file: "dashboard/app/(marketing)/benchmark/page.tsx", text: '["AgentFox default (PIGuard and patterns)", "{pig}%", "29.6%", "76.0%", "{fpig}%"]'}
       - {file: "dashboard/app/(marketing)/benchmark/page.tsx", text: '["Prompt Guard 2, 22M", "{p22}%"'}
       - {file: "dashboard/app/(marketing)/benchmark/page.tsx", text: '["Prompt Guard 2, 86M", "{p86}%", "38.4%", "44.7%", "{f86}%"]'}
+      - {file: "dashboard/app/(marketing)/benchmark/page.tsx", text: '{{ name: "AgentFox", value: {pig}, label: "{pig}%", ours: true }}'}
+      - {file: "dashboard/app/(marketing)/benchmark/page.tsx", text: '{{ name: "AgentFox", value: {fpig}, label: "{fpig}%", ours: true }}'}
+      - {file: dashboard/components/lp/Production.tsx, text: '{{ name: "AgentFox", value: {fpig}, ours: true }}'}
+      - {file: dashboard/components/lp/Production.tsx, text: '{{ name: "AgentFox", value: {pig}, ours: true }}'}
+      - {file: dashboard/lib/lp/proof.ts, text: '{{ name: "AgentFox", flagged: "{fpig}%", caught: "{pig}%", ours: true }}'}
+
+  # LLM Guard's prompt-injection scanner as shipped (every default, threshold 0.92), on the same
+  # two sets: benchmarks/injection/llm_guard_default.py. Replaces 42.2%, which was the same model
+  # at a 0.5 bar in an August run and no longer reproduces.
+  - id: injection.llm_guard_default
+    source: benchmarks/injection/results/llm_guard_default_summary.json
+    render: fields
+    fields:
+      fp: [notinject_false_blocks, pct]
+      rec: [deepset_held_out_recall, pct]
+    quoted_in:
+      - {file: "dashboard/app/(marketing)/benchmark/page.tsx", text: '{{ name: "LLM Guard''s model", value: {rec}, label: "{rec}%" }}'}
+      - {file: "dashboard/app/(marketing)/benchmark/page.tsx", text: '{{ name: "LLM Guard''s model", value: {fp}, label: "{fp}%" }}'}
+      - {file: "dashboard/app/(marketing)/benchmark/page.tsx", text: '["LLM Guard''s model (ProtectAI DeBERTa v2)", "{rec}%", "–", "–", "{fp}%"]'}
+      - {file: dashboard/components/lp/Production.tsx, text: '{{ name: "LLM Guard''s model", value: {fp} }}'}
+      - {file: dashboard/components/lp/Production.tsx, text: '{{ name: "LLM Guard''s model", value: {rec} }}'}
+      - {file: dashboard/lib/lp/proof.ts, text: '{{ name: "LLM Guard''s model (ProtectAI DeBERTa v2)", flagged: "{fp}%", caught: "{rec}%" }}'}
+      - {file: "dashboard/app/(marketing)/compare/llm-guard/page.tsx", text: '["LLM Guard''s model (ProtectAI DeBERTa v2)", "{rec}%", "{fp}%",'}
+      - {file: "dashboard/app/(marketing)/compare/page.tsx", text: '["LLM Guard, injection scanner", "{rec}%", "{fp}%",'}
 
 retired:
   - id: agentdojo.label_assigned_benign_utility
@@ -876,3 +900,7 @@ retired:
     text: "37 ms at the median"
     reason: "first latency study measured the classifier on the Mac GPU under a Miniconda Python that runs it ~45% slower; replaced by the laptop-CPU, Python 3.12 rerun"
     files: [benchmarks/README.md, benchmarks/latency/README.md, "dashboard/app/**/*.tsx", "dashboard/components/**/*.tsx"]
+  - id: injection.llm_guard_model_at_half_bar
+    text: "42.2%"
+    reason: "LLM Guard's model at a 0.5 bar in an August run; it does not reproduce, and LLM Guard ships at 0.92 (37.5% on NotInject, benchmarks/injection/llm_guard_default.py)"
+    files: ["dashboard/app/**/*.tsx", "dashboard/components/**/*.tsx", "dashboard/lib/**/*.ts"]

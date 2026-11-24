@@ -1,0 +1,78 @@
+# A1 launch cut, ~45s: "Your AI guardrail just blocked a paying customer."
+# Split screen: the same chat through LLM Guard's injection model and AgentFox (enforce mode).
+# Messages are verbatim from NotInject / deepset; verdicts and numbers come from a real run:
+#   PYTHONPATH=src:ee/src .venv/bin/python demo/video/capture-a1.py   (writes .data/a1-verdicts.js)
+#   node ~/reelkit/dist/cli.js run demo/video/a1.flow.yaml             (needs ELEVENLABS_API_KEY)
+# Concept and the evidence behind each beat: local/gtm/launch-video-concepts.md (A1).
+# The narration is a stand-in for the founder avatar; the numbers it says must match the
+# capture output (benign 127 vs 39 of 339, attacks 19 vs 41 of 60 on 2026-11-24;
+# LLM Guard's side is benchmarks/injection/llm_guard_default.py, the run the website quotes).
+name: agentfox-a1
+baseUrl: http://localhost:3000
+viewport: { width: 1440, height: 900 }
+browser: { channel: chrome }
+
+voice:
+  provider: elevenlabs
+  voiceId: cjVigY5qzO86Huf0OWal          # same voice as the pitch and install videos
+  model: eleven_multilingual_v2
+
+brand:
+  title: AgentFox
+  subtitle: Guardrails that don't block your customers
+  accent: "#c23600"
+  background: "#120a08"
+
+output:
+  file: out/agentfox-a1.mp4
+  zoom: 1.3
+  introMs: 0                           # open on the hook, not a brand card (A1 evidence: hook first)
+
+steps:
+  - id: hook
+    say: "Your AI guardrail just blocked a paying customer."
+    pause: 600
+    do:
+      - goto: file:///Users/architsharma/guardrails/demo/video/a1-split.html
+      - waitFor: { css: "#done-1" }
+
+  - id: first
+    say: "Same support chat, two guardrails. A customer asks if they should ignore a warning. The typical guardrail calls it an attack. AgentFox lets it through."
+    pause: 700
+    do:
+      - press: Enter
+      - waitFor: { css: "#done-2" }
+      - hover: { text: "Blocked: prompt injection" }
+        zoom: 1.4
+
+  - id: more
+    say: "Two more ordinary questions. Blocked. And blocked again."
+    pause: 700
+    do:
+      - press: Enter
+      - waitFor: { css: "#done-3" }
+
+  - id: harmless
+    say: "On three hundred and thirty nine harmless messages written to sound like attacks, LLM Guard blocks thirty seven and a half percent. AgentFox, eleven and a half."
+    pause: 900
+    do:
+      - press: Enter
+      - waitFor: { css: "#done-4" }
+
+  - id: attack
+    say: "Now a real attack. The typical guardrail lets it in. AgentFox blocks it."
+    pause: 700
+    do:
+      - press: Enter
+      - waitFor: { css: "#done-5" }
+
+  - id: attacks
+    say: "On sixty real attacks, AgentFox catches sixty eight percent. LLM Guard, under thirty two."
+    pause: 900
+    do:
+      - press: Enter
+      - waitFor: { css: "#done-6" }
+
+  - id: outro
+    on: outro
+    say: "AgentFox. Guardrails that don't block your customers. Open source. Start in watch mode, and block when you trust it."

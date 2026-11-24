@@ -82,7 +82,7 @@ export const LATENCY_FIELD = {
 export const FALSE_FLAGS = {
   notInject: 339,
   rows: [
-    { name: "LLM Guard's model (ProtectAI DeBERTa v2)", flagged: "42.2%", caught: "31.7%" },
+    { name: "LLM Guard's model (ProtectAI DeBERTa v2)", flagged: "37.5%", caught: "31.7%" },
     { name: "Meta Prompt Guard 2 (86M)", flagged: "3.5%", caught: "20.0%" },
     { name: "AgentFox", flagged: "11.5%", caught: "68.3%", ours: true },
   ],

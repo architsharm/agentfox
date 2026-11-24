@@ -100,7 +100,7 @@ export default function ComparePage() {
                 { cells: ["AgentFox, default", "68.3%", "11.5%", "0 / 588", "63.1 ms"], ours: true },
                 { cells: ["Agent Governance Toolkit", "–", "–", "–", "–"] },
                 { cells: ["Agent Scan", "–", "–", "–", "–"] },
-                { cells: ["LLM Guard, injection scanner", "31.7%", "42.2%", "86 / 588", "56.1 ms"] },
+                { cells: ["LLM Guard, injection scanner", "31.7%", "37.5%", "86 / 588", "56.1 ms"] },
                 { cells: ["Prompt Guard 2, 86M", "20.0%", "3.5%", "–", "54.4 ms"] },
                 { cells: ["Guardrails AI, DetectJailbreak", "–", "–", "–", "99.4 ms"] },
                 { cells: ["NeMo Guardrails, self-check", "–", "–", "–", "758 ms"] },
