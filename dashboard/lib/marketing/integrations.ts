@@ -22,6 +22,8 @@ export type Integration = {
   /** What `agentfox scan` reads from the code, in the scanner's own words. */
   discovered: string;
   limits: string[];
+  /** Where teams use it, one line each. Optional. */
+  useCases?: string[];
   /** The connect doc with the steps. */
   docs: { href: string; label: string };
 };
@@ -229,6 +231,11 @@ agentfox permit grant <agent> mcp:github/search_issues --yes`,
     limits: [
       "The scan reads config files and saved tools/list responses. It never starts a server, so a tool list has to be saved to a file and scanned to be pinned.",
       "Hosted MCP tools OpenAI runs inside the Responses API have run before the response arrives: recorded, not stopped.",
+    ],
+    useCases: [
+      "Pull requests: the GitHub Marketplace Action (uses: architsharm/agentfox@main) scans each PR's MCP config for lethal trifectas and poisoned tool descriptions, offline, with no account.",
+      "Laptops: agentfox scan machine lists the servers every AI tool on the machine loads, with unpinned versions and tokens written into env, before any of them is started.",
+      "Assistants: the server on the official MCP Registry (io.github.architsharm/agentfox, uvx agentfox serve mcp) answers which agent holds which tools and what was held, read-only.",
     ],
     docs: { href: "/docs/connect/mcp", label: "MCP servers: scan, pin, record the tools, grant them" },
   },

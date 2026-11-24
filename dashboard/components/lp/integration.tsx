@@ -52,6 +52,7 @@ export function IntegrationPage({ slug }: { slug: string }) {
               any of the lines above are added.
             </p>
             <Limits items={i.limits} />
+            {i.useCases && <Limits label="Where teams use it" items={i.useCases} />}
           </DocSection>
 
           <DocSection id="next" title="Where to go from here">
