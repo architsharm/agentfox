@@ -21,6 +21,8 @@ import * as mcp from "./mcp-rug-pull-tool-poisoning";
 import * as containment from "./prompt-injection-containment-not-detection";
 import * as llmGuardH2h from "./llm-guard-vs-agentfox-agentdojo";
 import * as trifecta from "./lethal-trifecta-ai-agents";
+import * as failOpen from "./guardrail-fail-open";
+import * as listings from "./mcp-registry-github-marketplace";
 import * as questionnaire from "./security-questionnaire-prompt-injection";
 import * as leastPrivilege from "./least-privilege-ai-agents-tool-permissions";
 import * as mcpChecklist from "./mcp-server-security-checklist";
@@ -40,6 +42,8 @@ export const POST_BODIES: Record<Slug, PostBody> = {
   "ai-agent-audit-trail": auditTrail,
   "llm-guard-vs-agentfox-agentdojo": llmGuardH2h,
   "lethal-trifecta-ai-agents": trifecta,
+  "guardrail-fail-open": failOpen,
+  "mcp-registry-github-marketplace": listings,
   "security-questionnaire-prompt-injection": questionnaire,
   "least-privilege-ai-agents-tool-permissions": leastPrivilege,
   "mcp-server-security-checklist": mcpChecklist,

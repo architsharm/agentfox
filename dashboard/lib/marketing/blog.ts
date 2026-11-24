@@ -19,6 +19,8 @@
  */
 
 export const SLUGS = [
+  "guardrail-fail-open",
+  "mcp-registry-github-marketplace",
   "ai-agent-guardrail-latency",
   "agentfox-0-5-release",
   "ascii-smuggling-unicode-tag-prompt-injection",
@@ -69,6 +71,48 @@ export type BlogPost = {
 export const AUTHOR = { name: "The AgentFox team", url: "https://github.com/architsharm/agentfox" };
 
 export const BLOG_POSTS: BlogPost[] = [
+  {
+    slug: "guardrail-fail-open",
+    title: "What a guardrail does when its detector fails",
+    seoTitle: "Guardrails that fail open: 16 systems coded",
+    description:
+      "We coded what 16 guardrail libraries, gateways, frameworks and agent hooks do when a detector errors or times out. Five let the call through, one of them ours.",
+    tag: "Audit and compliance",
+    keywords: ["guardrail fail open", "AI guardrail timeout", "fail closed guardrail", "LLM guardrail failure", "agent hook fail open"],
+    published: "2026-11-24",
+    readMinutes: 7,
+    image: {
+      src: "/blog/guardrail-fail-modes.png",
+      alt: "Default on detector error by component: libraries mostly raise, hub integrations mostly closed with seven open each, all four agent hooks open.",
+      width: 690,
+      height: 470,
+    },
+    pillars: [
+      { href: "/research", label: "Research", why: "The accepted paper and its limits." },
+      { href: "/docs/reference/config", label: "Configuration", why: "The fail_mode setting and the per-check budget." },
+    ],
+  },
+  {
+    slug: "mcp-registry-github-marketplace",
+    title: "Now on the MCP Registry and GitHub Marketplace",
+    seoTitle: "On the MCP Registry and GitHub Marketplace",
+    description:
+      "Ask AgentFox from any MCP client with uvx agentfox serve mcp, and scan every pull request for lethal trifectas and poisoned skills with the Marketplace Action.",
+    tag: "Release notes",
+    keywords: ["MCP registry server", "GitHub Action agent security scan", "MCP security scan pull request", "agentfox serve mcp"],
+    published: "2026-11-24",
+    readMinutes: 4,
+    image: {
+      src: "/blog/mcp-page.png",
+      alt: "The MCP servers page: each server with its pinned version, the tools it lists, and what changed since the last scan.",
+      width: 1600,
+      height: 900,
+    },
+    pillars: [
+      { href: "/integrations/mcp", label: "MCP with AgentFox", why: "Scan, pin and govern MCP servers." },
+      { href: "/docs/connect/mcp", label: "MCP servers", why: "The steps, and the read-only server." },
+    ],
+  },
   {
     slug: "security-questionnaire-prompt-injection",
     title: "How to answer \u201chow do you prevent prompt injection?\u201d on a security questionnaire",
