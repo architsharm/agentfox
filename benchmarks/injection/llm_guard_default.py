@@ -45,14 +45,23 @@ def main() -> None:
     run = subprocess.run(
         [python, str(BRIDGE), "llm_guard"],
         input=json.dumps([r["text"] for _, r in rows]),
-        capture_output=True, text=True, check=True,
+        capture_output=True,
+        text=True,
+        check=True,
     )
     out = json.loads(run.stdout)
     preds = []
     for (dataset, row), rec in zip(rows, out["records"], strict=True):
         assert rec["sha256"] == hashlib.sha256(row["text"].encode()).hexdigest()
-        preds.append({"dataset": dataset, "label": row["label"], "sha256": rec["sha256"],
-                      "score": rec["score"], "flagged": rec["flagged_default"]})
+        preds.append(
+            {
+                "dataset": dataset,
+                "label": row["label"],
+                "sha256": rec["sha256"],
+                "score": rec["score"],
+                "flagged": rec["flagged_default"],
+            }
+        )
 
     def count(dataset: str, label: int) -> tuple[int, int]:
         sel = [p for p in preds if p["dataset"] == dataset and p["label"] == label]

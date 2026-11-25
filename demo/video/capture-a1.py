@@ -9,11 +9,17 @@ recorded but never blocks in enforce mode (PolicyInput.for_mode), so it counts a
 
     PYTHONPATH=src:ee/src .venv/bin/python demo/video/capture-a1.py
 """
+
 import hashlib
 import json
 from pathlib import Path
 
-from agentfox.capabilities.detection import DetectionContext, DetectorPipeline, get_detector, warm_all
+from agentfox.capabilities.detection import (
+    DetectionContext,
+    DetectorPipeline,
+    get_detector,
+    warm_all,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 B = ROOT / "benchmarks"
@@ -28,25 +34,43 @@ SHOWN = [
 
 benign = json.loads((B / "generalization/data/notinject.json").read_text())
 attacks = [r for r in json.loads((B / "injection/data/test.json").read_text()) if r["label"] == 1]
-LLMG = {p["sha256"]: p for p in json.loads((B / "injection/results/llm_guard_default_predictions.json").read_text())}
+LLMG = {
+    p["sha256"]: p
+    for p in json.loads((B / "injection/results/llm_guard_default_predictions.json").read_text())
+}
 warm_all()
-af = DetectorPipeline(detectors=[get_detector("injection.heuristic"), get_detector("injection.classifier")])
+af = DetectorPipeline(
+    detectors=[get_detector("injection.heuristic"), get_detector("injection.classifier")]
+)
 
 rows = []
 for kind, data in (("benign", benign), ("attack", attacks)):
     for r in data:
         g = LLMG[hashlib.sha256(r["text"].encode()).hexdigest()]
-        hits = [d for d in af.run(r["text"], DetectionContext(surface="input")).detections if d.entity_type.startswith("INJECTION")]
-        rows.append({
-            "kind": kind, "text": r["text"],
-            "llmguard": g["flagged"], "llmguard_score": round(g["score"], 3),
-            "agentfox": any(not (d.detail or {}).get("advisory") for d in hits),
-            "agentfox_logged": any((d.detail or {}).get("advisory") for d in hits),
-        })
+        hits = [
+            d
+            for d in af.run(r["text"], DetectionContext(surface="input")).detections
+            if d.entity_type.startswith("INJECTION")
+        ]
+        rows.append(
+            {
+                "kind": kind,
+                "text": r["text"],
+                "llmguard": g["flagged"],
+                "llmguard_score": round(g["score"], 3),
+                "agentfox": any(not (d.detail or {}).get("advisory") for d in hits),
+                "agentfox_logged": any((d.detail or {}).get("advisory") for d in hits),
+            }
+        )
 
-totals = {k: {"n": sum(r["kind"] == k for r in rows),
-              "llmguard": sum(r["llmguard"] for r in rows if r["kind"] == k),
-              "agentfox": sum(r["agentfox"] for r in rows if r["kind"] == k)} for k in ("benign", "attack")}
+totals = {
+    k: {
+        "n": sum(r["kind"] == k for r in rows),
+        "llmguard": sum(r["llmguard"] for r in rows if r["kind"] == k),
+        "agentfox": sum(r["agentfox"] for r in rows if r["kind"] == k),
+    }
+    for k in ("benign", "attack")
+}
 shown = [next(r for r in rows if r["text"] == t) for t in SHOWN]
 # The story needs these exact outcomes; fail loudly if a model update changes them.
 assert all(r["llmguard"] and not r["agentfox"] for r in shown[:3]), shown[:3]
