@@ -1,0 +1,40 @@
+{
+  "scanner": "llm-guard PromptInjection() with every default",
+  "meta": {
+    "model": "protectai/deberta-v3-base-prompt-injection-v2",
+    "model_revision": "89b085cd330414d3e7d9dd787870f315957e1e9f",
+    "threshold": 0.92,
+    "threshold_rule": "score > threshold (scores rounded to 2 decimals by llm-guard)",
+    "match_type": "full",
+    "device": "cpu",
+    "scanner": "llm_guard",
+    "packages": {
+      "llm-guard": "0.3.16",
+      "transformers": "4.51.3",
+      "torch": "2.15.0",
+      "tokenizers": "0.21.4"
+    },
+    "torch_threads": 6,
+    "machine": "arm64",
+    "platform": "macOS-26.1-arm64-arm-64bit",
+    "python": "3.11.15"
+  },
+  "notinject_false_blocks": {
+    "n": 127,
+    "d": 339,
+    "fraction": "127/339",
+    "pct": 37.5
+  },
+  "deepset_held_out_recall": {
+    "n": 19,
+    "d": 60,
+    "fraction": "19/60",
+    "pct": 31.7
+  },
+  "deepset_held_out_false_blocks": {
+    "n": 0,
+    "d": 56,
+    "fraction": "0/56",
+    "pct": 0.0
+  }
+}

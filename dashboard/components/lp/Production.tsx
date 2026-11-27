@@ -360,7 +360,7 @@ export function Production() {
                 title="Harmless messages blocked"
                 hint="lower is better"
                 rows={[
-                  { name: "LLM Guard's model", value: 42.2 },
+                  { name: "LLM Guard's model", value: 37.5 },
                   { name: "AgentFox", value: 11.5, ours: true },
                 ]}
               />

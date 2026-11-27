@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<!-- A1 split screen. Every message is verbatim from NotInject / deepset, every verdict and
+     number comes from .data/a1-verdicts.js, written by capture-a1.py from a real run of
+     both models. Enter advances one scene; #done-N appears when scene N has finished. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AgentFox: guardrails that don't block your customers</title>
+<style>
+  :root { --bg:#120a08; --panel:#1b1310; --line:#3a2a24; --ink:#eadfd8; --dim:#8c7a72; --accent:#c23600; --bad:#ff5a3c; --ok:#6fcf7a; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--ink); font:26px/1.4 "Geist", "Inter", system-ui, sans-serif; overflow:hidden; }
+  .scene { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .45s; pointer-events:none; }
+  .scene.on { opacity:1; }
+  .hook { font-size:92px; font-weight:700; letter-spacing:-.02em; max-width:1300px; text-align:center; line-height:1.15; }
+  .hook em { color:var(--bad); font-style:normal; }
+  .split { display:grid; grid-template-columns:1fr 1fr; gap:24px; width:1400px; }
+  .pane { background:var(--panel); border:1px solid var(--line); border-radius:14px; height:820px; display:flex; flex-direction:column; overflow:hidden; }
+  .head { padding:16px 22px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:12px; font-weight:600; }
+  .head small { color:var(--dim); font-weight:400; font-size:18px; margin-left:auto; }
+  .head .dot { width:12px; height:12px; border-radius:50%; background:var(--dim); }
+  .pane.us .head .dot { background:var(--accent); }
+  .log { flex:1; padding:20px 22px; display:flex; flex-direction:column; gap:16px; }
+  .msg { align-self:flex-end; max-width:88%; background:#2a1e19; border:1px solid var(--line); border-radius:14px 14px 4px 14px; padding:12px 16px; opacity:0; transform:translateY(8px); transition:all .35s; }
+  .msg.in { opacity:1; transform:none; }
+  .who { font-size:17px; color:var(--dim); margin-bottom:4px; }
+  .v { align-self:flex-start; font-weight:700; font-size:24px; padding:10px 16px; border-radius:8px; opacity:0; transition:opacity .3s; display:flex; gap:10px; align-items:baseline; }
+  .v.in { opacity:1; }
+  .v.block { background:#3b1410; color:var(--bad); border:1px solid #6b2318; }
+  .v.pass { background:#12291a; color:var(--ok); border:1px solid #1f4a2c; }
+  .v span { font-weight:400; color:var(--dim); font-size:18px; }
+  .stats { width:1360px; display:flex; flex-direction:column; gap:34px; }
+  .stats h2 { margin:0; font-size:64px; letter-spacing:-.01em; }
+  .row { display:grid; grid-template-columns:360px 1fr 200px; align-items:center; gap:24px; font-size:34px; }
+  .bar { height:64px; background:#241915; border-radius:8px; overflow:hidden; }
+  .fill { height:100%; width:0; transition:width 1.4s cubic-bezier(.2,.8,.2,1); background:#6b5a52; }
+  .row.us .fill { background:var(--accent); }
+  .num { font-size:60px; font-weight:700; text-align:right; font-variant-numeric:tabular-nums; }
+  .src { color:var(--dim); font-size:22px; }
+  /* Chrome's screencast only sends frames on repaint; a static scene would shorten the
+     recording and pull the picture ahead of the voice. This keeps it repainting. */
+  .tick { position:fixed; right:0; bottom:0; width:2px; height:2px; background:#fff; animation:tick .5s steps(2) infinite; }
+  @keyframes tick { 0% { opacity:.01; } 100% { opacity:.02; } }
+</style>
+<script src=".data/a1-verdicts.js"></script>
+</head>
+<body>
+<i class="tick"></i>
+<div class="scene" id="s0"><div class="hook">Your AI guardrail just blocked<br><em>a paying customer.</em></div></div>
+
+<div class="scene" id="s1"><div class="split">
+  <div class="pane"><div class="head"><i class="dot"></i>Typical guardrail<small>LLM Guard, default settings</small></div><div class="log" id="them"></div></div>
+  <div class="pane us"><div class="head"><i class="dot"></i>AgentFox<small>enforce mode</small></div><div class="log" id="us"></div></div>
+</div></div>
+
+<div class="scene" id="s2"><div class="stats" id="harmless"></div></div>
+<div class="scene" id="s3"><div class="stats" id="attacks"></div></div>
+
+<script>
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const pct = (a, n) => (100 * a / n).toFixed(1);
+const show = (id) => document.querySelectorAll(".scene").forEach((s) => s.classList.toggle("on", s.id === id));
+function el(tag, cls, html) { const e = document.createElement(tag); e.className = cls; e.innerHTML = html; return e; }
+const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+
+async function exchange(row, who) {
+  for (const side of ["them", "us"]) {
+    const m = el("div", "msg", `<div class="who">${who}</div>${esc(row.text)}`);
+    document.getElementById(side).appendChild(m);
+    requestAnimationFrame(() => m.classList.add("in"));
+  }
+  await sleep(900);
+  const themBlock = row.llmguard, usBlock = row.agentfox;
+  const them = el("div", "v " + (themBlock ? "block" : "pass"), themBlock ? `Blocked: prompt injection <span>score ${row.llmguard_score}</span>` : "Allowed");
+  const us = el("div", "v " + (usBlock ? "block" : "pass"), usBlock ? "Blocked: prompt injection" : `Allowed${row.agentfox_logged ? " <span>noted for review</span>" : ""}`);
+  document.getElementById("them").appendChild(them);
+  document.getElementById("us").appendChild(us);
+  requestAnimationFrame(() => { them.classList.add("in"); us.classList.add("in"); });
+}
+
+function stats(id, title, key, src) {
+  const t = A1.totals[key];
+  const box = document.getElementById(id);
+  box.innerHTML = `<h2>${title}</h2>
+    <div class="row"><div>LLM Guard (default)</div><div class="bar"><div class="fill"></div></div><div class="num">${pct(t.llmguard, t.n)}%</div></div>
+    <div class="row us"><div>AgentFox</div><div class="bar"><div class="fill"></div></div><div class="num">${pct(t.agentfox, t.n)}%</div></div>
+    <div class="src">${src}: ${t.llmguard} vs ${t.agentfox} of ${t.n}. Re-run 2026-11-24.</div>`;
+  requestAnimationFrame(() => setTimeout(() => {
+    const f = box.querySelectorAll(".fill");
+    f[0].style.width = pct(t.llmguard, t.n) + "%";
+    f[1].style.width = pct(t.agentfox, t.n) + "%";
+  }, 300));
+}
+
+const scenes = [
+  async () => show("s0"),
+  async () => { show("s1"); await sleep(500); await exchange(A1.shown[0], "Customer"); },
+  async () => { await exchange(A1.shown[1], "Customer"); await sleep(700); await exchange(A1.shown[2], "Customer"); },
+  async () => { show("s2"); stats("harmless", "Harmless messages blocked", "benign", "NotInject, messages written to sound like attacks but harmless"); await sleep(1500); },
+  async () => {
+    show("s1");
+    for (const side of ["them", "us"]) document.getElementById(side).innerHTML = "";
+    await sleep(500); await exchange(A1.shown[3], "Attacker");
+  },
+  async () => { show("s3"); stats("attacks", "Real attacks caught", "attack", "deepset held-out prompt injections"); await sleep(1500); },
+];
+let next = 0, busy = false;
+async function run() {
+  if (busy || next >= scenes.length) return;
+  busy = true;
+  await scenes[next++]();
+  const d = document.createElement("i"); d.id = "done-" + next; d.style.cssText = "position:fixed;left:0;top:0;width:1px;height:1px;opacity:0"; document.body.appendChild(d);  // opacity, not hidden: the flow waits for it to be visible
+  busy = false;
+}
+addEventListener("keydown", (e) => { if (e.key === "Enter") run(); });
+run();
+</script>
+</body>
+</html>
