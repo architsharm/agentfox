@@ -22,6 +22,7 @@ import type { MetadataRoute } from "next";
 import { BLOG_POSTS, blogPath } from "@/lib/marketing/blog";
 import { DOC_PAGES } from "@/lib/docs/pages";
 import { ALL_PAGES } from "@/lib/marketing/nav";
+import { paperPath, PAPERS } from "@/lib/marketing/papers";
 import { SITE_URL } from "@/lib/site";
 
 const BUILT_AT = new Date();
@@ -58,5 +59,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     changeFrequency: "monthly" as const,
     priority: 0.7,
   }));
-  return [...pages, ...docs, ...posts];
+  // One page per accepted paper, from lib/marketing/papers.ts.
+  const papers: MetadataRoute.Sitemap = PAPERS.map((paper) => ({
+    url: `${SITE_URL}${paperPath(paper.slug)}`,
+    lastModified: BUILT_AT,
+    changeFrequency: "yearly" as const,
+    priority: 0.7,
+  }));
+  return [...pages, ...docs, ...posts, ...papers];
 }
