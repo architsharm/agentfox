@@ -5,6 +5,7 @@ import { DocSection } from "@/components/lp/bench";
 import { Reveal } from "@/components/lp/client";
 import { FlowArt } from "@/components/lp/FlowArt";
 import { Arrow, LpCta, LpFooter, LpNav } from "@/components/lp/parts";
+import { paperPath, PAPERS as PAPER_RECORDS } from "@/lib/marketing/papers";
 import { publicPageMetadata } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
@@ -36,9 +37,17 @@ type Work = {
   finding: React.ReactNode;
   limit: string;
   link?: { href: string; label: string };
+  /** Its own page under /research, with the abstract, PDF and citation. */
+  slug?: string;
 };
 
-const PAPERS: Work[] = [
+const slugOf = (title: string) => {
+  const rec = PAPER_RECORDS.find((p) => p.title === title);
+  if (!rec) throw new Error(`no paper record for "${title}"`);
+  return rec.slug;
+};
+
+const PAPERS: Work[] = ([
   {
     accepted: "Accepted, to be presented at",
     venue: "WAITI 2026",
@@ -72,7 +81,7 @@ const PAPERS: Work[] = [
       "What 16 guardrail libraries, gateways, frameworks and agent hooks do when a detector errors or times out. On a detector error, 7 raise to the caller, 3 block, 5 let the call proceed and 1 mixes both. The study also found a fail-open bug in AgentFox, which is fixed.",
     limit: "All coding was done by LLM agents; 27 rows were confirmed by fault injection, and no person checked the rest.",
   },
-];
+] as Work[]).map((w) => ({ ...w, slug: slugOf(w.title) }));
 
 const DEMOS: Work[] = [
   {
@@ -104,6 +113,11 @@ function WorkRow({ work }: { work: Work }) {
         <p className="lp-work-limit">
           <strong>Limit:</strong> {work.limit}
         </p>
+        {work.slug && (
+          <Link className="lp-paper-link" href={paperPath(work.slug)}>
+            Abstract, PDF and citation <Arrow />
+          </Link>
+        )}{" "}
         {work.link && (
           <a className="lp-paper-link" href={work.link.href} target="_blank" rel="noreferrer">
             {work.link.label} <Arrow />

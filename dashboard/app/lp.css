@@ -717,3 +717,8 @@ a:hover > .lp-arrow { transform: translate(2px, -2px); }
   .lp-stats { gap: 0; }
   .lp-stat { border-radius: 0; border-width: 0 0 1px; padding: 20px 0; background: none; }
 }
+
+/* /research/<slug>: one paper. No hero, so the page starts below the fixed nav. */
+.lp-onepaper { padding-top: 120px; }
+.lp-onepaper h1 { font-size: clamp(26px, 3.2vw, 38px); line-height: 1.2; max-width: 900px; margin: 16px 0 20px; }
+.lp-paper-bib { overflow-x: auto; padding: 16px; border: 1px solid var(--lp-hair); border-radius: 8px; font-size: 13px; line-height: 1.6; }
