@@ -1,42 +1,42 @@
-# One-click self-host: the whole control plane, on your own Render account.
+# AgentFox for OpenClaw on your own Render account: the kit in this directory, with no
+# terminal. It is the root render.yaml (Postgres, gateway, dashboard) plus OpenClaw,
+# with the AgentFox plugin built in and AgentFox as its model endpoint.
 #
-# This is the blueprint the "Deploy to Render" button uses (docs/product-tour.md), and it has to
-# live at the repository root because that is the only path Render's one-click URL
-# looks at. deploy/render.yaml is a different thing and stays where it is: it
-# deploys ONLY the dashboard, pointed at our hosted API, which is how
-# useagentfox.com itself runs. That one is not a self-host — a button wired to it
-# would hand someone a UI for somebody else's control plane.
+# The "Deploy to Render" button only reads render.yaml at the root of a repository or
+# branch, and the root of main is the plain self-host blueprint. So the button points at
+# the `openclaw-render` branch, which .github/workflows/openclaw-render-branch.yml
+# rebuilds from main on every push with this file copied to its root. Edit this file,
+# never the branch.
 #
-# What this provisions instead is a complete, independent installation:
+#   [Deploy to Render](https://render.com/deploy?repo=https://github.com/architsharm/agentfox/tree/openclaw-render)
 #
-#   agentfox-db         Postgres. Your traces, grants, findings and audit chain.
-#   agentfox-gateway    The API and enforcement path (deploy/Dockerfile).
-#   agentfox-dashboard  The UI (deploy/Dockerfile.dashboard), pointed at YOUR gateway.
-#
-# Nothing here talks to us. There is no phone-home, no licence check, and no
-# default egress: AGENTFOX_ALLOW_EGRESS is "false" and the provider is `echo`, so a
-# fresh install runs end to end with no model and no API key. Point it at a model
-# when you want one.
-#
-# Plans: the gateway image installs the classifier extra, so it does not fit
-# Render's free instance type — `starter` is the floor, and that is stated on the
-# button in the README rather than discovered on a failed build. The dashboard and
-# the database are fine on free.
+# Render asks once, on creation, for every `sync: false` value; none is committed here:
+#   AGENTFOX_AUDIT_SIGNING_KEY  random (`openssl rand -hex 32`); keep a copy outside Render.
+#   AGENTFOX_OPENAI_API_KEY     your model key (or AGENTFOX_ANTHROPIC_API_KEY, with
+#                               AGENTFOX_DEFAULT_PROVIDER and AGENTFOX_MODEL changed to match).
+#                               It stays on the gateway; OpenClaw never sees it.
+#   AGENTFOX_AGENT_KEY          an AgentFox agent key (nom_agt_...). You have none before the
+#                               first deploy: enter `unregistered`, and replace it once you
+#                               create one in the dashboard. Any non-nom_agt_ value is "no key".
+#   GITHUB_* and the rest       optional sign-in, as in the root render.yaml.
 #
 # After the first deploy:
-#   1. Set the GitHub OAuth app's callback to
-#      https://<your-dashboard-host>/api/auth/github/callback
-#   2. AGENTFOX_AUDIT_SIGNING_KEY is prompted for on the first deploy: paste a
-#      random value (`openssl rand -hex 32`) and keep a copy outside Render. The
-#      chain is only as trustworthy as the key that signs it.
-#   3. No demo data is loaded. Without GitHub, create the first operator from the
-#      gateway's shell (`agentfox admin users create you@example.com --role owner
-#      --token`) and sign in on /login with that token.
+#   1. Sign in to the dashboard: open agentfox-gateway -> Shell in Render and run
+#      `agentfox admin users create you@example.com --role owner --token`, then paste the
+#      token on /login. (Or set up GitHub sign-in, as in the root render.yaml.)
+#   2. Open OpenClaw at the `openclaw` service's URL with the OPENCLAW_GATEWAY_TOKEN Render
+#      generated (openclaw -> Environment).
+#   3. AgentFox starts in Watch. Switch to Block from the gateway's Shell when the
+#      decisions look right: `agentfox policy enforce tool-containment`.
 #
-# Settings are AGENTFOX_*. See the audit signing key below for the one that must never
-# be regenerated without rotating (docs/deployment/key-rotation.md).
+# OpenClaw is a public web service here, protected by its gateway token. That is
+# OpenClaw's own remote mode, but it is more exposed than the local kit, which binds to
+# 127.0.0.1: keep the token secret, and see /docs/connect/openclaw for what this does not
+# cover.
 #
-# Full runbook, including Fly, Docker Compose and bare metal: deploy/README-dashboard.md
+# Plans: the gateway needs `starter` (its image carries the classifier extra) and so does
+# OpenClaw (its state lives on a disk, and disks need a paid instance). The database and
+# the dashboard run on free.
 
 databases:
   - name: agentfox-db
@@ -45,7 +45,7 @@ databases:
     plan: free
 
 services:
-  # --- The control plane ----------------------------------------------------
+  # --- AgentFox: the control plane, also OpenClaw's model endpoint ------------
   - type: web
     name: agentfox-gateway
     runtime: docker
@@ -53,8 +53,10 @@ services:
     region: oregon
     dockerfilePath: ./deploy/Dockerfile
     dockerContext: .
+    # Schema, then OpenClaw's tool setup in the background, then the server.
+    dockerCommand: sh /app/deploy/openclaw/render-gateway-start.sh
     healthCheckPath: /health
-    autoDeploy: false
+    autoDeployTrigger: "off"
     envVars:
       - key: AGENTFOX_DATABASE_URL
         fromDatabase:
@@ -64,15 +66,15 @@ services:
         value: org_default
       - key: AGENTFOX_ENVIRONMENT
         value: production
-      # Zero egress by default, exactly as deploy/docker-compose.yml ships it: a
-      # fresh install must be able to run without sending anything anywhere.
+      # OpenClaw's model calls go through AgentFox, which forwards them to this provider.
       - key: AGENTFOX_ALLOW_EGRESS
-        value: "false"
+        value: "true"
       - key: AGENTFOX_DEFAULT_PROVIDER
-        value: echo
-      # Enforcement is something an operator turns on deliberately, after
-      # simulating it. Tool containment still ships enforcing; this is the
-      # detector-backed policy default.
+        value: openai
+      - key: AGENTFOX_OPENAI_API_KEY
+        sync: false
+      - key: AGENTFOX_ANTHROPIC_API_KEY
+        sync: false
       - key: AGENTFOX_DEFAULT_POLICY_MODE
         value: observe
       - key: AGENTFOX_FAIL_MODE
@@ -85,31 +87,17 @@ services:
         value: native
       - key: AGENTFOX_EVIDENCE_DIR
         value: /var/agentfox/evidence
-      # Never seen by us. Losing it does not lose the audit chain, but it does end
-      # the ability to verify entries signed before the change — see Appendix
-      # E.2.2. `sync: false`, not `generateValue`: a generated value would change on a
-      # blueprint sync and silently rotate the key. Prompted for once, on creation. To
-      # change it, keep the old value in AGENTFOX_AUDIT_SIGNING_KEY_PREVIOUS and run
-      # `agentfox admin keys rotate` (docs/deployment/key-rotation.md).
+      # Prompted once, never generated: a generated value would change on a blueprint
+      # sync and silently rotate the key (see the root render.yaml).
       - key: AGENTFOX_AUDIT_SIGNING_KEY
         sync: false
-      # Authenticates the dashboard's GitHub sign-in call (/api/auth/github/provision),
-      # which mints an owner token. Generated HERE and copied to the dashboard below,
-      # so the two can never differ. It used to be generated on the dashboard only,
-      # which left this service on the published default: sign-in failed, and anyone
-      # who read the source could mint owner tokens on the gateway directly. The
-      # gateway now refuses to start outside development on the default. A blueprint
-      # sync copies the same value to the dashboard, so the pair stays matched (it is a
-      # shared secret between the two services, not a key anything was signed with).
+      # Shared with the dashboard below, which copies this generated value.
       - key: AGENTFOX_SERVICE_AUTH_SECRET
         generateValue: true
-      # The five zero-dependency defaults. The classifier and safety models the
-      # image can carry are opt-in: they need weights, which is what pushes this
-      # service past the free instance type.
       - key: AGENTFOX_ENABLED_DETECTORS
         value: '["injection.heuristic","pii.native","secrets.native","safety.lexicon","schema.json"]'
 
-  # --- The UI ---------------------------------------------------------------
+  # --- AgentFox: the UI -------------------------------------------------------
   - type: web
     name: agentfox-dashboard
     runtime: docker
@@ -117,37 +105,28 @@ services:
     region: oregon
     dockerfilePath: ./deploy/Dockerfile.dashboard
     dockerContext: ./dashboard
-    # /login is the one page that renders without a session cookie, so it is the
-    # only honest health check: "/" and every other path redirect.
     healthCheckPath: /login
-    autoDeploy: false
+    autoDeployTrigger: "off"
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: "3000"
-      # Next's standalone server binds to $HOSTNAME, and Render sets that to the
-      # pod name — so without this the app listens on a name its own proxy cannot
-      # reach and every request 502s while the logs claim a clean start.
+      # Render sets HOSTNAME to the pod name; Next's standalone server must bind to all
+      # interfaces or every request 502s (see the root render.yaml).
       - key: HOSTNAME
         value: 0.0.0.0
-      # Your gateway, not ours.
       - key: AGENTFOX_API_URL
         fromService:
           name: agentfox-gateway
           type: web
           property: hostport
-      # Sign-in. From a GitHub OAuth app you create; Render prompts once and
-      # stores them, so nothing is committed here.
-      # Umami website id for the hosted site's page counter. Unset serves no script.
       - key: AGENTFOX_UMAMI_WEBSITE_ID
         sync: false
       - key: GITHUB_CLIENT_ID
         sync: false
       - key: GITHUB_CLIENT_SECRET
         sync: false
-      # Optional: Google and Microsoft sign-in. Each button shows only when both of
-      # its values are set. Callbacks: /api/auth/google/callback, /api/auth/microsoft/callback.
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
@@ -156,9 +135,51 @@ services:
         sync: false
       - key: MICROSOFT_CLIENT_SECRET
         sync: false
-      # The gateway's generated value, never a second one (see the gateway above).
       - key: AGENTFOX_SERVICE_AUTH_SECRET
         fromService:
           name: agentfox-gateway
           type: web
           envVarKey: AGENTFOX_SERVICE_AUTH_SECRET
+
+  # --- OpenClaw, with every tool call checked by AgentFox ----------------------
+  - type: web
+    name: openclaw
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./deploy/openclaw/Dockerfile
+    dockerContext: .
+    autoDeployTrigger: "off"
+    # OpenClaw's sessions, memory and workspace. Its config is baked into the image
+    # (OPENCLAW_CONFIG_PATH), so it is not here.
+    disk:
+      name: openclaw-state
+      mountPath: /home/node/.openclaw
+      sizeGB: 1
+    envVars:
+      # Render routes to this port; the image's command listens on it.
+      - key: PORT
+        value: "18789"
+      - key: HOME
+        value: /home/node
+      - key: OPENCLAW_HOME
+        value: /home/node
+      - key: OPENCLAW_STATE_DIR
+        value: /home/node/.openclaw
+      - key: OPENCLAW_WORKSPACE_DIR
+        value: /home/node/.openclaw/workspace
+      - key: OPENCLAW_GATEWAY_PORT
+        value: "18789"
+      # The token for OpenClaw's Control UI. Generated once; read it under Environment.
+      - key: OPENCLAW_GATEWAY_TOKEN
+        generateValue: true
+      # The gateway on Render's private network; the image's openclaw.json adds http://.
+      - key: AGENTFOX_HOSTPORT
+        fromService:
+          name: agentfox-gateway
+          type: web
+          property: hostport
+      - key: AGENTFOX_AGENT_KEY
+        sync: false
+      - key: AGENTFOX_MODEL
+        value: gpt-4.1-mini
