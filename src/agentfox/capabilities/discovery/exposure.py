@@ -197,7 +197,40 @@ _PATH_DESCRIPTION = re.compile(
 )
 
 
+#: Argument names that carry code or a command line, and the words saying it is run.
+_CODE_ARGS = {"code", "script", "command", "cmd", "source", "python_code", "shell_command"}
+_RUN_WORDS = re.compile(r"\b(?:run|runs|execute|executes|exec|eval|evaluate)\b", re.I)
+
+
+def runs_code(name: str, description: str = "", args: Iterable[str] = ()) -> bool:
+    """A tool that runs the code or command it is given: it takes a `code`/`command`
+    argument and its name or description says it runs it (`run(code)`: "Runs python
+    code", `run_code`, nanobot's `exec(command)`)."""
+    if not {a.lower() for a in args} & _CODE_ARGS:
+        return False
+    return bool(_RUN_WORDS.search(" ".join(tokens(name))) or _RUN_WORDS.search(description))
+
+
+def mark_code_exec(caps: Capabilities) -> Capabilities:
+    """Code the model writes reaches everything this process can: its files and
+    environment (private data) and the network (a way out)."""
+    caps.flags |= {PRIVATE, EXFIL}
+    caps.phrases[PRIVATE] = "runs any code or command it is given"
+    caps.phrases[EXFIL] = "can reach the network and the filesystem from that code"
+    caps.action = caps.action or "run code that sends data out"
+    caps.data_noun = caps.data_noun or "file"
+    return caps
+
+
 def classify_tool(name: str, description: str = "", args: Iterable[str] = ()) -> Capabilities:
+    """Classify one tool by its name, falling back to its description; a tool that runs
+    the code it is given (:func:`runs_code`) reaches everything, whatever it is called."""
+    args = list(args)
+    caps = _classify_tool(name, description, args)
+    return mark_code_exec(caps) if runs_code(name, description, args) else caps
+
+
+def _classify_tool(name: str, description: str = "", args: Iterable[str] = ()) -> Capabilities:
     """Classify one tool by its name, falling back to its description.
 
     ``args``, the tool function's argument names when the code shows them, add one
@@ -282,7 +315,9 @@ def _classify_by_name(name: str, description: str = "") -> Capabilities:
         and not web
         and not inbound
         and re.search(
-            r"\b(web ?page|website|url|internet|web (?:results?|search|content)|search engine)\b",
+            # Not "the webhook url": a URL something is sent to is not content read in.
+            r"\b(web ?page|website|(?<!webhook )(?<!callback )(?<!redirect )url|internet"
+            r"|web (?:results?|search|content)|search engine)\b",
             desc,
         )
     ):

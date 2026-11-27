@@ -835,7 +835,14 @@ def tool_class(node: ast.ClassDef) -> tuple[str, str, list[str]] | None:
             if isinstance(stmt.target, ast.Name):
                 fields.setdefault(stmt.target.id, stmt.value)
         elif isinstance(stmt, ast.FunctionDef | ast.AsyncFunctionDef):
-            if stmt.name == "__init__":
+            if stmt.name in ("name", "description") and (
+                len(stmt.body) >= 1
+                and isinstance(ret := stmt.body[-1], ast.Return)
+                and _str(ret.value)
+            ):
+                # `@property def name(self) -> str: return "exec"`, nanobot's shape.
+                fields.setdefault(stmt.name, ret.value)
+            elif stmt.name == "__init__":
                 for sub in ast.walk(stmt):
                     if (
                         isinstance(sub, ast.Call)
@@ -845,7 +852,7 @@ def tool_class(node: ast.ClassDef) -> tuple[str, str, list[str]] | None:
                         for kw in sub.keywords:
                             if kw.arg:
                                 fields.setdefault(kw.arg, kw.value)
-            elif stmt.name in ("execute", "run", "_run", "arun", "_arun", "__call__"):
+            elif stmt.name in ("execute", "aexecute", "run", "_run", "arun", "_arun", "__call__"):
                 args = args or _fn_info(stmt)[1]
     name = _str(fields.get("name"))
     if not name:
